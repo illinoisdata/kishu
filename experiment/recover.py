@@ -3,10 +3,14 @@
 #
 # Copyright 2021-2022 University of Illinois
 
+import json
+
 from elastic.common.migration_metadata import MigrationMetadata
 from elastic.io.external_storage import ExternalStorage
 
-def resume(migration_metadata_path: MigrationMetadata, storage: ExternalStorage):
+from experiment.migrate import METADATA_PATH, OBJECT_PATH_PREFIX
+
+def resume(storage: ExternalStorage):
     """
     (1) Busy waits for the file at `migration_metadata_path` in `storage` to appear
     (2) Once the metadata file appears, read the metadata content
@@ -21,4 +25,5 @@ def resume(migration_metadata_path: MigrationMetadata, storage: ExternalStorage)
         storage (ExternalStorage):
             a wrapper for any storage adapter (local fs, cloud storage, etc.)
     """
-    pass
+    metadata = json.loads(storage.read_all(METADATA_PATH))
+    metadata = MigrationMetadata.from_json(metadata)
