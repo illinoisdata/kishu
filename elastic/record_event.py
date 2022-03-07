@@ -4,6 +4,7 @@
 # Copyright 2021-2022 University of Illinois
 
 import datetime
+import inspect
 import uuid
 
 import elastic.container
@@ -25,7 +26,8 @@ def RecordEvent(func):
                             start=start_time, 
                             end=end_time, 
                             duration=(end_time - start_time), 
-                            cell_func_name=func.__name__, 
+                            cell_func_name=func.__name__,
+                            cell_func_code=inspect.getsource(func),
                             related_data_events=related_data_events)
         elastic.container.operation_events.append(oe)
         elastic.container.operation_event_lookup[exec_uuid] = oe
