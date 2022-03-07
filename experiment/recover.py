@@ -4,11 +4,12 @@
 # Copyright 2021-2022 University of Illinois
 
 import json
+import pickle
 
 from elastic.common.migration_metadata import MigrationMetadata
 from elastic.io.external_storage import ExternalStorage
 
-from experiment.migrate import METADATA_PATH, OBJECT_PATH_PREFIX
+from experiment.migrate import METADATA_PATH
 
 def resume(storage: ExternalStorage):
     """
@@ -27,3 +28,15 @@ def resume(storage: ExternalStorage):
     """
     metadata = json.loads(storage.read_all(METADATA_PATH))
     metadata = MigrationMetadata.from_json(metadata)
+    
+    # run the recomputation code to get the state of objects that are not migrated
+    # this run can be done using a single cell of the new Python session at destination
+    # NOTE: this is only needed when we finish experiments and focus on engineering
+
+    for obj_path, obj_names in metadata.get_objects_migrated():
+        object_pickled = storage.read_all(obj_path)
+        obj = pickle.loads(object_pickled)
+        
+        # link the reconstructed object to the list of object names
+        for name in obj_names:
+            globals()[name] = obj

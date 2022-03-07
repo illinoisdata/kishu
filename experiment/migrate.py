@@ -33,11 +33,20 @@ def migrate(objects_to_migrate: List,
         external_storage (ExternalStorage):
             a wrapper for any storage adapter (local fs, cloud storage, etc.)
     """
+    objects_migrated = {}
+    
     for obj in objects_to_migrate:
         obj_pickled = pickle.dumps(obj)
+        obj_path = OBJECT_PATH_PREFIX + id(obj)
+        
         # FIXME: might be optimizable using batch writes (especially for remote storage using req/resp)
-        storage.write_all(OBJECT_PATH_PREFIX + id(obj), obj_pickled)
+        storage.write_all(obj_path, obj_pickled)
+        
+        # construct a mapping from object path to a list of all names that reference that object
+        # so that we know what variable name to use at resume time
+        objects_migrated[obj_path] = [ k for k,v in globals().items() if v is obj ]
 
     # assume that the list of ids of objects to migrate is already part of the metadata
     storage.write_all(CODE_PATH, code_to_migrate)
-    storage.write_all(METADATA_PATH, metadata.to_json())
+    storage.write_all(METADATA_PATH, metadata.with_objects_migrated(objects_migrated)\
+                                             .to_json())
