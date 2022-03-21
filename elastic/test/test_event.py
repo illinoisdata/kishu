@@ -8,8 +8,8 @@ import unittest
 import os
 import subprocess
 
-from elastic.container import operation_events
-from elastic.record_event import RecordEvent
+from container import operation_events
+from record_event import RecordEvent
 
 @RecordEvent
 def TEST_FUNC():
@@ -28,7 +28,7 @@ class TestOperationEvent(unittest.TestCase):
         
         # verify that captured source code can be reconstructed
         with open(TEST_FILE_NAME, 'w') as fd:
-            fd.write("from elastic.record_event import RecordEvent\n")
+            fd.write("from record_event import RecordEvent\n")
             fd.write(operation_events[0].cell_func_code)
         
         subprocess.call(TEST_FILE_NAME, shell=True) # saved code executed without issue

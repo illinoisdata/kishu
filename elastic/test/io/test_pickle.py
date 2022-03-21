@@ -5,7 +5,7 @@ import pickle
 from datetime import datetime, date
 from pyspark.sql import DataFrame, SparkSession
 
-from elastic.io.pickle import is_picklable, _is_picklable_dill
+from io.pickle import is_picklable, _is_picklable_dill
 
 class TestPickle(unittest.TestCase):
     def test_is_picklable_numpy(self):

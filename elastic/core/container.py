@@ -5,7 +5,7 @@
 
 import datetime
 
-from elastic.event import DataEvent
+from core.event import DataEvent
 
 data_events = []
 operation_events = []

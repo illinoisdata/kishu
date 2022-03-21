@@ -5,7 +5,7 @@
 
 from pathlib import Path
 
-from elastic.io.adapter import Adapter
+from core.io.adapter import Adapter
 
 class ExternalStorage(Adapter):
     def __init__(self):

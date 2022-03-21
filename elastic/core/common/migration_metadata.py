@@ -3,6 +3,8 @@
 #
 # Copyright 2021-2022 University of Illinois
 
+import json
+
 KEY_OBJECTS_MIGRATED = "objectsMigrated"
 KEY_RECOMPUTE_CODE = "recomputeCode"
 
@@ -22,17 +24,18 @@ class MigrationMetadata:
 
     def with_recompute_code(self, recompute: list):
         self.recomputeCode = recompute
+        return self
 
 
     def get_recompute_code(self):
         return self.recomputeCode
 
 
-    def to_json(self):
-        return {
+    def to_json_str(self) -> str:
+        return json.dumps({
             "objectsMigrated": self.objects_migrated,
             "recomputeCode": self.recomputeCode
-        }
+        })
 
 
     @staticmethod

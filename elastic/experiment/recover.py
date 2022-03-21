@@ -6,8 +6,8 @@
 import json
 import pickle
 
-from elastic.common.migration_metadata import MigrationMetadata
-from elastic.io.external_storage import ExternalStorage
+from core.common.migration_metadata import MigrationMetadata
+from core.io.external_storage import ExternalStorage
 
 from experiment.migrate import METADATA_PATH
 

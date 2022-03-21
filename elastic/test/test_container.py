@@ -1,6 +1,6 @@
 import unittest
 
-from elastic.container import DataContainer
+from container import DataContainer
 
 class TestDataContainer(unittest.TestCase):
     def test_init(self):
