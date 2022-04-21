@@ -13,8 +13,6 @@ def main():
     storage.register("local", FilesystemAdapter())
     
     resume(storage, globals())
-    
-    print(a)
 
 
 if __name__ == '__main__':
