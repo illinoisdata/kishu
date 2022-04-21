@@ -5,8 +5,7 @@
 
 import datetime
 
-from core.event import DataEvent
-from core.record_event import data_events
+from core.event import DataEvent, data_events
 
 class DataContainer:
     def __init__(self, obj, prevOpEvent):

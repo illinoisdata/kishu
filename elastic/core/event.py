@@ -3,6 +3,10 @@
 #
 # Copyright 2021-2022 University of Illinois
 
+data_events = []
+operation_events = []
+operation_event_lookup = {}
+
 class DataEvent:
     def __init__(self, container, container_id, base_type, event_time, prev_operation_event):
         self.container = container

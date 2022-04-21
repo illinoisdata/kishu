@@ -8,7 +8,7 @@ from core.event import OperationEvent
 from core.graph.graph import DependencyGraph
 from core.graph.node import Node
 from core.graph.node_set import NodeSet, NodeSetType
-from core.record_event import operation_events
+from core.event import operation_events
 
 
 def find_path(graph: DependencyGraph,

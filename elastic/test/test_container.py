@@ -1,6 +1,6 @@
 import unittest
 
-from container import DataContainer
+from core.container import DataContainer
 
 class TestDataContainer(unittest.TestCase):
     def test_init(self):

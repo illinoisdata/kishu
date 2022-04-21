@@ -8,11 +8,7 @@ import inspect
 import uuid
 
 from core.container import DataContainer
-from core.event import OperationEvent
-
-data_events = []
-operation_events = []
-operation_event_lookup = {}
+from core.event import OperationEvent, data_events, operation_events, operation_event_lookup
 
 def RecordEvent(func):
     def func_wrapper(*args, **kwargs):

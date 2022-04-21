@@ -8,8 +8,8 @@ import unittest
 import os
 import subprocess
 
-from container import operation_events
-from record_event import RecordEvent
+from core.event import operation_events
+from core.record_event import RecordEvent
 
 @RecordEvent
 def TEST_FUNC():
