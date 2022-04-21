@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class DependencyGraph:
     def __init__(self) -> None:
-        self.edges = {}
+        self.edges = []
         self.active_nodes = {}
         self.sink = NodeSet(nodes=[], type=NodeSetType.DUMMY)
         
