@@ -50,3 +50,6 @@ class OperationEvent:
                                                                self.end,
                                                                self.duration,
                                                                len(self.related_data_events))
+               
+    def get_exec_id(self):
+        return self.exec_uuid

@@ -8,13 +8,13 @@ from core.event import OperationEvent
 from core.graph.graph import DependencyGraph
 from core.graph.node import Node
 from core.graph.node_set import NodeSet, NodeSetType
-from core.event import operation_events
 
 
 def find_path(graph: DependencyGraph,
-              migrated_nodes: List[Node]) -> List[OperationEvent]:
+              migrated_nodes: List[Node],
+              operation_events) -> List[OperationEvent]:
     # find nodes to recompute, i.e. active nodes that are not migrated
-    recomputed_nodes = set(graph.active_nodes) - set(migrated_nodes)
+    recomputed_nodes = set(graph.active_nodes.values()) - set(migrated_nodes)
     recomputed_nodes = list(recomputed_nodes)
     
     # find all nodesets that generated these variables
@@ -30,19 +30,19 @@ def find_path(graph: DependencyGraph,
         nodeset = queue.pop(0)
         input_nodeset, oe = nodeset.edge.src, nodeset.edge.oe
         
-        recom_mask[oe.exec_uuid] = True
+        recom_mask[oe.get_exec_id()] = True
         if input_nodeset.type == NodeSetType.DUMMY:
             continue
         
         for node in input_nodeset.nodes:
             output_nodeset = node.output_nodeset
-            if recom_mask[output_nodeset.edge.oe.exec_uuid]:
+            if recom_mask[output_nodeset.edge.oe.get_exec_id()]:
                 continue
             queue.append(output_nodeset)
     
     result = []
     for oe in operation_events:
-        if recom_mask[oe.exec_uuid]:
+        if recom_mask[oe.get_exec_id()]:
             result.append(oe)
     
     return result
