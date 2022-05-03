@@ -2,6 +2,20 @@
 
 Intelligent scaling of stateful Python applications (e.g. a Jupyter notebook using an IPython kernel) that optimizies the tradeoff between recomputation overhead and cold storage access latency.
 
+## Getting Started
+
+- Installing the package
+```
+python3 -m venv .env
+source .env/bin/activate
+pip install -r requirements.txt
+```
+
+- Running Pytest
+```
+pytest -rP
+```
+
 ## Links to Documents
 
 - Dependency Graph Framework
