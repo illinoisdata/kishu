@@ -11,10 +11,10 @@ from core.container import DataContainer
 from core.event import OperationEvent, data_events, data_containers, operation_events, operation_event_lookup
 
 def ClearEvent():
-    data_events = []
-    data_containers = []
-    operation_events = []
-    operation_event_lookup = {}
+    data_events.clear()
+    data_containers.clear()
+    operation_events.clear()
+    operation_event_lookup.clear()
 
 def RecordEvent(func):
     def func_wrapper(*args, **kwargs):

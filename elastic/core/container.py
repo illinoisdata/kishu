@@ -168,6 +168,10 @@ class DataContainer:
         self.createDataEvent()
         return rtv
     
+    # for pickling 
+    def __reduce__(self):
+        return self._illinoisBaseObj.__reduce__()
+    
     @property
     def __class__(self):
         return self._illinoisBaseObj.__class__

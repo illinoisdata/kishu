@@ -13,6 +13,10 @@ from core.io.external_storage import ExternalStorage
 
 from experiment.migrate import METADATA_PATH
 
+def getFuncFromString(source_code, name):
+    exec(source_code)
+    return locals()[name]
+
 def setDictValues(d: Dict, keySet: List, valueSet: List):
     for k, v in zip(keySet, valueSet):
         d[k] = v
@@ -34,8 +38,10 @@ def resume(storage: ExternalStorage,
         storage (ExternalStorage):
             a wrapper for any storage adapter (local fs, cloud storage, etc.)
         global_state (Dict):
-            a dictionary to store recovered states (can just pass in globals())
+            a dictionary that contains environment variables and to store recovered states 
+            (need to pass in globals() to get environment variables)
     """
+    globals().update(global_state)
     metadata = json.loads(storage.read_all(Path(METADATA_PATH)))
     metadata = MigrationMetadata.from_json(metadata)
     
@@ -47,23 +53,20 @@ def resume(storage: ExternalStorage,
         object_pickled = storage.read_all(Path(obj_path))
         obj = pickle.loads(object_pickled)
         global_state[obj_name] = obj
-        globals()[obj_name] = obj
     for oe_path, oe_name in metadata.get_recompute_code().items():
         oe_pickled = storage.read_all(Path(oe_path))
-        oe = pickle.loads(oe_pickled)
-        global_state[oe_name] = oe
-        globals()[oe_name] = oe
+        source_code = pickle.loads(oe_pickled)
+        global_state[oe_name] = getFuncFromString(source_code[source_code.index("def"):], oe_name)
 
     # recompute based on order list and input/output mappings
     order = metadata.get_order_list()
     input_mappings = metadata.get_input_mappings()
     output_mappings = metadata.get_output_mappings()
-    for item in order:
+    for func in order:
         input_variables = []
-        if item in input_mappings:
-            input_names = input_mappings[item]
-            input_variables = [globals()[k] for k in input_names]
-        output_variables = output_mappings[item]
-        output_values = wrapperFunc(globals()[item], input_variables)
+        if func in input_mappings:
+            input_names = input_mappings[func]
+            input_variables = [global_state[k] for k in input_names]
+        output_variables = output_mappings[func]
+        output_values = wrapperFunc(global_state[func], input_variables)
         setDictValues(global_state, output_variables, output_values)
-        setDictValues(globals(), output_variables, output_values)

@@ -51,19 +51,21 @@ def migrate(objects_to_migrate: List,
         objects_migrated[obj_path] = obj_name
 
     oe_migrated = {}
-    for oe_name in oe_to_migrate:
-        oe = context_items[oe_name]
-        oe_pickled = pickle.dumps(oe)
+    order_list = []
+    for oe in oe_to_migrate:
+        oe_code = oe.cell_func_code
+        oe_pickled = pickle.dumps(oe_code)
         oe_path = "{}{}".format(OE_PATH_PREFIX, id(oe))
         storage.write_all(Path(oe_path), oe_pickled)
-        oe_migrated[oe_path] = oe_name
+        oe_migrated[oe_path] = oe.cell_func_name
+        order_list.append(oe.cell_func_name)
 
     # assume that the list of ids of objects to migrate is already part of the metadata
     metadata_json = MigrationMetadata().with_objects_migrated(objects_migrated)\
                                        .with_recompute_code(oe_migrated)\
                                        .with_input_mappings(input_mappings)\
                                        .with_output_mappings(output_mappings)\
-                                       .with_order_list(oe_to_migrate)\
+                                       .with_order_list(order_list)\
                                        .to_json_str()
     metadata_json = str.encode(metadata_json)
     storage.write_all(Path(METADATA_PATH), metadata_json)
