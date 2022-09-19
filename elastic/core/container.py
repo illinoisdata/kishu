@@ -181,11 +181,17 @@ class DataContainer:
     def get_base_type(self):
         return type(self._illinoisBaseObj)
 
+    def get_related_oe(self):
+        return self.__dict__['_illinoisPrevOpEvent'] 
+
     def __repl__(self):
         return "DataContainer with base ID {} and type {}," \
                " previous operation event was {}".format(self.get_base_id,
                                                          self.get_base_type,
                                                          type(self._illinoisBaseObj))
+
+    def is_data_container(self):
+        return True
     
     def createDataEvent(self):
         data_events.append(DataEvent(self, 

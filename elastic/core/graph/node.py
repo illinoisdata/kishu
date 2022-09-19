@@ -13,7 +13,7 @@ class Node:
         self.output_nodeset = output_nodeset
         self.input_nodesets = []
 
-    def add_nodeset(self, nodeSet):
+    def add_input_nodeset(self, nodeSet):
         self.input_nodesets.append(nodeSet)
         
     def get_size(self):
