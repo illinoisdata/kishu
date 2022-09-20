@@ -15,6 +15,9 @@ class DataEvent:
         self.base_type = base_type
         self.event_time = event_time
         self.prev_operation_event = prev_operation_event
+
+    def get_data_event_id(self):
+        return id(self)
         
     def __str__(self):
         return self.__repl__()
