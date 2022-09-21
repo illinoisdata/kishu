@@ -5,6 +5,7 @@
 
 import datetime
 import inspect
+from collections import defaultdict
 import uuid
 
 from core.container import DataContainer, OperationContainer
@@ -16,6 +17,7 @@ def ClearEvent():
     data_containers = []
     operation_events = []
     operation_event_lookup = {}
+    data_container_version = defaultdict(int)
 
 def RecordEvent(func):
     def func_wrapper(*args, **kwargs):
