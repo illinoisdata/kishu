@@ -195,13 +195,11 @@ class DataContainer:
     def get_base_type(self):
         return type(self._illinoisBaseObj)
 
-<<<<<<< HEAD
     def get_related_oe(self):
         return self.__dict__['_illinoisPrevOpEvent'] 
-=======
+        
     def get_size(self):
         return sys.getsizeof(self._illinoisBaseObj)
->>>>>>> numpy_notebook_fix
 
     def __repl__(self):
         return "DataContainer with base ID {} and type {}," \
