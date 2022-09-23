@@ -16,25 +16,36 @@ def find_path(graph: DependencyGraph,
     # find nodes to recompute, i.e. active nodes that are not migrated
     recomputed_nodes = set(graph.active_nodes.values()) - set(migrated_nodes)
     recomputed_nodes = list(recomputed_nodes)
+
+    for node in recomputed_nodes:
+        print(node.var.name)
     
     # find all nodesets that generated these variables
     source_nodesets = set([node.output_nodeset for node in recomputed_nodes])
     source_nodesets = list(source_nodesets)
+
+    print("source oes:")
+    for nodeset in source_nodesets:
+        print(nodeset.edge.oe.cell_func_name)
+    print("--------")
     
     # an operation needs to be rerun if its mask value is True
-    recom_mask = [False for _ in operation_events]
+    recom_mask = [None for _ in operation_events]
     
     # search for all necessary upstream nodesets
     queue = source_nodesets
     while queue:
         nodeset = queue.pop(0)
         input_nodeset, oe = nodeset.edge.src, nodeset.edge.oe
+        print(oe.cell_func_name)
         
-        recom_mask[oe.get_exec_id()] = True
+        recom_mask[oe.get_exec_id()] = nodeset.edge
         if input_nodeset.type == NodeSetType.DUMMY:
             continue
         
         for node in input_nodeset.nodes:
+            if node in migrated_nodes:
+                continue
             output_nodeset = node.output_nodeset
             if recom_mask[output_nodeset.edge.oe.get_exec_id()]:
                 continue
@@ -43,7 +54,7 @@ def find_path(graph: DependencyGraph,
     result = []
     for oe in operation_events:
         if recom_mask[oe.get_exec_id()]:
-            result.append(oe)
+            result.append(recom_mask[oe.get_exec_id()])
     
     return result
         

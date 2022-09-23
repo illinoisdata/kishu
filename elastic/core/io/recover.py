@@ -11,7 +11,7 @@ from typing import Dict, List
 from core.common.migration_metadata import MigrationMetadata
 from core.io.external_storage import ExternalStorage
 
-from experiment.migrate import METADATA_PATH
+from core.io.migrate import METADATA_PATH
 
 def getFuncFromString(source_code, name):
     exec(source_code)
@@ -70,3 +70,12 @@ def resume(storage: ExternalStorage,
         output_variables = output_mappings[func]
         output_values = wrapperFunc(global_state[func], input_variables)
         setDictValues(global_state, output_variables, output_values)
+
+# def resume(storage):
+#     file = open(storage, 'rb')
+#     items = pickle.load(file)
+#     data_container_dict = items[0]
+#     recomputation_code = items[1]
+#
+#     return data_container_dict, recomputation_code
+
