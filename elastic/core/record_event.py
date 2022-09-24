@@ -11,6 +11,7 @@ import uuid
 from core.container import DataContainer, OperationContainer
 from core.event import OperationEvent, data_events, data_containers, data_container_version, operation_events, \
     operation_event_lookup
+from core import event
 
 def ClearEvent():
     data_events = []

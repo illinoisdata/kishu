@@ -20,17 +20,17 @@ class DataEvent:
         self.event_time = event_time
         self.prev_operation_event = prev_operation_event
 
-<<<<<<< HEAD
     def get_data_event_id(self):
         return id(self)
         
-=======
->>>>>>> numpy_notebook_fix
     def __str__(self):
         return self.__repl__()
 
+    def __repr__(self):
+        return self.__repl__()
+
     def __repl__(self):
-        return "DataContainer {} with base ID {} and type {} used at {}," \
+        return "DataContainer name {} with base ID {} and type {} used at {}," \
                " previous operation event was {}".format(self.container.get_name(),
                                                          self.container_id,
                                                          self.base_type,

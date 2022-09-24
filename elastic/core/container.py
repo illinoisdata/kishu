@@ -79,7 +79,7 @@ class DataContainer:
     
     def __add__(self, other):
         self.createDataEvent()
-        if other.is_data_container():
+        if type(other) == DataContainer:
             other.createDataEvent()
             return self._illinoisBaseObj + other._illinoisBaseObj
         return self._illinoisBaseObj + other
@@ -89,7 +89,7 @@ class DataContainer:
     
     def __mul__(self, other):
         self.createDataEvent()
-        if other.is_data_container():
+        if type(other) == DataContainer:
             other.createDataEvent()
             return self._illinoisBaseObj * other._illinoisBaseObj
         return self._illinoisBaseObj * other
@@ -99,28 +99,28 @@ class DataContainer:
     
     def __truediv__(self, other):
         self.createDataEvent()
-        if other.is_data_container():
+        if type(other) == DataContainer:
             other.createDataEvent()
             return self._illinoisBaseObj / other._illinoisBaseObj
         return self._illinoisBaseObj / other
     
     def __rtruediv__(self, other):
         self.createDataEvent()
-        if other.is_data_container():
+        if type(other) == DataContainer:
             other.createDataEvent()
             return other._illinoisBaseObj / self._illinoisBaseObj
         return other / self._illinoisBaseObj
     
     def __floordiv__(self, other):
         self.createDataEvent()
-        if other.is_data_container():
+        if type(other) == DataContainer:
             other.createDataEvent()
             return self._illinoisBaseObj // other._illinoisBaseObj
         return self._illinoisBaseObj // other
     
     def __rfloordiv__(self, other):
         self.createDataEvent()
-        if other.is_data_container():
+        if type(other) == DataContainer:
             other.createDataEvent()
             return other._illinoisBaseObj // self._illinoisBaseObj
         return other // self._illinoisBaseObj
@@ -202,8 +202,9 @@ class DataContainer:
         return sys.getsizeof(self._illinoisBaseObj)
 
     def __repl__(self):
-        return "DataContainer with base ID {} and type {}," \
-               " previous operation event was {}".format(self.get_base_id,
+        return "DataContainer {} with base ID {} and type {}," \
+               " previous operation event was {}".format(self.get_name,
+                                                         self.get_base_id,
                                                          self.get_base_type,
                                                          type(self._illinoisBaseObj))
 
