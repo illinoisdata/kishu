@@ -29,3 +29,7 @@ class NodeSet:
     def set_output_nodeset(self):
         for node in self.nodes:
             node.output_nodeset = self
+
+    def add_input_nodeset(self):
+        for node in self.nodes:
+            node.input_nodesets.append(self)

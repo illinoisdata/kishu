@@ -5,17 +5,22 @@
 
 import datetime
 
+import sys
 from core.event import DataEvent, data_events
 
 class DataContainer:
-    def __init__(self, obj, prevOpEvent):
+    def __init__(self, varname, version, obj, prevOpEvent):
         try:
             if obj._is_illinois_data_container():
+                self.__dict__['_varname'] = varname
+                self.__dict__['_version'] = version
                 self.__dict__['_illinoisBaseObj'] = obj._illinoisBaseObj
                 self.__dict__['_illinoisPrevOpEvent'] = obj._illinoisPrevOpEvent
                 return
         except:
             pass
+        self.__dict__['_varname'] = varname
+        self.__dict__['_version'] = version
         self.__dict__['_illinoisBaseObj'] = obj
         self.__dict__['_illinoisPrevOpEvent'] = prevOpEvent
             
@@ -175,6 +180,15 @@ class DataContainer:
     def _is_illinois_data_container(self):
         return True
 
+    def get_item(self):
+        return self._illinoisBaseObj
+
+    def get_name(self):
+        return self._varname
+
+    def get_version(self):
+        return self._version
+
     def get_base_id(self):
         return id(self._illinoisBaseObj)
     
@@ -183,6 +197,8 @@ class DataContainer:
 
     def get_related_oe(self):
         return self.__dict__['_illinoisPrevOpEvent'] 
+    def get_size(self):
+        return sys.getsizeof(self._illinoisBaseObj)
 
     def __repl__(self):
         return "DataContainer with base ID {} and type {}," \
@@ -199,3 +215,7 @@ class DataContainer:
                                      self.get_base_type(),
                                      datetime.datetime.now(),
                                      self._illinoisPrevOpEvent))
+
+class OperationContainer:
+    def __init__(self, dict):
+        self.items = dict

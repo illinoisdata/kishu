@@ -15,7 +15,7 @@ def node_creation():
             output_list[map_id] = []
 
         if dc.get_base_id() not in latest_node:
-            nd = Node(VersionedVariable(dc.get_base_id(), 1))
+            nd = Node(VersionedVariable(dc.get_name(), dc.get_base_id(), 1))
 
         else:
             nd = Node(VersionedVariable(dc.get_base_id(), latest_node[dc.get_base_id()].var.ver + 1))

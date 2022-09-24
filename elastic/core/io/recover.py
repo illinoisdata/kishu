@@ -11,10 +11,9 @@ from typing import Dict
 from core.common.migration_metadata import MigrationMetadata
 from core.io.external_storage import ExternalStorage
 
-from experiment.migrate import METADATA_PATH
+from core.io.migrate import METADATA_PATH
 
-def resume(storage: ExternalStorage,
-           global_context: Dict):
+def resume(storage):
     """
     (1) Busy waits for the file at `migration_metadata_path` in `storage` to appear
     (2) Once the metadata file appears, read the metadata content
@@ -29,17 +28,9 @@ def resume(storage: ExternalStorage,
         storage (ExternalStorage):
             a wrapper for any storage adapter (local fs, cloud storage, etc.)
     """
-    metadata = json.loads(storage.read_all(Path(METADATA_PATH)))
-    metadata = MigrationMetadata.from_json(metadata)
+    file = open(storage, 'rb')
+    items = pickle.load(file)
+    data_container_dict = items[0]
+    recomputation_code = items[1]
     
-    # run the recomputation code to get the state of objects that are not migrated
-    # this run can be done using a single cell of the new Python session at destination
-    # NOTE: this is only needed when we finish experiments and focus on engineering
-
-    for obj_path, obj_names in metadata.get_objects_migrated().items():
-        object_pickled = storage.read_all(Path(obj_path))
-        obj = pickle.loads(object_pickled)
-        
-        # link the reconstructed object to the list of object names
-        for name in obj_names:
-            global_context[name] = obj
+    return data_container_dict, recomputation_code
