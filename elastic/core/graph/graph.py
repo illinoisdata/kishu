@@ -22,8 +22,8 @@ class DependencyGraph:
     def add_edge(self, src: NodeSet, dst: NodeSet, oe: OperationEvent):
         edge = Edge(oe, oe.duration, src, dst)
         self.edges.append(edge)
-        src.edge = edge
-        dst.edge = edge
+        src.set_edge(edge)
+        dst.set_edge(edge)
         
     def add_active_node(self, node: Node):
         if node.var.name in self.active_nodes:

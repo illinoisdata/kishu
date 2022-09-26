@@ -18,6 +18,8 @@ class NodeSet:
         self.nodes = nodes
         if type == NodeSetType.OUTPUT:
             self.set_output_nodeset()
+        elif type == NodeSetType.INPUT:
+            self.add_input_nodeset()
         self.type = type
         self.edge = None
     
@@ -32,4 +34,4 @@ class NodeSet:
 
     def add_input_nodeset(self):
         for node in self.nodes:
-            node.input_nodesets.append(self)
+            node.add_input_nodeset(self)

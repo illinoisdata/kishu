@@ -26,9 +26,13 @@ class DataEvent:
     def __str__(self):
         return self.__repl__()
 
+    def __repr__(self):
+        return self.__repl__()
+
     def __repl__(self):
-        return "DataContainer with base ID {} and type {} used at {}," \
-               " previous operation event was {}".format(self.container_id,
+        return "DataContainer name {} with base ID {} and type {} used at {}," \
+               " previous operation event was {}".format(self.container.get_name(),
+                                                         self.container_id,
                                                          self.base_type,
                                                          self.event_time,
                                                          self.prev_operation_event)

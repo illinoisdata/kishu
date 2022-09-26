@@ -4,6 +4,8 @@ from core.event import data_containers, data_events
 from core.graph.node import Node
 from core.graph.versioned_var import VersionedVariable
 
+
+
 def node_creation():
     output_list = {}
     latest_node = {}
