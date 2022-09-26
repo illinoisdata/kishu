@@ -2,19 +2,20 @@ import unittest
 
 import os, sys
 sys.path.insert(0, os.path.abspath(".."))
-from algorithm.selector import Selector
 from algorithm.optimizer_exact import OptimizerExact
 from core.graph.graph import DependencyGraph
 from core.graph.node import Node
 from core.graph.edge import Edge
 from core.graph.node_set import NodeSet
+from core.notebook.variable_snapshot import VariableSnapshot
+from core.notebook.operation_event import OperationEvent
 
 class TestOptimizer(unittest.TestCase):
     def test_init(self):
         ## Nodes
         nodes = []
         for i in range(18):
-            nodes.append(Node(None, 1, None))
+            nodes.append(self.get_test_node(str(i), 1))
 
         ## Node sets
         node_sets = []
@@ -26,17 +27,24 @@ class TestOptimizer(unittest.TestCase):
 
         ## Graph
         graph = DependencyGraph()
-        graph.edges.append(Edge(None, 2, node_sets[0], node_sets[1]))
-        graph.edges.append(Edge(None, 2, node_sets[2], node_sets[3]))
-        graph.edges.append(Edge(None, 2, node_sets[4], node_sets[5]))
-        graph.edges.append(Edge(None, 2, node_sets[9], node_sets[6]))
-        graph.edges.append(Edge(None, 2, node_sets[10], node_sets[7]))
-        graph.edges.append(Edge(None, 2, node_sets[11], node_sets[8]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[0], node_sets[1]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[2], node_sets[3]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[4], node_sets[5]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[9], node_sets[6]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[10], node_sets[7]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[11], node_sets[8]))
 
-        opt = OptimizerExact(graph, nodes)
-        result = opt.select_nodes()
+        opt = OptimizerExact(migration_speed_bps=1)
+        graph.trim_graph(opt)
 
         # TODO: think of an illustrating example
+
+    def get_test_node(self, name, ver=1):
+        return Node(VariableSnapshot(name, ver, None, None))
+
+
+    def get_oe(self, duration):
+        return OperationEvent(1, None, None, duration, "", "", [])
         
 if __name__ == '__main__':
     unittest.main()
