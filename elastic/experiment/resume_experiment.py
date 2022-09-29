@@ -5,7 +5,7 @@
 
 from core.io.external_storage import ExternalStorage
 from core.io.filesystem_adapter import FilesystemAdapter
-from experiment.recover import resume
+from core.io.recover import resume
 
 
 def main():

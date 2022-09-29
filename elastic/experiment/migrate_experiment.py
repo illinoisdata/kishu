@@ -5,12 +5,10 @@
 
 from core.io.external_storage import ExternalStorage
 from core.io.filesystem_adapter import FilesystemAdapter
-from experiment.migrate import migrate
-from experiment.recover import resume
+from core.io.migrate import migrate
+from core.io.recover import resume
 
-import torch 
 import torchvision
-import os
 
 
 def main():

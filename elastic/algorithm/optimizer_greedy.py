@@ -3,33 +3,28 @@
 #
 # Copyright 2021-2022 University of Illinois
 
-from typing import List
 from algorithm.selector import Selector
-from core.graph.graph import DependencyGraph
-from core.graph.node import Node
-from core.graph.edge import Edge
 from core.graph.node_set import NodeSet
 import networkx as nx
 import numpy as np
 
-from core.graph.node_set import NodeSetType
-
 
 class OptimizerGreedy(Selector):
-    def __init__(self, dependency_graph: DependencyGraph,
-                 active_nodes: List[Node]):
-        super().__init__(dependency_graph, active_nodes)
-        self.active_nodes = set(self.active_nodes)
 
+    def __init__(self, migration_speed_bps=1):
+        super().__init__(migration_speed_bps)
+
+        # Augmented computation graph
         self.compute_graph = None
+
+        # A node set is active if all of its nodes are active.
         self.active_node_sets = set()
 
+        # Unique index number assigned to node sets to speedup lookup
         self.idx_to_node_set = {}
 
-        # Edges required to recompute a give nodeset
+        # Edges required to recompute a give nodeset.
         self.recomputation_edges = {}
-
-        self.migration_speed = dependency_graph.migration_speed_bps
 
         self.idx = 0
 
@@ -49,6 +44,7 @@ class OptimizerGreedy(Selector):
 
     # Construct compute graph from node sets
     def construct_graph(self):
+        self.active_nodes = set(self.active_nodes)
         self.compute_graph = nx.DiGraph()
         srcs = []
         dsts = []
@@ -67,14 +63,14 @@ class OptimizerGreedy(Selector):
             srcs.append(src_idx)
             dsts.append(dst_idx)
 
-            self.compute_graph.add_edge(src_idx, dst_idx, weight=edge.duration)
+            self.compute_graph.add_edge(src_idx, dst_idx, weight=edge.oe.duration)
 
             # The output node set has a nonempty strict subset of active nodes
             active_node_subset = set(edge.dst.nodes).intersection(self.active_nodes)
             if active_node_subset and active_node_subset != set(edge.dst.nodes):
                 dst_active_subset_idx = self.get_new_idx()
                 self.compute_graph.add_node(dst_active_subset_idx)
-                self.idx_to_node_set[dst_active_subset_idx] = NodeSet(list(active_node_subset),NodeSetType.OUTPUT)
+                self.idx_to_node_set[dst_active_subset_idx] = NodeSet(list(active_node_subset))
                 dsts.append(dst_active_subset_idx)
                 self.compute_graph.add_edge(dst_idx, dst_active_subset_idx, weight=0)
 
@@ -100,7 +96,7 @@ class OptimizerGreedy(Selector):
     # Compute the total cost to migrate the unique nodes specified node sets.
     def compute_migration_cost(self, node_sets):
         migrate_nodes = set().union(*[self.idx_to_node_set[i].nodes for i in node_sets])
-        return sum([i.size for i in migrate_nodes]) / self.migration_speed
+        return sum([i.vs.get_size() for i in migrate_nodes]) / self.migration_speed_bps
 
     # Compute the total cost to recompute the specified node sets.
     def compute_recomputation_cost(self, node_sets):

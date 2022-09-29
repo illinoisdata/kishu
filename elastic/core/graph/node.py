@@ -3,20 +3,20 @@
 #
 # Copyright 2021-2022 University of Illinois
 
-from core.graph.versioned_var import VersionedVariable
-from core.container import DataContainer
+from core.notebook.variable_snapshot import VariableSnapshot
 
-
+# A node in the dependency graph corresponds to a variable snapshot.
 class Node:
-    def __init__(self, var: VersionedVariable, dc: DataContainer, size, output_nodeset=None) -> None:
-        self.var = var
-        self.dc = dc
-        self.size = size
-        self.output_nodeset = output_nodeset
+    def __init__(self, vs: VariableSnapshot) -> None:
+        self.vs = vs
+
+        # Output nodeset in the dependency graph containing this node.
+        self.output_nodeset = None
+
+        # Input nodesets in the dependency graph containing this node.
         self.input_nodesets = []
 
-    def add_input_nodeset(self, nodeSet):
-        self.input_nodesets.append(nodeSet)
-        
-    def get_size(self):
-        return self.size
+        # Pointers for graph reconstruction
+        self.name = vs.get_name()
+        self.version = vs.get_version()
+        self.prev_oe = vs.get_prev_oe()

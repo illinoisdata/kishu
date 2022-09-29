@@ -4,15 +4,15 @@
 # Copyright 2021-2022 University of Illinois
 
 import random
+import math
 from typing import List
 from algorithm.selector import Selector
-from core.graph.graph import DependencyGraph
 from core.graph.node import Node
 
 
 class MigrateAllBaseline(Selector):
-    def __init__(self, dependency_graph: DependencyGraph, active_nodes: List[Node]):
-        super().__init__(dependency_graph, active_nodes)
+    def __init__(self, migration_speed_bps=1):
+        super().__init__(migration_speed_bps)
 
     def select_nodes(self):
         """
@@ -23,8 +23,8 @@ class MigrateAllBaseline(Selector):
 
 
 class RecomputeAllBaseline(Selector):
-    def __init__(self, dependency_graph: DependencyGraph, active_nodes: List[Node]):
-        super().__init__(dependency_graph, active_nodes)
+    def __init__(self, migration_speed_bps=1):
+        super().__init__(migration_speed_bps)
 
     def select_nodes(self):
         """
@@ -35,8 +35,8 @@ class RecomputeAllBaseline(Selector):
 
 
 class RandomBaseline(Selector):
-    def __init__(self, dependency_graph: DependencyGraph, active_nodes: List[Node]):
-        super().__init__(dependency_graph, active_nodes)
+    def __init__(self, migration_speed_bps=1):
+        super().__init__(migration_speed_bps)
 
     def select_nodes(self):
         """
@@ -45,4 +45,4 @@ class RandomBaseline(Selector):
         """
         # NOTE: when this selector is used, the caller should fix a particular seed, for example in the 
         #   automation script for benchmarking
-        return random.sample(self.active_nodes)
+        return random.sample(self.active_nodes, math.floor(len(self.active_nodes) / 2))

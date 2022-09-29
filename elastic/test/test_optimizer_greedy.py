@@ -9,15 +9,18 @@ from core.graph.graph import DependencyGraph
 from core.graph.node import Node
 from core.graph.edge import Edge
 from core.graph.node_set import NodeSet
+from core.notebook.variable_snapshot import VariableSnapshot
+from core.notebook.operation_event import OperationEvent
+
 
 class TestOptimizer(unittest.TestCase):
     def test_init(self):
-        ## Nodes
+        # Nodes
         nodes = []
         for i in range(18):
-            nodes.append(Node(None, 1, None))
+            nodes.append(self.get_test_node(str(i), 1))
 
-        ## Node sets
+        # Node sets
         node_sets = []
         for i in range(0, 18, 2):
             node_sets.append(NodeSet([nodes[i], nodes[i + 1]], None))
@@ -25,21 +28,26 @@ class TestOptimizer(unittest.TestCase):
         node_sets.append(NodeSet([nodes[7], nodes[10]], None))
         node_sets.append(NodeSet([nodes[14], nodes[15]], None))
 
-        ## Graph
+        # Graph
         graph = DependencyGraph()
-        graph.edges.append(Edge(None, 2, node_sets[0], node_sets[1]))
-        graph.edges.append(Edge(None, 2, node_sets[2], node_sets[3]))
-        graph.edges.append(Edge(None, 2, node_sets[4], node_sets[5]))
-        graph.edges.append(Edge(None, 2, node_sets[9], node_sets[6]))
-        graph.edges.append(Edge(None, 2, node_sets[10], node_sets[7]))
-        graph.edges.append(Edge(None, 2, node_sets[11], node_sets[8]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[0], node_sets[1]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[2], node_sets[3]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[4], node_sets[5]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[9], node_sets[6]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[10], node_sets[7]))
+        graph.edges.append(Edge(self.get_oe(2), node_sets[11], node_sets[8]))
 
-        opt = OptimizerGreedy(graph, nodes)
-        result = opt.select_nodes()
+        opt = OptimizerGreedy(migration_speed_bps=1)
+        graph.trim_graph(opt)
 
-        self.assertEqual(set(result), {node_sets[1], node_sets[3], node_sets[5],
-             node_sets[6], node_sets[7], node_sets[8],
-             node_sets[9], node_sets[10], node_sets[11]})
+        self.assertEqual(set([i.vs.name for i in graph.nodes_to_recompute]), set())
+
+    def get_test_node(self, name, ver=1):
+        return Node(VariableSnapshot(name, ver, None, None))
+
+
+    def get_oe(self, duration):
+        return OperationEvent(1, None, None, duration, "", "", [])
         
 if __name__ == '__main__':
     unittest.main()

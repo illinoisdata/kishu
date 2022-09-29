@@ -3,28 +3,16 @@
 #
 # Copyright 2021-2022 University of Illinois
 
-from core.event import OperationEvent
+from core.notebook.operation_event import OperationEvent
 from core.graph.node_set import NodeSet
 
+# An edge in the dependency graph corresponds to an operation event.
 class Edge:
-    def __init__(self, oe: OperationEvent, duration, src: NodeSet, dst: NodeSet) -> None:
+    def __init__(self, oe: OperationEvent, src: NodeSet, dst: NodeSet) -> None:
         self.oe = oe
-        self.duration = duration
+
+        # Source/input node set of the operation event.
         self.src = src
+
+        # Destination/output node set of the operation event.
         self.dst = dst
-        
-    def get_duration(self):
-        return self.duration
-
-    def __str__(self):
-        return self.__repl__()
-
-    def __repr__(self):
-        return self.__repl__()
-
-    def __repl__(self):
-        return "Edge details:- \n" + \
-                "Operation Event - " + str(self.oe) + "\n" + \
-                "Duration - " + str(self.duration) + "\n" + \
-                "Source - " + str(self.src) + "\n" + \
-                "Destination - " + str(self.dst) + "\n"
