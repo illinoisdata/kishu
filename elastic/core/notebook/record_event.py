@@ -37,11 +37,12 @@ def RecordEvent(func):
         if rtv is not None and type(rtv) is VariableSnapshotSet:
             for key, item in rtv.variable_snapshots.items():
                 variable_version[key] += 1
+                migrate_flag = False if func.__name__ == "import_libraries" else True
                 if type(item) is VariableSnapshot:
-                    container = VariableSnapshot(key, variable_version[key], item.get_item(), oe)
+                    container = VariableSnapshot(key, variable_version[key], item.get_item(), oe, migrate_flag)
                     item.clear_item()
                 else:
-                    container = VariableSnapshot(key, variable_version[key], item, oe)
+                    container = VariableSnapshot(key, variable_version[key], item, oe, migrate_flag)
                 print("container created for variable ", key)
                 variable_snapshots.append(container)
                 oe.output_variable_snapshots.append(container)

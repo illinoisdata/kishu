@@ -54,10 +54,11 @@ class DependencyGraph:
             node.vs.clear_item()
 
     # Recompute non-migrated nodes post-migration by re-executing some cells.
-    def recompute_graph(self, globals_dict):
-        globals_dict = dict(globals_dict, **globals())
+    def recompute_graph(self):
+        globals_dict = dict(**globals())
         # Reconstruct operation events and variable snapshots
         snapshot_dict = {}
+        libraries_edge = None
         for edge in self.edges:
             core.globals.operation_events.append(edge.oe)
             for node in edge.src.nodes + edge.dst.nodes:
@@ -74,10 +75,15 @@ class DependencyGraph:
                 edge.oe.input_variable_snapshots.append(node.vs)
             for node in edge.dst.nodes:
                 edge.oe.output_variable_snapshots.append(node.vs)
+            
+            if edge.oe.cell_func_name == "import_libraries":
+                libraries_edge = edge
 
         # Recompute edges
         edges_to_recompute = find_edges_to_recompute(self)
         edges_to_recompute.sort(key=lambda x: x.oe.start)
+        if libraries_edge:
+            edges_to_recompute.insert(0, libraries_edge)
         for edge in edges_to_recompute:
             print("Recomputing edge " + edge.oe.cell_func_name + "...")
 
@@ -93,6 +99,9 @@ class DependencyGraph:
             # Assign outputs to output nodes
             for node in edge.dst.nodes:
                 node.vs.set_item(output_variable_snapshot_set[node.vs.get_name()])
+                # update globals() if output nodes are libraries
+                if edge.oe.cell_func_name == "import_libraries":
+                    globals_dict[node.vs.get_name()] = node.vs.get_item()
 
         # Clear old versions of variables
         for edge in edges_to_recompute:

@@ -11,13 +11,14 @@ from core.globals import variable_snapshot_accesses
 
 # A VariableSnapshot is an instance/version of a variable.
 class VariableSnapshot:
-    def __init__(self, varname, version, obj, prevOpEvent):
+    def __init__(self, varname, version, obj, prevOpEvent, migrate_flag = True):
         try:
             if obj._is_illinois_variable_snapshot():
                 self.__dict__['_varname'] = varname
                 self.__dict__['_version'] = version
                 self.__dict__['_illinoisBaseObj'] = obj._illinoisBaseObj
                 self.__dict__['_illinoisPrevOpEvent'] = obj._illinoisPrevOpEvent
+                self.__dict__['_migrate'] = migrate_flag
                 return
         except:
             pass
@@ -25,6 +26,7 @@ class VariableSnapshot:
         self.__dict__['_version'] = version
         self.__dict__['_illinoisBaseObj'] = obj
         self.__dict__['_illinoisPrevOpEvent'] = prevOpEvent
+        self.__dict__['_migrate'] = migrate_flag
             
     def __iter__(self):
         rtv = self.__dict__['_illinoisBaseObj'].__iter__() 
@@ -212,6 +214,9 @@ class VariableSnapshot:
 
     def get_prev_oe(self):
         return self._illinoisPrevOpEvent
+    
+    def get_migrate_flag(self):
+        return self._migrate
 
     def __repl__(self):
         return "VariableSnapshot with base ID {} and type {}," \

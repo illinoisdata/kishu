@@ -25,6 +25,9 @@ def create_graph():
         if variable_snapshot.get_version() == variable_version[variable_snapshot.get_name()]:
             graph.active_nodes.append(node)
 
+        if not variable_snapshot.get_migrate_flag():
+            node.vs.clear_item()
+
         nodes[(variable_snapshot.get_name(), variable_snapshot.get_version())] = node
 
     # Create an edge for each operation event and add to graph
@@ -38,6 +41,9 @@ def create_graph():
         output_nodes = [nodes[(variable_snapshot.get_name(), variable_snapshot.get_version())]
                         for variable_snapshot in operation_event.output_variable_snapshots]
         output_nodeset = NodeSet(output_nodes, NodeSetType.OUTPUT)
+
+        if not variable_snapshot.get_migrate_flag():
+            operation_event.output_variable_snapshots.clear()
 
         graph.add_edge(input_nodeset, output_nodeset, operation_event)
 
