@@ -6,8 +6,7 @@
 from algorithm.selector import Selector
 from core.graph.node_set import NodeSet
 import networkx as nx
-import scipy.optimize as optimize
-import random
+import numpy as np
 import math
 
 
@@ -96,91 +95,37 @@ class OptimizerExact(Selector):
             recompute_edges = set()
             self.dfs(idx, set(), recompute_edges)
             self.recomputation_edges[idx] = recompute_edges
-
-    # Compute the total cost to migrate the unique nodes specified node sets.
-    def compute_migration_cost(self, node_sets):
-        migrate_nodes = set().union(*[self.idx_to_node_set[i].nodes for i in node_sets])
-        return sum([i.vs.get_size() for i in migrate_nodes]) / self.migration_speed_bps
-
-    # Compute the total cost to recompute the specified node sets.
-    def compute_recomputation_cost(self, node_sets):
-        recompute_edges = set().union(*[self.recomputation_edges[i]
-                                        for i in node_sets])
-        return sum([self.compute_graph.get_edge_data(*i)["weight"]
-                    for i in recompute_edges])
-
-    # Compute the total cost to migrate the specified node sets.
-    def total_cost(self, migrated_node_sets):
-        return self.compute_migration_cost(migrated_node_sets) + \
-               self.compute_recomputation_cost(
-                   self.active_node_sets.difference(migrated_node_sets))
-
-    def normalize(self):
-        self.migrate_none_cost = \
-            self.compute_recomputation_cost(self.active_node_sets)
-
-    def lovasz_value(self, current_subset_list, x):
-        x_list = list(x)
-        x_subset = list(zip(x_list, current_subset_list))
-        x_subset.sort(reverse = True)
-        x_subset.append((0, None))
-
-        val = (1 - x_subset[0][0]) * self.total_cost(set())
-        for i in range(len(x_subset) - 1):
-            val += (x_subset[i][0] - x_subset[i + 1][0]) * \
-                   self.total_cost(set([x_subset[j][1] for j in range(i + 1)]))
-        return val
-
-    def get_min_possible_value(self, current_subset):
-        if len(current_subset) == 0:
-            return 0
-        
-        current_subset_list = list(current_subset)
-        fun = lambda x: self.lovasz_value(current_subset_list, x)
-        bnds = tuple((0, 1) for i in range(len(current_subset_list)))
-        res = optimize.minimize(fun, tuple(
-            random.random() for i in range(len(current_subset_list))),
-                                      method = 'L-BFGS-B', bounds = bnds, tol = 1e-10)
-
-        return fun(res.x)
         
     def select_nodes(self):
         self.construct_graph()
 
-        # Normalize migration costs
-        self.migrate_none_cost = \
-            self.compute_recomputation_cost(self.active_node_sets)
+        # Construct graph for computing mincut
+        mincut_graph = nx.DiGraph()
 
-        # start with migrating all, greedily un-migrate node sets
-        migrated_node_sets = set()
-        for node_set in self.active_node_sets:
-            migrated_node_sets.add(node_set)
+        all_active_nodes = set().union(*[self.idx_to_node_set[i].nodes for i in self.active_node_sets])
+        all_operations = set().union(*[self.recomputation_edges[i] for i in self.active_node_sets])
 
-        #print("test:", self.lovasz_value(migrated_node_sets, [1 for _ in range(
-        #    len(migrated_node_sets))]))
+        mincut_graph.add_node("source")
+        mincut_graph.add_node("sink")
 
-        while True:
-            if len(migrated_node_sets) == 0:
-                break
-            
-            current_min = self.get_min_possible_value(migrated_node_sets)
-            #print("current min:", current_min)
-            current_score = self.total_cost(migrated_node_sets)
-            #print("current score:", current_score)
-            
-            # If min score is attained by current set then we're done
-            if math.isclose(current_score, current_min, rel_tol = 0.00001):
-                break
-            
-            for node_set in migrated_node_sets:
-                new_min = self.get_min_possible_value(migrated_node_sets -
-                                                 {node_set})
-                #print("new min:", new_min)
-                # Shrink current set
-                if math.isclose(new_min, current_min, rel_tol = 0.00001):
-                    migrated_node_sets = migrated_node_sets - {node_set}
-                    #print(migrated_node_sets)
-                    break
+        for active_node in all_active_nodes:
+            mincut_graph.add_node(active_node)
+            mincut_graph.add_edge("source", active_node, capacity=active_node.vs.get_size() / self.migration_speed_bps)
+
+        for operation in all_operations:
+            mincut_graph.add_node(operation)
+            mincut_graph.add_edge(operation, "sink", capacity=self.compute_graph.get_edge_data(*operation)["weight"])
+
+        for idx in self.active_node_sets:
+            mincut_graph.add_node(idx)
+            for active_node in self.idx_to_node_set[idx].nodes:
+                mincut_graph.add_edge(active_node, idx, capacity=np.inf)
+            for operation in self.recomputation_edges[idx]:
+                mincut_graph.add_edge(idx, operation, capacity=np.inf)
+
+        cut_value, partition = nx.minimum_cut(mincut_graph, "source", "sink")
+        print("minimum migration cost:", cut_value)
+        migrated_node_sets = set(partition[1]).intersection(self.active_node_sets)
 
         migrated_nodes = set()
         for i in list(migrated_node_sets):
