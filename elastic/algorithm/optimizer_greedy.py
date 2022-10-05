@@ -123,7 +123,6 @@ class OptimizerGreedy(Selector):
             best_decrease = -np.inf
             best_set = None
             current_score = self.total_cost(migrated_node_sets)
-            print("current score: ", current_score)
             for node_set in migrated_node_sets:
                 decrease = current_score - self.total_cost(
                     migrated_node_sets.difference({node_set}))
@@ -131,11 +130,11 @@ class OptimizerGreedy(Selector):
                     best_decrease = decrease
                     best_set = node_set
 
-            print("best decrease: ", best_decrease)
-            print("best set: ", best_set)
-            if best_decrease <= 0:
+            if best_decrease < 0:
                 break
             migrated_node_sets = migrated_node_sets.difference({best_set})
+
+        print("greedy migration cost:", self.total_cost(migrated_node_sets))
 
         migrated_nodes = set()
         for i in list(migrated_node_sets):
