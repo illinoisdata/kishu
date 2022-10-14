@@ -110,7 +110,7 @@ class OptimizerExact(Selector):
 
         for active_node in all_active_nodes:
             mincut_graph.add_node(active_node)
-            mincut_graph.add_edge("source", active_node, capacity=active_node.vs.get_size() / self.migration_speed_bps)
+            mincut_graph.add_edge("source", active_node, capacity=active_node.size / self.migration_speed_bps)
 
         for operation in all_operations:
             mincut_graph.add_node(operation)

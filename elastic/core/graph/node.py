@@ -20,3 +20,4 @@ class Node:
         self.name = vs.get_name()
         self.version = vs.get_version()
         self.prev_oe = vs.get_prev_oe()
+        self.size = vs.get_size()

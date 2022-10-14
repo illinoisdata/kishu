@@ -96,7 +96,7 @@ class OptimizerGreedy(Selector):
     # Compute the total cost to migrate the unique nodes specified node sets.
     def compute_migration_cost(self, node_sets):
         migrate_nodes = set().union(*[self.idx_to_node_set[i].nodes for i in node_sets])
-        return sum([i.vs.get_size() for i in migrate_nodes]) / self.migration_speed_bps
+        return sum([i.size for i in migrate_nodes]) / self.migration_speed_bps
 
     # Compute the total cost to recompute the specified node sets.
     def compute_recomputation_cost(self, node_sets):
