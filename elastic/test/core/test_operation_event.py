@@ -9,8 +9,8 @@ import os
 import subprocess
 import types
 
-from core.globals import operation_events
-from core.notebook.record_event import RecordEvent
+from elastic.core.globals import operation_events
+from elastic.core.notebook.record_event import RecordEvent
 
 @RecordEvent
 def TEST_FUNC():

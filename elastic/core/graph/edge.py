@@ -3,8 +3,8 @@
 #
 # Copyright 2021-2022 University of Illinois
 
-from core.notebook.operation_event import OperationEvent
-from core.graph.node_set import NodeSet
+from elastic.core.notebook.operation_event import OperationEvent
+from elastic.core.graph.node_set import NodeSet
 
 # An edge in the dependency graph corresponds to an operation event.
 class Edge:

@@ -5,7 +5,7 @@
 
 import json
 from typing import List, Dict
-from core.graph.graph import DependencyGraph
+from elastic.core.graph.graph import DependencyGraph
 
 KEY_DEPENDENCY_GRAPH = "dependencyGraph"
 KEY_VARIABLE_VERSION = "variableVersion"

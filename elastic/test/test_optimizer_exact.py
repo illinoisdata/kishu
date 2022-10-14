@@ -1,14 +1,16 @@
 import unittest
 
 import os, sys
+
 sys.path.insert(0, os.path.abspath(".."))
-from algorithm.optimizer_exact import OptimizerExact
-from core.graph.graph import DependencyGraph
-from core.graph.node import Node
-from core.graph.edge import Edge
-from core.graph.node_set import NodeSet
-from core.notebook.variable_snapshot import VariableSnapshot
-from core.notebook.operation_event import OperationEvent
+from elastic.algorithm.optimizer_exact import OptimizerExact
+from elastic.core.graph.graph import DependencyGraph
+from elastic.core.graph.node import Node
+from elastic.core.graph.edge import Edge
+from elastic.core.graph.node_set import NodeSet
+from elastic.core.notebook.variable_snapshot import VariableSnapshot
+from elastic.core.notebook.operation_event import OperationEvent
+
 
 class TestOptimizer(unittest.TestCase):
     def test_init(self):
@@ -42,9 +44,9 @@ class TestOptimizer(unittest.TestCase):
     def get_test_node(self, name, ver=1):
         return Node(VariableSnapshot(name, ver, None, None))
 
-
     def get_oe(self, duration):
         return OperationEvent(1, None, None, duration, "", "", [])
-        
+
+
 if __name__ == '__main__':
     unittest.main()

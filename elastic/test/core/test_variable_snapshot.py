@@ -1,6 +1,6 @@
 import unittest
 
-from core.notebook.variable_snapshot import VariableSnapshot
+from elastic.core.notebook.variable_snapshot import VariableSnapshot
 
 class TestVariableSnapshot(unittest.TestCase):
     def test_init(self):

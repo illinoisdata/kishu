@@ -6,8 +6,8 @@
 import random
 import math
 from typing import List
-from algorithm.selector import Selector
-from core.graph.node import Node
+from elastic.algorithm.selector import Selector
+from elastic.core.graph.node import Node
 
 
 class MigrateAllBaseline(Selector):

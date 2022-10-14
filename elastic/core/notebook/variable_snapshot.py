@@ -6,7 +6,7 @@
 import datetime
 
 import sys
-from core.globals import variable_snapshot_accesses
+from elastic.core.globals import variable_snapshot_accesses
 
 
 # A VariableSnapshot is an instance/version of a variable.

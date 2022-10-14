@@ -3,8 +3,8 @@
 #
 # Copyright 2021-2022 University of Illinois
 
-from algorithm.selector import Selector
-from core.graph.node_set import NodeSet
+from elastic.algorithm.selector import Selector
+from elastic.core.graph.node_set import NodeSet
 import networkx as nx
 import numpy as np
 

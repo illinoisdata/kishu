@@ -5,13 +5,13 @@
 
 import logging
 import types
-from core.notebook.operation_event import OperationEvent
-from core.notebook.variable_snapshot import VariableSnapshot, VariableSnapshotSet
-from core.notebook.record_event import RecordEvent
-from core.graph.edge import Edge
-from core.graph.node_set import NodeSet
-from core.graph.recompute import find_edges_to_recompute
-import core.globals
+from elastic.core.notebook.operation_event import OperationEvent
+from elastic.core.notebook.variable_snapshot import VariableSnapshot, VariableSnapshotSet
+from elastic.core.notebook.record_event import RecordEvent
+from elastic.core.graph.edge import Edge
+from elastic.core.graph.node_set import NodeSet
+from elastic.core.graph.recompute import find_edges_to_recompute
+import elastic.core.globals
 
 logger = logging.getLogger(__name__)
 
@@ -60,11 +60,11 @@ class DependencyGraph:
         snapshot_dict = {}
         libraries_edge = None
         for edge in self.edges:
-            core.globals.operation_events.append(edge.oe)
+            elastic.core.globals.operation_events.append(edge.oe)
             for node in edge.src.nodes + edge.dst.nodes:
                 if (node.name, node.version) not in snapshot_dict:
                     node.vs = VariableSnapshot(node.name, node.version, node.vs, node.prev_oe)
-                    core.globals.variable_snapshots.append(node.vs)
+                    elastic.core.globals.variable_snapshots.append(node.vs)
                     snapshot_dict[(node.name, node.version)] = node.vs
                 else:
                     node.vs = snapshot_dict[(node.name, node.version)]
@@ -106,7 +106,7 @@ class DependencyGraph:
         # Clear old versions of variables
         for edge in edges_to_recompute:
             for node in edge.dst.nodes:
-                if node.version < core.globals.variable_version[node.name]:
+                if node.version < elastic.core.globals.variable_version[node.name]:
                     node.vs.clear_item()
 
         self.nodes_to_recompute.clear()

@@ -3,7 +3,7 @@
 #
 # Copyright 2021-2022 University of Illinois
 
-from core.notebook.variable_snapshot import VariableSnapshot
+from elastic.core.notebook.variable_snapshot import VariableSnapshot
 
 # A node in the dependency graph corresponds to a variable snapshot.
 class Node:

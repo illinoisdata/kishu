@@ -6,10 +6,10 @@
 import unittest
 from unittest import mock
 import uuid
-from core.graph.graph import DependencyGraph
-from core.graph.node import Node
-from core.graph.node_set import NodeSet, NodeSetType
-from core.notebook.variable_snapshot import VariableSnapshot
+from elastic.core.graph.graph import DependencyGraph
+from elastic.core.graph.node import Node
+from elastic.core.graph.node_set import NodeSet, NodeSetType
+from elastic.core.notebook.variable_snapshot import VariableSnapshot
 
 VAR_SIZE=1024
 

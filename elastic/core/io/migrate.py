@@ -5,11 +5,11 @@
 
 import dill
 from pathlib import Path
-from core.common.migration_metadata import MigrationMetadata
-from core.graph.graph import DependencyGraph
-from core.globals import variable_version
+from elastic.core.common.migration_metadata import MigrationMetadata
+from elastic.core.graph.graph import DependencyGraph
+from elastic.core.globals import variable_version
 
-from core.io.adapter import Adapter
+from elastic.core.io.adapter import Adapter
 
 METADATA_PATH = "./metadata.pickle"
 

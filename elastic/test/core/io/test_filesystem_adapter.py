@@ -8,7 +8,7 @@ import os
 import pickle
 from pathlib import Path
 
-from core.io.filesystem_adapter import FilesystemAdapter
+from elastic.core.io.filesystem_adapter import FilesystemAdapter
 
 TEST_FILE_PATH = "./tmp_test_file"
 KEY = "project"

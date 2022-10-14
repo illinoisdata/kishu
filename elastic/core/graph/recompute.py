@@ -4,8 +4,8 @@
 # Copyright 2021-2022 University of Illinois
 
 from typing import List
-from core.graph.edge import Edge
-from core.graph.node_set import NodeSetType
+from elastic.core.graph.edge import Edge
+from elastic.core.graph.node_set import NodeSetType
 
 
 def find_edges_to_recompute(graph) -> List[Edge]:

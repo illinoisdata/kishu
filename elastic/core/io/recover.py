@@ -6,10 +6,10 @@
 from pathlib import Path
 import dill
 
-from core.io.adapter import Adapter
+from elastic.core.io.adapter import Adapter
 
-from core.io.migrate import METADATA_PATH
-import core.globals
+from elastic.core.io.migrate import METADATA_PATH
+import elastic.core.globals
 
 
 def resume(adapter: Adapter):
@@ -22,7 +22,7 @@ def resume(adapter: Adapter):
     """
     metadata = dill.loads(adapter.read_all(Path(METADATA_PATH)))
 
-    core.globals.variable_version = metadata.get_variable_version()
+    elastic.core.globals.variable_version = metadata.get_variable_version()
     return metadata.get_dependency_graph()
 
 

@@ -7,10 +7,10 @@ import datetime
 import inspect
 import uuid
 
-from core.graph.graph import DependencyGraph
-from core.graph.node import Node
-from core.graph.node_set import NodeSet, NodeSetType
-from core.globals import variable_snapshots, operation_events, variable_version
+from elastic.core.graph.graph import DependencyGraph
+from elastic.core.graph.node import Node
+from elastic.core.graph.node_set import NodeSet, NodeSetType
+from elastic.core.globals import variable_snapshots, operation_events, variable_version
 
 
 def create_graph():

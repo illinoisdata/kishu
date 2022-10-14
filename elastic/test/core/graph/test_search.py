@@ -5,13 +5,13 @@
 
 import unittest
 from unittest import mock
-from core.notebook.operation_event import OperationEvent
+from elastic.core.notebook.operation_event import OperationEvent
 
-from core.graph.graph import DependencyGraph
-from core.graph.node import Node
-from core.graph.node_set import NodeSet, NodeSetType
-from core.graph.recompute import find_edges_to_recompute
-from core.notebook.variable_snapshot import VariableSnapshot
+from elastic.core.graph.graph import DependencyGraph
+from elastic.core.graph.node import Node
+from elastic.core.graph.node_set import NodeSet, NodeSetType
+from elastic.core.graph.recompute import find_edges_to_recompute
+from elastic.core.notebook.variable_snapshot import VariableSnapshot
 import numpy as np
 
 VAR_SIZE=1024

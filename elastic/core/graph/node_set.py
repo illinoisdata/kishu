@@ -5,7 +5,7 @@
 
 from enum import Enum
 from typing import List
-from core.graph.node import Node
+from elastic.core.graph.node import Node
 
 # Type of the node set is whether the node set is an input or output of an edge.
 class NodeSetType(Enum):

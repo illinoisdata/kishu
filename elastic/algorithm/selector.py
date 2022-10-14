@@ -4,7 +4,7 @@
 # Copyright 2021-2022 University of Illinois
 
 from typing import List
-from core.graph.node import Node
+from elastic.core.graph.node import Node
 
 
 class Selector:

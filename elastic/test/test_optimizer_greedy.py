@@ -3,14 +3,14 @@ import unittest
 import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 print(sys.path)
-from algorithm.selector import Selector
-from algorithm.optimizer_greedy import OptimizerGreedy
-from core.graph.graph import DependencyGraph
-from core.graph.node import Node
-from core.graph.edge import Edge
-from core.graph.node_set import NodeSet
-from core.notebook.variable_snapshot import VariableSnapshot
-from core.notebook.operation_event import OperationEvent
+from elastic.algorithm.selector import Selector
+from elastic.algorithm.optimizer_greedy import OptimizerGreedy
+from elastic.core.graph.graph import DependencyGraph
+from elastic.core.graph.node import Node
+from elastic.core.graph.edge import Edge
+from elastic.core.graph.node_set import NodeSet
+from elastic.core.notebook.variable_snapshot import VariableSnapshot
+from elastic.core.notebook.operation_event import OperationEvent
 
 
 class TestOptimizer(unittest.TestCase):

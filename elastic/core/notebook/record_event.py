@@ -6,9 +6,9 @@
 import datetime
 import inspect
 
-from core.notebook.variable_snapshot import VariableSnapshot, VariableSnapshotSet
-from core.notebook.operation_event import OperationEvent
-from core.globals import variable_snapshots, operation_events, variable_version, variable_snapshot_accesses
+from elastic.core.notebook.variable_snapshot import VariableSnapshot, VariableSnapshotSet
+from elastic.core.notebook.operation_event import OperationEvent
+from elastic.core.globals import variable_snapshots, operation_events, variable_version, variable_snapshot_accesses
 
 
 # The RecordEvent annotation wraps notebook cell code and generates an OperationEvent with each cell execution.
