@@ -1,6 +1,9 @@
 import unittest
 
 import os, sys
+
+import numpy as np
+
 sys.path.insert(0, os.path.abspath(".."))
 from algorithm.optimizer_exact import OptimizerExact
 from core.graph.graph import DependencyGraph
@@ -14,8 +17,13 @@ class TestOptimizer(unittest.TestCase):
     def test_init(self):
         ## Nodes
         nodes = []
+
+        np.random.seed(1234567423)
         for i in range(18):
-            nodes.append(self.get_test_node(str(i), 1))
+            size = np.random.rand() * 12
+            if 6 <= i <= 9:
+                size *= 10
+            nodes.append(self.get_test_node(str(i), size, 1))
 
         ## Node sets
         node_sets = []
@@ -27,20 +35,24 @@ class TestOptimizer(unittest.TestCase):
 
         ## Graph
         graph = DependencyGraph()
-        graph.edges.append(Edge(self.get_oe(2), node_sets[0], node_sets[1]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[2], node_sets[3]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[4], node_sets[5]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[9], node_sets[6]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[10], node_sets[7]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[11], node_sets[8]))
+        graph.add_edge(node_sets[0], node_sets[1], self.get_oe(np.random.rand() * 2))
+        graph.add_edge(node_sets[2], node_sets[3], self.get_oe(np.random.rand() * 2))
+        graph.add_edge(node_sets[4], node_sets[5], self.get_oe(np.random.rand() * 2))
+        graph.add_edge(node_sets[9], node_sets[6], self.get_oe(np.random.rand() * 2))
+        graph.add_edge(node_sets[10], node_sets[7], self.get_oe(np.random.rand() * 2))
+        graph.add_edge(node_sets[11], node_sets[8], self.get_oe(np.random.rand() * 2))
 
-        opt = OptimizerExact(migration_speed_bps=1)
+        graph.active_nodes = nodes
+
+        opt = OptimizerExact(migration_speed_bps=30)
         graph.trim_graph(opt)
 
         # TODO: think of an illustrating example
 
-    def get_test_node(self, name, ver=1):
-        return Node(VariableSnapshot(name, ver, None, None))
+    def get_test_node(self, name, size, ver=1):
+        a = Node(VariableSnapshot(name, ver, size, None))
+        a.size = size
+        return a
 
 
     def get_oe(self, duration):

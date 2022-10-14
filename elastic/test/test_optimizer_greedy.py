@@ -1,6 +1,9 @@
 import unittest
 
 import os, sys
+
+import numpy as np
+
 sys.path.insert(0, os.path.abspath(".."))
 print(sys.path)
 from algorithm.selector import Selector
@@ -15,12 +18,17 @@ from core.notebook.operation_event import OperationEvent
 
 class TestOptimizer(unittest.TestCase):
     def test_init(self):
-        # Nodes
+        ## Nodes
         nodes = []
-        for i in range(18):
-            nodes.append(self.get_test_node(str(i), 1))
 
-        # Node sets
+        np.random.seed(1234567423)
+        for i in range(18):
+            size = np.random.rand() * 12
+            if 6 <= i <= 9:
+                size *= 10
+            nodes.append(self.get_test_node(str(i), size, 1))
+
+        ## Node sets
         node_sets = []
         for i in range(0, 18, 2):
             node_sets.append(NodeSet([nodes[i], nodes[i + 1]], None))
@@ -28,22 +36,26 @@ class TestOptimizer(unittest.TestCase):
         node_sets.append(NodeSet([nodes[7], nodes[10]], None))
         node_sets.append(NodeSet([nodes[14], nodes[15]], None))
 
-        # Graph
+        ## Graph
         graph = DependencyGraph()
-        graph.edges.append(Edge(self.get_oe(2), node_sets[0], node_sets[1]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[2], node_sets[3]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[4], node_sets[5]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[9], node_sets[6]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[10], node_sets[7]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[11], node_sets[8]))
+        graph.add_edge(node_sets[0], node_sets[1], self.get_oe(np.random.rand() * 2))
+        graph.add_edge(node_sets[2], node_sets[3], self.get_oe(np.random.rand() * 2))
+        graph.add_edge(node_sets[4], node_sets[5], self.get_oe(np.random.rand() * 2))
+        graph.add_edge(node_sets[9], node_sets[6], self.get_oe(np.random.rand() * 2))
+        graph.add_edge(node_sets[10], node_sets[7], self.get_oe(np.random.rand() * 2))
+        graph.add_edge(node_sets[11], node_sets[8], self.get_oe(np.random.rand() * 2))
 
-        opt = OptimizerGreedy(migration_speed_bps=1)
+        graph.active_nodes = nodes
+
+        opt = OptimizerGreedy(migration_speed_bps=30)
         graph.trim_graph(opt)
 
-        self.assertEqual(set([i.vs.name for i in graph.nodes_to_recompute]), set())
+        # TODO: think of an illustrating example
 
-    def get_test_node(self, name, ver=1):
-        return Node(VariableSnapshot(name, ver, None, None))
+    def get_test_node(self, name, size, ver=1):
+        a = Node(VariableSnapshot(name, ver, size, None))
+        a.size = size
+        return a
 
 
     def get_oe(self, duration):
