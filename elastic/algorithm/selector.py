@@ -4,7 +4,7 @@
 # Copyright 2021-2022 University of Illinois
 
 from typing import List
-from elastic.core.graph.node import Node
+from elastic.core.graph.variable_snapshot import VariableSnapshot
 
 
 class Selector:
@@ -15,7 +15,7 @@ class Selector:
 
     def __init__(self, migration_speed_bps=1):
         self.dependency_graph = None
-        self.active_nodes = None
+        self.active_vss = None
         self.migration_speed_bps = migration_speed_bps
 
     def select_nodes(self):
@@ -24,6 +24,6 @@ class Selector:
                 should override `select_nodes`
 
             Returns:
-                List[Node]: a subset of active nodes selected to migrate based on various heuristics and algorithms
+                List[VariableSnapshot]: a subset of active nodes selected to migrate based on various heuristics and algorithms
         """
         raise NotImplementedError()

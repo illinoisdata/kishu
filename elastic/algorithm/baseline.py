@@ -7,7 +7,7 @@ import random
 import math
 from typing import List
 from elastic.algorithm.selector import Selector
-from elastic.core.graph.node import Node
+from elastic.core.graph.variable_snapshot import VariableSnapshot
 
 
 class MigrateAllBaseline(Selector):
@@ -17,9 +17,9 @@ class MigrateAllBaseline(Selector):
     def select_nodes(self):
         """
         Returns:
-            List[Node]: the list of all active nodes are returned so that they are all migrated
+            List[VariableSnapshot]: the list of all active nodes are returned so that they are all migrated
         """
-        return self.active_nodes
+        return self.active_vss
 
 
 class RecomputeAllBaseline(Selector):
@@ -29,9 +29,9 @@ class RecomputeAllBaseline(Selector):
     def select_nodes(self):
         """
         Returns:
-            List[Node]: the empty list is returned so that no active nodes are migrated and all recomputed
+            List[VariableSnapshot]: the empty list is returned so that no active nodes are migrated and all recomputed
         """
-        return []
+        return set()
 
 
 class RandomBaseline(Selector):
@@ -41,8 +41,8 @@ class RandomBaseline(Selector):
     def select_nodes(self):
         """
         Returns:
-            List[Node]: a random subset of active nodes is returned
+            List[VariableSnapshot]: a random subset of active nodes is returned
         """
         # NOTE: when this selector is used, the caller should fix a particular seed, for example in the 
         #   automation script for benchmarking
-        return random.sample(self.active_nodes, math.floor(len(self.active_nodes) / 2))
+        return random.sample(self.active_vss, math.floor(len(self.active_vss) / 2))
