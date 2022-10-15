@@ -179,7 +179,7 @@ class VariableSnapshot:
     
     # for pickling
     def __reduce__(self):
-        if self._illinoisBaseObj.__class__.__module__ == 'builtins':
+        if self._illinoisBaseObj.__class__.__module__ == dict().__class__.__module__: # different python versions might have different module names
             return (self.__class__, (self._illinoisBaseObj, ))
         else:
             return self._illinoisBaseObj.__reduce__()
