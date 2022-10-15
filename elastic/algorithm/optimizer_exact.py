@@ -5,6 +5,7 @@
 
 from elastic.algorithm.selector import Selector
 from elastic.core.graph.node_set import NodeSet
+from elastic.core.graph.node_set import NodeSetType
 import networkx as nx
 import numpy as np
 import math
@@ -73,7 +74,7 @@ class OptimizerExact(Selector):
             if active_node_subset and active_node_subset != set(edge.dst.nodes):
                 dst_active_subset_idx = self.get_new_idx()
                 self.compute_graph.add_node(dst_active_subset_idx)
-                self.idx_to_node_set[dst_active_subset_idx] = NodeSet(list(active_node_subset))
+                self.idx_to_node_set[dst_active_subset_idx] = NodeSet(list(active_node_subset), NodeSetType.OUTPUT)
                 dsts.append(dst_active_subset_idx)
                 self.compute_graph.add_edge(dst_idx, dst_active_subset_idx, weight=0)
 
