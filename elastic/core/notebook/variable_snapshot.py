@@ -179,10 +179,18 @@ class VariableSnapshot:
     
     # for pickling
     def __reduce__(self):
-        if self._illinoisBaseObj.__class__.__module__ == dict().__class__.__module__: # different python versions might have different module names
-            return (self.__class__, (self._illinoisBaseObj, ))
+        print("Pickling", self.get_name())
+        if self._illinoisBaseObj.__class__.__module__ == 'builtins': # different python versions might have different module names
+            return self.__class__, (self._illinoisBaseObj,)
         else:
             return self._illinoisBaseObj.__reduce__()
+
+    # def __reduce_ex__(self, k):
+    #     print("Pickling", self.get_name())
+    #     if self._illinoisBaseObj.__class__.__module__ == 'builtins': # different python versions might have different module names
+    #         return self.__class__, (self._illinoisBaseObj,)
+    #     else:
+    #         return self._illinoisBaseObj.__reduce_ex__(k)
     
     @property
     def __class__(self):

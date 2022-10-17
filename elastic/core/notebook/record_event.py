@@ -5,6 +5,7 @@
 
 import datetime
 import inspect
+import types
 
 from elastic.core.notebook.variable_snapshot import VariableSnapshot, VariableSnapshotSet
 from elastic.core.notebook.operation_event import OperationEvent
@@ -16,17 +17,17 @@ def RecordEvent(func):
     def func_wrapper(*args, **kwargs):
         exec_uuid = len(operation_events)
         print(*args)
-        
+
         start_time = datetime.datetime.now()
         rtv = func(*args, **kwargs)
         end_time = datetime.datetime.now()
-        
+
         input_variable_snapshots = list(set(variable_snapshot_accesses))
         variable_snapshot_accesses.clear()
-        
+
         oe = OperationEvent(exec_uuid=exec_uuid,
-                            start=start_time, 
-                            end=end_time, 
+                            start=start_time,
+                            end=end_time,
                             duration=(end_time - start_time).total_seconds(),
                             cell_func_name=func.__name__,
                             cell_func_code=func.__code__,
@@ -46,7 +47,10 @@ def RecordEvent(func):
                 print("container created for variable ", key)
                 variable_snapshots.append(container)
                 oe.output_variable_snapshots.append(container)
-            return tuple(oe.output_variable_snapshots)
+
+            if len(oe.output_variable_snapshots) > 1:
+                return tuple(oe.output_variable_snapshots)
+            return oe.output_variable_snapshots[0]
         else:
             return rtv
 

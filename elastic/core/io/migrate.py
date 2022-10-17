@@ -15,7 +15,7 @@ METADATA_PATH = "./metadata.pickle"
 
 
 def migrate(dependency_graph: DependencyGraph,
-            adapter: Adapter):
+            adapter: Adapter, metadata_path):
     """
     (1) Iterate over all objects and operation events. For each
         (1a) Pickle the object / oe
@@ -29,6 +29,10 @@ def migrate(dependency_graph: DependencyGraph,
             the location to write the dependency graph and metadata to
     """
 
-    metadata_pickle = dill.dumps(MigrationMetadata().with_dependency_graph(dependency_graph)\
+    metadata_pickle = dill.dumps(MigrationMetadata().with_dependency_graph(dependency_graph)
                                  .with_variable_version(variable_version))
-    adapter.write_all(Path(METADATA_PATH), metadata_pickle)
+    if metadata_path:
+        print("save to:", metadata_path)
+        adapter.write_all(Path(metadata_path), metadata_pickle)
+    else:
+        adapter.write_all(Path(METADATA_PATH), metadata_pickle)

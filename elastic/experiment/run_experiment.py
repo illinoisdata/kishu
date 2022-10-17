@@ -58,7 +58,7 @@ migration_start = time.time()
 from elastic.core.io.filesystem_adapter import FilesystemAdapter
 from elastic.core.io.migrate import migrate
 
-migrate(graph, FilesystemAdapter())
+migrate(graph, FilesystemAdapter(), "notebooks/notebook_pkl.pickle")
 
 migration_stop = time.time()
 """
@@ -75,10 +75,11 @@ with open""" + \
 """
 
     RECOVER = """from elastic.core.io.filesystem_adapter import FilesystemAdapter
+import time
 from elastic.core.io.recover import resume
 
 start_stage_2 = time.time()
-graph = resume(FilesystemAdapter())
+graph = resume(FilesystemAdapter(), "notebooks/notebook_pkl.pickle")
 
 recover_end = time.time()
 """
@@ -91,13 +92,12 @@ recompute_end = time.time()
 
     RESTORE = """# Reconstruct the notebook by declaring variables and functions into the kernel.
 graph.reconstruct_notebook()
-
 restore_end = time.time()
 """
 
-    def time_stage_2(notebookName):
+    def time_stage_2(notebookName, optimizerName):
         return """with open""" + \
-               """('results/output_""" + notebookName + """_' + """ + """optimizerName""" + """+'.txt', 'a') as f:
+               """('results/output_""" + notebookName + """_""" + optimizerName + """.txt', 'a') as f:
 \tf.write('\\nRecovery stage took - '+ repr(recover_end-start_stage_2) + " seconds" + '\\n')
 \tf.write('Recompute stage took - '+ repr(recompute_end-recover_end) + " seconds" + '\\n')
 \tf.write('Restore stage took - '+ repr(restore_end-recompute_end) + " seconds" + '\\n')
@@ -114,6 +114,7 @@ def run_experiment(notebook="numpy.ipynb", optimizer="Exact"):
 
     # read notebook
     directory = "notebooks/"
+
     with open(directory + notebook) as f:
         nb = nbformat.read(f, as_version=4)
 
@@ -121,12 +122,18 @@ def run_experiment(notebook="numpy.ipynb", optimizer="Exact"):
     nb["cells"] += [nbformat.v4.new_code_cell(e.CREATE_GRAPH),
                     nbformat.v4.new_code_cell(e.trim_graph(optimizer)),
                     nbformat.v4.new_code_cell(e.MIGRATE),
-                    nbformat.v4.new_code_cell(e.RECOVER),
-                    nbformat.v4.new_code_cell(e.RECOMPUTE),
-                    nbformat.v4.new_code_cell(e.RESTORE),
-                    nbformat.v4.new_code_cell(e.time_stage_1(notebook)),
-                    nbformat.v4.new_code_cell(e.time_stage_2(notebook))]
+                    nbformat.v4.new_code_cell(e.time_stage_1(notebook))]
 
     # execute the updated notebook
     ep = ExecutePreprocessor(timeout=600, kernel_name='python3')
     ep.preprocess(nb)
+
+    # Reconstruction
+    nb_recover = nbformat.v4.new_notebook()
+    nb_recover["cells"] += [nbformat.v4.new_code_cell(e.RECOVER),
+                            nbformat.v4.new_code_cell(e.RECOMPUTE),
+                            nbformat.v4.new_code_cell(e.RESTORE),
+                            nbformat.v4.new_code_cell(e.time_stage_2(notebook, optimizer))]
+
+    ep2 = ExecutePreprocessor(timeout=600, kernel_name='python3')
+    ep2.preprocess(nb_recover)

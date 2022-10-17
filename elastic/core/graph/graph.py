@@ -114,7 +114,13 @@ class DependencyGraph:
     # Declares active nodes and functions into the kernel.
     def reconstruct_notebook(self):
         for node in self.active_nodes:
+            globals()[node.vs.get_name()] = node.vs
+            exec("global {}".format(node.vs.get_name()))
             exec("{} = node.vs".format(node.vs.get_name()))
 
         for edge in self.edges:
+            globals()[edge.oe.cell_func_name] = edge.oe.cell_func_code
+            exec("global {}".format(edge.oe.cell_func_name))
             exec("{} = edge.oe.cell_func_code".format(edge.oe.cell_func_name))
+        print(locals().keys())
+        print(globals().keys())
