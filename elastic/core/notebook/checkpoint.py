@@ -11,21 +11,17 @@ from elastic.core.io.migrate import migrate
 
 
 # Writes the notebook state to the specified filename.
-def checkpoint(graph: DependencyGraph, shell, filename):
-    """
-    TODO: measure the disk I/O speed to 'filename' at checkpoint time.
-    Migration_speed_bps should be the sum of read and write speed (since we are writing the state to disk, then
-    reading from disk to restore the notebook).
-    """
-    migration_speed_bps = 100000
-    selector = OptimizerExact(migration_speed_bps=migration_speed_bps)
-
+def checkpoint(graph: DependencyGraph, shell, selector, filename):
     # Active VSs are correspond to the latest instances/versions of each variable.
     active_vss = []
     for vs_list in graph.variable_snapshots.values():
         if not vs_list[-1].deleted:
             active_vss.append(vs_list[-1])
 
+    """
+    TODO: replace sys.getsizeof with a more accurate estimation function.
+    sys.getsizeof notably does not work well with nested structures (i.e. lists, dictionaries).
+    """
     # Estimate the size of each active vs.
     for active_vs in active_vss:
         active_vs.size = sys.getsizeof(shell.user_ns[active_vs.name])

@@ -5,6 +5,25 @@ directory = path.Path(__file__).abspath()
 # setting path
 sys.path.append(directory.parent.parent)
 
+"""
+TODO: update this experiment script. See 'numpy.ipynb' for an example annotated notebook and 'numpy_recover.ipynb'
+for an example notebook recovery.
+
+Annotated notebook summary:
+    1. Create a cell with this line:
+        %load_ext elastic.core.notebook.elastic_notebook
+        This may require setting up the syspath.
+    2. Add %%RecordEvent before the first line of each cell.
+    3. Set the optimizer, i.e. %SetOptimizer exact. See 'elastic_notebook.py' for a list of optimizers.
+    4. Either set or profile the migration speed, i.e. %ProfileMigrationSpeed file.pickle / %SetMigrationSpeed 100000.
+    5. Migrate the notebook: %Checkpoint file.py
+Recovery notebook summary:
+    1. Create a cell with this line:
+        %load_ext elastic.core.notebook.elastic_notebook
+        This may require setting up the syspath.
+    2. Recover the notebook: %LoadCheckpoint file.py
+"""
+
 import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
 

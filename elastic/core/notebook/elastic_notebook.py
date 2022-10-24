@@ -15,6 +15,8 @@ from elastic.core.graph.graph import DependencyGraph
 from elastic.core.io.recover import resume
 from elastic.core.notebook.restore_notebook import restore_notebook
 
+from elastic.algorithm.optimizer_exact import OptimizerExact
+
 
 # The class MUST call this class decorator at creation time
 @magics_class
@@ -26,6 +28,10 @@ class ElasticNotebook(Magics):
 
         # Dependency graph for capturing notebook state.
         self.dependency_graph = DependencyGraph()
+
+        # Migration properties.
+        self.migration_speed_bps = 100000
+        self.selector = OptimizerExact(migration_speed_bps=self.migration_speed_bps)
 
     # Records a cell execution.
     @cell_magic
@@ -43,10 +49,45 @@ class ElasticNotebook(Magics):
     def Inspect(self, line=''):
         inspect(self.dependency_graph)
 
+    @line_magic
+    def ProfileMigrationSpeed(self, filename=''):
+        """
+        TODO: measure the I/O speed to 'filename'.
+        Migration_speed_bps should be the sum of read and write speed (since we are writing the state to disk, then
+        reading from disk to restore the notebook).
+        """
+        self.migration_speed_bps = 100000  # Hardcoded
+        self.selector.migration_speed_bps = self.migration_speed_bps
+
+    @line_magic
+    def SetMigrationSpeed(self, migration_speed=''):
+        try:
+            if migration_speed > 0:
+                self.migration_speed_bps = float(migration_speed)
+            else:
+                print("Migration speed is not a number.")
+        except:
+            print("Migration speed is not a number.")
+        self.selector.migration_speed_bps = self.migration_speed_bps
+
+    @line_magic
+    def SetOptimizer(self, optimizer=''):
+        # Optimizer interfaces are outdated. Will fill in once updated.
+        if optimizer == "exact":
+            self.selector = OptimizerExact(self.migration_speed_bps)
+        elif optimizer == "greedy":
+            pass
+        elif optimizer == "random":
+            pass
+        elif optimizer == "migrate_all":
+            pass
+        elif optimizer == "recompute_all":
+            pass
+
     # Checkpoints the notebook to the specified location.
     @line_magic
     def Checkpoint(self, filename=''):
-        checkpoint(self.dependency_graph, self.shell, filename)
+        checkpoint(self.dependency_graph, self.shell, self.selector, filename)
 
     # Loads the checkpoint from the specified location.
     @line_magic

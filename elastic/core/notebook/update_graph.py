@@ -20,6 +20,13 @@ def update_graph(cell, cell_runtime, start_time, graph: DependencyGraph):
 
     index = 0
     for instruction in instructions:
+        """
+        TODO: Handle one remaining edge case. See examples/numpy.ipynb:
+            np.set_seed(0)
+        For simplicity, we assume all class methods (i.e. list.sort()) will modify the class instance when called.
+        In this case, 'np' should be both an input and output variable of the cell.
+        The code below currently only identifies np as an input variable of the cell.
+        """
         # Input variable
         if instruction.opname == "LOAD_NAME" and (instruction.argrepr not in input_variables) and \
                 (instruction.argrepr not in output_variables):
