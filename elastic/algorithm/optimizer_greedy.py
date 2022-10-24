@@ -18,14 +18,14 @@ class OptimizerGreedy(Selector):
         # Augmented computation graph
         self.compute_graph = None
 
-        # A node set is active if all of its nodes are active.
+        # A node set is active if all of its VSs are active.
         self.active_node_sets = set()
 
         # Unique index number assigned to node sets to speedup lookup
         self.idx_to_node_set = {}
 
-        # Edges required to recompute a give nodeset.
-        self.recomputation_edges = {}
+        # OEs required to recompute a give nodeset.
+        self.recomputation_oes = {}
 
         self.idx = 0
 
@@ -35,22 +35,22 @@ class OptimizerGreedy(Selector):
         self.idx += 1
         return idx
 
-    # DFS helper for finding the edges required to recompute a node set
-    def dfs(self, current, visited, recompute_edges):
+    # DFS helper for finding the OEs required to recompute a node set
+    def dfs(self, current, visited, recompute_oes):
         visited.add(current)
         for parent in self.compute_graph.predecessors(current):
-            recompute_edges.add((parent, current))
+            recompute_oes.add((parent, current))
             if parent not in self.active_node_sets and parent not in visited:
-                self.dfs(parent, visited, recompute_edges)
+                self.dfs(parent, visited, recompute_oes)
 
     # Construct compute graph from node sets
     def construct_graph(self):
-        self.active_nodes = set(self.active_vss)
         self.compute_graph = nx.DiGraph()
+        self.active_vss = set(self.active_vss)
         srcs = []
         dsts = []
 
-        for edge in self.dependency_graph.edges:
+        for oe in self.dependency_graph.operation_events:
             # Add source and destination node sets to graph
             src_idx = self.get_new_idx()
             dst_idx = self.get_new_idx()
@@ -58,53 +58,51 @@ class OptimizerGreedy(Selector):
             self.compute_graph.add_node(src_idx)
             self.compute_graph.add_node(dst_idx)
 
-            self.idx_to_node_set[src_idx] = edge.src
-            self.idx_to_node_set[dst_idx] = edge.dst
+            self.idx_to_node_set[src_idx] = oe.src
+            self.idx_to_node_set[dst_idx] = oe.dst
 
             srcs.append(src_idx)
             dsts.append(dst_idx)
 
-            self.compute_graph.add_edge(src_idx, dst_idx, weight=edge.oe.duration)
+            self.compute_graph.add_edge(src_idx, dst_idx, weight=oe.duration)
 
             # The output node set has a nonempty strict subset of active nodes
-            active_node_subset = set(edge.dst.nodes).intersection(self.active_nodes)
-            if active_node_subset and active_node_subset != set(edge.dst.nodes):
+            active_vs_subset = set(oe.dst.vs_list).intersection(self.active_vss)
+            if active_vs_subset and active_vs_subset != set(oe.dst.vs_list):
                 dst_active_subset_idx = self.get_new_idx()
                 self.compute_graph.add_node(dst_active_subset_idx)
-                self.idx_to_node_set[dst_active_subset_idx] = NodeSet(list(active_node_subset), NodeSetType.OUTPUT)
+                self.idx_to_node_set[dst_active_subset_idx] = NodeSet(list(active_vs_subset), NodeSetType.DUMMY)
                 dsts.append(dst_active_subset_idx)
                 self.compute_graph.add_edge(dst_idx, dst_active_subset_idx, weight=0)
 
         # Augment compute graph with edges between overlapping destination and source sets
         for dst in dsts:
             for src in srcs:
-                if set(self.idx_to_node_set[dst].nodes).intersection(
-                        set(self.idx_to_node_set[src].nodes)):
+                if set(self.idx_to_node_set[dst].vs_list).intersection(
+                        set(self.idx_to_node_set[src].vs_list)):
                     self.compute_graph.add_edge(dst, src, weight=0)
 
         # Find active node sets consisting entirely of active nodes
         for idx in self.compute_graph.nodes():
-            if set(self.idx_to_node_set[idx].nodes).issubset(self.active_nodes) \
-                    and len(set(self.idx_to_node_set[idx].nodes)) > 0:
+            if set(self.idx_to_node_set[idx].vs_list).issubset(self.active_vss) \
+                    and len(set(self.idx_to_node_set[idx].vs_list)) > 0:
                 self.active_node_sets.add(idx)
 
         # Find edges required to recompute each node set given all active node sets are migrated
         for idx in self.compute_graph.nodes():
-            recompute_edges = set()
-            self.dfs(idx, set(), recompute_edges)
-            self.recomputation_edges[idx] = recompute_edges
+            recompute_oes = set()
+            self.dfs(idx, set(), recompute_oes)
+            self.recomputation_oes[idx] = recompute_oes
 
-    # Compute the total cost to migrate the unique nodes specified node sets.
+    # Compute the total cost to migrate the unique VSs specified node sets.
     def compute_migration_cost(self, node_sets):
-        migrate_nodes = set().union(*[self.idx_to_node_set[i].nodes for i in node_sets])
-        return sum([i.vs.get_size() for i in migrate_nodes]) / self.migration_speed_bps
+        migrate_nodes = set().union(*[self.idx_to_node_set[i].vs_list for i in node_sets])
+        return sum([i.size for i in migrate_nodes]) / self.migration_speed_bps
 
     # Compute the total cost to recompute the specified node sets.
     def compute_recomputation_cost(self, node_sets):
-        recompute_edges = set().union(*[self.recomputation_edges[i]
-                                        for i in node_sets])
-        return sum([self.compute_graph.get_edge_data(*i)["weight"]
-                    for i in recompute_edges])
+        recompute_edges = set().union(*[self.recomputation_oes[i] for i in node_sets])
+        return sum([self.compute_graph.get_edge_data(*i)["weight"] for i in recompute_edges])
 
     # Compute the total cost to migrate the specified node sets.
     def total_cost(self, migrated_node_sets):
@@ -137,8 +135,8 @@ class OptimizerGreedy(Selector):
 
         print("greedy migration cost:", self.total_cost(migrated_node_sets))
 
-        migrated_nodes = set()
+        vss_to_migrate = set()
         for i in list(migrated_node_sets):
-            for node in self.idx_to_node_set[i].nodes:
-                migrated_nodes.add(node)
-        return migrated_nodes
+            for vs in self.idx_to_node_set[i].vs_list:
+                vss_to_migrate.add(vs)
+        return vss_to_migrate

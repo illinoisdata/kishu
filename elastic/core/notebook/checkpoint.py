@@ -4,7 +4,6 @@
 # Copyright 2021-2022 University of Illinois
 import sys
 
-from elastic.algorithm.optimizer_exact import OptimizerExact
 from elastic.core.graph.graph import DependencyGraph
 from elastic.core.graph.find_oes_to_recompute import find_oes_to_recompute
 from elastic.core.io.migrate import migrate

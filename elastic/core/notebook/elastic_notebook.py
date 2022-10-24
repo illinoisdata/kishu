@@ -16,6 +16,8 @@ from elastic.core.io.recover import resume
 from elastic.core.notebook.restore_notebook import restore_notebook
 
 from elastic.algorithm.optimizer_exact import OptimizerExact
+from elastic.algorithm.optimizer_greedy import OptimizerGreedy
+from elastic.algorithm.baseline import RandomBaseline, RecomputeAllBaseline, MigrateAllBaseline
 
 
 # The class MUST call this class decorator at creation time
@@ -72,17 +74,16 @@ class ElasticNotebook(Magics):
 
     @line_magic
     def SetOptimizer(self, optimizer=''):
-        # Optimizer interfaces are outdated. Will fill in once updated.
         if optimizer == "exact":
             self.selector = OptimizerExact(self.migration_speed_bps)
         elif optimizer == "greedy":
-            pass
+            self.selector = OptimizerGreedy(self.migration_speed_bps)
         elif optimizer == "random":
-            pass
+            self.selector = RandomBaseline(self.migration_speed_bps)
         elif optimizer == "migrate_all":
-            pass
+            self.selector = MigrateAllBaseline(self.migration_speed_bps)
         elif optimizer == "recompute_all":
-            pass
+            self.selector = RecomputeAllBaseline(self.migration_speed_bps)
 
     # Checkpoints the notebook to the specified location.
     @line_magic

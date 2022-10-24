@@ -31,7 +31,7 @@ class RecomputeAllBaseline(Selector):
         Returns:
             List[VariableSnapshot]: the empty list is returned so that no active nodes are migrated and all recomputed
         """
-        return []
+        return set()
 
 
 class RandomBaseline(Selector):

@@ -8,7 +8,6 @@ from elastic.core.graph.node_set import NodeSet
 from elastic.core.graph.node_set import NodeSetType
 import networkx as nx
 import numpy as np
-import math
 
 
 class OptimizerExact(Selector):
