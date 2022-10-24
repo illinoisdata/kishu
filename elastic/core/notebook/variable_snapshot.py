@@ -237,16 +237,3 @@ class VariableSnapshot:
 
     def create_access(self):
         variable_snapshot_accesses.append(self)
-
-
-# A set of output variable snapshots from an operation event.
-class VariableSnapshotSet:
-    def __init__(self, variable_snapshots):
-        self.variable_snapshots = variable_snapshots
-
-
-# For pickling; pickle does not work with Nonetype.
-class EmptyObject:
-    def __init__(self):
-        pass
-

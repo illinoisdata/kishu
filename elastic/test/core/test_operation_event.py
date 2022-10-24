@@ -10,7 +10,7 @@ import subprocess
 import types
 
 from elastic.core.globals import operation_events
-from elastic.core.notebook.record_event import RecordEvent
+from elastic.core.notebook.update_graph import RecordEvent
 
 @RecordEvent
 def TEST_FUNC():

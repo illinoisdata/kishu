@@ -45,7 +45,7 @@ class OptimizerGreedy(Selector):
 
     # Construct compute graph from node sets
     def construct_graph(self):
-        self.active_nodes = set(self.active_nodes)
+        self.active_nodes = set(self.active_vss)
         self.compute_graph = nx.DiGraph()
         srcs = []
         dsts = []

@@ -6,8 +6,8 @@ print(sys.path)
 from elastic.algorithm.selector import Selector
 from elastic.algorithm.optimizer_greedy import OptimizerGreedy
 from elastic.core.graph.graph import DependencyGraph
-from elastic.core.graph.node import Node
-from elastic.core.graph.edge import Edge
+from elastic.core.graph.variable_snapshot import VariableSnapshot
+from elastic.core.graph.operation_event import OperationEvent
 from elastic.core.graph.node_set import NodeSet
 from elastic.core.notebook.variable_snapshot import VariableSnapshot
 from elastic.core.notebook.operation_event import OperationEvent
@@ -30,12 +30,12 @@ class TestOptimizer(unittest.TestCase):
 
         # Graph
         graph = DependencyGraph()
-        graph.edges.append(Edge(self.get_oe(2), node_sets[0], node_sets[1]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[2], node_sets[3]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[4], node_sets[5]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[9], node_sets[6]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[10], node_sets[7]))
-        graph.edges.append(Edge(self.get_oe(2), node_sets[11], node_sets[8]))
+        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[0], node_sets[1]))
+        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[2], node_sets[3]))
+        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[4], node_sets[5]))
+        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[9], node_sets[6]))
+        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[10], node_sets[7]))
+        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[11], node_sets[8]))
 
         opt = OptimizerGreedy(migration_speed_bps=1)
         graph.trim_graph(opt)
@@ -43,7 +43,7 @@ class TestOptimizer(unittest.TestCase):
         self.assertEqual(set([i.vs.name for i in graph.nodes_to_recompute]), set())
 
     def get_test_node(self, name, ver=1):
-        return Node(VariableSnapshot(name, ver, None, None))
+        return VariableSnapshot(VariableSnapshot(name, ver, None, None))
 
 
     def get_oe(self, duration):
