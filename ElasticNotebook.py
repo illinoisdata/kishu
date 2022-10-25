@@ -5,6 +5,7 @@ import time
 from IPython import get_ipython
 from IPython.core.magic import (Magics, magics_class, cell_magic, line_magic)
 
+from elastic.core.common.profile_migration_speed import profile_migration_speed
 from elastic.core.notebook.checkpoint import checkpoint
 from elastic.core.notebook.inspect import inspect
 from elastic.core.notebook.update_graph import update_graph
@@ -36,6 +37,10 @@ class ElasticNotebook(Magics):
         # Migration properties.
         self.migration_speed_bps = 100000
         self.selector = OptimizerExact(migration_speed_bps=self.migration_speed_bps)
+
+        # Flag if migration speed has been manually set. In this case, skip profiling of migration speed at checkpoint
+        # time.
+        self.manual_migration_speed = False
 
     @cell_magic
     def RecordEvent(self, line, cell):
@@ -70,18 +75,6 @@ class ElasticNotebook(Magics):
         inspect(self.dependency_graph)
 
     @line_magic
-    def ProfileMigrationSpeed(self, location=''):
-        """
-            TODO: %ProfileMigrationSpeed location: Profiles the I/O speed to 'location'.
-            Migration_speed_bps is the sum of read and write speed (since we are writing the state to disk, then
-            reading from disk to restore the notebook).
-            Args:
-                location: Location to profile.
-        """
-        self.migration_speed_bps = 100000  # Hardcoded
-        self.selector.migration_speed_bps = self.migration_speed_bps
-
-    @line_magic
     def SetMigrationSpeed(self, migration_speed=''):
         """
             %SetMigrationSpeed x: Sets the migration speed to x. Can be used when the user has a reasonable estimation
@@ -93,6 +86,7 @@ class ElasticNotebook(Magics):
         try:
             if float(migration_speed) > 0:
                 self.migration_speed_bps = float(migration_speed)
+                self.manual_migration_speed = True
             else:
                 print("Migration speed is not positive.")
         except ValueError:
@@ -126,6 +120,12 @@ class ElasticNotebook(Magics):
             Args:
                 filename: File to write checkpoint to. If empty, writes to a default location (see io/migrate.py).
         """
+        # Profile the migration speed to filename.
+        if not self.manual_migration_speed:
+            self.migration_speed_bps = profile_migration_speed(filename)
+            self.selector.migration_speed_bps = self.migration_speed_bps
+
+        # Checkpoint the notebook.
         checkpoint(self.dependency_graph, self.shell, self.selector, filename)
 
     @line_magic

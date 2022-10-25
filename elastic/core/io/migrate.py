@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ipykernel.zmqshell import ZMQInteractiveShell
 
-from elastic.core.common.migration_metadata import MigrationMetadata
+from elastic.core.common.checkpoint_file import CheckpointFile
 from elastic.core.graph.graph import DependencyGraph
 
 from elastic.core.io.filesystem_adapter import FilesystemAdapter
@@ -44,7 +44,7 @@ def migrate(graph: DependencyGraph, shell: ZMQInteractiveShell, vss_to_migrate: 
 
     # Construct checkpoint JSON.
     adapter = FilesystemAdapter()
-    metadata_pickle = dill.dumps(MigrationMetadata().with_dependency_graph(graph)
+    metadata_pickle = dill.dumps(CheckpointFile().with_dependency_graph(graph)
                                  .with_variables(variables)
                                  .with_vss_to_migrate(vss_to_migrate)
                                  .with_vss_to_recompute(vss_to_recompute)

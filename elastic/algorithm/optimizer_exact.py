@@ -124,7 +124,7 @@ class OptimizerExact(Selector):
         mincut_graph.add_node("source")
         mincut_graph.add_node("sink")
 
-        # Add all active VSs as nodes, connect them with the source with edge capacity equal to migration cost.
+        # Add all active VSs as nodes, connect them with the source with edge capacity equal to common cost.
         for active_vs in all_active_vss:
             mincut_graph.add_node(active_vs)
             mincut_graph.add_edge("source", active_vs, capacity=active_vs.size / self.migration_speed_bps)
@@ -145,7 +145,6 @@ class OptimizerExact(Selector):
 
         # Run min-cut.
         cut_value, partition = nx.minimum_cut(mincut_graph, "source", "sink")
-        print("minimum migration cost:", cut_value)
         migrated_node_sets = set(partition[1]).intersection(self.active_node_sets)
 
         # VSs to migrate as the union of the VSs in the nodesets to migrate.

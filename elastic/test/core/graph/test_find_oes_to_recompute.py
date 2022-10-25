@@ -5,22 +5,18 @@
 
 import unittest
 from unittest import mock
-from elastic.core.notebook.operation_event import OperationEvent
-
+from elastic.core.graph.operation_event import OperationEvent
 from elastic.core.graph.graph import DependencyGraph
 from elastic.core.graph.variable_snapshot import VariableSnapshot
 from elastic.core.graph.node_set import NodeSet, NodeSetType
-from elastic.core.graph.find_oes_to_recompute import find_edges_to_recompute
-from elastic.core.notebook.variable_snapshot import VariableSnapshot
-import numpy as np
+from elastic.core.graph.find_oes_to_recompute import find_oes_to_recompute
 
-VAR_SIZE=1024
 
-class TestFindPath(unittest.TestCase):
+class TestFindOesToRecompute(unittest.TestCase):
     def setUp(self):
         global operation_events
         operation_events = []
-        
+
     def tearDown(self):
         global operation_events
         operation_events = []
@@ -66,8 +62,8 @@ class TestFindPath(unittest.TestCase):
         recompute_seq = find_edges_to_recompute(graph)
         self.assertEqual(2, len(recompute_seq)) # 1 var in oe1 and 1 var in oe2 need to be recomputed
 
-    def get_test_node(self, name, ver=1):
-        return VariableSnapshot(name, ver, None, False)
+    def get_test_vs(self, name, ver=1, index=0):
+        return VariableSnapshot(name, ver, index, False)
     
-    def get_oe(self, exec_id):
-        return OperationEvent(exec_id, None, None, None, "", "", [])
+    def get_test_oe(self, cell_num):
+        return OperationEvent(cell_num, None, None, None, "", "", [])

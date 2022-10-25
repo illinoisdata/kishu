@@ -160,8 +160,6 @@ class OptimizerGreedy(Selector):
                 break
             migrated_node_sets = migrated_node_sets.difference({best_set})
 
-        print("greedy migration cost:", self.total_cost(migrated_node_sets))
-
         # VSs to migrate as the union of the VSs in the nodesets to migrate.
         vss_to_migrate = set()
         for i in list(migrated_node_sets):

@@ -13,7 +13,8 @@ KEY_VSS_TO_MIGRATE = "vss_to_migrate"
 KEY_VSS_TO_RECOMPUTE = "vss_to_recompute"
 KEY_OES_TO_RECOMPUTE = "oes_to_recompute"
 
-class MigrationMetadata:
+
+class CheckpointFile:
     """
         JSON representation of the notebook checkpoint.
     """
@@ -79,7 +80,7 @@ class MigrationMetadata:
 
     @staticmethod
     def from_json(kv: Dict):
-        return MigrationMetadata().with_dependency_graph(kv[KEY_DEPENDENCY_GRAPH])\
+        return CheckpointFile().with_dependency_graph(kv[KEY_DEPENDENCY_GRAPH])\
                                   .with_variables(kv[KEY_VARIABLES])\
                                   .with_vss_to_migrate(kv[KEY_VSS_TO_MIGRATE])\
                                   .with_vss_to_recompute(kv[KEY_VSS_TO_RECOMPUTE])\

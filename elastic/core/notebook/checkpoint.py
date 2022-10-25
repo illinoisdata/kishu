@@ -2,12 +2,11 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright 2021-2022 University of Illinois
-import sys
-
 from elastic.algorithm.selector import Selector
 from elastic.core.graph.graph import DependencyGraph
 from elastic.core.graph.find_oes_to_recompute import find_oes_to_recompute
 from elastic.core.io.migrate import migrate
+from elastic.core.common.profile_variable_size import profile_variable_size
 from ipykernel.zmqshell import ZMQInteractiveShell
 
 
@@ -28,13 +27,9 @@ def checkpoint(graph: DependencyGraph, shell: ZMQInteractiveShell, selector: Sel
         if not vs_list[-1].deleted:
             active_vss.append(vs_list[-1])
 
-    """
-    TODO: replace sys.getsizeof with a more accurate estimation function.
-    sys.getsizeof notably does not work well with nested structures (i.e. lists, dictionaries).
-    """
     # Profile the size of each variable defined in the current session.
     for active_vs in active_vss:
-        active_vs.size = sys.getsizeof(shell.user_ns[active_vs.name])
+        active_vs.size = profile_variable_size(shell.user_ns[active_vs.name])
 
     # Use the optimizer to compute the checkpointing configuration.
     selector.dependency_graph = graph
