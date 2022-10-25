@@ -126,7 +126,7 @@ restore_end = time.time()
 
 # Run the given notebook with the given optimizer
 def run_experiment(notebook="numpy.ipynb", optimizer="Exact"):
-    # Experiment Code has cell cells for all stages
+    # Experiment Code has code cells for all stages
     # Stage 1 - Graph creation, trimming graph using optimizer and migration
     # Stage 2 - Recover, recompute and restore
     e = ExperimentCode
@@ -137,7 +137,7 @@ def run_experiment(notebook="numpy.ipynb", optimizer="Exact"):
     with open(directory + notebook) as f:
         nb = nbformat.read(f, as_version=4)
 
-    # add cell cells
+    # add code cells
     nb["cells"] += [nbformat.v4.new_code_cell(e.CREATE_GRAPH),
                     nbformat.v4.new_code_cell(e.trim_graph(optimizer)),
                     nbformat.v4.new_code_cell(e.MIGRATE),

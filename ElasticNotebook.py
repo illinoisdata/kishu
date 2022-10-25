@@ -140,6 +140,9 @@ class ElasticNotebook(Magics):
         # Recompute missing VSs and redeclare variables into the kernel.
         restore_notebook(self.dependency_graph, self.shell, variables, oes_to_recompute)
 
-# Load the extension.
+
 def load_ipython_extension(ipython):
+    """
+        Load the extension.
+    """
     ipython.register_magics(ElasticNotebook)

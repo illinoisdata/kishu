@@ -32,6 +32,10 @@ def migrate(graph: DependencyGraph, shell: ZMQInteractiveShell, vss_to_migrate: 
             oes_to_recompute (set): set of OEs to recompute post-migration.
             filename (str): the location to write the checkpoint to.
     """
+    # Retrieve variables
+    variables = defaultdict(list)
+    for vs in vss_to_migrate:
+        variables[vs.output_nodeset.operation_event].append((vs, shell.user_ns[vs.name]))
 
     # Retrieve variables to migrate from the current session.
     variables = defaultdict(list)

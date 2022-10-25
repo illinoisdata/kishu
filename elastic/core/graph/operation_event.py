@@ -23,10 +23,9 @@ class OperationEvent:
                 src (Nodeset): Nodeset containing input VSs of the cell execution.
                 dst(NodeSet): Nodeset containing output VSs of the cell execution.
         """
-
         self.cell_num = cell_num
         self.cell = cell
-        self.cell_runtime = cell_runtime
+        self.duration = cell_runtime
         self.start_time = start_time
         self.src = src
         self.dst = dst

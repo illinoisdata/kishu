@@ -35,10 +35,10 @@ class RecomputeAllBaseline(Selector):
 class RandomBaseline(Selector):
     """
         Randomly selects some active VSs to migrate according to a Bernoulli process with p = 0.5.
+        NOTE: when this selector is used, the caller should fix a particular seed.
     """
     def __init__(self, migration_speed_bps=1):
         super().__init__(migration_speed_bps)
 
     def select_vss(self) -> set:
-        # NOTE: when this selector is used, the caller should fix a particular seed.
         return random.sample(self.active_vss, math.floor(len(self.active_vss) / 2))
