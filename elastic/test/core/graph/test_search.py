@@ -67,7 +67,7 @@ class TestFindPath(unittest.TestCase):
         self.assertEqual(2, len(recompute_seq)) # 1 var in oe1 and 1 var in oe2 need to be recomputed
 
     def get_test_node(self, name, ver=1):
-        return VariableSnapshot(VariableSnapshot(name, ver, None, None))
+        return VariableSnapshot(name, ver, None, False)
     
     def get_oe(self, exec_id):
         return OperationEvent(exec_id, None, None, None, "", "", [])
