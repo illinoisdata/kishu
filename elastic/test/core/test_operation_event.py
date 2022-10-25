@@ -22,7 +22,7 @@ class TestOperationEvent(unittest.TestCase):
         TEST_FUNC()
         self.assertEqual(1, len(operation_events))
 
-        # verify that captured source code matches
+        # verify that captured source cell matches
         func = types.FunctionType(operation_events[0].cell_func_code, globals(), "test")
         self.assertEqual(func(), "a")
 

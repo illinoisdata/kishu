@@ -11,6 +11,10 @@ import numpy as np
 
 
 class OptimizerExact(Selector):
+    """
+        The exact optimizer constructs a flow graph and runs the min-cut algorithm to exactly find the best
+        checkpointing configuration.
+    """
     def __init__(self, migration_speed_bps=1):
         super().__init__(migration_speed_bps)
 
@@ -31,22 +35,32 @@ class OptimizerExact(Selector):
 
         self.idx = 0
 
-    # Get a new index number to add to compute graph
-    def get_new_idx(self):
+    def get_new_idx(self) -> int:
+        """
+            Get a new index number to add to compute graph.
+        """
         idx = self.idx
         self.idx += 1
         return idx
 
-    # DFS helper for finding the OEs required to recompute a node set
-    def dfs(self, current, visited, recompute_oes):
+    def dfs(self, current: str, visited: set, recompute_oes: str):
+        """
+            DFS helper for finding the OEs required to recompute a node set.
+            Args:
+                current (str): Name of current nodeset.
+                visited (set): Visited nodesets.
+                recompute_oes (set): Set of OEs needing re-execution to recompute the cirremt nodeset.
+        """
         visited.add(current)
         for parent in self.compute_graph.predecessors(current):
             recompute_oes.add((parent, current))
             if parent not in self.active_node_sets and parent not in visited:
                 self.dfs(parent, visited, recompute_oes)
 
-    # Construct compute graph from node sets
     def construct_graph(self):
+        """
+            Construct the augmented dependency graph.
+        """
         self.compute_graph = nx.DiGraph()
         self.active_vss = set(self.active_vss)
         srcs = []
@@ -66,7 +80,7 @@ class OptimizerExact(Selector):
             srcs.append(src_idx)
             dsts.append(dst_idx)
 
-            self.compute_graph.add_edge(src_idx, dst_idx, weight=oe.duration)
+            self.compute_graph.add_edge(src_idx, dst_idx, weight=oe.cell_runtime)
 
             # The output node set has a nonempty strict subset of active nodes
             active_vs_subset = set(oe.dst.vs_list).intersection(self.active_vss)
@@ -96,26 +110,32 @@ class OptimizerExact(Selector):
             self.dfs(idx, set(), recompute_oes)
             self.recomputation_oes[idx] = recompute_oes
         
-    def select_nodes(self):
+    def select_vss(self) -> set:
         self.construct_graph()
 
-        # Construct graph for computing mincut
+        # Construct flow graph for computing mincut
         mincut_graph = nx.DiGraph()
 
-        all_active_vss= set().union(*[self.idx_to_node_set[i].vs_list for i in self.active_node_sets])
+        # Find all active VSs and OEs.
+        all_active_vss = set().union(*[self.idx_to_node_set[i].vs_list for i in self.active_node_sets])
         all_oes = set().union(*[self.recomputation_oes[i] for i in self.active_node_sets])
 
+        # Add source and sink to flow graph.
         mincut_graph.add_node("source")
         mincut_graph.add_node("sink")
 
+        # Add all active VSs as nodes, connect them with the source with edge capacity equal to migration cost.
         for active_vs in all_active_vss:
             mincut_graph.add_node(active_vs)
             mincut_graph.add_edge("source", active_vs, capacity=active_vs.size / self.migration_speed_bps)
 
+        # Add all OEs as nodes, connect them with the sink with edge capacity equal to recomputation cost.
         for oe in all_oes:
             mincut_graph.add_node(oe)
             mincut_graph.add_edge(oe, "sink", capacity=self.compute_graph.get_edge_data(*oe)["weight"])
 
+        # Add all nodesets as nodes, connect them with VSs in the nodesets and OEs required to recompute the nodesets
+        # with infinite edge capacity.
         for idx in self.active_node_sets:
             mincut_graph.add_node(idx)
             for active_node in self.idx_to_node_set[idx].vs_list:
@@ -123,10 +143,12 @@ class OptimizerExact(Selector):
             for operation in self.recomputation_oes[idx]:
                 mincut_graph.add_edge(idx, operation, capacity=np.inf)
 
+        # Run min-cut.
         cut_value, partition = nx.minimum_cut(mincut_graph, "source", "sink")
         print("minimum migration cost:", cut_value)
         migrated_node_sets = set(partition[1]).intersection(self.active_node_sets)
 
+        # VSs to migrate as the union of the VSs in the nodesets to migrate.
         vss_to_migrate = set()
         for i in list(migrated_node_sets):
             for vs in self.idx_to_node_set[i].vs_list:

@@ -7,8 +7,13 @@
 from elastic.core.graph.graph import DependencyGraph
 
 
-# Prints info about the current notebook state.
 def inspect(graph: DependencyGraph):
+    """
+        Displays the graph structure of the current notebook state.
+        Args:
+            graph (DependencyGraph): dependency graph representation of the notebook.
+    """
+
     print("---------------------------")
     print("VSs:")
     for vs_list in graph.variable_snapshots.values():
@@ -19,7 +24,7 @@ def inspect(graph: DependencyGraph):
     print("OEs:")
     for oe in graph.operation_events:
         print("---------------------------")
-        print("OE num:", oe.cell_num, " runtime:", oe.duration)
+        print("OE num:", oe.cell_num, " runtime:", oe.cell_runtime)
         print("sources")
         for vs in oe.src.vs_list:
             print("   ", vs.name, vs.version)

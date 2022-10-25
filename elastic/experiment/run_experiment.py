@@ -14,7 +14,7 @@ Annotated notebook summary:
         %load_ext elastic.core.notebook.elastic_notebook
         This may require setting up the syspath.
     2. Add %%RecordEvent before the first line of each cell.
-    3. Set the optimizer, i.e. %SetOptimizer exact. See 'elastic_notebook.py' for a list of optimizers.
+    3. Set the optimizer, i.e. %SetOptimizer exact. See 'ElasticNotebook.py' for a list of optimizers.
     4. Either set or profile the migration speed, i.e. %ProfileMigrationSpeed file.pickle / %SetMigrationSpeed 100000.
     5. Migrate the notebook: %Checkpoint file.py
 Recovery notebook summary:
@@ -126,7 +126,7 @@ restore_end = time.time()
 
 # Run the given notebook with the given optimizer
 def run_experiment(notebook="numpy.ipynb", optimizer="Exact"):
-    # Experiment Code has code cells for all stages
+    # Experiment Code has cell cells for all stages
     # Stage 1 - Graph creation, trimming graph using optimizer and migration
     # Stage 2 - Recover, recompute and restore
     e = ExperimentCode
@@ -137,7 +137,7 @@ def run_experiment(notebook="numpy.ipynb", optimizer="Exact"):
     with open(directory + notebook) as f:
         nb = nbformat.read(f, as_version=4)
 
-    # add code cells
+    # add cell cells
     nb["cells"] += [nbformat.v4.new_code_cell(e.CREATE_GRAPH),
                     nbformat.v4.new_code_cell(e.trim_graph(optimizer)),
                     nbformat.v4.new_code_cell(e.MIGRATE),

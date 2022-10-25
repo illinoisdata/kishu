@@ -14,11 +14,23 @@ KEY_VSS_TO_RECOMPUTE = "vss_to_recompute"
 KEY_OES_TO_RECOMPUTE = "oes_to_recompute"
 
 class MigrationMetadata:
+    """
+        JSON representation of the notebook checkpoint.
+    """
     def __init__(self):
+        # Dependency graph representation of the notebook.
         self.dependency_graph = None
+
+        # Migrated variables.
         self.variables = None
+
+        # Active VSs corresponding to migrated variables.
         self.vss_to_migrate = None
+
+        # Variables to recompute post-migration.
         self.vss_to_recompute = None
+
+        # OEs to recompute to restore non-migrated variables (vss_to_recompute).
         self.oes_to_recompute = None
 
     def with_dependency_graph(self, graph: DependencyGraph):
@@ -65,11 +77,9 @@ class MigrationMetadata:
             KEY_OES_TO_RECOMPUTE: self.oes_to_recompute
         })
 
-
     @staticmethod
     def from_json(kv: Dict):
         return MigrationMetadata().with_dependency_graph(kv[KEY_DEPENDENCY_GRAPH])\
-                                  .with_imported_modules(kv[KEY_IMPORTED_MODULES])\
                                   .with_variables(kv[KEY_VARIABLES])\
                                   .with_vss_to_migrate(kv[KEY_VSS_TO_MIGRATE])\
                                   .with_vss_to_recompute(kv[KEY_VSS_TO_RECOMPUTE])\

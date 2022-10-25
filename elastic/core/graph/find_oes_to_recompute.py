@@ -8,15 +8,21 @@ from elastic.core.graph.operation_event import OperationEvent
 from elastic.core.graph.node_set import NodeSetType
 
 
-# Find the OEs to recompute given the VSs to migrate and recompute.
-def find_oes_to_recompute(graph, vss_to_migrate, vss_to_recompute) -> List[OperationEvent]:
-    # find all nodesets that generated the VSs to recompute
+def find_oes_to_recompute(vss_to_migrate: set, vss_to_recompute: set) -> set:
+    """
+        Finds the OEs to recompute given the VSs to migrate and recompute via BFS.
+        Args:
+            vss_to_migrate (set): VSs to migrate.
+            vss_to_recompute (set): VSs to recompute.
+    """
+
+    # find all nodesets that generated the VSs to recompute.
     dst_nodesets = set([vs.output_nodeset for vs in vss_to_recompute])
     dst_nodesets = list(dst_nodesets)
 
     oes_to_recompute = set()
     
-    # search for all necessary upstream nodesets via BFS
+    # search for all necessary upstream nodesets via BFS.
     queue = dst_nodesets
     while queue:
         nodeset = queue.pop(0)
