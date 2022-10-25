@@ -22,3 +22,6 @@ path~=16.5.0
 nbformat~=5.7.0
 nbconvert~=7.2.1
 setuptools~=60.2.0
+torch~=1.12.1
+matplotlib~=3.6.1
+torchvision~=0.13.1

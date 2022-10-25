@@ -6,7 +6,7 @@ directory = path.Path(__file__).abspath()
 sys.path.append(directory.parent.parent)
 
 """
-TODO: update this experiment script. See 'numpy.ipynb' for an example annotated notebook and 'numpy_recover.ipynb'
+TODO: update this experiment script. See 'numpy.ipynb' for an example annotated notebook and 'numpy_restore.ipynb'
 for an example notebook recovery.
 
 Annotated notebook summary:
