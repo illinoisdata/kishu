@@ -22,7 +22,7 @@ def restore_notebook(graph: DependencyGraph, shell: ZMQInteractiveShell, variabl
     # Recompute OEs following the order they were executed in.
     for oe in graph.operation_events:
         if oe in oes_to_recompute:
-            # Rerun cell cell
+            # Rerun cell code
             print("Rerunning cell", oe.cell_num)
             get_ipython().run_cell(oe.cell)
         else:

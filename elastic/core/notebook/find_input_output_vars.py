@@ -27,9 +27,14 @@ def find_input_output_vars(cell: str, existing_variables: set, cell_output: Exec
         """
         TODO: Handle one remaining edge case. See examples/numpy.ipynb:
             np.set_seed(0)
+            list.reverse()
         For simplicity, we assume all class methods (i.e. list.sort()) will modify the class instance when called.
         In this case, 'np' should be both an input and output variable of the cell.
         The cell below currently only identifies np as an input variable of the cell.
+        
+        function(x)
+        
+        Check if variable is a primitive.
         """
         # Input variable
         if instruction.opname == "LOAD_NAME" and (instruction.argrepr not in input_variables) and \
