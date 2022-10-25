@@ -25,7 +25,7 @@ class OperationEvent:
         """
         self.cell_num = cell_num
         self.cell = cell
-        self.duration = cell_runtime
+        self.cell_runtime = cell_runtime
         self.start_time = start_time
         self.src = src
         self.dst = dst
