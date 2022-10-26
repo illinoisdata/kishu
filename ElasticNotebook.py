@@ -43,6 +43,13 @@ class ElasticNotebook(Magics):
         # time.
         self.manual_migration_speed = False
 
+        # Location to log runtimes to. For experiments only.
+        self.write_log_location = None
+
+        # Strings for determining log filename. For experiments only.
+        self.optimizer_name = ""
+        self.notebook_name = ""
+
     @cell_magic
     def RecordEvent(self, line, cell):
         """
@@ -108,6 +115,7 @@ class ElasticNotebook(Magics):
             Args:
                 optimizer: Optimizer to use.
         """
+        self.optimizer_name = optimizer
 
         if optimizer == "exact":
             self.selector = OptimizerExact(self.migration_speed_bps)
@@ -119,6 +127,19 @@ class ElasticNotebook(Magics):
             self.selector = MigrateAllBaseline(self.migration_speed_bps)
         elif optimizer == "recompute_all":
             self.selector = RecomputeAllBaseline(self.migration_speed_bps)
+
+    @line_magic
+    def SetWriteLogLocation(self, filename=''):
+        """
+            Sets the location to log runtimes to. For experiments only.
+        """
+        self.write_log_location = filename
+
+    def SetNotebookName(self, name=''):
+        """
+            Sets the notebook name for the log file. For experiments only.
+        """
+        self.notebook_name = name
 
     @line_magic
     def Checkpoint(self, filename=''):
@@ -133,7 +154,8 @@ class ElasticNotebook(Magics):
             self.selector.migration_speed_bps = self.migration_speed_bps
 
         # Checkpoint the notebook.
-        checkpoint(self.dependency_graph, self.shell, self.selector, filename)
+        checkpoint(self.dependency_graph, self.shell, self.selector, filename, self.write_log_location,
+                   self.notebook_name, self.optimizer_name)
 
     @line_magic
     def LoadCheckpoint(self, filename=''):
@@ -142,10 +164,12 @@ class ElasticNotebook(Magics):
             Args:
                 filename: File to read checkpoint from. If empty, reads from a default location (see io/migrate.py).
         """
-        self.dependency_graph, variables, vss_to_migrate, vss_to_recompute, oes_to_recompute = resume(filename)
+        self.dependency_graph, variables, vss_to_migrate, vss_to_recompute, oes_to_recompute = \
+            resume(filename, self.write_log_location, self.notebook_name, self.optimizer_name)
 
         # Recompute missing VSs and redeclare variables into the kernel.
-        restore_notebook(self.dependency_graph, self.shell, variables, oes_to_recompute)
+        restore_notebook(self.dependency_graph, self.shell, variables, oes_to_recompute,
+                         self.write_log_location, self.notebook_name, self.optimizer_name)
 
 
 def load_ipython_extension(ipython):
