@@ -161,7 +161,7 @@ class TestFindInputOutputVars(unittest.TestCase):
         input_vars, output_vars = find_input_output_vars(
             "y = x\nprint(nonexistent_variable)\nz = x", {"x"}, self.shell, [traceback_str])
 
-        # Since the code stopped on line 2 (print(aaa)), z was never assigned.
+        # Since the code stopped on line 2 (print(nonexistent_variable)), z was never assigned.
         self.assertEqual({"x"}, set(input_vars))
         self.assertEqual({"y"}, set(output_vars.keys()))
 
