@@ -8,6 +8,7 @@ import types
 
 def get_total_size(data):
     def get_memory_size(obj, is_initialize, visited):
+        # same memory space should be calculated only once
         obj_id = id(obj)
         if obj_id in visited:
             return 0
@@ -15,6 +16,7 @@ def get_total_size(data):
         total_size = sys.getsizeof(obj)
         obj_type = type(obj)
         if obj_type in [int, float, str, bool, type(None)]:
+            # if the original obj is not primitive, then the size is already included
             if not is_initialize:
                 return 0
         else:
@@ -49,10 +51,5 @@ def profile_variable_size(x) -> int:
         Profiles the size of variable x. Notably, this should recursively find the size of lists, sets and dictionaries.
         Args:
             x: The variable to profile.
-    """
-
-    """
-    TODO: replace sys.getsizeof with a more accurate estimation function.
-    sys.getsizeof notably does not work well with nested structures (i.e. lists, dictionaries).
     """
     return get_total_size(x)
