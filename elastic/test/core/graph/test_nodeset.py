@@ -17,10 +17,10 @@ class TestNodeset(unittest.TestCase):
         vs = get_test_vs("x")
 
         nodeset1 = NodeSet([vs], nodeset_type=NodeSetType.INPUT)
-        self.assertEqual(vs.input_nodesets[0], nodeset1)
+        self.assertTrue(vs.input_nodesets[0] == nodeset1)
 
         nodeset2 = NodeSet([vs], nodeset_type=NodeSetType.INPUT)
-        self.assertEqual(vs.input_nodesets[1], nodeset2)
+        self.assertTrue(vs.input_nodesets[1] == nodeset2)
 
     def test_output_nodeset(self):
         """
@@ -29,7 +29,7 @@ class TestNodeset(unittest.TestCase):
         vs = get_test_vs("x")
 
         nodeset1 = NodeSet([vs], nodeset_type=NodeSetType.OUTPUT)
-        self.assertEqual(vs.output_nodeset, nodeset1)
+        self.assertTrue(vs.output_nodeset == nodeset1)
 
     def test_dummy_nodeset(self):
         """
@@ -38,12 +38,14 @@ class TestNodeset(unittest.TestCase):
         vs = get_test_vs("x")
 
         src = NodeSet([vs], nodeset_type=NodeSetType.INPUT)
+        src2 = NodeSet([vs], nodeset_type=NodeSetType.INPUT)
         dst = NodeSet([vs], nodeset_type=NodeSetType.OUTPUT)
         dummy = NodeSet([vs], nodeset_type=NodeSetType.DUMMY)
 
-        self.assertEqual(len(vs.input_nodesets), 1)
-        self.assertEqual(vs.input_nodesets[0], src)
-        self.assertEqual(vs.output_nodeset, dst)
+        self.assertEqual(2, len(vs.input_nodesets))
+        self.assertTrue(vs.input_nodesets[0] == src)
+        self.assertTrue(vs.input_nodesets[1] == src2)
+        self.assertTrue(vs.output_nodeset == dst)
 
 
 if __name__ == '__main__':

@@ -32,8 +32,8 @@ class TestRestoreNotebook(unittest.TestCase):
         restore_notebook(self.graph, self.shell, {oe: [(self.vs1, 1), (self.vs2, 2)]}, set())
 
         # Assert that x and y are correctly redeclared.
-        self.assertEqual(self.shell.user_ns["x"], 1)
-        self.assertEqual(self.shell.user_ns["y"], 2)
+        self.assertEqual(1, self.shell.user_ns["x"])
+        self.assertEqual(2, self.shell.user_ns["y"])
 
     def test_restore_notebook_recompute(self):
         """
@@ -46,8 +46,8 @@ class TestRestoreNotebook(unittest.TestCase):
         restore_notebook(self.graph, shell, {}, {oe})
 
         # Assert that x and y are correctly redeclared.
-        self.assertEqual(shell.user_ns["x"], 1)
-        self.assertEqual(shell.user_ns["y"], 2)
+        self.assertEqual(1, shell.user_ns["x"])
+        self.assertEqual(2, shell.user_ns["y"])
 
 
 if __name__ == '__main__':

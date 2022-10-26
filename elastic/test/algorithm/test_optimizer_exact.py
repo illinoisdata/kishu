@@ -14,7 +14,7 @@ class TestOptimizerExact(unittest.TestCase):
 
         # Tests that the exact optimizer correctly escapes the local minimum by recomputing both x and y.
         vss_to_migrate = opt.select_vss()
-        self.assertEqual(vss_to_migrate, set())
+        self.assertEqual(set(), vss_to_migrate)
 
 
 if __name__ == '__main__':

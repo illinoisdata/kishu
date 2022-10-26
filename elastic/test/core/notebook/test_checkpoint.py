@@ -33,13 +33,13 @@ class TestCheckpoint(unittest.TestCase):
         graph2, variables, vss_to_migrate2, vss_to_recompute2, oes_to_recompute2 = resume(TEST_FILE_PATH)
 
         # Variables 'x' and 'y' should be successfully migrated.
-        self.assertEqual(variables[graph2.operation_events[1]][0][0].name, "x")
-        self.assertEqual(variables[graph2.operation_events[1]][0][1], 1)
-        self.assertEqual(variables[graph2.operation_events[2]][0][0].name, "y")
-        self.assertEqual(variables[graph2.operation_events[2]][0][1], 2)
+        self.assertEqual("x", variables[graph2.operation_events[1]][0][0].name)
+        self.assertEqual(1, variables[graph2.operation_events[1]][0][1])
+        self.assertEqual("y", variables[graph2.operation_events[2]][0][0].name)
+        self.assertEqual(2, variables[graph2.operation_events[2]][0][1])
 
         # Variable 'z' should not have been migrated as it has been marked as deleted.
-        self.assertEqual(len(variables[graph2.operation_events[0]]), 0)
+        self.assertEqual(0, len(variables[graph2.operation_events[0]]))
 
 
 if __name__ == '__main__':

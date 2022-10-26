@@ -16,7 +16,7 @@ class TestOptimizerGreedy(unittest.TestCase):
 
         # Tests that the greedy optimizer does not escape the local minimum and migrates both x and y.
         vss_to_migrate = opt.select_vss()
-        self.assertEqual(vss_to_migrate, {graph.variable_snapshots["x"][0], graph.variable_snapshots["y"][0]})
+        self.assertEqual({graph.variable_snapshots["x"][0], graph.variable_snapshots["y"][0]}, vss_to_migrate)
 
     def test_optimizer_success(self):
         # Setup problem
@@ -30,7 +30,7 @@ class TestOptimizerGreedy(unittest.TestCase):
 
         # Tests that the greedy optimizer now correctly recomputes both x and y.
         vss_to_migrate = opt.select_vss()
-        self.assertEqual(vss_to_migrate, set())
+        self.assertEqual(set(), vss_to_migrate)
 
 
 if __name__ == '__main__':

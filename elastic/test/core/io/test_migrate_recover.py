@@ -42,14 +42,14 @@ class TestMigrateRecover(unittest.TestCase):
         graph2, variables, vss_to_migrate2, vss_to_recompute2, oes_to_recompute2 = resume(TEST_FILE_PATH)
 
         # Variable 'x' should be successfully migrated.
-        self.assertEqual(len(variables[graph2.operation_events[0]]), 1)
-        self.assertEqual(variables[graph2.operation_events[0]][0][0].name, "x")
-        self.assertEqual(variables[graph2.operation_events[0]][0][1], 1)
+        self.assertEqual(1, len(variables[graph2.operation_events[0]]))
+        self.assertEqual("x", variables[graph2.operation_events[0]][0][0].name)
+        self.assertEqual(1, variables[graph2.operation_events[0]][0][1])
 
         # Recomputation instructions should be successfully migrated.
-        self.assertEqual(next(iter(vss_to_migrate2)).name, "x")
-        self.assertEqual(next(iter(vss_to_recompute2)).name, "y")
-        self.assertEqual(next(iter(oes_to_recompute2)).cell_num, 0)
+        self.assertEqual("x", next(iter(vss_to_migrate2)).name)
+        self.assertEqual("y", next(iter(vss_to_recompute2)).name)
+        self.assertEqual(0, next(iter(oes_to_recompute2)).cell_num)
 
 
 if __name__ == '__main__':

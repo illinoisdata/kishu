@@ -31,12 +31,12 @@ class TestFindInputOutputVars(unittest.TestCase):
         input_vars, output_vars = find_input_output_vars("y = x", {"x"}, self.shell, [])
 
         # x is an input and y is an output.
-        self.assertEqual(input_vars, {"x"})
-        self.assertEqual(set(output_vars.keys()), {"y"})
+        self.assertEqual({"x"}, input_vars)
+        self.assertEqual({"y"}, set(output_vars.keys()))
 
         # y is the first defined variable in the cell and is not deleted.
-        self.assertEqual(output_vars["y"][0], 0)
-        self.assertEqual(output_vars["y"][1], False)
+        self.assertEqual(0, output_vars["y"][0])
+        self.assertEqual(False, output_vars["y"][1])
 
     def test_skip_builtin(self):
         """
@@ -48,8 +48,8 @@ class TestFindInputOutputVars(unittest.TestCase):
         input_vars, output_vars = find_input_output_vars("y = len(x)", {"x"}, self.shell, [])
 
         # x is an input and y is an output. 'len' is not an input.
-        self.assertEqual(input_vars, {"x"})
-        self.assertEqual(set(output_vars.keys()), {"y"})
+        self.assertEqual({"x"}, input_vars)
+        self.assertEqual({"y"}, set(output_vars.keys()))
 
     def test_order(self):
         """
@@ -62,12 +62,12 @@ class TestFindInputOutputVars(unittest.TestCase):
         input_vars, output_vars = find_input_output_vars("y = x\nz = x + 1", {"x"}, self.shell, [])
 
         # x is an input and y is an output. 'len' is not an input.
-        self.assertEqual(input_vars, {"x"})
-        self.assertEqual(set(output_vars.keys()), {"y", "z"})
+        self.assertEqual({"x"}, input_vars)
+        self.assertEqual({"y", "z"}, set(output_vars.keys()))
 
         # y is the first defined variable in the cell and z is second.
-        self.assertEqual(output_vars["y"][0], 0)
-        self.assertEqual(output_vars["z"][0], 1)
+        self.assertEqual(0, output_vars["y"][0])
+        self.assertEqual(1, output_vars["z"][0])
 
     def test_delete(self):
         """
@@ -79,8 +79,8 @@ class TestFindInputOutputVars(unittest.TestCase):
         self.assertEqual(set(output_vars.keys()), {"x"})
 
         # x has been deleted.
-        self.assertEqual(output_vars["x"][0], 0)
-        self.assertEqual(output_vars["x"][1], True)
+        self.assertEqual(0, output_vars["x"][0])
+        self.assertEqual(True, output_vars["x"][1])
 
     def test_recover(self):
         """
@@ -94,8 +94,8 @@ class TestFindInputOutputVars(unittest.TestCase):
         self.assertEqual(set(output_vars.keys()), {"x"})
 
         # x has been deleted then re-declared.
-        self.assertEqual(output_vars["x"][0], 0)
-        self.assertEqual(output_vars["x"][1], False)
+        self.assertEqual(0, output_vars["x"][0])
+        self.assertEqual(False, output_vars["x"][1])
 
     def test_modify(self):
         """
@@ -106,8 +106,8 @@ class TestFindInputOutputVars(unittest.TestCase):
         input_vars, output_vars = find_input_output_vars("x += 1", {"x"}, self.shell, [])
 
         # x is modified; it is both an input and an output.
-        self.assertEqual(set(input_vars), {"x"})
-        self.assertEqual(set(output_vars.keys()), {"x"})
+        self.assertEqual({"x"}, set(input_vars))
+        self.assertEqual({"x"}, set(output_vars.keys()))
 
     def test_declare_and_modify(self):
         """
@@ -119,8 +119,8 @@ class TestFindInputOutputVars(unittest.TestCase):
         input_vars, output_vars = find_input_output_vars("y = 1\nz = y", {"x"}, self.shell, [])
 
         # y should only be an output of the cell.
-        self.assertEqual(set(input_vars), set())
-        self.assertEqual(set(output_vars.keys()), {"y", "z"})
+        self.assertEqual(set(), set(input_vars))
+        self.assertEqual({"y", "z"}, set(output_vars.keys()))
 
     def test_inplace_method(self):
         """
@@ -132,8 +132,8 @@ class TestFindInputOutputVars(unittest.TestCase):
         input_vars, output_vars = find_input_output_vars("x.reverse()\ns.strip()", {"x", "s"}, self.shell, [])
 
         # x is not a primitive, so it can potentially be modified; it is both an input and an output.
-        self.assertEqual(set(input_vars), {"x", "s"})
-        self.assertEqual(set(output_vars.keys()), {"x"})
+        self.assertEqual({"x", "s"}, set(input_vars))
+        self.assertEqual({"x"}, set(output_vars.keys()))
 
     def test_pass_to_function(self):
         """
@@ -145,8 +145,8 @@ class TestFindInputOutputVars(unittest.TestCase):
         input_vars, output_vars = find_input_output_vars("print(x)\nprint(s)", {"x", "s"}, self.shell, [])
 
         # x is not a primitive, so it can potentially be modified; it is both an input and an output.
-        self.assertEqual(set(input_vars), {"x", "s"})
-        self.assertEqual(set(output_vars.keys()), {"x"})
+        self.assertEqual({"x", "s"}, set(input_vars))
+        self.assertEqual({"x"}, set(output_vars.keys()))
 
     def test_error(self):
         """
@@ -162,8 +162,8 @@ class TestFindInputOutputVars(unittest.TestCase):
             "y = x\nprint(nonexistent_variable)\nz = x", {"x"}, self.shell, [traceback_str])
 
         # Since the code stopped on line 2 (print(aaa)), z was never assigned.
-        self.assertEqual(set(input_vars), set("x"))
-        self.assertEqual(set(output_vars.keys()), {"y"})
+        self.assertEqual({"x"}, set(input_vars))
+        self.assertEqual({"y"}, set(output_vars.keys()))
 
 
 if __name__ == '__main__':

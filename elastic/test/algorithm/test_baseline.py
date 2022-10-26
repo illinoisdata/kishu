@@ -14,7 +14,7 @@ class TestOptimizerBaselines(unittest.TestCase):
 
         # Tests that all VSs are migrated.
         vss_to_migrate = opt.select_vss()
-        self.assertEqual(vss_to_migrate, {graph.variable_snapshots["x"][0], graph.variable_snapshots["y"][0]})
+        self.assertEqual({graph.variable_snapshots["x"][0], graph.variable_snapshots["y"][0]}, vss_to_migrate)
 
     def test_recompute_all(self):
         # Setup problem
@@ -25,7 +25,7 @@ class TestOptimizerBaselines(unittest.TestCase):
 
         # Tests that all VSs are recomputed.
         vss_to_migrate = opt.select_vss()
-        self.assertEqual(vss_to_migrate, set())
+        self.assertEqual(set(), vss_to_migrate)
 
     def test_random(self):
         # Setup problem
@@ -36,8 +36,8 @@ class TestOptimizerBaselines(unittest.TestCase):
 
         # Tests that some VSs are migrated.
         vss_to_migrate = opt.select_vss()
-        self.assertGreaterEqual(len(vss_to_migrate), 0)
-        self.assertLessEqual(len(vss_to_migrate), 2)
+        self.assertGreaterEqual(0, len(vss_to_migrate))
+        self.assertLessEqual(2, len(vss_to_migrate))
 
 
 if __name__ == '__main__':

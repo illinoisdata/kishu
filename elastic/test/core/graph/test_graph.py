@@ -21,9 +21,9 @@ class TestGraph(unittest.TestCase):
         vs3 = self.graph.create_variable_snapshot("y", 1, False)
 
         # VSs are versioned correcly
-        self.assertEqual(vs1.version, 0)
-        self.assertEqual(vs2.version, 1)  # vs2 is second VS for variable x
-        self.assertEqual(vs3.version, 0)
+        self.assertEqual(0, vs1.version)
+        self.assertEqual(1, vs2.version)  # vs2 is second VS for variable x
+        self.assertEqual(0, vs3.version)
 
         # VSs are stored in the graph correctly
         self.assertEqual({"x", "y"}, set(self.graph.variable_snapshots.keys()))
@@ -41,11 +41,8 @@ class TestGraph(unittest.TestCase):
         self.assertEqual(1, len(self.graph.output_nodesets))
 
         # Newly create OE correctly set as adjacent OE of input and output nodesets
-        self.assertEqual(src.operation_event, self.graph.operation_events[0])
-        self.assertEqual(dst.operation_event, self.graph.operation_events[0])
-
-    def get_test_nodes(self, count):
-        return [self.get_test_node(str(i), 1) for i in range(count)]
+        self.assertTrue(src.operation_event == self.graph.operation_events[0])
+        self.assertTrue(dst.operation_event == self.graph.operation_events[0])
 
 
 if __name__ == '__main__':
