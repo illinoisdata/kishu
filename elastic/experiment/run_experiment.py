@@ -13,15 +13,18 @@ Annotated notebook summary:
     1. Create a cell with this line:
         %load_ext elastic.core.notebook.elastic_notebook
         This may require setting up the syspath.
-    2. Add %%RecordEvent before the first line of each cell.
-    3. Set the optimizer, i.e. %SetOptimizer exact. See 'ElasticNotebook.py' for a list of optimizers.
-    4. Either set or profile the migration speed, i.e. %ProfileMigrationSpeed file.pickle / %SetMigrationSpeed 100000.
-    5. Migrate the notebook: %Checkpoint file.py
+    2. Set the log location and notebook name, i.e. %SetWriteLogLocation file.py, %SetNotebookName numpy
+    3. Add %%RecordEvent before the first line of each cell.
+    4. Set the optimizer, i.e. %SetOptimizer exact. See 'ElasticNotebook.py' for a list of optimizers.
+    5. Either set or profile the migration speed, i.e. %ProfileMigrationSpeed file.pickle / %SetMigrationSpeed 100000.
+    6. Migrate the notebook: %Checkpoint file.py
 Recovery notebook summary:
     1. Create a cell with this line:
         %load_ext elastic.core.notebook.elastic_notebook
         This may require setting up the syspath.
-    2. Recover the notebook: %LoadCheckpoint file.py
+    2. Set the log location, notebook name, and optimizer, i.e. %SetWriteLogLocation file.py, %SetNotebookName numpy,
+        %SetOptimizer exact.
+    3. Recover the notebook: %LoadCheckpoint file.py
 """
 
 import nbformat
