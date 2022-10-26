@@ -14,6 +14,7 @@ TEST_FILE_PATH = "./tmp_test_file"
 KEY = "project"
 VALUE = "elastic-notebook"
 
+
 class TestFilesystemAdapter(unittest.TestCase):
     def setUp(self) -> None:
         self.adapter = FilesystemAdapter()

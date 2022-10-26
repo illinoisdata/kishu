@@ -4,33 +4,45 @@
 # Copyright 2021-2022 University of Illinois
 
 import unittest
-from unittest import mock
-import uuid
 from elastic.core.graph.graph import DependencyGraph
-from elastic.core.graph.node import Node
-from elastic.core.graph.node_set import NodeSet, NodeSetType
-from elastic.core.notebook.variable_snapshot import VariableSnapshot
-
-VAR_SIZE=1024
+from elastic.test.test_utils import get_test_input_nodeset, get_test_output_nodeset
 
 
-class TestDependencyGraph(unittest.TestCase):
-    def test_add_edge(self):
-        graph = DependencyGraph()
-        
-        src_nodes, dst_nodes = self.get_test_nodes(2), self.get_test_nodes(3)
-        src, dst, oe = \
-            NodeSet(src_nodes, NodeSetType.INPUT), NodeSet(dst_nodes, NodeSetType.OUTPUT), mock.MagicMock()
-        graph.add_edge(src, dst, oe)
-        
-        self.assertEqual(1, len(graph.edges))
-        self.assertEqual(graph.edges[0], src.edge)
-        self.assertEqual(graph.edges[0], dst.edge)
-        self.assertEqual(graph.edges[0].src, src)
-        self.assertEqual(graph.edges[0].dst, dst)
+class TestGraph(unittest.TestCase):
+    def setUp(self) -> None:
+        self.graph = DependencyGraph()
 
-    def get_test_node(self, name, ver=1):
-        return Node(VariableSnapshot(name, ver, None, None))
+    def test_create_variable_snapshot(self):
+        """
+            Test graph correctly handles versioning of VSs with the same and different names.
+        """
+        vs1 = self.graph.create_variable_snapshot("x", 1, False)
+        vs2 = self.graph.create_variable_snapshot("x", 1, False)
+        vs3 = self.graph.create_variable_snapshot("y", 1, False)
+
+        # VSs are versioned correcly
+        self.assertEqual(vs1.version, 0)
+        self.assertEqual(vs2.version, 1)  # vs2 is second VS for variable x
+        self.assertEqual(vs3.version, 0)
+
+        # VSs are stored in the graph correctly
+        self.assertEqual({"x", "y"}, set(self.graph.variable_snapshots.keys()))
+        self.assertEqual(2, len(self.graph.variable_snapshots["x"]))
+        self.assertEqual(1, len(self.graph.variable_snapshots["y"]))
+
+    def test_add_operation_event(self):
+        src = get_test_input_nodeset([])
+        dst = get_test_output_nodeset([])
+        self.graph.add_operation_event("", 1, 1, src, dst)
+
+        # OE and nodesets are stored in the graph correctly
+        self.assertEqual(1, len(self.graph.operation_events))
+        self.assertEqual(1, len(self.graph.input_nodesets))
+        self.assertEqual(1, len(self.graph.output_nodesets))
+
+        # Newly create OE correctly set as adjacent OE of input and output nodesets
+        self.assertEqual(src.operation_event, self.graph.operation_events[0])
+        self.assertEqual(dst.operation_event, self.graph.operation_events[0])
 
     def get_test_nodes(self, count):
         return [self.get_test_node(str(i), 1) for i in range(count)]

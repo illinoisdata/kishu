@@ -16,3 +16,12 @@ pytz==2021.3
 scipy==1.7.3
 six==1.16.0
 tomli==2.0.1
+ipykernel~=6.16.0
+ipython~=8.5.0
+path~=16.5.0
+nbformat~=5.7.0
+nbconvert~=7.2.1
+setuptools~=60.2.0
+torch~=1.12.1
+matplotlib~=3.6.1
+torchvision~=0.13.1

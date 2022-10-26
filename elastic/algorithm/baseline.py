@@ -7,42 +7,38 @@ import random
 import math
 from typing import List
 from elastic.algorithm.selector import Selector
-from elastic.core.graph.node import Node
+from elastic.core.graph.variable_snapshot import VariableSnapshot
 
 
 class MigrateAllBaseline(Selector):
+    """
+        Migrates all active VSs.
+    """
     def __init__(self, migration_speed_bps=1):
         super().__init__(migration_speed_bps)
 
-    def select_nodes(self):
-        """
-        Returns:
-            List[Node]: the list of all active nodes are returned so that they are all migrated
-        """
-        return self.active_nodes
+    def select_vss(self) -> set:
+        return set(self.active_vss)
 
 
 class RecomputeAllBaseline(Selector):
+    """
+        Recomputes all active VSs.
+    """
     def __init__(self, migration_speed_bps=1):
         super().__init__(migration_speed_bps)
 
-    def select_nodes(self):
-        """
-        Returns:
-            List[Node]: the empty list is returned so that no active nodes are migrated and all recomputed
-        """
-        return []
+    def select_vss(self) -> set:
+        return set()
 
 
 class RandomBaseline(Selector):
+    """
+        Randomly selects some active VSs to migrate according to a Bernoulli process with p = 0.5.
+        NOTE: when this selector is used, the caller should fix a particular seed.
+    """
     def __init__(self, migration_speed_bps=1):
         super().__init__(migration_speed_bps)
 
-    def select_nodes(self):
-        """
-        Returns:
-            List[Node]: a random subset of active nodes is returned
-        """
-        # NOTE: when this selector is used, the caller should fix a particular seed, for example in the 
-        #   automation script for benchmarking
-        return random.sample(self.active_nodes, math.floor(len(self.active_nodes) / 2))
+    def select_vss(self) -> set:
+        return random.sample(self.active_vss, math.floor(len(self.active_vss) / 2))

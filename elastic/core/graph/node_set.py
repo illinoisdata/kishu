@@ -5,26 +5,45 @@
 
 from enum import Enum
 from typing import List
-from elastic.core.graph.node import Node
+from elastic.core.graph.variable_snapshot import VariableSnapshot
 
-# Type of the node set is whether the node set is an input or output of an edge.
+
 class NodeSetType(Enum):
+    """
+        Type of the node set is whether the node set is an input or output of an operation event.
+    """
+
+    # The nodeset is the input nodeset of an OE.
     INPUT = 1
+
+    # The nodeset is the output nodeset of an OE.
     OUTPUT = 2
+
+    # The nodeset is temporarily constructed during graph augmentation stage of an optimization algorithm.
     DUMMY = 3
-    
-# A node set is the set of input/output nodes of an edge.
+
+
 class NodeSet:
-    def __init__(self, nodes: List[Node], type: NodeSetType) -> None:
-        self.nodes = nodes
+    """
+        A node set is the set of input/output variable snapshots of an operation event.
+    """
+    def __init__(self, vs_list: List[VariableSnapshot], nodeset_type: NodeSetType):
+        """
+            Initialize a noteset from a list of variable snapshots.
+            Args:
+                vs_list (list): list of variable snapshots.
+                nodeset_type (NodeSetType): type of nodeset.
+        """
 
-        # Accordingly set this node set as the input/output node set of its nodes
-        for node in self.nodes:
-            if type == NodeSetType.OUTPUT:
-                node.output_nodeset = self
-            elif type == NodeSetType.INPUT:
-                node.input_nodesets.append(self)
-        self.type = type
+        self.vs_list = vs_list
 
-        # The edge this node set is adjacent to.
-        self.edge = None
+        # Accordingly set this node set as the input/output node set of its variable snapshots.
+        for vs in self.vs_list:
+            if nodeset_type == NodeSetType.OUTPUT:
+                vs.output_nodeset = self
+            elif nodeset_type == NodeSetType.INPUT:
+                vs.input_nodesets.append(self)
+        self.type = nodeset_type
+
+        # The operation event this node set is adjacent to.
+        self.operation_event = None
