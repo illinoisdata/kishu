@@ -4,6 +4,8 @@
 # Copyright 2021-2022 University of Illinois
 import os
 import unittest
+
+from IPython.terminal.interactiveshell import TerminalInteractiveShell
 from ipykernel.zmqshell import ZMQInteractiveShell
 
 from elastic.core.notebook.find_input_output_vars import find_input_output_vars
@@ -16,12 +18,17 @@ TEST_FILE_PATH = "./tmp_test_file"
 
 
 class TestFindInputOutputVars(unittest.TestCase):
+    def setUp(self) -> None:
+        self.shell = TerminalInteractiveShell.instance()
 
     def test_simple_case(self):
         """
             Test input and output variables are correctly identified.
         """
-        input_vars, output_vars = find_input_output_vars("y = x", {"x"}, [])
+        self.shell.user_ns["x"] = 1
+        self.shell.user_ns["y"] = 1
+
+        input_vars, output_vars = find_input_output_vars("y = x", {"x"}, self.shell, [])
 
         # x is an input and y is an output.
         self.assertEqual(input_vars, {"x"})
@@ -35,7 +42,10 @@ class TestFindInputOutputVars(unittest.TestCase):
         """
             Test builtin items (i.e. not defined by the user in the current session) are not captured.
         """
-        input_vars, output_vars = find_input_output_vars("y = len(x)", {"x"}, [])
+        self.shell.user_ns["x"] = [1]
+        self.shell.user_ns["y"] = 1
+
+        input_vars, output_vars = find_input_output_vars("y = len(x)", {"x"}, self.shell, [])
 
         # x is an input and y is an output. 'len' is not an input.
         self.assertEqual(input_vars, {"x"})
@@ -45,7 +55,11 @@ class TestFindInputOutputVars(unittest.TestCase):
         """
             Test variable definition order being captured correctly.
         """
-        input_vars, output_vars = find_input_output_vars("y = x\nz = x + 1", {"x"}, [])
+        self.shell.user_ns["x"] = 1
+        self.shell.user_ns["y"] = 1
+        self.shell.user_ns["z"] = 2
+
+        input_vars, output_vars = find_input_output_vars("y = x\nz = x + 1", {"x"}, self.shell, [])
 
         # x is an input and y is an output. 'len' is not an input.
         self.assertEqual(input_vars, {"x"})
@@ -59,7 +73,7 @@ class TestFindInputOutputVars(unittest.TestCase):
         """
             Test deletion of variable marked correctly.
         """
-        input_vars, output_vars = find_input_output_vars("del x", {"x"}, [])
+        input_vars, output_vars = find_input_output_vars("del x", {"x"}, self.shell, [])
 
         # x is an output.
         self.assertEqual(set(output_vars.keys()), {"x"})
@@ -72,7 +86,9 @@ class TestFindInputOutputVars(unittest.TestCase):
         """
             Test declaring a deleted variable in the same cell un-marks the deletion flag.
         """
-        input_vars, output_vars = find_input_output_vars("del x\nx = 1", {"x"}, [])
+        self.shell.user_ns["x"] = 1
+
+        input_vars, output_vars = find_input_output_vars("del x\nx = 1", {"x"}, self.shell, [])
 
         # x is an output.
         self.assertEqual(set(output_vars.keys()), {"x"})
@@ -85,7 +101,9 @@ class TestFindInputOutputVars(unittest.TestCase):
         """
             Test modifying a variable in the cell marks it as both an input and an output.
         """
-        input_vars, output_vars = find_input_output_vars("x += 1", {"x"}, [])
+        self.shell.user_ns["x"] = 2
+
+        input_vars, output_vars = find_input_output_vars("x += 1", {"x"}, self.shell, [])
 
         # x is modified; it is both an input and an output.
         self.assertEqual(set(input_vars), {"x"})
@@ -95,7 +113,10 @@ class TestFindInputOutputVars(unittest.TestCase):
         """
             Test a variable declared and modified in the same cell is not marked as an input.
         """
-        input_vars, output_vars = find_input_output_vars("y = 1\nz = y", {"x"}, [])
+        self.shell.user_ns["y"] = 1
+        self.shell.user_ns["z"] = 1
+
+        input_vars, output_vars = find_input_output_vars("y = 1\nz = y", {"x"}, self.shell, [])
 
         # y should only be an output of the cell.
         self.assertEqual(set(input_vars), set())
@@ -105,32 +126,40 @@ class TestFindInputOutputVars(unittest.TestCase):
         """
             Test a class method call is correctly identified as a modification.
         """
-        input_vars, output_vars = find_input_output_vars("x.reverse()", {"x"}, [])
+        self.shell.user_ns["x"] = [1]
+        self.shell.user_ns["s"] = "str"
 
-        # x is modified; it is both an input and an output.
-        self.assertEqual(set(input_vars), set("x"))
+        input_vars, output_vars = find_input_output_vars("x.reverse()\ns.strip()", {"x", "s"}, self.shell, [])
+
+        # x is not a primitive, so it can potentially be modified; it is both an input and an output.
+        self.assertEqual(set(input_vars), {"x", "s"})
         self.assertEqual(set(output_vars.keys()), {"x"})
 
     def test_pass_to_function(self):
         """
             Test passing a variable to a function is correctly identified as a modification.
         """
-        input_vars, output_vars = find_input_output_vars("print(x)", {"x"}, [])
+        self.shell.user_ns["x"] = [1]
+        self.shell.user_ns["s"] = "str"
 
-        # x is modified; it is both an input and an output.
-        self.assertEqual(set(input_vars), set("x"))
+        input_vars, output_vars = find_input_output_vars("print(x)\nprint(s)", {"x", "s"}, self.shell, [])
+
+        # x is not a primitive, so it can potentially be modified; it is both an input and an output.
+        self.assertEqual(set(input_vars), {"x", "s"})
         self.assertEqual(set(output_vars.keys()), {"x"})
 
     def test_error(self):
         """
             Test correct identification of error line number and skipping of subsequent code.
         """
+        self.shell.user_ns["x"] = 1
+        self.shell.user_ns["y"] = 1
         traceback_str = """
             File "/var/folders/t9/7bppp22j4nq50851rm2rb7780000gn/T/ipykernel_5202/3652387590.py", line 2, in <module>
             print(nonexistent_variable)
         """
         input_vars, output_vars = find_input_output_vars(
-            "y = x\nprint(nonexistent_variable)\nz = x", {"x"}, [traceback_str])
+            "y = x\nprint(nonexistent_variable)\nz = x", {"x"}, self.shell, [traceback_str])
 
         # Since the code stopped on line 2 (print(aaa)), z was never assigned.
         self.assertEqual(set(input_vars), set("x"))

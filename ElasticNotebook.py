@@ -65,7 +65,7 @@ class ElasticNotebook(Magics):
 
         # Find input and output variables of the cell.
         input_variables, output_variables = find_input_output_vars(
-            cell, set(self.dependency_graph.variable_snapshots.keys()), traceback_list)
+            cell, set(self.dependency_graph.variable_snapshots.keys()), self.shell, traceback_list)
 
         # Update the dependency graph.
         update_graph(cell, cell_runtime, start_time, input_variables, output_variables, self.dependency_graph)

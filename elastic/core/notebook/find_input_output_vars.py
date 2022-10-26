@@ -1,15 +1,17 @@
 import dis
 from typing import List
 
-from IPython.core.interactiveshell import ExecutionResult
+from ipykernel.zmqshell import ZMQInteractiveShell
 
 
-def find_input_output_vars(cell: str, existing_variables: set, traceback_list: List) -> (set, dict):
+def find_input_output_vars(cell: str, existing_variables: set, shell: ZMQInteractiveShell,
+                           traceback_list: List) -> (set, dict):
     """
         Captures the input and output variables of the cell.
         Args:
             cell (str): Raw cell cell.
             existing_variables (set): Set of user-defined variables in the current session.
+            shell (ZMQInteractiveShell): interactive Jupyter shell storing the state of the current session.
             traceback_list (List(str)): Potential error from running the cell. The cell stopping halfway due to a
                 runtime error means we should skip reading the rest of the lines as they were not run.
     """
