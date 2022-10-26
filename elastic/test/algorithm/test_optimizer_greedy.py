@@ -1,53 +1,37 @@
 import unittest
 
 import os, sys
-sys.path.insert(0, os.path.abspath("../.."))
-print(sys.path)
-from elastic.algorithm.selector import Selector
+
+from elastic.test.test_utils import get_problem_setting
 from elastic.algorithm.optimizer_greedy import OptimizerGreedy
-from elastic.core.graph.graph import DependencyGraph
-from elastic.core.graph.variable_snapshot import VariableSnapshot
-from elastic.core.graph.operation_event import OperationEvent
-from elastic.core.graph.node_set import NodeSet
-from elastic.core.notebook.variable_snapshot import VariableSnapshot
-from elastic.core.notebook.operation_event import OperationEvent
 
 
-class TestOptimizer(unittest.TestCase):
-    def test_init(self):
-        # Nodes
-        nodes = []
-        for i in range(18):
-            nodes.append(self.get_test_node(str(i), 1))
-
-        # Node sets
-        node_sets = []
-        for i in range(0, 18, 2):
-            node_sets.append(NodeSet([nodes[i], nodes[i + 1]], None))
-        node_sets.append(NodeSet([nodes[3], nodes[6]], None))
-        node_sets.append(NodeSet([nodes[7], nodes[10]], None))
-        node_sets.append(NodeSet([nodes[14], nodes[15]], None))
-
-        # Graph
-        graph = DependencyGraph()
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[0], node_sets[1]))
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[2], node_sets[3]))
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[4], node_sets[5]))
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[9], node_sets[6]))
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[10], node_sets[7]))
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[11], node_sets[8]))
-
+class TestOptimizerGreedy(unittest.TestCase):
+    def test_optimizer_local_min(self):
+        # Setup problem
         opt = OptimizerGreedy(migration_speed_bps=1)
-        graph.trim_graph(opt)
+        graph, active_vss = get_problem_setting()
+        opt.dependency_graph = graph
+        opt.active_vss = active_vss
 
-        self.assertEqual(set([i.vs.name for i in graph.nodes_to_recompute]), set())
+        # Tests that the greedy optimizer does not escape the local minimum and migrates both x and y.
+        vss_to_migrate = opt.select_vss()
+        self.assertEqual(vss_to_migrate, {graph.variable_snapshots["x"][0], graph.variable_snapshots["y"][0]})
 
-    def get_test_node(self, name, ver=1):
-        return VariableSnapshot(VariableSnapshot(name, ver, None, None))
+    def test_optimizer_success(self):
+        # Setup problem
+        opt = OptimizerGreedy(migration_speed_bps=1)
+        graph, active_vss = get_problem_setting()
+        opt.dependency_graph = graph
+        opt.active_vss = active_vss
+
+        # Adjust problem so un-migrating x or y has net 0 gain on checkpointing cost.
+        graph.operation_events[0].cell_runtime = 1.9
+
+        # Tests that the greedy optimizer now correctly recomputes both x and y.
+        vss_to_migrate = opt.select_vss()
+        self.assertEqual(vss_to_migrate, set())
 
 
-    def get_oe(self, duration):
-        return OperationEvent(1, None, None, duration, "", "", [])
-        
 if __name__ == '__main__':
     unittest.main()

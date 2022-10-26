@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import sys, traceback
 import time
 
 from IPython import get_ipython
@@ -53,12 +54,18 @@ class ElasticNotebook(Magics):
 
         # Run the cell.
         start_time = time.time()
-        cell_output = get_ipython().run_cell(cell)
+        try:
+            cell_output = get_ipython().run_cell(cell)
+            cell_output.raise_error()
+            traceback_list = []
+        except:
+            _, _, tb = sys.exc_info()
+            traceback_list = traceback.extract_tb(tb).format()
         cell_runtime = time.time() - start_time
 
         # Find input and output variables of the cell.
         input_variables, output_variables = find_input_output_vars(
-            cell, set(self.dependency_graph.variable_snapshots.keys()), cell_output)
+            cell, set(self.dependency_graph.variable_snapshots.keys()), traceback_list)
 
         # Update the dependency graph.
         update_graph(cell, cell_runtime, start_time, input_variables, output_variables, self.dependency_graph)

@@ -1,46 +1,20 @@
 import unittest
 
 from elastic.algorithm.optimizer_exact import OptimizerExact
-from elastic.core.graph.graph import DependencyGraph
-from elastic.core.graph.variable_snapshot import VariableSnapshot
-from elastic.core.graph.operation_event import OperationEvent
-from elastic.core.graph.node_set import NodeSet
+from elastic.test.test_utils import get_problem_setting
 
 
 class TestOptimizerExact(unittest.TestCase):
-    def test_init(self):
-        ## Nodes
-        nodes = []
-        for i in range(18):
-            nodes.append(self.get_test_node(str(i), 1))
-
-        ## Node sets
-        node_sets = []
-        for i in range(0, 18, 2):
-            node_sets.append(NodeSet([nodes[i], nodes[i + 1]], None))
-        node_sets.append(NodeSet([nodes[3], nodes[6]], None))
-        node_sets.append(NodeSet([nodes[7], nodes[10]], None))
-        node_sets.append(NodeSet([nodes[14], nodes[15]], None))
-
-        ## Graph
-        graph = DependencyGraph()
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[0], node_sets[1]))
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[2], node_sets[3]))
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[4], node_sets[5]))
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[9], node_sets[6]))
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[10], node_sets[7]))
-        graph.edges.append(OperationEvent(self.get_oe(2), node_sets[11], node_sets[8]))
-
+    def test_optimizer(self):
+        # Setup problem
         opt = OptimizerExact(migration_speed_bps=1)
-        graph.trim_graph(opt)
+        graph, active_vss = get_problem_setting()
+        opt.dependency_graph = graph
+        opt.active_vss = active_vss
 
-        # TODO: think of an illustrating example
-
-    def get_test_node(self, name, ver=1):
-        return VariableSnapshot(VariableSnapshot(name, ver, None, None))
-
-    def get_oe(self, duration):
-        return OperationEvent(1, None, None, duration, "", "", [])
+        # Tests that the exact optimizer correctly escapes the local minimum by recomputing both x and y.
+        vss_to_migrate = opt.select_vss()
+        self.assertEqual(vss_to_migrate, set())
 
 
 if __name__ == '__main__':

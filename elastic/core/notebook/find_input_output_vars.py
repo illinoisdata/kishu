@@ -1,16 +1,17 @@
 import dis
+from typing import List
 
 from IPython.core.interactiveshell import ExecutionResult
 
 
-def find_input_output_vars(cell: str, existing_variables: set, cell_output: ExecutionResult) -> (set, dict):
+def find_input_output_vars(cell: str, existing_variables: set, traceback_list: List) -> (set, dict):
     """
         Captures the input and output variables of the cell.
         Args:
             cell (str): Raw cell cell.
             existing_variables (set): Set of user-defined variables in the current session.
-            cell_output (ExecutionResult): Output from running the cell. The cell stopping halfway due to a runtime
-                error means we should skip reading the rest of the lines as they were not run.
+            traceback_list (List(str)): Potential error from running the cell. The cell stopping halfway due to a
+                runtime error means we should skip reading the rest of the lines as they were not run.
     """
     # Disassemble cell instructions
     instructions = dis.get_instructions(cell)
@@ -25,16 +26,18 @@ def find_input_output_vars(cell: str, existing_variables: set, cell_output: Exec
     output_idx = 0
     for instruction in instructions:
         """
-        TODO: Handle one remaining edge case. See examples/numpy.ipynb:
-            np.set_seed(0)
-            list.reverse()
-        For simplicity, we assume all class methods (i.e. list.sort()) will modify the class instance when called.
-        In this case, 'np' should be both an input and output variable of the cell.
-        The cell below currently only identifies np as an input variable of the cell.
+        TODO: Handle edge cases related to:
+            (1) Class method call: np.set_seed(0), list.reverse()
+            (2) Pass to function: modify(x)
+        For simplicity, we assume both cases will modify the variable., i.e. 'np', 'list', and 'x' should be both an 
+        input and output variables of the cell.
+        The cell below currently only identifies them as an input variable of the cell.
         
-        function(x)
-        
-        Check if variable is a primitive.
+        TODO: Handle error during execution:
+            y = x
+            print(nonexistent_variable)
+            z = x
+        In this case, only y should be an output of the cell - we never got to execute 'z = x'.
         """
         # Input variable
         if instruction.opname == "LOAD_NAME" and (instruction.argrepr not in input_variables) and \

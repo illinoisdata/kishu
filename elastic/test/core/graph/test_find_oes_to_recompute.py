@@ -4,66 +4,62 @@
 # Copyright 2021-2022 University of Illinois
 
 import unittest
-from unittest import mock
-from elastic.core.graph.operation_event import OperationEvent
-from elastic.core.graph.graph import DependencyGraph
-from elastic.core.graph.variable_snapshot import VariableSnapshot
-from elastic.core.graph.node_set import NodeSet, NodeSetType
 from elastic.core.graph.find_oes_to_recompute import find_oes_to_recompute
+from elastic.test.test_utils import get_test_vs, get_test_oe, get_test_input_nodeset, get_test_output_nodeset
 
 
 class TestFindOesToRecompute(unittest.TestCase):
-    def setUp(self):
-        global operation_events
-        operation_events = []
-
-    def tearDown(self):
-        global operation_events
-        operation_events = []
     
     def test_find_path_empty_graph(self):
-        graph = DependencyGraph()
-        recompute_seq = find_edges_to_recompute(graph)
-        self.assertEqual(0, len(recompute_seq))
+        """
+            Test function works for empty graph.
+        """
+        oes_to_recompute = find_oes_to_recompute(set(), set())
+        self.assertEqual(0, len(oes_to_recompute))
         
     def test_find_path_two_nodesets(self):
-        graph = DependencyGraph()
+        """
+            Test function works for simple single cell execution.
+        """
+        vs = get_test_vs("x")
+        src = get_test_input_nodeset([])
+        dst = get_test_output_nodeset([vs])
+        oe = get_test_oe(1, src=src, dst=dst)
+        src.operation_event = oe
+        dst.operation_event = oe
 
-        src_nodes, dst_nodes = [], [self.get_test_node("oe1v1", 1)]
-        src, dst, oe = \
-            NodeSet(src_nodes, NodeSetType.INPUT), NodeSet(dst_nodes, NodeSetType.OUTPUT), mock.MagicMock()
-        graph.add_operation_event(src, dst, oe)
-        graph.nodes_to_recompute = dst_nodes
-
-        recompute_seq = find_edges_to_recompute(graph)
-        self.assertEqual(1, len(recompute_seq))
+        oes_to_recompute = find_oes_to_recompute(set(), {vs})
+        self.assertEqual({oe}, oes_to_recompute)
     
     def test_find_path_multiple_edges(self):
-        graph = DependencyGraph()
-        
-        oe1v1 = np.array([])
-        src_nodes, dst_nodes = [], [self.get_test_node("oe1v1", 1)]
-        src, dst, oe1 = \
-            NodeSet(src_nodes, NodeSetType.INPUT), NodeSet(dst_nodes, NodeSetType.OUTPUT), self.get_oe(0)
-        graph.add_operation_event(src, dst, oe1)
-        graph.nodes_to_recompute = dst_nodes
+        """
+            Test function BFS works for more complicated problem settings.
+        """
+        vs1 = get_test_vs("x")
+        vs2 = get_test_vs("y")
+        vs3 = get_test_vs("z")
 
-        src_nodes, dst_nodes = dst_nodes, [self.get_test_node("oe2v1", 1),
-                                           self.get_test_node("oe2v2", 2)]
-        src, dst, oe2 = \
-            NodeSet(src_nodes, NodeSetType.INPUT), NodeSet(dst_nodes, NodeSetType.OUTPUT), self.get_oe(1)
-        graph.add_operation_event(src, dst, oe2)
+        src1 = get_test_input_nodeset([])
+        dst1 = get_test_output_nodeset([vs1])
+        oe1 = get_test_oe(1, src=src1, dst=dst1)
+        src1.operation_event = oe1
+        dst1.operation_event = oe1
 
-        graph.nodes_to_recompute = src_nodes
-        recompute_seq = find_edges_to_recompute(graph)
-        self.assertEqual(1, len(recompute_seq)) # 1 var in oe1 is still active
+        src2 = get_test_input_nodeset([vs1])
+        dst2 = get_test_output_nodeset([vs2, vs3])
+        oe2 = get_test_oe(1, src=src2, dst=dst2)
+        src2.operation_event = oe2
+        dst2.operation_event = oe2
 
-        graph.nodes_to_recompute = src_nodes + [dst_nodes[0]]
-        recompute_seq = find_edges_to_recompute(graph)
-        self.assertEqual(2, len(recompute_seq)) # 1 var in oe1 and 1 var in oe2 need to be recomputed
+        oes_to_recompute = find_oes_to_recompute({vs1}, {vs2, vs3})
+        self.assertEqual({oe2}, oes_to_recompute)  # both vars in dst2 need to be recomputed
 
-    def get_test_vs(self, name, ver=1, index=0):
-        return VariableSnapshot(name, ver, index, False)
-    
-    def get_test_oe(self, cell_num):
-        return OperationEvent(cell_num, None, None, None, "", "", [])
+        oes_to_recompute = find_oes_to_recompute({vs3}, {vs1, vs2})
+        self.assertEqual({oe1, oe2}, oes_to_recompute)  # 1 var in dst1 and 1 var in dst2 need to be recomputed
+
+        oes_to_recompute = find_oes_to_recompute({}, {vs2, vs3})
+        self.assertEqual({oe1, oe2}, oes_to_recompute)  # recomputing y and z require rerunning both cells
+
+
+if __name__ == '__main__':
+    unittest.main()
