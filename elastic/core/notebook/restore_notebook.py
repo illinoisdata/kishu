@@ -43,7 +43,7 @@ def restore_notebook(graph: DependencyGraph, shell: ZMQInteractiveShell, variabl
     recompute_end = time.time()
     if write_log_location:
         with open('results/output_' + notebook_name + '_' + optimizer_name + '.txt', 'a') as f:
-            f.write('Recompute stage took - ' + repr(recompute_end - recompute_start) + " seconds" + '\\n')
+            f.write('Recompute stage took - ' + repr(recompute_end - recompute_start) + " seconds" + '\n')
 
 
 

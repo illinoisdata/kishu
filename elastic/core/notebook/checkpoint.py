@@ -48,8 +48,8 @@ def checkpoint(graph: DependencyGraph, shell: ZMQInteractiveShell, selector: Sel
     optimize_end = time.time()
 
     if write_log_location:
-        with open('results/output_' + notebook_name + '_' + optimizer_name + '.txt', 'a') as f:
-            f.write('\\nOptimize stage took - ' + repr(optimize_end - optimize_start) + " seconds" + '\\n')
+        with open(write_log_location + '/output_' + notebook_name + '_' + optimizer_name + '.txt', 'a') as f:
+            f.write('\nOptimize stage took - ' + repr(optimize_end - optimize_start) + " seconds" + '\n')
 
     print("---------------------------")
     print("variables to migrate:")
@@ -77,5 +77,5 @@ def checkpoint(graph: DependencyGraph, shell: ZMQInteractiveShell, selector: Sel
     migrate_end = time.time()
 
     if write_log_location:
-        with open('results/output_' + notebook_name + '_' + optimizer_name + '.txt', 'a') as f:
-            f.write('Migrate stage took - ' + repr(migrate_end - migrate_start) + " seconds" + '\\n')
+        with open(write_log_location + '/output_' + notebook_name + '_' + optimizer_name + '.txt', 'a') as f:
+            f.write('Migrate stage took - ' + repr(migrate_end - migrate_start) + " seconds" + '\n')

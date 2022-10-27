@@ -36,7 +36,7 @@ def resume(filename: str, write_log_location=None, notebook_name=None, optimizer
 
     if write_log_location:
         with open('results/output_' + notebook_name + '_' + optimizer_name + '.txt', 'a') as f:
-            f.write('Reload stage took - ' + repr(load_end - load_start) + " seconds" + '\\n')
+            f.write('Reload stage took - ' + repr(load_end - load_start) + " seconds\n")
 
     return metadata.get_dependency_graph(), metadata.get_variables(), metadata.get_vss_to_migrate(), \
         metadata.get_vss_to_recompute(), metadata.get_oes_to_recompute()
