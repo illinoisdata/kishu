@@ -27,7 +27,7 @@ DONE    1. Create a cell with this line:
         This may require setting up the syspath.
 DONE    2. Set the log location, notebook name, and optimizer, i.e. %SetWriteLogLocation file.py, %SetNotebookName numpy,
         %SetOptimizer exact.
-    3. Recover the notebook: %LoadCheckpoint file.py
+DONE    3. Recover the notebook: %LoadCheckpoint file.py
 """
 
 import nbformat
@@ -106,14 +106,6 @@ def run_experiment(notebook="numpy.ipynb", optimizer="exact"):
                     nbformat.v4.new_code_cell(e.set_migration_speed(migration_speed)),
                     nbformat.v4.new_code_cell(e.migrate_notebook(migration_file_name))]
 
-    # Print to check if cells have been modified appropriately
-    i = 1
-    for cell in nb["cells"]:
-        print("cell source -",i," = \n",cell["source"])
-        print("\n")
-        i+=1
-
-
     # execute the updated notebook
     ep = ExecutePreprocessor(timeout=600, kernel_name='python3')
     ep.preprocess(nb)
@@ -125,12 +117,5 @@ def run_experiment(notebook="numpy.ipynb", optimizer="exact"):
                             nbformat.v4.new_code_cell(e.set_write_location(log_location)),
                             nbformat.v4.new_code_cell(e.set_notebook_name(notebook)),
                             nbformat.v4.new_code_cell(e.load_checkpoint(migration_file_name))]
-
-    # Print to check if cells have been modified appropriately
-    # i = 1
-    # for cell in nb_recover["cells"]:
-    #     print("cell source -",i," = \n",cell["source"])
-    #     print("\n")
-    #     i+=1
 
     ep.preprocess(nb_recover)
