@@ -5,6 +5,7 @@ import time
 
 from IPython import get_ipython
 from IPython.core.magic import (Magics, magics_class, cell_magic, line_magic)
+from OptimizerType import OptimizerType
 
 from elastic.core.common.profile_migration_speed import profile_migration_speed
 from elastic.core.notebook.checkpoint import checkpoint
@@ -116,16 +117,16 @@ class ElasticNotebook(Magics):
                 optimizer: Optimizer to use.
         """
         self.optimizer_name = optimizer
-
-        if optimizer == "exact":
+        
+        if optimizer == OptimizerType.EXACT.value:
             self.selector = OptimizerExact(self.migration_speed_bps)
-        elif optimizer == "greedy":
+        elif optimizer == OptimizerType.GREEDY.value:
             self.selector = OptimizerGreedy(self.migration_speed_bps)
-        elif optimizer == "random":
+        elif optimizer == OptimizerType.RANDOM.value:
             self.selector = RandomBaseline(self.migration_speed_bps)
-        elif optimizer == "migrate_all":
+        elif optimizer == OptimizerType.MIGRATE_ALL.value:
             self.selector = MigrateAllBaseline(self.migration_speed_bps)
-        elif optimizer == "recompute_all":
+        elif optimizer == OptimizerType.RECOMPUTE_ALL.value:
             self.selector = RecomputeAllBaseline(self.migration_speed_bps)
 
     @line_magic
@@ -135,6 +136,7 @@ class ElasticNotebook(Magics):
         """
         self.write_log_location = filename
 
+    @line_magic
     def SetNotebookName(self, name=''):
         """
             Sets the notebook name for the log file. For experiments only.
