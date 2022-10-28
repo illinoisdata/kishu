@@ -25,3 +25,5 @@ setuptools~=60.2.0
 torch~=1.12.1
 matplotlib~=3.6.1
 torchvision~=0.13.1
+
+polars~=0.14.24
