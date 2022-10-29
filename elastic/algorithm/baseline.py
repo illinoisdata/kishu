@@ -6,6 +6,9 @@
 import random
 import math
 from typing import List
+
+import numpy as np
+
 from elastic.algorithm.selector import Selector
 from elastic.core.graph.variable_snapshot import VariableSnapshot
 
@@ -18,7 +21,11 @@ class MigrateAllBaseline(Selector):
         super().__init__(migration_speed_bps)
 
     def select_vss(self) -> set:
-        return set(self.active_vss)
+        vss_to_migrate = set()
+        for vs in self.active_vss:
+            if vs.size < np.inf:
+                vss_to_migrate.add(vs)
+        return vss_to_migrate
 
 
 class RecomputeAllBaseline(Selector):
@@ -41,4 +48,8 @@ class RandomBaseline(Selector):
         super().__init__(migration_speed_bps)
 
     def select_vss(self) -> set:
-        return random.sample(self.active_vss, math.floor(len(self.active_vss) / 2))
+        vss_to_migrate = set()
+        for vs in self.active_vss:
+            if vs.size < np.inf and random.random() < 0.5:
+                vss_to_migrate.add(vs)
+        return vss_to_migrate

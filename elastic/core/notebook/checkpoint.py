@@ -4,11 +4,14 @@
 # Copyright 2021-2022 University of Illinois
 import time
 
+import numpy as np
+
 from elastic.algorithm.selector import Selector
 from elastic.core.graph.graph import DependencyGraph
 from elastic.core.graph.find_oes_to_recompute import find_oes_to_recompute
 from elastic.core.io.migrate import migrate
 from elastic.core.common.profile_variable_size import profile_variable_size
+from elastic.core.io.pickle import is_picklable
 from ipykernel.zmqshell import ZMQInteractiveShell
 
 
@@ -36,7 +39,11 @@ def checkpoint(graph: DependencyGraph, shell: ZMQInteractiveShell, selector: Sel
 
     # Profile the size of each variable defined in the current session.
     for active_vs in active_vss:
-        active_vs.size = profile_variable_size(shell.user_ns[active_vs.name])
+        if is_picklable(shell.user_ns[active_vs.name]):
+            active_vs.size = profile_variable_size(shell.user_ns[active_vs.name])
+        else:
+            # If we can't pickle the object, we set migration cost to infinity and let optimizer handle the rest.
+            active_vs.size = np.inf
 
     # Initialize the optimizer.
     selector.dependency_graph = graph

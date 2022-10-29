@@ -6,9 +6,29 @@
 import dill
 import pickle
 
+import pandas as pd
+import polars as pl
+
 
 def is_picklable(obj):
-    return _is_picklable_raw(obj)
+    """
+        Checks whether an object is pickleable.
+    """
+    if is_exception(obj):
+        return True
+    try:
+        # This function can crash.
+        return _is_picklable_dill(obj)
+    except Exception:
+        return False
+
+
+def is_exception(obj):
+    """
+        List of objects which _is_picklable_dill returns false (or crashes) but are picklable.
+    """
+    exceptions = [pd.DataFrame, pl.DataFrame]
+    return type(obj) in exceptions
 
 
 def _is_picklable_raw(obj):
