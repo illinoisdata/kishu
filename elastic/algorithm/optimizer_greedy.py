@@ -132,8 +132,8 @@ class OptimizerGreedy(Selector):
                 migrated_node_sets (set): set of nodesets to migrate.
         """
         return self.compute_migration_cost(migrated_node_sets) + \
-               self.compute_recomputation_cost(
-                   self.active_node_sets.difference(migrated_node_sets))
+            self.compute_recomputation_cost(
+                self.active_node_sets.difference(migrated_node_sets))
 
     def select_vss(self) -> set:
         self.construct_graph()
@@ -141,7 +141,8 @@ class OptimizerGreedy(Selector):
         # start with migrating all, greedily un-migrate node sets
         migrated_node_sets = set()
         for node_set in self.active_node_sets:
-            migrated_node_sets.add(node_set)
+            if self.compute_migration_cost({node_set}) != np.inf:
+                migrated_node_sets.add(node_set)
 
         while True:
             # Find best nodeset to un-migrate
