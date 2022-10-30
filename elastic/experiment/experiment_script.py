@@ -5,17 +5,21 @@ from OptimizerType import OptimizerType
 
 # For each notebook, run the experiment script once per optimizer.
 
+print("Download plays.csv and week1.csv from " +
+    "https://www.kaggle.com/code/kalilurrahman/nfl-data-bowl-2023-offensive-plays-eda/data" +
+    " and place it in the experiment/notebooks/data/ directory.")
 run_experiment(notebook = "nfl.ipynb", optimizer = OptimizerType.EXACT.value)
 run_experiment(notebook = "nfl.ipynb", optimizer = OptimizerType.GREEDY.value)
 run_experiment(notebook = "nfl.ipynb", optimizer = OptimizerType.RANDOM.value)
 run_experiment(notebook = "nfl.ipynb", optimizer = OptimizerType.MIGRATE_ALL.value)
 run_experiment(notebook = "nfl.ipynb", optimizer = OptimizerType.RECOMPUTE_ALL.value)
 
-# run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.EXACT.value)
-# run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.GREEDY.value)
-# run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.RANDOM.value)
-# run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.MIGRATE_ALL.value)
-# run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.RECOMPUTE_ALL.value)
+
+run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.EXACT.value)
+run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.GREEDY.value)
+run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.RANDOM.value)
+run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.MIGRATE_ALL.value)
+run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.RECOMPUTE_ALL.value)
 
 # run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.EXACT.value)
 # run_experiment(notebook = "numpy.ipynb", optimizer = OptimizerType.GREEDY.value)
