@@ -49,7 +49,7 @@ class TestFindInputOutputVars(unittest.TestCase):
 
         # x is an input and y is an output. 'len' is not an input.
         self.assertEqual({"x"}, input_vars)
-        self.assertEqual({"y"}, set(output_vars.keys()))
+        self.assertEqual({"x", "y"}, set(output_vars.keys()))
 
     def test_order(self):
         """

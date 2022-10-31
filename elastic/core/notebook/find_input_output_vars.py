@@ -1,11 +1,15 @@
+from ast import Str
 import dis
-from typing import List
+import re
+import string
+from typing import List, Tuple
 
 from ipykernel.zmqshell import ZMQInteractiveShell
+from pyparsing import line_end
 
 
 def find_input_output_vars(cell: str, existing_variables: set, shell: ZMQInteractiveShell,
-                           traceback_list: List) -> (set, dict):
+                           traceback_list: List) -> Tuple[set, dict]:
     """
         Captures the input and output variables of the cell.
         Args:
@@ -15,6 +19,13 @@ def find_input_output_vars(cell: str, existing_variables: set, shell: ZMQInterac
             traceback_list (List(str)): Potential error from running the cell. The cell stopping halfway due to a
                 runtime error means we should skip reading the rest of the lines as they were not run.
     """
+    # Find first line where execution fails in given list and assign to break_line
+    line_numbers = []
+    for str in traceback_list:
+        line_numbers.append(int(re.findall("line (\d+)", str)[0]))
+    break_line = min(line_numbers) if len(traceback_list) != 0 else -1
+    last_variable = ""
+
     # Disassemble cell instructions
     instructions = dis.get_instructions(cell)
 
@@ -41,14 +52,25 @@ def find_input_output_vars(cell: str, existing_variables: set, shell: ZMQInterac
             z = x
         In this case, only y should be an output of the cell - we never got to execute 'z = x'.
         """
+        # Check if current instruction is at or past break line and breaks for loop if true
+        if instruction.starts_line == break_line and break_line >= 0:
+            break
         # Input variable
         if instruction.opname == "LOAD_NAME" and (instruction.argrepr not in input_variables) and \
                 (instruction.argrepr not in output_variables):
-
+            # Keeps track of last variable that was loaded as an input
+            last_variable = instruction.argrepr
             # Handles the case where argrepr is a builtin (i.e. 'len()'). We don't want to identify an argrepr
             # as an input variable if it wasn't created/imported by the user.
             if instruction.argrepr in existing_variables:
                 input_variables.add(instruction.argrepr)
+
+        # Checks to see if an input was not a primitive type and was used in the input of a function
+        elif instruction.opname == "CALL_FUNCTION" or instruction.opname == "CALL_METHOD":
+            if type(shell.user_ns[last_variable]) not in (int, float, type(""), bool):
+                if last_variable in existing_variables:
+                    output_variables[last_variable] = [output_idx, False]
+                    output_idx += 1
 
         # Output variable
         elif instruction.opname == "STORE_NAME" or instruction.opname == "DELETE_NAME":
