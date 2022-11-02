@@ -9,14 +9,14 @@ class TestProfileMigrationSpeed(unittest.TestCase):
         """
             Profiled migration speed should be nonzero.
         """
-        self.assertLess(0, profile_migration_speed("../../../examples"))
+        self.assertLess(0, profile_migration_speed("."))
 
     def test_function_runtime(self):
         """
             Function should complete in less than 1 second.
         """
         start = time.time()
-        profile_migration_speed("../../../examples")
+        profile_migration_speed(".")
         duration = time.time() - start
         self.assertGreaterEqual(1.1, duration)  # Allow some leeway
 
