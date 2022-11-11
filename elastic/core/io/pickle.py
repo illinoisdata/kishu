@@ -9,6 +9,7 @@ import pickle
 import pandas as pd
 import polars as pl
 import inspect, os
+import scipy
 
 
 def is_picklable(obj):
@@ -21,14 +22,18 @@ def is_picklable(obj):
         # This function can crash.
         return _is_picklable_dill(obj)
     except Exception:
-        return False
+        try:
+            # Double check with function from pickle module
+            return _is_picklable_raw(obj)
+        except Exception:
+            return False
 
 
 def is_exception(obj):
     """
         List of objects which _is_picklable_dill returns false (or crashes) but are picklable.
     """
-    exceptions = [pd.DataFrame, pl.DataFrame]
+    exceptions = [pd.DataFrame, pl.DataFrame, scipy.sparse.csr.csr_matrix]
     return type(obj) in exceptions
 
 

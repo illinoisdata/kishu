@@ -63,7 +63,7 @@ def run_notebook(notebook="numpy.ipynb"):
     """
     # Experiment Code has code cells predefined
     migration_file_name = MIGRATION_FILE_DIR + notebook + ".pickle"
-    migration_speed = "200000000"  # bps
+    migration_speed = "150000000"  # bps
 
     # read notebook
     with open(DIRECTORY + notebook) as f:
@@ -84,7 +84,7 @@ def run_notebook(notebook="numpy.ipynb"):
                         nbformat.v4.new_code_cell(set_write_location(LOG_LOCATION)),
                         nbformat.v4.new_code_cell(set_notebook_name(notebook)),
                         nbformat.v4.new_code_cell(set_migration_speed(migration_speed)),
-                        nbformat.v4.new_code_cell(migrate_notebook(migration_file_name))]
+                        nbformat.v4.new_code_cell(migrate_notebook(migration_file_name + "_" + optimizer_enum.value))]
 
     # execute the updated notebook
     ep = ExecutePreprocessor(timeout=600, kernel_name='python3')
@@ -103,7 +103,7 @@ def restore_notebook(notebook="numpy.ipynb", optimizer='exact'):
                             nbformat.v4.new_code_cell(set_optimizer(optimizer)),
                             nbformat.v4.new_code_cell(set_write_location(LOG_LOCATION)),
                             nbformat.v4.new_code_cell(set_notebook_name(notebook)),
-                            nbformat.v4.new_code_cell(load_checkpoint(migration_file_name))]
+                            nbformat.v4.new_code_cell(load_checkpoint(migration_file_name + "_" + optimizer))]
 
     ep = ExecutePreprocessor(timeout=600, kernel_name='python3')
     ep.preprocess(nb_recover)

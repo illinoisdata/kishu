@@ -66,6 +66,7 @@ class OptimizerGreedy(Selector):
 
         srcs = []
         dsts = []
+        dummies = {}
 
         for oe in self.dependency_graph.operation_events:
             # Add source and destination node sets to graph
@@ -83,31 +84,25 @@ class OptimizerGreedy(Selector):
 
             self.compute_graph.add_edge(src_idx, dst_idx, weight=oe.cell_runtime)
 
-        # Augment compute graph by connecting overlapping destination and source sets
+            # The output node set has a nonempty strict subset of active nodes
+            active_vs_subset = set(oe.dst.vs_list).intersection(self.active_vss)
+            if active_vs_subset and active_vs_subset != set(oe.dst.vs_list):
+                dst_active_subset_idx = self.get_new_idx()
+                self.compute_graph.add_node(dst_active_subset_idx)
+                self.idx_to_node_set[dst_active_subset_idx] = NodeSet(list(active_vs_subset), NodeSetType.DUMMY)
+                dummies[dst_idx] = dst_active_subset_idx
+                self.compute_graph.add_edge(dst_idx, dst_active_subset_idx, weight=np.finfo(float).eps)
+
+        # Augment compute graph with edges between overlapping destination and source sets
         for dst in dsts:
-            has_successor = False
             for src in srcs:
-                # Create intermediate nodeset for inter-cell dependencies
-                if set(self.idx_to_node_set[dst].vs_list).intersection(
-                        set(self.idx_to_node_set[src].vs_list)):
-                    has_successor = True
-                    vs_intersection = set(self.idx_to_node_set[dst].vs_list).intersection(
-                        self.idx_to_node_set[src].vs_list)
-                    vs_intersection_idx = self.get_new_idx()
-                    self.idx_to_node_set[vs_intersection_idx] = NodeSet(list(vs_intersection), NodeSetType.DUMMY)
-
-                    self.compute_graph.add_node(vs_intersection_idx)
-                    self.compute_graph.add_edge(dst, vs_intersection_idx, weight=0)
-                    self.compute_graph.add_edge(vs_intersection_idx, src, weight=0)
-
-            # Create nodeset with subset of active nodes if no successors
-            if not has_successor:
-                active_vs_subset = set(self.idx_to_node_set[dst].vs_list).intersection(self.active_vss)
-                active_vs_subset_idx = self.get_new_idx()
-                self.idx_to_node_set[active_vs_subset_idx] = NodeSet(list(active_vs_subset), NodeSetType.DUMMY)
-
-                self.compute_graph.add_node(active_vs_subset_idx)
-                self.compute_graph.add_edge(dst, active_vs_subset_idx, weight=0)
+                intersect = set(self.idx_to_node_set[dst].vs_list).intersection(
+                        set(self.idx_to_node_set[src].vs_list))
+                if intersect:
+                    if intersect.issubset(self.active_vss) and dst in dummies:
+                        self.compute_graph.add_edge(dummies[dst], src, weight=np.finfo(float).eps)
+                    else:
+                        self.compute_graph.add_edge(dst, src, weight=np.finfo(float).eps)
 
         # Find active node sets consisting entirely of active nodes
         for idx in self.compute_graph.nodes():
@@ -115,11 +110,10 @@ class OptimizerGreedy(Selector):
                     and len(set(self.idx_to_node_set[idx].vs_list)) > 0:
                 self.active_node_sets.add(idx)
 
-        # Find edges required to recompute each node set given all active node sets are migrated
-        for idx in self.compute_graph.nodes():
-            recompute_oes = set()
-            self.dfs(idx, set(), recompute_oes)
-            self.recomputation_oes[idx] = recompute_oes
+        # Find edges required to recompute each node set given all other active node sets are migrated
+        for idx in self.active_node_sets:
+            self.recomputation_oes[idx] = set()
+            self.dfs(idx, set(), self.recomputation_oes[idx])
 
     def compute_migration_cost(self, node_sets: set) -> float:
         """

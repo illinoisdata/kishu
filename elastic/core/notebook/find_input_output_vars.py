@@ -24,7 +24,7 @@ def find_input_output_vars(cell: str, existing_variables: set, shell: ZMQInterac
     for str in traceback_list:
         line_numbers.append(int(re.findall("line (\d+)", str)[0]))
     break_line = min(line_numbers) if len(traceback_list) != 0 else -1
-    last_variable = ""
+    last_variables = []
 
     # Disassemble cell instructions
     instructions = dis.get_instructions(cell)
@@ -59,19 +59,21 @@ def find_input_output_vars(cell: str, existing_variables: set, shell: ZMQInterac
         if instruction.opname == "LOAD_NAME" and (instruction.argrepr not in input_variables) and \
                 (instruction.argrepr not in output_variables):
             # Keeps track of last variable that was loaded as an input
-            last_variable = instruction.argrepr
+            last_variables.append(instruction.argrepr)
             # Handles the case where argrepr is a builtin (i.e. 'len()'). We don't want to identify an argrepr
             # as an input variable if it wasn't created/imported by the user.
             if instruction.argrepr in existing_variables:
                 input_variables.add(instruction.argrepr)
 
         # Checks to see if an input was not a primitive type and was used in the input of a function
-        elif instruction.opname == "CALL_FUNCTION" or instruction.opname == "CALL_METHOD":
-            if last_variable in shell.user_ns and \
-                    type(shell.user_ns[last_variable]) not in (int, float, type(""), bool):
-                if last_variable in existing_variables:
-                    output_variables[last_variable] = [output_idx, False]
-                    output_idx += 1
+        elif instruction.opname == "CALL_FUNCTION" or instruction.opname == "CALL_FUNCTION_KW" or instruction.opname == "CALL_METHOD":
+            for last_variable in last_variables:
+                if last_variable in shell.user_ns and \
+                        type(shell.user_ns[last_variable]) not in (int, float, type(""), bool):
+                    if last_variable in existing_variables:
+                        output_variables[last_variable] = [output_idx, False]
+                        output_idx += 1
+            last_variables = []
 
         # Output variable
         elif instruction.opname == "STORE_NAME" or instruction.opname == "DELETE_NAME":
@@ -85,5 +87,7 @@ def find_input_output_vars(cell: str, existing_variables: set, shell: ZMQInterac
                 output_variables[instruction.argrepr][1] = False
             elif instruction.opname == "DELETE_NAME":
                 output_variables[instruction.argrepr][1] = True
+
+            last_variables = []
 
     return input_variables, output_variables

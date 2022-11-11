@@ -31,16 +31,14 @@ def restore_notebook(graph: DependencyGraph, shell: ZMQInteractiveShell, variabl
     recompute_start = time.time()
     for oe in graph.operation_events:
         if oe in oes_to_recompute:
-            # Rerun cell code
-            print("Rerunning cell", oe.cell_num)
+            # Rerun cell code; suppress stdout when rerunning.
+            print("Rerunning cell", oe.cell_num + 1)
             cell_capture = capture_output(stdout=True, stderr=True, display=True)
             try:
                 with cell_capture:
-                    print('Inside cell capture here')
                     get_ipython().run_cell(oe.cell)
             except Exception as e:
                 raise e
-            # get_ipython().run_cell(oe.cell)
         else:
             # Define output variables in the OE in the order they were defined.
             # i.e. x = 1, y = 2, then we define x followed by y.

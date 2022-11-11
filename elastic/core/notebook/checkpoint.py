@@ -60,23 +60,26 @@ def checkpoint(graph: DependencyGraph, shell: ZMQInteractiveShell, selector: Sel
 
     print("---------------------------")
     print("variables to migrate:")
-    for vs in vss_to_migrate:
-        print(vs.name, vs.size)
+    #for vs in vss_to_migrate:
+    #    print(vs.name, vs.size)
+    print([vs.name for vs in vss_to_migrate])
 
     vss_to_recompute = set(active_vss) - set(vss_to_migrate)
 
     print("---------------------------")
     print("variables to recompute:")
-    for vs in vss_to_recompute:
-        print(vs.name, vs.size)
+    #for vs in vss_to_recompute:
+    #    print(vs.name, vs.size)
+    print([vs.name for vs in vss_to_recompute])
 
     # Find OEs to recompute via BFS from VSs to recompute.
     oes_to_recompute = find_oes_to_recompute(vss_to_migrate, vss_to_recompute)
 
     print("---------------------------")
-    print("OEs to recompute:")
-    for oe in oes_to_recompute:
-        print(oe.cell_num, oe.cell_runtime)
+    print("cells to recompute:")
+    #for oe in oes_to_recompute:
+    #    print(oe.cell_num, oe.cell_runtime)
+    print(sorted([oe.cell_num + 1 for oe in oes_to_recompute]))
 
     # Store the notebook checkpoint to the specified location.
     migrate_start = time.time()
