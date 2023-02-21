@@ -6,7 +6,7 @@ import networkx as nx
 from matplotlib import pyplot as plt
 import pylab as plt
 from networkx.drawing.nx_agraph import graphviz_layout, to_agraph
-import pygraphviz as pgv
+# import pygraphviz as pgv
 from IPython.display import display, Image
 
 from elastic.core.graph.graph import DependencyGraph

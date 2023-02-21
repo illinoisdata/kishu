@@ -22,6 +22,8 @@ from elastic.algorithm.optimizer_exact import OptimizerExact
 from elastic.algorithm.optimizer_greedy import OptimizerGreedy
 from elastic.algorithm.baseline import RandomBaseline, RecomputeAllBaseline, MigrateAllBaseline
 
+class GlobalKeywordException(Exception):
+    pass
 
 @magics_class
 class ElasticNotebook(Magics):
@@ -60,6 +62,11 @@ class ElasticNotebook(Magics):
                 line: unused.
                 cell: cell content.
         """
+
+        # Check the cell for global keyword usage
+        if " global " in cell:
+            raise GlobalKeywordException("Use of 'global' keyword is unsupported")
+        
 
         # Run the cell.
         start_time = time.time()
