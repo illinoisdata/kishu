@@ -79,7 +79,7 @@ def _remove_kishu_functions(func_list):
 
 def _is_kishu_function(func):
     if not (callable(func) and hasattr(func, '__module__')):
-        return false
+        return False
     # if the function's module name is identical to this module name
     # we consider it is a kishu function.
     return func.__module__ == __name__
