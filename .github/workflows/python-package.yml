@@ -41,4 +41,6 @@ jobs:
         pytest elastic
     - name: Test Kishu with pytest
       run: |
-        pytest kishu
+        cd kishu
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pytest .
