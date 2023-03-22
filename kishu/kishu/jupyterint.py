@@ -35,6 +35,13 @@ import shutil
 import time
 
 
+IPYTHON_EXECUTION_COUNT = 'ipython.execution_count'
+
+CMD_CHECKPOINT = 'checkpoint'
+
+CMD_RESTORE = 'restore'
+
+
 # The class MUST call this class decorator at creation time
 @magics_class
 class KishuMagics(Magics):
@@ -59,12 +66,12 @@ class KishuMagics(Magics):
         elif cmd == 'status':
             status = 'enabled' if self.is_enabled() else 'disabled'
             msg = f'kishu status: {status}'
-        elif cmd == 'checkpoint':
+        elif cmd == CMD_CHECKPOINT:
             if len(args) < 1:
                 raise ValueError('A filename must be passed in the first argument.')
             filename = args[0]
             self.cmd_checkpoint(filename)
-        elif cmd == 'restore':
+        elif cmd == CMD_RESTORE:
             if len(args) < 1:
                 raise ValueError('A filename must be passed in the first argument.')
             filename = args[0]
@@ -105,9 +112,16 @@ class KishuMagics(Magics):
         # 3. Save all the objects to filename.dill
         objects = self._collect_non_jupyter_objects()
         chk_dill_file = self._get_dill_file(filename)
-        with open(chk_dill_file, 'wb') as file:
-            dill.dump(objects, file)
+        _save_dill_into(objects, chk_dill_file)
         
+        # 4. Save other metadata
+        ip = get_ipython()
+        meta = {
+            IPYTHON_EXECUTION_COUNT: ip.execution_count
+        }
+        chk_meta_file = self._get_meta_file(filename)
+        _save_dill_into(meta, chk_meta_file)
+
     def cmd_restore(self, filename):
         '''
         The following operations are performed:
@@ -128,9 +142,17 @@ class KishuMagics(Magics):
 
         # 3. Restore all the pickled objects from filename.dill
         chk_dill_file = self._get_dill_file(filename)
-        with open(chk_dill_file, 'rb') as file:
-            objects = dill.load(file)
-            self._set_objects_to_global(objects)
+        objects = _read_dill_from(chk_dill_file)
+        self._set_objects_to_global(objects)
+
+        # 4. Restore other metadata
+        ip = get_ipython()
+        chk_meta_file = self._get_meta_file(filename)
+        meta = _read_dill_from(chk_meta_file)
+        ip.execution_count = meta[IPYTHON_EXECUTION_COUNT]
+
+    def _get_meta_file(self, filename):
+        return filename + '.meta'
 
     def _set_objects_to_global(self, objects):
         '''
@@ -196,9 +218,16 @@ class KishuMagics(Magics):
             current_mtime = os.path.getmtime(filepath)
 
 
-def _reset_nb_and_advance_index(until_no=2):
-    app = JupyterFrontEnd()
-    app.commands.execute('')
+
+def _save_dill_into(object, filename):
+    with open(filename, 'wb') as file:
+        dill.dump(object, file)
+
+
+def _read_dill_from(filename):
+    with open(filename, 'rb') as file:
+        obj = dill.load(file)
+        return obj
 
 
 def _remove_kishu_functions(func_list):
@@ -223,6 +252,12 @@ def _append_kishu_capture(lines):
 
     Otherwise --- if the cell content includes kishu commands (starting
     with '%kishu') --- bypass this preprocessing so nothing is captured.
+
+    Note:
+
+    IPython already stores execution history, which we can access via 
+    `IPython.get_ipython().history_manager.get_range_by_str('')`. Thus, this functionality
+    is redundant, and may get removed in the future.
     '''
     def includes_kishu_commands(lines):
         for line in lines:
