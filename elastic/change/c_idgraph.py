@@ -11,7 +11,8 @@ data = {
   "duration": [50, 40, 45]
 }
 
-myObj = "Hi There"
+a = [1,2,3]
+myObj = [5,a]
 
 print(myObj)
 idgraph.idgraph(myObj)
