@@ -1,0 +1,3 @@
+dill
+ipylab
+ipynbname
