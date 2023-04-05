@@ -3,7 +3,6 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include <abstract.h>
 
 // Return a string rep of idGraph (each string should have id and obj type)
 
