@@ -2,8 +2,8 @@
 
 # Learn more: https://github.com/kennethreitz/setup.py
 
-from setuptools import setup, find_packages
-
+from setuptools import setup, find_packages, Extension
+# from distutils.core import setup, Extension
 
 with open('README.md') as f:
     readme = f.read()
@@ -20,6 +20,6 @@ setup(
     author_email='pyongjoo@umich.edu',
     url='https://github.com/illinoisdata/kishu',
     license=license,
-    packages=find_packages(exclude=('tests', 'docs'))
+    packages=find_packages(exclude=('tests', 'docs')),
+    ext_modules=[Extension("idgraph", ["change/idgraphmodule.c"])]
 )
-
