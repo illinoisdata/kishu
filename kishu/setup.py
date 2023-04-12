@@ -10,6 +10,7 @@ with open('README.md') as f:
 with open('LICENSE') as f:
     license = f.read()
 
+
 setup(
     name='kishu',
     version='0.1.0',
@@ -20,5 +21,6 @@ setup(
     url='https://github.com/illinoisdata/kishu',
     license=license,
     packages=find_packages(exclude=('tests', 'docs')),
-    ext_modules=[Extension("idgraph", ["change/idgraphmodule.c"])]
+    ext_modules=[Extension("idgraph", 
+                    sources = ["change/idgraphmodule.c"])]
 )
