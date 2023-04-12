@@ -215,13 +215,13 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
             }
         }
     }
-    // ToDo - Any other iterable object with __dict__ attribute
+    // Class object with __dict__ attribute
     else if (!PyModule_Check(obj) 
             && PyObject_HasAttrString(obj, "__dict__") 
             && !PyType_Check(obj)){
         node = (idGraphNode*) malloc(sizeof(idGraphNode));
         node->obj_id = (void*)&(*obj);
-        node->obj_type = "set";
+        node->obj_type = "class obj";
         node->children = NULL;
         mark_visited(visited, node);
         PyObject *dict = PyObject_GetAttrString(obj, "__dict__");
