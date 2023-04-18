@@ -8,7 +8,7 @@ def test_construct_fingerprint_list():
     # Init a list
     list1 = [1,2,3]
     # Get its memory addrtess
-    expected_id = str(hex(id(list1)))[2:]
+    expected_id = format(id(list1), 'x')
     expected_type = "list"
 
     profile_dict = {}
@@ -37,7 +37,7 @@ def test_construct_fingerprint_tuple():
     # Init a tuple
     tuple1 = (1,2,3)
     # Get its memory addrtess
-    expected_id = str(hex(id(tuple1)))[2:]
+    expected_id = format(id(tuple1), 'x')
     expected_type = "tuple"
 
     profile_dict = {}
@@ -59,7 +59,7 @@ def test_construct_fingerprint_set():
     # Init a set
     set1 = {"a","b",2,3,"c"}
     # Get its memory addrtess
-    expected_id = str(hex(id(set1)))[2:]
+    expected_id = format(id(set1), 'x')
     expected_type = "set"
 
     profile_dict = {}
@@ -81,7 +81,7 @@ def test_construct_fingerprint_dictionary():
     # Init a dictionary
     dict1 = {1:"UIUC", 2:"DAIS"}
     # Get its memory addrtess
-    expected_id = str(hex(id(dict1)))[2:]
+    expected_id =  format(id(dict1), 'x')
     expected_type = "dictionary"
 
     profile_dict = {}
@@ -107,7 +107,7 @@ def test_construct_fingerprint_class_instance():
     # Init a class
     test1 = test()
     # Get its memory addrtess
-    expected_id = str(hex(id(test1)))[2:]
+    expected_id =  format(id(test1), 'x')
     expected_type = "class object"
 
     profile_dict = {}
@@ -129,13 +129,13 @@ def test_create_idgraph_nested_list():
         Test if idgraph (json rep) is accurately generated for a NESTED list
     """
     set1 = {"UIUC"}
-    expected_set_id = str(hex(id(set1)))[2:]
+    expected_set_id =  format(id(set1), 'x')
     tuple1 = ("DAIS","ELASTIC")
-    expected_tup_id = str(hex(id(tuple1)))[2:]
+    expected_tup_id =  format(id(tuple1), 'x')
     dict1 = {1:"a",2:"b"}
-    expected_dict_id = str(hex(id(dict1)))[2:]
+    expected_dict_id = format(id(dict1), 'x')
     list1 = [set1,tuple1,dict1]
-    expected_list_id = str(hex(id(list1)))[2:]
+    expected_list_id = format(id(list1), 'x')
     profile_dict = {}
 
     idGraph1 = construct_fingerprint(list1,profile_dict)
@@ -164,11 +164,11 @@ def test_create_idgraph_change_in_nested_dictionary():
         Test if idgraph (json rep) is accurately generated for a NESTED dictionary
     """
     tuple1 = ("DAIS","ELASTIC")
-    expected_tup_id = str(hex(id(tuple1)))[2:]
+    expected_tup_id = format(id(tuple1), 'x')
     list1 = [1,2,3]
-    expected_list_id = str(hex(id(list1)))[2:]
+    expected_list_id = format(id(list1), 'x')
     dict1 = {tuple1:"a",2:list1}
-    expected_dict_id = str(hex(id(dict1)))[2:]
+    expected_dict_id = format(id(dict1), 'x')
     profile_dict = {}
 
     idGraph1 = construct_fingerprint(dict1,profile_dict)
@@ -195,11 +195,11 @@ def test_create_idgraph_change_in_cyclic_dictionary():
         Test if idgraph (json rep) is accurately generated for a CYCLIC dictionary
     """
     set1 = {"DAIS","ELASTIC"}
-    expected_set_id = str(hex(id(set1)))[2:]
+    expected_set_id = format(id(set1), 'x')
     list1 = [1,2,3]
-    expected_list_id = str(hex(id(list1)))[2:]
+    expected_list_id = format(id(list1), 'x')
     dict1 = {1:set1,2:list1}
-    expected_dict_id = str(hex(id(dict1)))[2:]
+    expected_dict_id = format(id(dict1), 'x')
     list1[2] = dict1
     profile_dict = {}
 
