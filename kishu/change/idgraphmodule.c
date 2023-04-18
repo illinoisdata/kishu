@@ -1,8 +1,10 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include "cJSON.h"
 
 // Forward declaration
 typedef struct idGraphNode idGraphNode;  
+idGraphNode *check_obj();
 
 /**
  * A struct to represent a linkedlist node holding an idGraphNode.
@@ -62,6 +64,56 @@ char *get_string_rep(idGraphNode* node) {
 }
 
 /**
+ * Constructs a cJSON object representation of the ID Graph (idGraphNode *).
+ *
+ * Recursively iterates over the ID graph and creates a JSON object.
+ *
+ * @param node Head node of the ID graph.
+ *
+ * @return Returns the computed cJSON object.
+ **/
+cJSON *get_json_rep(idGraphNode* node){
+    
+    cJSON *node_obj = cJSON_CreateObject(); 
+
+    // Add the object id and type as JSON string values
+
+    // Allocate memory for the string representation of obj_id
+    size_t id_size = snprintf(NULL, 0, "%p", node->obj_id);
+    int len = id_size;
+    char* obj_id = malloc(len * sizeof(char));
+    snprintf(obj_id, len,"%p",node->obj_id);
+
+    cJSON_AddStringToObject(node_obj, "obj_id", obj_id);
+    cJSON_AddStringToObject(node_obj, "obj_type", node->obj_type);
+    
+    cJSON* children_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(node_obj, "children", children_array);
+    idGraphNodeList* child_node = node->children;
+    while (child_node != NULL) {
+        cJSON_AddItemToArray(children_array, get_json_rep(child_node->child));
+        child_node = child_node->next;
+    }
+    return node_obj;
+}
+
+/**
+ * Generates a JSON string of the ID Graph (idGraphNode *).
+ *
+ * Calls get_json_rep and converts the JSON object into string.
+ *
+ * @param node Head node of the ID graph.
+ *
+ * @return Returns the computed JSON string.
+ **/
+char* get_json_str(idGraphNode* node){
+    cJSON* jsonRep = get_json_rep(node);
+    char* jsonString = cJSON_Print(jsonRep);
+    cJSON_Delete(jsonRep);
+    return jsonString;
+}
+
+/**
  * Adds a child idGraphNode to a parent idGraphNode.
  *
  * @param parent Parent node.
@@ -100,11 +152,37 @@ idGraphNode *find_idGraphNode_in_list(idGraphNodeList* list, void *id) {
  * @param visited The idGraphNodeList.
  * @param node The node to be added to viited list.
  **/
-void mark_visited(idGraphNodeList *visited, idGraphNode* node) {
+idGraphNodeList *mark_visited(idGraphNodeList *visited, idGraphNode* node) {
     idGraphNodeList* new_node = malloc(sizeof(idGraphNodeList));
     new_node->next = visited;
     new_node->child = node;
-    visited = new_node;
+    return new_node;
+}
+
+idGraphNode* create_idGraphNode(void* obj_id, char* obj_type) {
+    idGraphNode* node = (idGraphNode*) malloc(sizeof(idGraphNode));
+    node->obj_id = obj_id;
+    node->obj_type = obj_type;
+    node->children = NULL;
+    return node;
+}
+
+void process_collection_items(PyObject* obj, idGraphNode* node, idGraphNodeList* visited) {
+    Py_ssize_t size = PySequence_Size(obj);
+    for (Py_ssize_t i = 0; i < size; i++) {
+        PyObject *item = PySequence_GetItem(obj, i);
+        void *id = (void*)&(*item);
+        idGraphNode *child = find_idGraphNode_in_list(visited, id);
+        if(child == NULL){
+            child = check_obj(item, visited);
+        }
+        else{
+            child = create_idGraphNode(child->obj_id, child->obj_type);
+        }
+        if(child != NULL){
+            add_child(node,child);
+        }
+    }
 }
 
 /**
@@ -123,51 +201,22 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
     idGraphNode* node = NULL;
     // List
     if (PyList_Check(obj)) {
-        node = (idGraphNode*) malloc(sizeof(idGraphNode));
-        node->obj_id = (void*)&(*obj);
-        node->obj_type = "list";
-        node->children = NULL;
-        mark_visited(visited, node);
-        Py_ssize_t size = PyList_Size(obj);
-        for (Py_ssize_t i = 0; i < size; i++) {
-            PyObject *item = PyList_GetItem(obj, i);
-            void *id = (void*)&(*item);
-            idGraphNode *child = find_idGraphNode_in_list(visited, id);
-            if(child == NULL){
-                child = check_obj(item, visited);
-            }
-            if(child != NULL){
-                add_child(node,child);
-            }
-        }
+        // printf("List\n");
+        node = create_idGraphNode((void*)&(*obj), "list");
+        visited = mark_visited(visited, node);
+        process_collection_items(obj, node, visited);
     }
     // Tuple
     else if (PyTuple_Check(obj)) {
-        node = (idGraphNode*) malloc(sizeof(idGraphNode));
-        node->obj_id = (void*)&(*obj);
-        node->obj_type = "tuple";
-        node->children = NULL;
-        mark_visited(visited, node);
-        Py_ssize_t size = PyTuple_Size(obj);
-        for (Py_ssize_t i = 0; i < size; i++) {
-            PyObject *item = PyTuple_GetItem(obj, i);
-            void *id = (void*)&(*item);
-            idGraphNode *child = find_idGraphNode_in_list(visited, id);
-            if(child == NULL){
-                child = check_obj(item, visited);
-            }
-            if(child != NULL){
-                add_child(node,child);
-            }
-        }
+        node = create_idGraphNode((void*)&(*obj), "tuple");
+        visited = mark_visited(visited, node);
+        process_collection_items(obj, node, visited);
     }
     // Dictionary
     else if (PyDict_Check(obj)) {
-        node = (idGraphNode*) malloc(sizeof(idGraphNode));
-        node->obj_id = (void*)&(*obj);
-        node->obj_type = "dictionary";
-        node->children = NULL;
-        mark_visited(visited, node);
+        // printf("Dict\n");
+        node = create_idGraphNode((void*)&(*obj), "dictionary");
+        visited = mark_visited(visited, node);
         PyObject *keys = PyDict_Keys(obj);
         PyObject *values = PyDict_Values(obj);
         Py_ssize_t size = PyList_Size(keys);
@@ -180,6 +229,13 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
             if(child == NULL){
                 child = check_obj(key, visited);
             }
+            else{
+                idGraphNode *visited_child = (idGraphNode*) malloc(sizeof(idGraphNode));
+                visited_child->obj_id = child->obj_id;
+                visited_child->obj_type = child->obj_type;
+                visited_child->children = NULL;
+                child = visited_child;
+            }
             if(child != NULL){
                 add_child(node,child);
             }
@@ -187,21 +243,27 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
             id = (void*)&(*value);
             child = find_idGraphNode_in_list(visited, id);
             if(child == NULL){
+                printf("Dict's Child NULL\n");
                 child = check_obj(value, visited);
+            }
+            else{
+                idGraphNode *visited_child = (idGraphNode*) malloc(sizeof(idGraphNode));
+                visited_child->obj_id = child->obj_id;
+                visited_child->obj_type = child->obj_type;
+                visited_child->children = NULL;
+                child = visited_child;
             }
             if(child != NULL){
                 add_child(node,child);
             }
         }
     }
-    // ToDo - Set
+    // Set
     else if (PyAnySet_Check(obj)) {
-        node = (idGraphNode*) malloc(sizeof(idGraphNode));
-        node->obj_id = (void*)&(*obj);
-        node->obj_type = "set";
-        node->children = NULL;
-        mark_visited(visited, node);
+        node = create_idGraphNode((void*)&(*obj), "set");
+        visited = mark_visited(visited, node);
 
+        // process_collection_items(obj, node, visited);
         PyObject *iter = PyObject_GetIter(obj);
         PyObject *item;
         while ((item = PyIter_Next(iter))) {
@@ -209,6 +271,13 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
             idGraphNode *child = find_idGraphNode_in_list(visited, id);
             if(child == NULL){
                 child = check_obj(item, visited);
+            }
+            else{
+                idGraphNode *visited_child = (idGraphNode*) malloc(sizeof(idGraphNode));
+                visited_child->obj_id = child->obj_id;
+                visited_child->obj_type = child->obj_type;
+                visited_child->children = NULL;
+                child = visited_child;
             }
             if(child != NULL){
                 add_child(node,child);
@@ -219,11 +288,8 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
     else if (!PyModule_Check(obj) 
             && PyObject_HasAttrString(obj, "__dict__") 
             && !PyType_Check(obj)){
-        node = (idGraphNode*) malloc(sizeof(idGraphNode));
-        node->obj_id = (void*)&(*obj);
-        node->obj_type = "class obj";
-        node->children = NULL;
-        mark_visited(visited, node);
+        node = create_idGraphNode((void*)&(*obj), "class obj");
+        visited = mark_visited(visited, node);
         PyObject *dict = PyObject_GetAttrString(obj, "__dict__");
         if (dict != NULL && PyDict_Check(dict)) {
             Py_ssize_t pos = 0;
@@ -236,6 +302,13 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
                         idGraphNode *child = find_idGraphNode_in_list(visited, id);
                         if (child == NULL) {
                             child = check_obj(value, visited);
+                        }
+                        else{
+                            idGraphNode *visited_child = (idGraphNode*) malloc(sizeof(idGraphNode));
+                            visited_child->obj_id = child->obj_id;
+                            visited_child->obj_type = child->obj_type;
+                            visited_child->children = NULL;
+                            child = visited_child;
                         }
                         if (child != NULL) {
                             add_child(node, child);
@@ -265,11 +338,15 @@ static PyObject *idgraph_create(PyObject *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O", &obj)) {
         return NULL;
     }
+    
     idGraphNodeList* visited = NULL;
     idGraphNode *head = check_obj(obj, visited);
-    char *stringRep = get_string_rep(head);
-    // Py_DECREF(obj);
-    return Py_BuildValue("s", stringRep);
+
+    // char *stringRep = get_string_rep(head);
+    // return Py_BuildValue("s", stringRep);
+
+    char* jsonString = get_json_str(head);
+    return Py_BuildValue("s", jsonString);
 }
 
 /**

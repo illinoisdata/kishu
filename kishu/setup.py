@@ -22,5 +22,5 @@ setup(
     license=license,
     packages=find_packages(exclude=('tests', 'docs')),
     ext_modules=[Extension("idgraph", 
-                    sources = ["change/idgraphmodule.c"])]
+                    sources = ["change/idgraphmodule.c","change/cJSON.c"])]
 )

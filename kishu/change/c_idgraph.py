@@ -25,3 +25,18 @@ def construct_fingerprint(obj, profile_dict) -> str:
     profile_dict["idgraph"] = end - start
 
     return id_graph_str
+
+dic = {"A":1}
+l = [1,2,dic]
+profile = {}
+dic["A"] = l
+print(construct_fingerprint(l,profile))
+
+m = set([1,2,3])
+print(construct_fingerprint(m,profile))
+
+a = (3,4)
+l.append(a)
+
+# l = [1,2,]
+print(construct_fingerprint(l,profile))
