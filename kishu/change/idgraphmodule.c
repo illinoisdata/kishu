@@ -77,10 +77,9 @@ cJSON *get_json_rep(idGraphNode* node){
     cJSON *node_obj = cJSON_CreateObject(); 
 
     // Add the object id and type as JSON string values
-
     // Allocate memory for the string representation of obj_id
     size_t id_size = snprintf(NULL, 0, "%p", node->obj_id);
-    int len = id_size;
+    int len = id_size+1;
     char* obj_id = malloc(len * sizeof(char));
     snprintf(obj_id, len,"%p",node->obj_id);
 
@@ -159,6 +158,12 @@ idGraphNodeList *mark_visited(idGraphNodeList *visited, idGraphNode* node) {
     return new_node;
 }
 
+/**
+ * Initializes an idGraphNode
+ *
+ * @param obj_id The object id to be used as initial value.
+ * @param obj_type The object type to be used as initial value.
+ **/
 idGraphNode* create_idGraphNode(void* obj_id, char* obj_type) {
     idGraphNode* node = (idGraphNode*) malloc(sizeof(idGraphNode));
     node->obj_id = obj_id;
@@ -167,6 +172,9 @@ idGraphNode* create_idGraphNode(void* obj_id, char* obj_type) {
     return node;
 }
 
+/**
+ * Iterates over a list of tuple and adds children nodes to the ID graph.
+ **/
 void process_collection_items(PyObject* obj, idGraphNode* node, idGraphNodeList* visited) {
     Py_ssize_t size = PySequence_Size(obj);
     for (Py_ssize_t i = 0; i < size; i++) {
@@ -192,6 +200,9 @@ void process_collection_items(PyObject* obj, idGraphNode* node, idGraphNodeList*
  * and stores the objectId(memory address) and type of objects
  * that fall under one of these categories (list, set, tuple, dictionary, class instance).
  *
+ * We maintain a visited objects list to identify cyclic references.
+ * For cyclically referenced objects, we only store the id of the visited object to avoid infinite loop.
+ *
  * @param obj A python object.
  * @param visited A list of visited objects.
  *
@@ -201,7 +212,6 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
     idGraphNode* node = NULL;
     // List
     if (PyList_Check(obj)) {
-        // printf("List\n");
         node = create_idGraphNode((void*)&(*obj), "list");
         visited = mark_visited(visited, node);
         process_collection_items(obj, node, visited);
@@ -214,7 +224,6 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
     }
     // Dictionary
     else if (PyDict_Check(obj)) {
-        // printf("Dict\n");
         node = create_idGraphNode((void*)&(*obj), "dictionary");
         visited = mark_visited(visited, node);
         PyObject *keys = PyDict_Keys(obj);
@@ -243,7 +252,6 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
             id = (void*)&(*value);
             child = find_idGraphNode_in_list(visited, id);
             if(child == NULL){
-                printf("Dict's Child NULL\n");
                 child = check_obj(value, visited);
             }
             else{
@@ -288,7 +296,7 @@ idGraphNode *check_obj(PyObject *obj, idGraphNodeList *visited) {
     else if (!PyModule_Check(obj) 
             && PyObject_HasAttrString(obj, "__dict__") 
             && !PyType_Check(obj)){
-        node = create_idGraphNode((void*)&(*obj), "class obj");
+        node = create_idGraphNode((void*)&(*obj), "class object");
         visited = mark_visited(visited, node);
         PyObject *dict = PyObject_GetAttrString(obj, "__dict__");
         if (dict != NULL && PyDict_Check(dict)) {
