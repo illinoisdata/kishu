@@ -13,7 +13,7 @@ from elastic.test.test_utils import get_test_input_nodeset, get_test_output_node
 from elastic.core.notebook.checkpoint import checkpoint
 from elastic.algorithm.baseline import MigrateAllBaseline
 from elastic.core.io.recover import resume
-from elastic.parse import identify_vars
+from elastic.parse.parse import identify_vars
 
 TEST_FILE_PATH = "./tmp_test_file"
 
@@ -21,7 +21,7 @@ TEST_FILE_PATH = "./tmp_test_file"
 class TestParse(unittest.TestCase):
     def setUp(self) -> None:
         self.shell = TerminalInteractiveShell.instance()
-    def test1(self):
+    def testBasicDecleration(self):
         """
         a = 1
         """
@@ -29,7 +29,7 @@ class TestParse(unittest.TestCase):
         # x is an input and y is an output.
         self.assertEqual({'a'}, vars)
 
-    def test2(self):
+    def testMultipleVariableDecleration(self):
         """
         a = 1
         b = 3
@@ -39,7 +39,7 @@ class TestParse(unittest.TestCase):
         # x is an input and y is an output.
         self.assertEqual({'a', 'b', 'c'}, vars)
 
-    def test3(self):
+    def testLibraryImport(self):
         """
         import numpy as np
         a = np.zeros((2,2))
@@ -50,7 +50,7 @@ class TestParse(unittest.TestCase):
         # x is an input and y is an output.
         self.assertEqual({'np', 'a', 'b'}, vars)
 
-    def test4(self):
+    def testSimpleFunctionCall(self):
         """
         def foo(item):
             mylist.append(item)     # accessing a global variable "mylist"
@@ -61,7 +61,7 @@ class TestParse(unittest.TestCase):
         # x is an input and y is an output.
         self.assertEqual({'foo', 'mylist', 'item'}, vars)
 
-    def test5(self):
+    def testNestedFunctionCall(self):
         """
         def goo(item):
             mylist2.append(item)     # accessing a global variable "mylist2"
@@ -76,7 +76,7 @@ class TestParse(unittest.TestCase):
         # x is an input and y is an output.
         self.assertEqual({'foo', 'goo', 'mylist', 'mylist2'}, vars)
     
-    def test6(self):
+    def testRecursiveFunctionCall(self):
         """
         def foo(item):
             if random.random() < 0.5:
@@ -90,5 +90,41 @@ class TestParse(unittest.TestCase):
         # x is an input and y is an output.
         self.assertEqual({'foo', 'mylist', 'random'}, vars)
 
+    def testShellVariables(self):
+        """
+        def foo(item):
+            temp = "test"
+        foo(3)
+        """
+        self.shell.user_ns["temp"] = "tmpstr"
+        self.shell.user_ns["item"] = 1
+        vars = identify_vars("def foo(item):\n\ttemp = 3\nfoo(3)", self.shell, ())
+        # x is an input and y is an output.
+        self.assertEqual({'foo', 'temp'}, vars)
+
+    def testShellFunction(self):
+        """
+        def goo(var):
+            g1 += var
+            g2 = "tempstr"
+        def foo(item):
+            goo(item / 3)
+        foo(g3)
+        """
+
+        self.shell.user_ns["goo"] = goo
+        self.shell.user_ns["g1"] = 1
+        self.shell.user_ns["g2"] = "hi"
+        self.shell.user_ns["g3"] = 2
+        vars = identify_vars("def foo(item):\n\tgoo(item / 3)\nfoo(g3)", self.shell, ("goo"))
+        # x is an input and y is an output.
+        self.assertEqual({'foo', 'goo', 'g1', 'g2', 'g3'}, vars)
+
 if __name__ == '__main__':
     unittest.main()
+
+
+# User Defined functions
+def goo(var):
+    g1 += var
+    g2 = "tempstr"
