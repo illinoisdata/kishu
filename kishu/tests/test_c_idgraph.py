@@ -172,15 +172,15 @@ def test_create_idgraph_change_in_nested_dictionary():
     profile_dict = {}
 
     idGraph1 = construct_fingerprint(dict1,profile_dict)
-    actual_dict_id = str(idGraph1["obj_id"]).lstrip("0").lower()
+    actual_dict_id = format(int(idGraph1["obj_id"],16),"x")
     actual_tup_id = 0
     actual_list_id = 0
 
     for child in idGraph1["children"]:
         if child["obj_type"] == "tuple":
-            actual_tup_id = str(child["obj_id"]).lstrip("0").lower()
+            actual_tup_id = format(int(child["obj_id"],16),"x")
         if child["obj_type"] == "list":
-            actual_list_id = str(child["obj_id"]).lstrip("0").lower()
+            actual_list_id = format(int(child["obj_id"],16),"x")
     
     assert expected_dict_id == actual_dict_id
     assert expected_tup_id == actual_tup_id
@@ -205,17 +205,17 @@ def test_create_idgraph_change_in_cyclic_dictionary():
 
     idGraph1 = construct_fingerprint(dict1,profile_dict)
 
-    actual_dict_id = str(idGraph1["obj_id"]).lstrip("0").lower()
+    actual_dict_id = format(int(idGraph1["obj_id"],16),"x")
     actual_set_id = 0
     actual_list_id = 0
     actual_dict_cycle_id = 0
 
     for child in idGraph1["children"]:
         if child["obj_type"] == "set":
-            actual_set_id = str(child["obj_id"]).lstrip("0").lower()
+            actual_set_id = format(int(child["obj_id"],16),"x")
         if child["obj_type"] == "list":
-            actual_list_id = str(child["obj_id"]).lstrip("0").lower()
-            actual_dict_cycle_id = str(child["children"][0]["obj_id"]).lstrip("0").lower()
+            actual_list_id = format(int(child["obj_id"],16),"x")
+            actual_dict_cycle_id = format(int(child["children"][0]["obj_id"],16),"x")
     
     assert expected_dict_id == actual_dict_id
     assert expected_dict_id == actual_dict_cycle_id
