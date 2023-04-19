@@ -13,7 +13,7 @@ def test_construct_fingerprint_list():
 
     profile_dict = {}
     idGraph1 = construct_fingerprint(list1,profile_dict)
-    actual_id = str(idGraph1["obj_id"]).lstrip("0").lower()
+    actual_id = format(int(idGraph1["obj_id"],16),"x")
     actual_type = idGraph1["obj_type"]
     # Assert that the id and object type are as expected.
     assert expected_id == actual_id
@@ -42,7 +42,7 @@ def test_construct_fingerprint_tuple():
 
     profile_dict = {}
     idGraph1 = construct_fingerprint(tuple1,profile_dict)
-    actual_id = str(idGraph1["obj_id"]).lstrip("0").lower()
+    actual_id = format(int(idGraph1["obj_id"],16),"x")
     actual_type = idGraph1["obj_type"]
     # Assert that the id and object type are as expected.
     assert expected_id == actual_id
@@ -64,7 +64,7 @@ def test_construct_fingerprint_set():
 
     profile_dict = {}
     idGraph1 = construct_fingerprint(set1,profile_dict)
-    actual_id = str(idGraph1["obj_id"]).lstrip("0").lower()
+    actual_id = format(int(idGraph1["obj_id"],16),"x")
     actual_type = idGraph1["obj_type"]
     # Assert that the id and object type are as expected.
     assert expected_id == actual_id
@@ -86,7 +86,7 @@ def test_construct_fingerprint_dictionary():
 
     profile_dict = {}
     idGraph1 = construct_fingerprint(dict1,profile_dict)
-    actual_id = str(idGraph1["obj_id"]).lstrip("0").lower()
+    actual_id = format(int(idGraph1["obj_id"],16),"x")
     actual_type = idGraph1["obj_type"]
     # Assert that the id and object type are as expected.
     assert expected_id == actual_id
@@ -112,7 +112,7 @@ def test_construct_fingerprint_class_instance():
 
     profile_dict = {}
     idGraph1 = construct_fingerprint(test1,profile_dict)
-    actual_id = str(idGraph1["obj_id"]).lstrip("0").lower()
+    actual_id = format(int(idGraph1["obj_id"],16),"x")
     actual_type = idGraph1["obj_type"]
     # Assert that the id and object type are as expected.
     assert expected_id == actual_id
@@ -139,17 +139,17 @@ def test_create_idgraph_nested_list():
     profile_dict = {}
 
     idGraph1 = construct_fingerprint(list1,profile_dict)
-    actual_list_id = str(idGraph1["obj_id"]).lstrip("0").lower()
+    actual_list_id = format(int(idGraph1["obj_id"],16),"x")
     actual_set_id = 0
     actual_tup_id = 0
     actual_dict_id = 0
     for child in idGraph1["children"]:
         if child["obj_type"] == "set":
-            actual_set_id = str(child["obj_id"]).lstrip("0").lower()
+            actual_set_id = format(int(child["obj_id"],16),"x")
         if child["obj_type"] == "tuple":
-            actual_tup_id = str(child["obj_id"]).lstrip("0").lower()
+            actual_tup_id = format(int(child["obj_id"],16),"x")
         if child["obj_type"] == "dictionary":
-            actual_dict_id = str(child["obj_id"]).lstrip("0").lower()
+            actual_dict_id = format(int(child["obj_id"],16),"x")
     
     assert expected_list_id == actual_list_id
     assert expected_tup_id == actual_tup_id
