@@ -24,8 +24,10 @@ def identify_vars(code_block: str, shell: ZMQInteractiveShell, shell_udfs: set) 
     udf_calls_visited = set()
     function_defs = set()
 
+    # Take first pass through code string
     v1.visit(instructions)
 
+    # Get list of all called user defined functions
     variables = variables.union(v1.loads)
     variables = variables.union(v1.stores)
     function_defs = function_defs.union(v1.functiondefs)
@@ -34,6 +36,7 @@ def identify_vars(code_block: str, shell: ZMQInteractiveShell, shell_udfs: set) 
             udf_calls.append(udf)
             udf_calls_visited.add(udf)
 
+    # Go through each user defined function being called and get variables
     while udf_calls:
         v_nested = visitor(shell = shell, shell_udfs = shell_udfs)
         udf = udf_calls.popleft()
@@ -106,8 +109,11 @@ class visitor(ast.NodeVisitor):
         # Only add as input if variable exists in current scope
         self.is_local = True
         self.functiondefs.add(node.name)
+        # Get arguments for called function
         self.functionargs = set(args.arg for args in node.args.args)
+        # Add args to queue of args for calls inside functions
         self.recargs.append(self.functionargs)
+        # Visit function
         ast.NodeVisitor.generic_visit(self, node)
         if len(self.recargs) == 1:
             self.functionargs = set()
