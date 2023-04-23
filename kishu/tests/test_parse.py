@@ -7,12 +7,7 @@ import pytest
 
 from IPython.terminal.interactiveshell import TerminalInteractiveShell
 from ipykernel.zmqshell import ZMQInteractiveShell
-
-from elastic.test.test_utils import get_test_input_nodeset, get_test_output_nodeset, get_problem_setting
-from elastic.core.notebook.checkpoint import checkpoint
-from elastic.algorithm.baseline import MigrateAllBaseline
-from elastic.core.io.recover import resume
-from elastic.parse.parse import identify_vars
+from kishu.parse.parse import identify_vars
 
 TEST_FILE_PATH = "./tmp_test_file"
 

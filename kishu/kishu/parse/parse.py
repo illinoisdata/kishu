@@ -1,5 +1,3 @@
-from elastic.parse.var import Var
-import dis
 from typing import List, Tuple
 import ast
 import inspect
