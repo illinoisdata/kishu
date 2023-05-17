@@ -1,4 +1,4 @@
-# ElasticNotebook
+# Elastic Notebook
 
 Intelligent scaling of stateful Python applications (e.g. a Jupyter notebook using an IPython kernel) that optimizies the tradeoff between recomputation overhead and cold storage access latency.
 
