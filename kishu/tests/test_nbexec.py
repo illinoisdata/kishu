@@ -10,5 +10,4 @@ def test_notebookrunner_basic():
     objects = ["z", "b", "a"]
     notebook = NotebookRunner(path_to_notebook + "/" + notebook_name)
     output = notebook.execute(cell_indices, objects)
-    print(output == {"z": 2, "b": 9, "a": 1})
     assert output == {"z": 2, "b": 9, "a": 1}
