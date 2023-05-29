@@ -1,12 +1,5 @@
 import os
 
-# Get the path of the top-level package directory
-package_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
-# Set the PYTHONPATH environment variable
-os.environ["PYTHONPATH"] = package_dir
-
-
 from nbexec import NotebookRunner
 
 
@@ -17,4 +10,5 @@ def test_notebookrunner_basic():
     objects = ["z", "b", "a"]
     notebook = NotebookRunner(path_to_notebook + "/" + notebook_name)
     output = notebook.execute(cell_indices, objects)
+    print(output == {"z": 2, "b": 9, "a": 1})
     assert output == {"z": 2, "b": 9, "a": 1}
