@@ -4,3 +4,5 @@ ipynbname
 nbconvert
 nbformat
 typing
+nbexec
+os
