@@ -1,11 +1,10 @@
 import os
-import sys
 
 # Get the path of the top-level package directory
 package_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-# Add the package directory to sys.path
-sys.path.insert(0, package_dir)
+# Set the PYTHONPATH environment variable
+os.environ["PYTHONPATH"] = package_dir
 
 
 from nbexec import NotebookRunner
