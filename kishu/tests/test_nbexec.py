@@ -8,6 +8,6 @@ def test_notebookrunner_basic():
     path_to_notebook = os.getcwd()
     notebook_name = "test_basic.ipynb"
     objects = ["z", "b", "a"]
-    notebook = NotebookRunner(path_to_notebook + "/" + notebook_name)
+    notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
     output = notebook.execute(cell_indices, objects)
     assert output == {"z": 2, "b": 9, "a": 1}
