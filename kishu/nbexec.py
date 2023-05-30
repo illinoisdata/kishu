@@ -59,8 +59,11 @@ class NotebookRunner:
             notebook = read(nb_file, as_version=4)
 
         # Create a new notebook object containing only the specified cells
-        new_nb = notebook.copy()
-        new_nb.cells = [notebook.cells[i] for i in cell_indices]
+        if cell_indices is None or not cell_indices:
+            new_nb = notebook
+        else:
+            new_nb = notebook.copy()
+            new_nb.cells = [notebook.cells[i] for i in cell_indices]
 
         # Make dictionary and then pickle that into a file
         code = "\n".join(
@@ -84,12 +87,12 @@ class NotebookRunner:
         new_cell_two = new_code_cell(source=code_two)
 
         # add the new cell to the notebook
-        notebook.cells.append(new_cell)
-        notebook.cells.append(new_cell_two)
+        new_nb.cells.append(new_cell)
+        new_nb.cells.append(new_cell_two)
 
         # Execute the notebook cells
         exec_prep = ExecutePreprocessor(timeout=600, kernel_name="python3")
-        exec_prep.preprocess(notebook, {"metadata": {"path": self.path_to_notebook}})
+        exec_prep.preprocess(new_nb, {"metadata": {"path": self.path_to_notebook}})
 
         # get the output dictionary
         with open(self.pickle_file, "rb") as file:
