@@ -68,6 +68,7 @@ class NotebookRunner:
         # Make dictionary and then pickle that into a file
         code = "\n".join(
             [
+                "import pickle",
                 "my_list = {}".format(var_names),
                 "fout = open('{}', 'wb')".format(self.pickle_file),
             ]

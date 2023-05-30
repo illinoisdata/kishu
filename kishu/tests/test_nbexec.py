@@ -6,7 +6,7 @@ from nbexec import NotebookRunner
 def test_notebookrunner_basic():
     cell_indices = [0, 1, 2]
     path_to_notebook = os.getcwd()
-    notebook_name = "test_basic.ipynb"
+    notebook_name = "nbexec_test_case_1.ipynb"
     objects = ["z", "b", "a"]
     notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
     output = notebook.execute(cell_indices, objects)
@@ -15,7 +15,7 @@ def test_notebookrunner_basic():
 
 def test_notebookrunner_no_cells():
     path_to_notebook = os.getcwd()
-    notebook_name = "test_basic.ipynb"
+    notebook_name = "nbexec_test_case_1.ipynb"
     objects = ["a", "b", "x", "y", "z"]
     notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
     output = notebook.execute(None, objects)
@@ -31,7 +31,7 @@ def test_notebookrunner_no_cells():
 def test_notebookrunner_empty_cell_list():
     cell_indices = []
     path_to_notebook = os.getcwd()
-    notebook_name = "test_basic.ipynb"
+    notebook_name = "nbexec_test_case_1.ipynb"
     objects = ["a", "b", "x", "y", "z"]
     notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
     output = notebook.execute(cell_indices, objects)
