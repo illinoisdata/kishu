@@ -1,0 +1,6 @@
+ipylab
+ipynbname
+nbconvert
+nbformat
+numpy
+pytest
