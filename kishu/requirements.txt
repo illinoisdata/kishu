@@ -1,6 +1,2 @@
 dill
-ipylab
-ipynbname
-nbconvert
-nbformat
 typing
