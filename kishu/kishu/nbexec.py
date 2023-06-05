@@ -18,7 +18,7 @@ Dependencies:
 """
 import os
 import pickle
-from typing import List
+from typing import List, Dict
 
 from nbconvert.preprocessors import ExecutePreprocessor
 from nbformat import read
@@ -44,13 +44,14 @@ class NotebookRunner:
         self.path_to_notebook = os.path.dirname(self.test_notebook)
         self.pickle_file = "/tmp/pickle_" + os.path.basename(self.test_notebook)
 
-    def execute(self, cell_indices: List[int], var_names: List[str]):
+    def execute(self, cell_indices: List[int], var_names: List[str], eval_expr: Dict[str, str] = {}):
         """
         Executes the specified cells in a Jupyter notebook and returns the output as a dictionary.
 
         Args:
             cell_indices (List[int]): List of indices of the cells to be executed.
             var_names (List[str]): List of var_names to include in the resulting dictionary.
+            eval_expr (Dict[str, str]): Map from names to expressions to evaluate. 
 
         Returns:
             dict: A dictionary containing the output of the executed cells.
@@ -70,13 +71,16 @@ class NotebookRunner:
             [
                 "import pickle",
                 "my_list = {}".format(var_names),
+                "my_dict = {}".format(eval_expr),
                 "fout = open('{}', 'wb')".format(self.pickle_file),
             ]
         )
         code_two = "\n".join(
             [
                 "test = locals()",
-                "result_dict = {var: test[var] for var in my_list}",
+                "result_dict = {}",
+                "result_dict.update({var: test[var] for var in my_list})",
+                "result_dict.update({name: eval(expr) for name, expr in my_dict.items()})",
                 "pickle.dump(result_dict, fout)",
                 "print(result_dict)",
                 "fout.close()",

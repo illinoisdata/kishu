@@ -35,4 +35,4 @@ jobs:
     - name: Test Kishu with pytest
       run: |
         cd kishu
-        pytest .
+        pytest . -vv
