@@ -1,6 +1,6 @@
 import os
 
-from nbexec import NotebookRunner
+from kishu.nbexec import NotebookRunner
 
 
 def test_notebookrunner_basic():
