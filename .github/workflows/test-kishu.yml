@@ -36,3 +36,4 @@ jobs:
       run: |
         cd kishu
         pytest . -vv
+        mypy kishu/*.py tests/*.py

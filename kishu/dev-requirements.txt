@@ -4,10 +4,9 @@ nbconvert
 nbformat
 numpy
 pytest
-torch
-torchvision
 pandas
 matplotlib
 seaborn
 scipy
 scikit-learn
+mypy
