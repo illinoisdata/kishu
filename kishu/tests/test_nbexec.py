@@ -76,7 +76,6 @@ def test_notebookrunner_case_two():
 
 
 def test_notebookrunner_case_three():
-    cell_indices = [i for i in range(10)]
     path_to_notebook = os.getcwd()
     notebook_name = "nbexec_test_case_3.ipynb"
     objects = ["stable_forest", "stable_loop"]
