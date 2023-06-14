@@ -1,4 +1,8 @@
-dill
-typing
 dataclasses
+dill
+ipylab
+ipynbname
+pytest
+loguru
 shortuuid
+typing
