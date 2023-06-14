@@ -1,18 +1,18 @@
 import c_idgraph
-import json
+from typing import Any
 
 
 class IDGraph:
     """A class that represents an Id Graph."""
 
-    def __init__(self, obj: any):
+    def __init__(self, obj: Any):
         """Create a new IdGraph object with the underlying cObject.(private access)"""
         # This original, referenced object may change
         self.obj = obj
         # This snapshot is not supposed to change
         self.__cObject = c_idgraph.get_idgraph(obj)
         
-    def compare(self, graph: any) -> bool:
+    def compare(self, graph: Any) -> bool:
         """
             Compares the IdGraph with another IdGraph.
 

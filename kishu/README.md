@@ -1,41 +1,49 @@
-Intelligent python checkpointing framework for machine learning and scientific computing. Under development as part of a research project at the University of Illinois at Urbana-Champaign.
+Intelligent checkpointing framework for Python-based machine learning and scientific computing. 
+Under development as part of a research project at the University of Illinois at Urbana-Champaign.
 
 
 # Installation
 
-## Local Installation
-
-No installation is needed. It is enough to enter `python` in this directory (the root of `kishu` project), then
-one can use `import kishu` to import this module. Same goes for Jupyter use cases.
-
-
-## System Installation
-
-The following command will invoke `setup.py` for system-wide installation. If virtual env is in use, the module
-will be installed inside the virtual environment.
+Run the following command in a [virtual environment](https://docs.python.org/3/library/venv.html).
 ```
-bash install.sh
+python setup.py install
 ```
-
 
 
 # Jupyter Integration
 
 Run Jupyter after installing kishu. In your notebook, you can enable kishu with the following command.
 
-```
-%load_ext kishu
-%kishu enable
-```
-Then, all cell executions are observed with kishu.
+## Basic Usage
 
-In order to automate this, you can add [startup scripts to your IPython configuration](https://ipython.org/ipython-doc/1/config/overview.html#startup-files).
+```
+from kishu import load_kishu
+load_kishu()
+```
+Then, all the cell executions are recorded, and the result of each cell execution is checkpointed.
 
 
-To disable kishu, run
+## Working with Kishu
+
+load_kishu() adds a new variable `_kishu` (of type KishuJupyterExecHistory) to Jupyter's namespace.
+The special variable can be used for kishu-related operations, as follows.
+
+Browse the execution log.
 ```
-%kishu disable
+_kishu.log()
 ```
+
+See the database file.
+```
+_kishu.checkpoint_file()
+```
+
+
+Restore a state.
+```
+_kishu.checkout(checkpoint_file, commit_id)
+```
+
 
 
 # Deployment

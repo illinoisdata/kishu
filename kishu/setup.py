@@ -20,7 +20,7 @@ setup(
     author_email='yongjoo@g.illinois.edu',
     url='https://github.com/illinoisdata/kishu',
     license=license,
-    packages=find_packages(exclude=('tests', 'docs')),
+    packages=find_packages(exclude=('tests', 'docs', 'examples')),
     ext_modules=[Extension("c_idgraph", 
                     sources = ["change/idgraphmodule.c","change/cJSON.c"])]
 )
