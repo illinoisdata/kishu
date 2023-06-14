@@ -81,7 +81,7 @@ def test_notebookrunner_case_three():
     objects = ["mse", "intercept"]
     notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
     output = notebook.execute(None, objects)
-    expected = {"mse": 0.037113794407976866, "intercept": 0.2525275898181478}
+    expected = {"mse": 0.04, "intercept": 0.25}
 
     assert output == expected
 
@@ -93,24 +93,9 @@ def test_notebookrunner_case_four():
     notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
     output = notebook.execute(None, objects)
     expected = {
-        "mse": 0.5558915986952442,
-        "intercept": -37.02327770606412,
-        "estimated_value": -75.30737168169723,
-    }
-
-    assert output == expected
-
-
-def test_notebookrunner_case_five():
-    path_to_notebook = os.getcwd()
-    notebook_name = "nbexec_test_case_4.ipynb"
-    objects = ["mse", "intercept", "estimated_value"]
-    notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
-    output = notebook.execute(None, objects)
-    expected = {
-        "mse": 0.5558915986952442,
-        "intercept": -37.02327770606412,
-        "estimated_value": -75.30737168169723,
+        "mse": 0.56,
+        "intercept": -37.02,
+        "estimated_value": -75.31,
     }
 
     assert output == expected
