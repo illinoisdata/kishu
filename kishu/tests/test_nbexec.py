@@ -46,14 +46,42 @@ def test_notebookrunner_empty_cell_list():
     }
 
 
-def test_notebookrunner_case_three():
+def test_notebookrunner_case_two():
     cell_indices = [i for i in range(27)]
     path_to_notebook = os.getcwd()
     notebook_name = "nbexec_test_case_2.ipynb"
     objects = ["stable_forest", "stable_loop"]
     notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
     output = notebook.execute(cell_indices, objects)
-    print("output", output)
+    expected = {
+        "stable_forest": np.array(
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 1, 0, 1, 0, 0, 0, 0],
+                [0, 1, 0, 1, 1, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0, 1, 0, 0],
+                [0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ]
+        ),
+        "stable_loop": np.zeros((10, 10)),
+    }
+
+    for key in expected.keys():
+        assert np.array_equal(output[key], expected[key])
+
+
+def test_notebookrunner_case_three():
+    cell_indices = [i for i in range(10)]
+    path_to_notebook = os.getcwd()
+    notebook_name = "nbexec_test_case_3.ipynb"
+    objects = ["stable_forest", "stable_loop"]
+    notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
+    output = notebook.execute(None, objects)
     expected = {
         "stable_forest": np.array(
             [
