@@ -49,7 +49,7 @@ def test_notebookrunner_empty_cell_list():
 def test_notebookrunner_case_three():
     cell_indices = [i for i in range(27)]
     path_to_notebook = os.getcwd()
-    notebook_name = "nbexec_test_case_3.ipynb"
+    notebook_name = "nbexec_test_case_2.ipynb"
     objects = ["stable_forest", "stable_loop"]
     notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
     output = notebook.execute(cell_indices, objects)
