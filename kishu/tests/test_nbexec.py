@@ -78,26 +78,9 @@ def test_notebookrunner_case_two():
 def test_notebookrunner_case_three():
     path_to_notebook = os.getcwd()
     notebook_name = "nbexec_test_case_3.ipynb"
-    objects = ["stable_forest", "stable_loop"]
+    objects = ["mse", "intercept"]
     notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
     output = notebook.execute(None, objects)
-    expected = {
-        "stable_forest": np.array(
-            [
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
-                [0, 0, 0, 0, 1, 0, 1, 0, 0, 0],
-                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-                [0, 0, 0, 1, 0, 0, 0, 1, 0, 0],
-                [0, 0, 0, 1, 0, 1, 0, 0, 0, 0],
-                [0, 1, 0, 1, 1, 0, 0, 1, 0, 0],
-                [0, 0, 0, 0, 0, 1, 0, 1, 0, 0],
-                [0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            ]
-        ),
-        "stable_loop": np.zeros((10, 10)),
-    }
+    expected = {"mse": 0.037113794407976866, "intercept": 0.2525275898181478}
 
-    for key in expected.keys():
-        assert np.array_equal(output[key], expected[key])
+    assert output == expected
