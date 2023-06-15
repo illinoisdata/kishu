@@ -9,4 +9,5 @@ matplotlib
 seaborn
 scipy
 scikit-learn
+textblob
 mypy
