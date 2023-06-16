@@ -16,6 +16,25 @@ def test_IDGraph_int():
     assert expected_id == actual_id
 
 
+def test_compare_ints():
+    '''
+        Test if two ints can be accurately compared
+    '''
+    int1 = 5
+    int2 = 5
+    int3 = 6
+
+    idgraph1 = IDGraph(int1)
+    idgraph2 = IDGraph(int2)
+    idgraph3 = IDGraph(int3)
+
+    # Assert that two ints of same value are accurately compared
+    assert idgraph1.compare(idgraph2) == True
+
+    # Assert that two ints of different values are accuratelt compared
+    assert idgraph1.compare(idgraph3) == False
+
+
 def test_IDGraph_list():
     """
         Test if idgraph (json rep) is accurately generated for a list
@@ -61,7 +80,32 @@ def test_IDGraph_list():
     assert idGraph1.compare(idGraph2) == True
     assert idGraph1.compare(idGraph3) == False
     
+
+def test_compare_lists():
+    """
+        Test if two lists are accurately compared
+    """
+
+    # Init first list
+    list1 = [1,2,3]
+
+    #Init second list
+    list2 = [1,2,3]
+
+    idgraph1 = IDGraph(list1)
+    idgraph2 = IDGraph(list2)
+
+    # Assert that two lists with same values should be accurately compared
+    assert idgraph1.compare(idgraph2) == True
+
+    # Init third list
+    list3 = [2,3,4]
+    idgraph3 = IDGraph(list3)
+
+    # Assert that two lists with different values should be accurately compared
+    assert idgraph1.compare(idgraph3) == False
     
+
 def test_IDGraph_tuple():
     """
         Test if idgraph (json rep) is accurately generated for a Tuple
@@ -120,6 +164,23 @@ def test_IDGraph_set():
     idGraph2 = IDGraph(set1)
     # Assert that the id graph does not change when the object remains unchanges
     assert idGraph1.compare(idGraph2) == True, f"{idGraph1.get_json()}; {idGraph2.get_json()}"
+
+
+def test_IDGraph_order_in_set():
+    """
+        Test if idgraphs of two sets with same elements in different order can be accurately compared
+    """
+    # Init the first set
+    set1 = {1,2,3}
+
+    # Init the second set
+    set2 = {3,2,1}
+
+    idgraph1 = IDGraph(set1)
+    idgraph2 = IDGraph(set2)
+    
+    # Assert that idgraph for both sets should be same
+    assert idgraph1.compare(idgraph2) == True
 
 
 def test_IDGraph_dictionary():
