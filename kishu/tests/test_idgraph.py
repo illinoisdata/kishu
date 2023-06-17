@@ -83,7 +83,7 @@ def test_IDGraph_list():
 
 def test_compare_lists():
     """
-        Test if two lists are accurately compared
+        Test if two lists (different objects) are accurately compared
     """
 
     # Init first list
@@ -95,14 +95,14 @@ def test_compare_lists():
     idgraph1 = IDGraph(list1)
     idgraph2 = IDGraph(list2)
 
-    # Assert that two lists with same values should be accurately compared
-    assert idgraph1.compare(idgraph2) == True
+    # Assert that comparison between different objects should return False
+    assert idgraph1.compare(idgraph2) == False
 
     # Init third list
     list3 = [2,3,4]
     idgraph3 = IDGraph(list3)
 
-    # Assert that two lists with different values should be accurately compared
+    # Assert that comparison between different objects should return False
     assert idgraph1.compare(idgraph3) == False
     
 
@@ -166,7 +166,7 @@ def test_IDGraph_set():
     assert idGraph1.compare(idGraph2) == True, f"{idGraph1.get_json()}; {idGraph2.get_json()}"
 
 
-def test_IDGraph_order_in_set():
+def test_compare_sets():
     """
         Test if idgraphs of two sets with same elements in different order can be accurately compared
     """
@@ -174,13 +174,21 @@ def test_IDGraph_order_in_set():
     set1 = {1,2,3}
 
     # Init the second set
-    set2 = {3,2,1}
+    set2 = {1,2,3}
 
     idgraph1 = IDGraph(set1)
     idgraph2 = IDGraph(set2)
     
-    # Assert that idgraph for both sets should be same
-    assert idgraph1.compare(idgraph2) == True
+    # Assert that comparison between different objects should return False
+    assert idgraph1.compare(idgraph2) == False
+
+    set1.clear()
+    set1.add(1)
+    set1.add(2)
+    set1.add(3)
+
+    # Assert that object remains same if values are cleared and re-added 
+    assert idgraph1.compare(IDGraph(set1)) == True
 
 
 def test_IDGraph_dictionary():
