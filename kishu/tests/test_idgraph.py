@@ -273,6 +273,359 @@ def test_IDGraph_class_instance():
     assert idGraph1.compare(idGraph2) == True
 
 
+def test_IDGraph_pandas_series():
+    """
+        Test if idgraph (json rep) is accurately generated for panda series
+    """
+
+    import numpy as np
+    import pandas as pd
+
+    s1 = pd.Series([1,2,3,4])
+
+    idGraph1 = IDGraph(s1)
+    idGraph1_json = json.loads(idGraph1.get_json())
+
+    expected_type = "class"
+    expected_id = id(s1)
+
+    # Assert that the id and object type are as expected
+    assert idGraph1_json["obj_id"] == expected_id
+    assert idGraph1_json["obj_type"] == expected_type
+
+    idGraph2 = IDGraph(s1)
+    # Assert that the id graph does not change when the object remains unchanged
+    assert idGraph1.compare(idGraph2) == True
+
+    s1[2] = 0
+
+    idGraph3 = IDGraph(s1)
+    # Assert that the id graph changes when the object changes
+    assert idGraph1.compare(idGraph3) == False
+
+    s1[2] = 3
+    s1[4] = 5
+
+    idGraph4 = IDGraph(s1)
+    # Assert that the id graph changes when object changes
+    assert idGraph1.compare(idGraph4) == False
+
+
+def test_IDGraph_pandas_df():
+    """
+        Test if idgraph (json rep) is accurately generated for pandas dataframe
+    """
+    import pandas as pd
+    import numpy as np
+    
+    # Init a dataframe
+    df = pd.DataFrame(np.array([[1,2,3],[4,5,6],[7,8,9]]), columns = ['a','b','c'])
+
+    idGraph1 = IDGraph(df)
+    idGraph1_json = json.loads(idGraph1.get_json())
+    
+    expected_type = "class"
+    expected_id = id(df)
+    # Assert that the id and object type are as expected
+    assert idGraph1_json["obj_id"] == expected_id
+    assert idGraph1_json["obj_type"] == expected_type
+    
+    idGraph2 = IDGraph(df)
+    # Assert that the id graph does not change when the object remains unchanged
+    assert idGraph1.compare(idGraph2) == True
+
+    df.at[0,'a'] = 20
+
+    idGraph3 = IDGraph(df)
+    # Assert that the idgraph changes when the object changes
+    assert idGraph1.compare(idGraph3) == False
+
+    df.at[0,'a'] = 1
+    new_row = {'a': 10, 'b': 11, 'c': 12}
+    df.loc[len(df)] = new_row
+    
+    idGraph3 = IDGraph(df)
+    # Assert that the id graph changes when the object changes (new row)
+    assert idGraph1.compare(idGraph3) == False
+
+    # Init a dataframe
+    df2 = pd.DataFrame(np.array([[1,2,3],[4,5,6],[7,8,9]]), columns = ['a','b','c'])
+
+    idGraph4 = IDGraph(df2)
+
+    new_column  = [10,11,12]
+    df2['d'] = new_column
+
+    idGraph5 = IDGraph(df2)
+    # Assert that the id graph changes when the object changes (new column)
+    assert idGraph4.compare(idGraph5) == False
+
+    df.drop(df.index, inplace=True)
+
+    new_row = {'a': 1, 'b': 2, 'c': 3}     
+    df.loc[len(df)] = new_row
+    new_row = {'a': 4, 'b': 5, 'c': 6}  
+    df.loc[len(df)] = new_row
+    new_row = {'a': 7, 'b': 8, 'c': 9}  
+    df.loc[len(df)] = new_row
+
+    idGraph4 = IDGraph(df)
+    # Assert that the igraph changes after dropping and re-adding values sinces pandas df are size-immutable
+    assert idGraph1.compare(idGraph4) == False
+    
+    
+def test_IDGraph_seaborn_displot():
+    """
+        Test if idgraph (json rep) is accurately generated for seaborn distribution plots
+    """
+
+    # Importing required libraries
+    import pandas as pd
+    import seaborn as sns
+
+    # Init a df
+    df = sns.load_dataset("penguins")
+    
+    # Generating a distribution plot object
+    plot1 = sns.displot(data = df, x = "flipper_length_mm")
+
+    idGraph1 = IDGraph(plot1)
+    idGraph1_json = json.loads(idGraph1.get_json())
+
+    expected_id = id(plot1)
+    expected_type = "class"
+
+    # Assert that id and object type are as expected
+    assert idGraph1_json["obj_id"] == expected_id
+    assert idGraph1_json["obj_type"] == expected_type
+
+    idGraph2 = IDGraph(plot1)
+    # Assert that the id graph does not change when the object remains unchanged
+    assert idGraph1.compare(idGraph2) == True
+
+    plot1.set(xlabel = 'flip_length')
+
+    idGraph3 = IDGraph(plot1)
+    # Assert that changing axes names changes idgraph of object
+    assert idGraph1.compare(idGraph3) == False
+
+    plot1.set(xlabel = 'flipper_length_mm')
+
+    idGraph4 = IDGraph(plot1)
+    # Assert that changing axes name back to original reverts back to original object
+    assert idGraph1.compare(idGraph4) == True
+
+    # Generating a distribution plot object
+    plot2 = sns.displot(data = df, x = "flipper_length_mm")
+
+    idGraph5 = IDGraph(plot2)
+
+    plot2.set(title = 'Flipper Dis Plot')
+    idGraph6 = IDGraph(plot2)
+    # Assert that changing plot title changes idgraph of object
+    assert idGraph5.compare(idGraph6) == False
+
+
+def test_IDGraph_seaborn_scatterplot():
+    """
+        Test if idgraph (json rep) is accurately generated for seaborn scatter plots
+    """
+
+    # Importing required libraries
+    import pandas as pd
+    import seaborn as sns
+
+    # Init a df
+    df = sns.load_dataset("penguins")
+    
+    # Generating a scatter plot object
+    plot1 = sns.scatterplot(data = df, x = "flipper_length_mm", y = "bill_length_mm")
+
+    idGraph1 = IDGraph(plot1)
+    idGraph1_json = json.loads(idGraph1.get_json())
+
+    expected_id = id(plot1)
+    expected_type = "class"
+
+    # Assert that id and object type are as expected
+    assert idGraph1_json["obj_id"] == expected_id
+    assert idGraph1_json["obj_type"] == expected_type
+
+    idGraph2 = IDGraph(plot1)
+    # Assert that the id graph does not change when the object remains unchanged
+    assert idGraph1.compare(idGraph2) == True
+
+    plot1.set_xlabel('Flipper Length')
+
+    idGraph3 = IDGraph(plot1)
+    # Assert that changing axes names changes idgraph of object
+    assert idGraph1.compare(idGraph3) == False
+
+    plot1.set_xlabel('flipper_length_mm')
+
+    idGraph4 = IDGraph(plot1)
+    # Assert that changing axes name back to original reverts back to original object
+    assert idGraph1.compare(idGraph4) == True
+
+    # Generating a scatter plot object
+    plot2 = sns.scatterplot(data = df, x = "flipper_length_mm", y = "bill_length_mm")
+
+    idGraph5 = IDGraph(plot2)
+    plot2.set_title("Flipper length vs Bill Length")
+    idGraph6 = IDGraph(plot2)
+    # Assert that changing plot title changes idgraph of object
+    assert idGraph5.compare(idGraph6) == False
+
+
+def test_IDGraph_seaborn_barplot():
+    """
+        Test if idgraph (json rep) is accurately generated for seaborn bar plots
+    """
+
+    # Importing required libraries
+    import pandas as pd
+    import seaborn as sns
+
+    # Init a df
+    df = sns.load_dataset("penguins")
+    
+    # Generating a bar plot object
+    plot1 = sns.barplot(data = df, x = "island", y = "body_mass_g")
+
+    idGraph1 = IDGraph(plot1)
+    idGraph1_json = json.loads(idGraph1.get_json())
+
+    expected_id = id(plot1)
+    expected_type = "class"
+
+    # Assert that id and object type are as expected
+    assert idGraph1_json["obj_id"] == expected_id
+    assert idGraph1_json["obj_type"] == expected_type
+
+    idGraph2 = IDGraph(plot1)
+    # Assert that the id graph does not change when the object remains unchanged
+    assert idGraph1.compare(idGraph2) == True
+
+    plot1.set_xlabel('Name of Island')
+
+    idGraph3 = IDGraph(plot1)
+    # Assert that changing axes name changes idgraph of object
+    assert idGraph1.compare(idGraph3) == False
+
+    plot1.set_xlabel('island')
+
+    idGraph4 = IDGraph(plot1)
+    # Assert that changing axes name back to original reverts back to original object
+    assert idGraph1.compare(idGraph4) == True
+
+    # Generating a bar plot object
+    plot2 = sns.barplot(data = df, x = "island", y = "body_mass_g")
+
+    idGraph5 = IDGraph(plot2)
+    plot2.set_title("Island vs Body Mass")
+    idGraph6 = IDGraph(plot2)
+    # Assert that changing plot title changes idgraph of object
+    assert idGraph5.compare(idGraph6) == False
+
+
+def test_IDGraph_matplotlib_AxesSubplot():
+    """
+        Test if idgraph (json rep) is accurately generated for matplotlib AxesSubplot objects
+    """
+
+    import matplotlib.pyplot as plt
+
+    # Init matplotlib figure and AxesSubplot objects
+    fig, ax = plt.subplots(figsize=(2, 2), facecolor='lightskyblue', layout='constrained')
+
+    idGraph1 = IDGraph(ax)
+    idGraph1_json = json.loads(idGraph1.get_json())
+
+    expected_id = id(ax)
+    expected_type = "class"
+
+    # Assert that id and object type are as expected
+    assert idGraph1_json["obj_id"] == expected_id
+    assert idGraph1_json["obj_type"] == expected_type
+
+    idGraph2 = IDGraph(ax)
+    # Assert that the id graph does not change when the object remains unchanged
+    assert idGraph1.compare(idGraph2) == True
+
+    ax.set_title('Axes', loc='left', fontstyle='oblique', fontsize='medium')
+
+    idGraph3 = IDGraph(ax)
+    # Assert that the idgraph changes when title is added to AxesSubplot
+    assert idGraph1.compare(idGraph3) == False
+
+    ax.set_xlabel("X-axis")
+
+    idGraph4 = IDGraph(ax)
+    # Assert that the idgraph changes when x-axis label is modified
+    assert idGraph3.compare(idGraph4) == False
+
+
+def test_IDGraph_matplotlib_Figure():
+    """
+        Test if idgraph (json rep) is accurately generated for matplotlib Figure objects
+    """
+
+    import matplotlib.pyplot as plt
+
+    # Init a matplotlib Figure object
+    fig = plt.figure(figsize=(2, 2), facecolor='lightskyblue', layout='constrained')
+
+    idGraph1 = IDGraph(fig)
+    idGraph1_json = json.loads(idGraph1.get_json())
+
+    expected_id = id(fig)
+    expected_type = "class"
+
+    # Assert that id and object type are as expected
+    assert idGraph1_json["obj_id"] == expected_id
+    assert idGraph1_json["obj_type"] == expected_type
+
+    idGraph2 = IDGraph(fig)
+    # Assert that the id graph does not change when the object remains unchanged
+    assert idGraph1.compare(idGraph2) == True
+
+    fig.set_facecolor("green")
+
+    idGraph3 = IDGraph(fig)
+    # Assert that the idgraph changes when figure face color is modified
+    assert idGraph1.compare(idGraph3) == False
+
+    fig.set_facecolor("lightskyblue")
+
+    idGraph4 = IDGraph(fig)
+    # Assert that the idgraph reverts back to original when original face color is restored
+    assert idGraph1.compare(idGraph4) == True
+
+    fig.suptitle('Figure')
+
+    idGraph5 = IDGraph(fig)
+    # Assert that the idgraph changes when figure title is changed
+    assert idGraph1.compare(idGraph5) == False
+
+    figL, figR = fig.subfigures(1, 2)
+
+    idGraph6 = IDGraph(fig)
+    # Assert that the idgraph changes when subfigures are added to figure
+    assert idGraph5.compare(idGraph6) == False
+
+    figL.set_facecolor('thistle')
+
+    idGraph7 = IDGraph(fig)
+    # Assert that the idgraph changes when subfigure color is modified
+    assert idGraph6.compare(idGraph7) == False
+
+    ax = fig.add_subplot()
+
+    idGraph8 = IDGraph(fig)
+    # Assert that the idgraph changes when subplot is added
+    assert idGraph7.compare(idGraph8) == False
+    
+
 # (2) These tests verify id graph generation for NESTED objects.
 def test_create_idgraph_nested_list():
     """
