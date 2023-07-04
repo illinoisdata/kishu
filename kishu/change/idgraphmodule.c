@@ -452,17 +452,21 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
     }
 
     // Numpy Arrays
-    else if( strcmp(PyUnicode_AsUTF8(PyObject_GetAttrString(PyObject_Type(obj), "__name__")),"ndarray") == 0 )
+    else if (strcmp(PyUnicode_AsUTF8(PyObject_GetAttrString(PyObject_Type(obj), "__name__")), "ndarray") == 0)
     {
         import_array();
 
-        node = create_idGraphNode(builtin_id, OBJ_TYPE_CLASS, 0);
+        PyArrayObject* arr_obj = (PyArrayObject*)obj; 
+        const long builtin_id_2 = (long)(PyArray_BASE(arr_obj));
+        
+        if(builtin_id_2 == 0)
+            node = create_idGraphNode(builtin_id, OBJ_TYPE_CLASS, 0);
+        else
+            node = create_idGraphNode(builtin_id_2, OBJ_TYPE_CLASS, 0);
+
         visited = mark_visited(visited, node);
 
-        PyArrayObject* arr_obj = (PyArrayObject*)obj;
         npy_intp arr_len = PyArray_SIZE(arr_obj);
-
-
         for (npy_intp i = 0; i < arr_len; ++i)
         {
             PyObject *item = PyArray_GETITEM(arr_obj, PyArray_DATA(arr_obj) + i * PyArray_ITEMSIZE(arr_obj));
@@ -485,8 +489,7 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
 
     }
 
-    // Class object with __dict__ attribute 
-    // else if (!PyModule_Check(obj) && PyObject_HasAttrString(obj, "__dict__") && !PyType_Check(obj))
+    // Other Class object
     else if (!PyModule_Check(obj) && !PyType_Check(obj))
     {
         if(obj != NULL)
@@ -496,16 +499,15 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
 
             PyObject *dir = PyObject_Dir(obj);
 
-            if(dir !=NULL && PyList_Check(dir))
+            if(dir != NULL && PyList_Check(dir))
             {
-                // PySys_WriteStdout("comes here \n");
-
                 Py_ssize_t dir_len = PyList_Size(dir);
 
-                char exclude_dir1[] = "T";
-                char exclude_dir2[] = "__doc__";
-                char exclude_dir3[] = "imag";
-                char exclude_dir4[] = "real";
+                // Attributes to exclude from idgraph
+                char exclude_dir1[] = "T"; // This attribute, found in dataframe and series objects, are of the types dataframe and series, and thus iterating through them would result in an infinite loop
+                char exclude_dir2[] = "__doc__"; // This attribute contains the documentation of the object
+                char exclude_dir3[] = "imag"; // This attribute, found in numpy arrays, contain numpy arrays and thus iterating through them would result in an infinite loop
+                char exclude_dir4[] = "real"; // This attribute, found in numpy arrays, contain numpy arrays and thus iterating through them would result in an infinite loop
 
                 // char exclude_attr1[] = "method";
                 // char exclude_attr2[] = "builtin_function_or_method";
@@ -519,8 +521,6 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
 
                 // char dtype[] = "dtype";
 
-                // char exclude_attr7[] = 
-
                 for(Py_ssize_t i = 0; i < dir_len; i++)
                 {
                     // PySys_WriteStdout("Looping fine \n");
@@ -529,7 +529,8 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
                     const char *name = PyUnicode_AsUTF8(cur_attr);
                     if(name != NULL)
                     {
-                        if((strcmp(name, exclude_dir1) == 0) || (strcmp(name, exclude_dir2) == 0) || (strcmp(name, exclude_dir3) == 0) || (strcmp(name, exclude_dir4) == 0))
+                        // if((strcmp(name, exclude_dir1) == 0) || (strcmp(name, exclude_dir2) == 0) || (strcmp(name, exclude_dir3) == 0) || (strcmp(name, exclude_dir4) == 0))
+                        if((strcmp(name, exclude_dir1) == 0) || (strcmp(name, exclude_dir2) == 0))
                             continue;
                     }
 
@@ -537,36 +538,34 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
                     {
                         continue;
                     }
+
                     PyObject *getattr = PyObject_GetAttr(obj, cur_attr);
                     // PyObject *attr_type = PyObject_Type(getattr);
                     PyObject *type_name = PyObject_GetAttrString(PyObject_Type(getattr), "__name__");
 
                     const char *name2 = PyUnicode_AsUTF8(type_name);
-                    // PyObject *type_name = PyType_GetName(attr_type);
-                    // const char *name2 = PyUnicode_AsUTF8(attr_type);
 
-                    // const char *name2 = PyUnicode_AsUTF8(attr_type);
-
-                    // if(attr_type != NULL && name2 != NULL)
-                    // {
-                    //     // if((strcmp(name2, exclude_attr1) == 0) || (strcmp(name2, exclude_attr2) == 0) || (strcmp(name2, exclude_attr3) == 0))
-                    //     if(PyMethod_Check(getattr) || PyType_Check(getattr) || PyInstanceMethod_Check(getattr) || (strcmp(name2, exclude_attr3) == 0) || (strcmp(name2, exclude_attr2) == 0) || (strcmp(name2, exclude_attr4) == 0) || (strcmp(name2, exclude_attr5) == 0) || (strcmp(name2, exclude_attr6) == 0) || (strcmp(name2, exclude_attr7) == 0) || (strcmp(name2, exclude_attr8) == 0) || (strcmp(name2, exclude_attr9) == 0))
-                    //         continue;
-                    // }
-
-
-                    if(PyList_Check(getattr) || PyTuple_Check(getattr) || PyDict_Check(getattr) || PyAnySet_Check(getattr) || PyBool_Check(getattr) || PyLong_Check(getattr) || PyFloat_Check(getattr) || PyUnicode_Check(getattr) || (strcmp(name2,"ndarray") == 0))
+                    if(PyList_Check(getattr) || PyTuple_Check(getattr) || PyDict_Check(getattr) || PyAnySet_Check(getattr) || PyBool_Check(getattr) || PyLong_Check(getattr) || PyFloat_Check(getattr) || PyUnicode_Check(getattr) || (strcmp(name2,"ndarray") == 0) || (strcmp(name2,"Series") == 0))
                     {
+                        
+                        // Creating idgraphs of attributes imag or real of type numpy array can result in an infinite loop since each numpy array consists of imag and real numpy array attributes
+                        if((strcmp(name, exclude_dir3) == 0) && (strcmp(name2,"ndarray") == 0))
+                            continue;
+                        if((strcmp(name, exclude_dir4) == 0) && (strcmp(name2,"ndarray") == 0))
+                            continue;
                     
-                        // if(strcmp(name, dtype) == 0)
-                        // {
-                        //     getattr = type_name;
-                        // }
-                    
-
                         if(name != NULL)
                         {
-                            // insert attr name
+                            // check if id remains constant if object is unchanged (excluding numpy array and primitive objects)
+                            if(strcmp(name2,"ndarray") != 0 && !PyBool_Check(getattr) && !PyLong_Check(getattr) && !PyFloat_Check(getattr) && !PyUnicode_Check(getattr))
+                            {          
+                                if(get_builtin_id(PyObject_GetAttr(obj, cur_attr)) != get_builtin_id(PyObject_GetAttr(obj, cur_attr)))
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // insert attribute name
                             long id = get_builtin_id(cur_attr);
                             idGraphNode *child = find_idGraphNode_in_list(visited, id);
                             if(child == NULL)
@@ -585,24 +584,18 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
                             }
                             if (child != NULL)
                             {
-                                // PySys_WriteStdout("if2 \n");
                                 add_child(node, child);
-                                // PySys_WriteStdout("%s \n", get_json_str(node));
                             }
 
-                            // if(getattr != NULL)
-
-                            // insert attr
+                            // insert attribute contents
                             id = get_builtin_id(getattr);
                             idGraphNode *child2 = find_idGraphNode_in_list(visited, id);
                             if (child2 == NULL)
                             {
-                                // PySys_WriteStdout("if3 \n");
                                 child2 = create_id_graph(getattr, visited);
                             }
                             else
                             {
-                                // PySys_WriteStdout("else2 \n");
                                 // TODO: free this memory
                                 idGraphNode *visited_child = (idGraphNode *)malloc(sizeof(idGraphNode));
                                 visited_child->obj_id = child2->obj_id;
@@ -613,89 +606,14 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
                             }
                             if (child2 != NULL)
                             {
-                                // PySys_WriteStdout("if4 \n");
                                 add_child(child, child2);
-                                // PySys_WriteStdout("%s \n", get_json_str(node));
                             }
                         }
                     }
                 }
             }
-
-            // PyObject *dict = PyObject_GetAttrString(obj, "__dict__");
-            // if (dict != NULL && PyDict_Check(dict))
-            // {
-            //     Py_ssize_t pos = 0;
-            //     PyObject *key, *value;
-            //     while (PyDict_Next(dict, &pos, &key, &value))
-            //     {
-            //         if (PyUnicode_Check(key))
-            //         {
-            //             const char *name = PyUnicode_AsUTF8(key);
-            //             // if (name != NULL && name[0] != '_')
-            //             if (name != NULL)
-            //             {
-            //                 PySys_WriteStdout("comes here \n");
-            //                 // insert key
-            //                 long id = get_builtin_id(key);
-            //                 idGraphNode *child = find_idGraphNode_in_list(visited, id);
-            //                 if (child == NULL)
-            //                 {
-            //                     PySys_WriteStdout("if1 \n");
-            //                     child = create_id_graph(key, visited);
-            //                 }
-            //                 else
-            //                 {
-            //                     PySys_WriteStdout("else 1 \n");
-            //                     // TODO: free this memory
-            //                     idGraphNode *visited_child = (idGraphNode *)malloc(sizeof(idGraphNode));
-            //                     visited_child->obj_id = child->obj_id;
-            //                     visited_child->obj_type = child->obj_type;
-            //                     visited_child->children = NULL;
-            //                     child = visited_child;
-            //                     visited_child = NULL;
-            //                 }
-            //                 if (child != NULL)
-            //                 {
-            //                     PySys_WriteStdout("if2 \n");
-            //                     add_child(node, child);
-            //                     PySys_WriteStdout("%s \n", get_json_str(node));
-            //                 }
-
-            //                 // insert value
-            //                 id = get_builtin_id(value);
-            //                 child = find_idGraphNode_in_list(visited, id);
-            //                 if (child == NULL)
-            //                 {
-            //                     PySys_WriteStdout("if3 \n");
-            //                     child = create_id_graph(value, visited);
-            //                 }
-            //                 else
-            //                 {
-            //                     PySys_WriteStdout("else2 \n");
-            //                     // TODO: free this memory
-            //                     idGraphNode *visited_child = (idGraphNode *)malloc(sizeof(idGraphNode));
-            //                     visited_child->obj_id = child->obj_id;
-            //                     visited_child->obj_type = child->obj_type;
-            //                     visited_child->children = NULL;
-            //                     child = visited_child;
-            //                     visited_child = NULL;
-            //                 }
-            //                 if (child != NULL)
-            //                 {
-            //                     PySys_WriteStdout("if4 \n");
-            //                     add_child(node, child);
-            //                     PySys_WriteStdout("%s \n", get_json_str(node));
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
         }
     }
-
-
-
 
     // Not implemented  objects
     else
