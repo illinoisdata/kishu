@@ -459,7 +459,7 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
         PyArrayObject* arr_obj = (PyArrayObject*)obj; 
         const long builtin_id_2 = (long)(PyArray_BASE(arr_obj));
         
-        if(builtin_id_2 == 0)
+        if (builtin_id_2 == 0)
             node = create_idGraphNode(builtin_id, OBJ_TYPE_CLASS, 0);
         else
             node = create_idGraphNode(builtin_id_2, OBJ_TYPE_CLASS, 0);
@@ -467,8 +467,7 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
         visited = mark_visited(visited, node);
 
         npy_intp arr_len = PyArray_SIZE(arr_obj);
-        for (npy_intp i = 0; i < arr_len; ++i)
-        {
+        for (npy_intp i = 0; i < arr_len; ++i) {
             PyObject *item = PyArray_GETITEM(arr_obj, PyArray_DATA(arr_obj) + i * PyArray_ITEMSIZE(arr_obj));
 
             long id = get_builtin_id(item);
@@ -490,129 +489,96 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited)
     }
 
     // Other Class object
-    else if (!PyModule_Check(obj) && !PyType_Check(obj))
+    else if (!PyModule_Check(obj) && !PyType_Check(obj) && obj != NULL)
     {
-        if(obj != NULL)
-        {
-            node = create_idGraphNode(builtin_id, OBJ_TYPE_CLASS, 0);
-            visited = mark_visited(visited, node);
+        node = create_idGraphNode(builtin_id, OBJ_TYPE_CLASS, 0);
+        visited = mark_visited(visited, node);
 
-            PyObject *dir = PyObject_Dir(obj);
+        PyObject *dir = PyObject_Dir(obj);
 
-            if(dir != NULL && PyList_Check(dir))
-            {
-                Py_ssize_t dir_len = PyList_Size(dir);
+        if (dir != NULL && PyList_Check(dir)) {
 
-                // Attributes to exclude from idgraph
-                char exclude_dir1[] = "T"; // This attribute, found in dataframe and series objects, are of the types dataframe and series, and thus iterating through them would result in an infinite loop
-                char exclude_dir2[] = "__doc__"; // This attribute contains the documentation of the object
-                char exclude_dir3[] = "imag"; // This attribute, found in numpy arrays, contain numpy arrays and thus iterating through them would result in an infinite loop
-                char exclude_dir4[] = "real"; // This attribute, found in numpy arrays, contain numpy arrays and thus iterating through them would result in an infinite loop
+            Py_ssize_t dir_len = PyList_Size(dir);
 
-                // char exclude_attr1[] = "method";
-                // char exclude_attr2[] = "builtin_function_or_method";
-                // char exclude_attr3[] = "method-wrapper";
-                // char exclude_attr4[] = "PyCapsule";
-                // char exclude_attr5[] = "NoneType";
-                // char exclude_attr6[] = "_ctypes";
-                // char exclude_attr7[] = "memoryview";
-                // char exclude_attr8[] = "flagsobj";
-                // char exclude_attr9[] = "flatiter";
+            // Attributes to exclude from idgraph
+            char exclude_dir1[] = "T"; // This attribute, found in dataframe and series objects, are of the types dataframe and series, and thus iterating through them would result in an infinite loop
+            char exclude_dir2[] = "__doc__"; // This attribute contains the documentation of the object
+            char exclude_dir3[] = "imag"; // This attribute, found in numpy arrays, contain numpy arrays and thus iterating through them would result in an infinite loop
+            char exclude_dir4[] = "real"; // This attribute, found in numpy arrays, contain numpy arrays and thus iterating through them would result in an infinite loop
 
-                // char dtype[] = "dtype";
+            for (Py_ssize_t i = 0; i < dir_len; i++) {
+                PyObject *attr_title = PyList_GetItem(dir, i);
+                const char *name = PyUnicode_AsUTF8(attr_title);
 
-                for(Py_ssize_t i = 0; i < dir_len; i++)
-                {
-                    // PySys_WriteStdout("Looping fine \n");
-                    PyObject *cur_attr = PyList_GetItem(dir, i);
-
-                    const char *name = PyUnicode_AsUTF8(cur_attr);
-                    if(name != NULL)
-                    {
-                        // if((strcmp(name, exclude_dir1) == 0) || (strcmp(name, exclude_dir2) == 0) || (strcmp(name, exclude_dir3) == 0) || (strcmp(name, exclude_dir4) == 0))
-                        if((strcmp(name, exclude_dir1) == 0) || (strcmp(name, exclude_dir2) == 0))
-                            continue;
-                    }
-
-                    if(name[0] == '_')
-                    {
+                if (name != NULL) {
+                    if((strcmp(name, exclude_dir1) == 0) || (strcmp(name, exclude_dir2) == 0))
                         continue;
-                    }
+                }
 
-                    PyObject *getattr = PyObject_GetAttr(obj, cur_attr);
-                    // PyObject *attr_type = PyObject_Type(getattr);
-                    PyObject *type_name = PyObject_GetAttrString(PyObject_Type(getattr), "__name__");
+                if (name[0] == '_') {
+                    continue;
+                }
 
-                    const char *name2 = PyUnicode_AsUTF8(type_name);
+                PyObject *attr = PyObject_GetAttr(obj, attr_title);
+                PyObject *type_name = PyObject_GetAttrString(PyObject_Type(attr), "__name__");
 
-                    if(PyList_Check(getattr) || PyTuple_Check(getattr) || PyDict_Check(getattr) || PyAnySet_Check(getattr) || PyBool_Check(getattr) || PyLong_Check(getattr) || PyFloat_Check(getattr) || PyUnicode_Check(getattr) || (strcmp(name2,"ndarray") == 0) || (strcmp(name2,"Series") == 0))
-                    {
-                        
-                        // Creating idgraphs of attributes imag or real of type numpy array can result in an infinite loop since each numpy array consists of imag and real numpy array attributes
-                        if((strcmp(name, exclude_dir3) == 0) && (strcmp(name2,"ndarray") == 0))
-                            continue;
-                        if((strcmp(name, exclude_dir4) == 0) && (strcmp(name2,"ndarray") == 0))
-                            continue;
+                const char *name2 = PyUnicode_AsUTF8(type_name);
+
+                if (PyList_Check(attr) || PyTuple_Check(attr) || PyDict_Check(attr) || PyAnySet_Check(attr) || PyBool_Check(attr) || PyLong_Check(attr) || PyFloat_Check(attr) || PyUnicode_Check(attr) || (strcmp(name2,"ndarray") == 0) || (strcmp(name2,"Series") == 0)) {
                     
-                        if(name != NULL)
-                        {
-                            // check if id remains constant if object is unchanged (excluding numpy array and primitive objects)
-                            if(strcmp(name2,"ndarray") != 0 && !PyBool_Check(getattr) && !PyLong_Check(getattr) && !PyFloat_Check(getattr) && !PyUnicode_Check(getattr))
-                            {          
-                                if(get_builtin_id(PyObject_GetAttr(obj, cur_attr)) != get_builtin_id(PyObject_GetAttr(obj, cur_attr)))
-                                {
-                                    continue;
-                                }
+                    // Creating idgraphs of attributes imag or real of type numpy array can result in an infinite loop since each numpy array consists of imag and real numpy array attributes
+                    if ((strcmp(name, exclude_dir3) == 0) && (strcmp(name2,"ndarray") == 0))
+                        continue;
+                    if ((strcmp(name, exclude_dir4) == 0) && (strcmp(name2,"ndarray") == 0))
+                        continue;
+                
+                    if (name != NULL) {
+                        // check if id remains constant if object is unchanged (excluding numpy array and primitive objects)
+                        if (strcmp(name2,"ndarray") != 0 && !PyBool_Check(attr) && !PyLong_Check(attr) && !PyFloat_Check(attr) && !PyUnicode_Check(attr)) {          
+                            if (get_builtin_id(PyObject_GetAttr(obj, attr_title)) != get_builtin_id(PyObject_GetAttr(obj, attr_title))) {
+                                continue;
                             }
+                        }
 
-                            // insert attribute name
-                            long id = get_builtin_id(cur_attr);
-                            idGraphNode *child = find_idGraphNode_in_list(visited, id);
-                            if(child == NULL)
-                            {
-                                child = create_id_graph(cur_attr, visited);
-                            }
-                            else
-                            {
-                                // TODO: free this memory
-                                idGraphNode *visited_child = (idGraphNode *)malloc(sizeof(idGraphNode));
-                                visited_child->obj_id = child->obj_id;
-                                visited_child->obj_type = child->obj_type;
-                                visited_child->children = NULL;
-                                child = visited_child;
-                                visited_child = NULL;
-                            }
-                            if (child != NULL)
-                            {
-                                add_child(node, child);
-                            }
+                        // insert attribute name
+                        long id = get_builtin_id(attr_title);
+                        idGraphNode *child = find_idGraphNode_in_list(visited, id);
+                        if (child == NULL) {
+                            child = create_id_graph(attr_title, visited);
+                        }
+                        else {
+                            idGraphNode *visited_child = (idGraphNode *)malloc(sizeof(idGraphNode));
+                            visited_child->obj_id = child->obj_id;
+                            visited_child->obj_type = child->obj_type;
+                            visited_child->children = NULL;
+                            child = visited_child;
+                            visited_child = NULL;
+                        }
+                        if (child != NULL) {
+                            add_child(node, child);
+                        }
 
-                            // insert attribute contents
-                            id = get_builtin_id(getattr);
-                            idGraphNode *child2 = find_idGraphNode_in_list(visited, id);
-                            if (child2 == NULL)
-                            {
-                                child2 = create_id_graph(getattr, visited);
-                            }
-                            else
-                            {
-                                // TODO: free this memory
-                                idGraphNode *visited_child = (idGraphNode *)malloc(sizeof(idGraphNode));
-                                visited_child->obj_id = child2->obj_id;
-                                visited_child->obj_type = child2->obj_type;
-                                visited_child->children = NULL;
-                                child2 = visited_child;
-                                visited_child = NULL;
-                            }
-                            if (child2 != NULL)
-                            {
-                                add_child(child, child2);
-                            }
+                        // insert attribute contents
+                        id = get_builtin_id(attr);
+                        idGraphNode *child2 = find_idGraphNode_in_list(visited, id);
+                        if (child2 == NULL) {
+                            child2 = create_id_graph(attr, visited);
+                        }
+                        else {
+                            idGraphNode *visited_child = (idGraphNode *)malloc(sizeof(idGraphNode));
+                            visited_child->obj_id = child2->obj_id;
+                            visited_child->obj_type = child2->obj_type;
+                            visited_child->children = NULL;
+                            child2 = visited_child;
+                            visited_child = NULL;
+                        }
+                        if (child2 != NULL) {
+                            add_child(child, child2);
                         }
                     }
                 }
             }
-        }
+        } 
     }
 
     // Not implemented  objects
