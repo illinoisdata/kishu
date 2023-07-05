@@ -367,6 +367,21 @@ void process_set_items(PyObject *obj, idGraphNode *node,
   }
 }
 
+void store_numpy_dim(PyObject *obj, idGraphNode *node,
+                     idGraphNodeList *visited) {
+  PyObject *item = PyObject_GetAttrString(obj, "ndim");
+  long id = get_builtin_id(item);
+  idGraphNode *child = find_idGraphNode_in_list(visited, id);
+  if (child == NULL) {
+    child = create_id_graph(item, visited);
+  } else {
+    child = create_idGraphNode(child->obj_id, child->obj_type, 0);
+  }
+  if (child != NULL) {
+    add_child(node, child);
+  }
+}
+
 /**
  * Iterates over a numpy array and adds children nodes to the ID graph.
  **/
@@ -405,67 +420,90 @@ void process_pandas_items(PyObject *obj, idGraphNode *node,
               // would result in an infinite loop
     char exclude_dir2[] =
         "__doc__";  // This attribute contains the documentation of the object
+    char exclude_dir3[] =
+        "__dict__";  // Code seems to go into complex and unnecessary classes
+    char exclude_dir4[] =
+        "_agg_summary_and_see_also_doc";        // another documentation
+    char exclude_dir5[] = "_agg_examples_doc";  // another documentation
+    char exclude_dir6[] =
+        "_item_cache";  // Stores data items as cache in case of pandas objects
 
     Py_ssize_t dir_len = PyList_Size(dir);
     for (Py_ssize_t i = 0; i < dir_len; i++) {
       PyObject *attr_title = PyList_GetItem(dir, i);
-      const char *name = PyUnicode_AsUTF8(attr_title);
+      if (attr_title == NULL) continue;
 
+      const char *name = PyUnicode_AsUTF8(attr_title);
       if (name == NULL) continue;
+
       if ((strcmp(name, exclude_dir1) == 0) ||
-          (strcmp(name, exclude_dir2) == 0))
+          (strcmp(name, exclude_dir2) == 0) ||
+          (strcmp(name, exclude_dir3) == 0) ||
+          (strcmp(name, exclude_dir4) == 0) ||
+          (strcmp(name, exclude_dir5) == 0) ||
+          (strcmp(name, exclude_dir6) == 0))
         continue;
-      if (name[0] == '_') continue;
 
       PyObject *attr = PyObject_GetAttr(obj, attr_title);
+      if (attr == NULL) continue;
+
       const char *name2 = PyUnicode_AsUTF8(
           PyObject_GetAttrString(PyObject_Type(attr), "__name__"));
+      if (name2 == NULL) continue;
 
-      if (isBuiltinObject(attr) || (strcmp(name2, "ndarray") == 0) ||
-          (strcmp(name2, "Series") == 0)) {
-        // check if id remains constant if object is unchanged (excluding numpy
-        // array, primitive and char array objects)
-        if (strcmp(name2, "ndarray") != 0 && !isPrimitiveORString(attr)) {
-          if (get_builtin_id(PyObject_GetAttr(obj, attr_title)) !=
-              get_builtin_id(PyObject_GetAttr(obj, attr_title)))
-            continue;
-        }
+      // For attributes which start with '_', only include those which are
+      // built-in, numpy array of pandas series objects
+      if (name[0] == '_') {
+        if (!(isBuiltinObject(attr) || (strcmp(name2, "ndarray") == 0) ||
+              (strcmp(name2, "Series") == 0)))
+          continue;
+      }
+      // For attributes which don't start with '_', only include primitive
+      // objects
+      if (name[0] != '_' && !isPrimitiveORString(attr)) continue;
 
-        // insert attribute name
-        long id = get_builtin_id(attr_title);
-        idGraphNode *child = find_idGraphNode_in_list(visited, id);
-        if (child == NULL) {
-          child = create_id_graph(attr_title, visited);
-        } else {
-          idGraphNode *visited_child =
-              (idGraphNode *)malloc(sizeof(idGraphNode));
-          visited_child->obj_id = child->obj_id;
-          visited_child->obj_type = child->obj_type;
-          visited_child->children = NULL;
-          child = visited_child;
-          visited_child = NULL;
-        }
-        if (child != NULL) {
-          add_child(node, child);
-        }
+      // check if id remains constant if object is unchanged (excluding numpy
+      // array, primitive and char array objects)
+      if (strcmp(name2, "ndarray") != 0 && !isPrimitiveORString(attr)) {
+        if (get_builtin_id(PyObject_GetAttr(obj, attr_title)) !=
+            get_builtin_id(PyObject_GetAttr(obj, attr_title)))
+          continue;
+      }
 
-        // insert attribute contents
-        id = get_builtin_id(attr);
-        idGraphNode *child2 = find_idGraphNode_in_list(visited, id);
-        if (child2 == NULL) {
-          child2 = create_id_graph(attr, visited);
-        } else {
-          idGraphNode *visited_child =
-              (idGraphNode *)malloc(sizeof(idGraphNode));
-          visited_child->obj_id = child2->obj_id;
-          visited_child->obj_type = child2->obj_type;
-          visited_child->children = NULL;
-          child2 = visited_child;
-          visited_child = NULL;
-        }
-        if (child2 != NULL) {
-          add_child(child, child2);
-        }
+      // insert attribute name
+      long id = get_builtin_id(attr_title);
+      idGraphNode *child = find_idGraphNode_in_list(visited, id);
+      if (child == NULL) {
+        child = create_id_graph(attr_title, visited);
+      } else {
+        idGraphNode *visited_child = (idGraphNode *)malloc(sizeof(idGraphNode));
+        visited_child->obj_id = child->obj_id;
+        visited_child->obj_type = child->obj_type;
+        visited_child->children = NULL;
+        child = visited_child;
+        visited_child = NULL;
+      }
+      if (child != NULL) {
+        add_child(node, child);
+        // PySys_WriteStdout("%s \n", get_json_str(child));
+      }
+
+      // insert attribute contents
+      id = get_builtin_id(attr);
+      idGraphNode *child2 = find_idGraphNode_in_list(visited, id);
+      if (child2 == NULL) {
+        child2 = create_id_graph(attr, visited);
+      } else {
+        idGraphNode *visited_child = (idGraphNode *)malloc(sizeof(idGraphNode));
+        visited_child->obj_id = child2->obj_id;
+        visited_child->obj_type = child2->obj_type;
+        visited_child->children = NULL;
+        child2 = visited_child;
+        visited_child = NULL;
+      }
+      if (child2 != NULL) {
+        add_child(child, child2);
+        // PySys_WriteStdout("%s \n", get_json_str(child));
       }
     }
   }
@@ -562,6 +600,7 @@ idGraphNode *create_id_graph(PyObject *obj, idGraphNodeList *visited) {
       node = create_idGraphNode(builtin_id_2, OBJ_TYPE_CLASS, 0);
 
     visited = mark_visited(visited, node);
+    process_pandas_items(obj, node, visited);
     process_numpy_items(arr_obj, node, visited);
   }
 
