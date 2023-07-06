@@ -268,16 +268,13 @@ bool isBuiltinObject(PyObject *obj) {
           PyAnySet_Check(obj) || isPrimitiveORString(obj));
 }
 
-
-
-
-idGraphNode *process_children(PyObject *item, idGraphNode *node, idGraphNodeList *visited) {
+idGraphNode *process_children(PyObject *item, idGraphNode *node,
+                              idGraphNodeList *visited) {
   long id = get_builtin_id(item);
   idGraphNode *child = find_idGraphNode_in_list(visited, id);
   if (child == NULL) {
     child = create_id_graph(item, visited);
-  } 
-  else {
+  } else {
     child = create_idGraphNode(child->obj_id, child->obj_type, 0);
   }
   if (child != NULL) {
@@ -336,6 +333,15 @@ void process_set_items(PyObject *obj, idGraphNode *node,
 void process_numpy_items(PyArrayObject *arr_obj, idGraphNode *node,
                          idGraphNodeList *visited) {
   npy_intp arr_len = PyArray_SIZE(arr_obj);
+  npy_intp *shp = PyArray_SHAPE(arr_obj);
+  int ndim = PyArray_NDIM(arr_obj);
+
+  // Store shape of array
+  for (int i = 0; i < ndim; i++) {
+    process_children(PyLong_FromLong(shp[i]), node, visited);
+  }
+
+  // Store array elements
   for (npy_intp i = 0; i < arr_len; ++i) {
     PyObject *item = PyArray_GETITEM(
         arr_obj, PyArray_DATA(arr_obj) + i * PyArray_ITEMSIZE(arr_obj));
