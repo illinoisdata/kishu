@@ -265,7 +265,7 @@ def test_IDGraph_class_instance():
                 {'obj_val': '0', 'obj_type': 'bool', 'children': []},
             ]},
             {'obj_val': '__module__', 'obj_type': 'string', 'children': [
-                {'obj_val': 'test_idgraph', 'obj_type': 'string', 'children': []},
+                {'obj_val': test1.__module__, 'obj_type': 'string', 'children': []},
             ]},
         ]
     }
