@@ -253,14 +253,20 @@ def test_IDGraph_class_instance():
     assert expected_id == actual_id
     assert expected_type == actual_type
 
+
     obj = {
         'obj_id': expected_id,
         'obj_type': expected_type,
         'children': [
-            {'obj_val': '0', 'obj_type': 'bool', 'children': []},
-            {'obj_val': 'my_bool', 'obj_type': 'string', 'children': []},
-            {'obj_val': '1', 'obj_type': 'int', 'children': []},
-            {'obj_val': 'my_int', 'obj_type': 'string', 'children': []},
+            {'obj_val': 'my_int', 'obj_type': 'string', 'children': [
+                {'obj_val': '1', 'obj_type': 'int', 'children': []},
+            ]},
+            {'obj_val': 'my_bool', 'obj_type': 'string', 'children': [
+                {'obj_val': '0', 'obj_type': 'bool', 'children': []},
+            ]},
+            {'obj_val': '__module__', 'obj_type': 'string', 'children': [
+                {'obj_val': 'test_idgraph', 'obj_type': 'string', 'children': []},
+            ]},
         ]
     }
     expected_id_graph = json.dumps(obj)
