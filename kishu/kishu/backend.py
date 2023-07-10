@@ -32,6 +32,12 @@ def status(notebook_id: str, commit_id: str):
     return into_json(status_result)
 
 
+@app.get("/checkout/<notebook_id>/<commit_id>")
+def checkout(notebook_id: str, commit_id: str):
+    checkout_result = KishuCommand.checkout(notebook_id, commit_id)
+    return into_json(checkout_result)
+
+
 @app.get("/fe/initialize/<notebook_id>")
 def fe_initialize(notebook_id: str):
     fe_initialize_result = KishuCommand.fe_initialize(notebook_id)
