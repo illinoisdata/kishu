@@ -28,10 +28,10 @@ a different instance (associated with a different checkpoint file).
 
 Restoring a checkpointed state means that we are restoring some of the variables from an old state
 into the current state. Thus, the kishu object remains the same before and after any checkpointing/
-restoration operations; only the current state (or the variables inside it) changes. 
+restoration operations; only the current state (or the variables inside it) changes.
 
-(Not implemented yet) 
-In order to give an impression that we are actually reviving an old state, kishu also manages 
+(Not implemented yet)
+In order to give an impression that we are actually reviving an old state, kishu also manages
 IPython's database including execution count and cell code.
 
 
@@ -40,16 +40,15 @@ Reference
 """
 from __future__ import annotations
 import time
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any, cast
 
 from kishu.checkpoint_io import init_checkpoint_database
 from kishu.commit_graph import KishuCommitGraph
+from kishu.resources import KishuResource
 
 from .plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
-
 
 
 @dataclass
@@ -86,33 +85,29 @@ class CellExecInfo(UnitExecution):
 class KishuForJupyter:
     CURRENT_CELL_ID = 'current'
 
-    def __init__(self) -> None:
+    def __init__(self, notebook_id: Optional[str] = None) -> None:
         """
         @param _history  The connector to log data.
         @param _running_cell  A temporary data created during a cell execution.
         @param _checkpoint_file  The file for storing all the data.
         """
-        kishu_dir: str = create_kishu_dir()
+        if notebook_id is None:
+            self._notebook_id = datetime.now().strftime('%Y%m%dT%H%M%S')  # TODO: notebook name.
+        else:
+            self._notebook_id = notebook_id
         self._running_cell: Optional[CellExecInfo] = None
-        self._checkpoint_file: str = os.path.join(kishu_dir, self._notebook_file())
-        init_checkpoint_database(self._checkpoint_file)
-        self._history: ExecutionHistory = ExecutionHistory(self._checkpoint_file)
-        self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(kishu_dir)
+        init_checkpoint_database(self.checkpoint_file())
+        self._history: ExecutionHistory = ExecutionHistory(self.checkpoint_file())
+        self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
+            KishuResource.commit_graph_directory(self._notebook_id)
+        )
 
     def log(self) -> ExecutionHistory:
         return self._history
-    
-    def checkpoint_file(self) -> str:
-        return self._checkpoint_file
-        
-    def _notebook_file(self) -> str:
-        """
-        Generates a string representation unique to this notebook. Example: "20230607T133455"
 
-        Note: this assumes no kishu module will be enabled at the same second.
-        """
-        return 'db_' + datetime.now().strftime('%Y%m%dT%H%M%S')
-    
+    def checkpoint_file(self) -> str:
+        return KishuResource.checkpoint_path(self._notebook_id)
+
     def checkout(self, checkpoint_file: str, commit_id: str) -> None:
         """
         Restores a variable state from commit_id.
@@ -138,7 +133,6 @@ class KishuForJupyter:
 
         # update kishu internal state
         self._graph.jump(commit_id)
-        
 
     def pre_run_cell(self, info) -> None:
         """
@@ -204,8 +198,9 @@ class KishuForJupyter:
         TODO: Perform more intelligent checkpointing.
         """
         # Step 1: checkpoint
-        user_ns = get_jupyter_kernel().user_ns
-        checkpoint_file = self._checkpoint_file
+        ip = get_jupyter_kernel()
+        user_ns = {} if ip is None else ip.user_ns
+        checkpoint_file = self.checkpoint_file()
         exec_id = cell_info.exec_id
         var_names = [item[0] for item in filter(no_ipython_var, user_ns.items())]
         cell_info.checkpoint_vars = var_names
@@ -215,7 +210,8 @@ class KishuForJupyter:
         # Step 2: prepare a restoration plan
         restore: RestorePlan = checkpoint.restore_plan()
         return restore
-    
+
+
 def repr_if_not_none(obj: Any) -> Optional[str]:
     if obj is None:
         return obj
@@ -224,6 +220,7 @@ def repr_if_not_none(obj: Any) -> Optional[str]:
 
 IPYTHON_VARS = set(['In', 'Out', 'get_ipython', 'exit', 'quit', 'open'])
 KISHU_VARS = set(['kishu', 'load_kishu'])
+
 
 def no_ipython_var(name_obj: Tuple[str, Any]) -> bool:
     """
@@ -249,40 +246,19 @@ def get_epoch_time_ms() -> int:
     return round(time.time() * 1000)
 
 
-def create_dir(dir: str) -> str:
-    """
-    Creates a new directory if not exists.
-
-    @param dir  A directory to create.
-    @return  Echos the newly created directory.
-    """
-    if os.path.isfile(dir):
-        raise ValueError("The passed directory name exists as s file.")
-    if not os.path.exists(dir):
-        os.mkdir(dir)
-    return dir
-
-
-def create_kishu_dir() -> str:
-    """
-    Creates a directory kishu will use for checkpointing. This global kishu directory will contain
-    multiple sub-directories, each for a notebook.
-    """
-    kishu_dir = os.path.join(os.getcwd(), '.kishu')
-    create_dir(kishu_dir)
-    return kishu_dir
-
-
 # Set when kishu_for_jupyter() is invoked within Jupyter. Interestingly, simply calling
 # get_ipython() does not always access the globally accessible function; thus, we are taking this
 # approach.
 _ipython_shell = None
 
+
 def get_jupyter_kernel():
     return _ipython_shell
 
+
 # The singleton instance for execution history.
 _kishu_exec_history: Optional[KishuForJupyter] = None
+
 
 def get_kishu_instance():
     return _kishu_exec_history
@@ -304,6 +280,6 @@ def load_kishu() -> None:
     ip.events.register('pre_run_cell', kishu.pre_run_cell)
     ip.events.register('post_run_cell', kishu.post_run_cell)
     ip.user_ns[KISHU_VAR_NAME] = kishu
-    print('Kishu will now trace cell executions automatically.\n' 
-        "- You can inspect traced information using '_kishu'.\n"
-        "- Checkpoint file: {}/\n".format(kishu._checkpoint_file))
+    print("Kishu will now trace cell executions automatically.\n"
+          "- You can inspect traced information using '_kishu'.\n"
+          "- Checkpoint file: {}/\n".format(kishu.checkpoint_file()))

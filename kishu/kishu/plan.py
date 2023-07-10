@@ -3,10 +3,20 @@ import dataclasses
 import dill
 import json
 import shortuuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
 
-from kishu.checkpoint_io import get_checkpoint, get_log, get_log_item, store_checkpoint, store_log_item
+from kishu.checkpoint_io import (
+    get_checkpoint,
+    get_log,
+    get_log_item,
+    get_log_items,
+    store_checkpoint,
+    store_log_item,
+)
+
+
+CommitId = str
 
 
 @dataclass
@@ -36,6 +46,13 @@ class UnitExecution:
         data: bytes = get_log_item(checkpoint_file, commit_id)
         return dill.loads(data)
 
+    @staticmethod
+    def get_commits(checkpoint_file: str, commit_ids: List[str]) -> Dict[str, UnitExecution]:
+        return {
+            commit_id: dill.loads(raw_exec_info)
+            for commit_id, raw_exec_info in get_log_items(checkpoint_file, commit_ids).items()
+        }
+
 
 class ExecutionHistory:
     def __init__(self, checkpoint_file: str) -> None:
@@ -47,7 +64,7 @@ class ExecutionHistory:
         Refresh log entries from db.
         """
         self.history.clear()
-        entries: Dict[str, bytes]  = get_log(self.checkpoint_file)
+        entries: Dict[str, bytes] = get_log(self.checkpoint_file)
         for key, data in entries.items():
             self.history[key] = dill.loads(data)
 
@@ -74,7 +91,7 @@ class ExecutionHistory:
                     obj.pop(k)
             cell_info_dict[key] = obj
         return cell_info_dict
-    
+
     def get_history(self) -> Dict[str, UnitExecution]:
         self._refresh()
         return self.history
@@ -83,7 +100,6 @@ class ExecutionHistory:
         self._refresh()
         history = ExecutionHistory._clean_history(self.history)
         return json.dumps(history, sort_keys=True, indent=2)
-    
 
 
 @dataclass
@@ -103,19 +119,18 @@ class VarNamesToObjects:
         for key, obj in object_dict.items():
             res[key] = obj
         return res
-    
+
     def __setitem__(self, key, value) -> None:
         self.object_dict[key] = value
 
     def __getitem__(self, key) -> Any:
         return self.object_dict[key]
-    
+
     def items(self):
         return self.object_dict.items()
-    
+
     def keys(self):
         return self.object_dict.keys()
-    
 
 
 class CheckpointAction:
@@ -163,16 +178,16 @@ class StoreEverythingCheckpointPlan(CheckpointPlan):
     A dumb approach to checkpointing. This is useful as a baseline approach. This class must
     not be subclassed.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         """
         @param checkpoint_file  The file to which data will be saved.
         """
         super().__init__()
-        self.checkpoint_file: str = None
+        self.checkpoint_file: Optional[str] = None
 
     @classmethod
-    def create(cls, user_ns: dict, checkpoint_file: str, exec_id: str, 
-               var_names: Optional[List[str]]=None):
+    def create(cls, user_ns: dict, checkpoint_file: str, exec_id: str,
+               var_names: Optional[List[str]] = None):
         """
         @param user_ns  A dictionary representing a target variable namespace. In Jupyter, this
                 can be optained by `get_ipython().user_ns`.
@@ -208,7 +223,7 @@ class StoreEverythingCheckpointPlan(CheckpointPlan):
             if name not in key_set:
                 raise ValueError("Checkpointing a non-existenting var: {}".format(name))
         return var_names
-    
+
     def restore_plan(self) -> RestorePlan:
         action = LoadVariableRestoreAction()
         return RestorePlan([action])
@@ -252,7 +267,7 @@ class LoadVariableRestoreAction(RestoreAction):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(var_names={self.variable_names})"
-    
+
     def __str__(self) -> str:
         return self.__repr__()
 
@@ -275,4 +290,3 @@ class RestorePlan:
         """
         for action in self.actions:
             action.run(user_ns, checkpoint_file, exec_id)
-

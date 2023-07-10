@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import pickle
-
+from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Tuple, Union
 from typing_extensions import TypeAlias
 
@@ -41,41 +41,38 @@ def MAX_BLOCK_SIZE(rank):
     return MAX_BASE_SIZE * (MUL_SIZE ** (rank + 1))
 
 
+@dataclass
 class CommitInfo:
-
-    def __init__(self, commit_id: CommitId, parent_id: CommitId):
-        self._commit_id = commit_id
-        self._parent_id = parent_id
+    commit_id: CommitId
+    parent_id: CommitId
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, CommitInfo):
             return False
         return (
-            self._commit_id == other._commit_id and
-            self._parent_id == other._parent_id
+            self.commit_id == other.commit_id and
+            self.parent_id == other.parent_id
         )
 
     def __repr__(self) -> str:
-        return f"CommitInfo(\"{self._commit_id}\", \"{self._parent_id}\")"
+        return f"CommitInfo(\"{self.commit_id}\", \"{self.parent_id}\")"
 
     def __str__(self) -> str:
-        return f"Commit({self._commit_id})"
+        return f"Commit({self.commit_id})"
 
 
 class CommitNode:
 
-    def __init__(self, commit_id: CommitId, parent_id: CommitId, commit_info: CommitInfo):
-        self._commit_id = commit_id
-        self._parent_id = parent_id
+    def __init__(self, commit_info: CommitInfo):
         self._info = commit_info
         self._position = UNSET_POSITION
         self._parent_position = UNSET_POSITION
 
     def commit_id(self) -> CommitId:
-        return self._commit_id
+        return self._info.commit_id
 
     def parent_id(self) -> CommitId:
-        return self._parent_id
+        return self._info.parent_id
 
     def info(self) -> CommitInfo:
         return self._info
@@ -96,7 +93,9 @@ class CommitNode:
         self_bytes = pickle.dumps(self)
         self_bytes_len = len(self_bytes)
         if self_bytes_len > NODE_DATA_SIZE:
-            raise ValueError(f"CommitNode is too large ({self_bytes_len} > {NODE_DATA_SIZE})")
+            raise ValueError(
+                f"CommitNode {self.info()} is too large ({self_bytes_len} > {NODE_DATA_SIZE})"
+            )
         header = self_bytes_len.to_bytes(NODE_HEADER_SIZE, NODE_HEADER_BYTEORDER)
         padding = bytes(NODE_DATA_SIZE - self_bytes_len)
         return header + self_bytes + padding
@@ -321,9 +320,15 @@ class CommitGraphStore:
     def begin_read(self, commit_id: CommitId) -> CommitInfoIterator:
         return CommitGraphWalker(self, self._find_and_read(commit_id))
 
-    def insert(self, commit_id: CommitId, parent_id: CommitId, commit_info: CommitInfo):
-        parent_node = self._find_and_read(parent_id)
-        node = CommitNode(commit_id, parent_id, commit_info)
+    def read_all(self) -> List[CommitInfo]:
+        commit_infos = [node.info() for node in self._tail_block.read_all()]
+        for sorted_block in self._sorted_blocks:
+            commit_infos.extend([node.info() for node in sorted_block.read_all()])
+        return commit_infos
+
+    def insert(self, commit_info: CommitInfo):
+        node = CommitNode(commit_info)
+        parent_node = self._find_and_read(node.parent_id())
         if parent_node is not None:
             node.set_parent_position(parent_node.position())
         self._insert(node)
@@ -447,9 +452,12 @@ class InMemoryCommitGraphStore:
     def begin_read(self, commit_id: CommitId) -> CommitInfoIterator:
         return InMemoryCommitGraphWalker(self, commit_id)
 
-    def insert(self, commit_id: CommitId, parent_id: CommitId, commit_info: CommitInfo):
-        self._edge_lists.setdefault(commit_id, []).append(parent_id)
-        self._infos[commit_id] = commit_info
+    def read_all(self) -> List[CommitInfo]:
+        return [v for _, v in self._infos.items()]
+
+    def insert(self, commit_info: CommitInfo):
+        self._edge_lists.setdefault(commit_info.commit_id, []).append(commit_info.parent_id)
+        self._infos[commit_info.commit_id] = commit_info
 
 
 class KishuCommitGraph:
@@ -466,23 +474,31 @@ class KishuCommitGraph:
     def new_on_file(root_path: str) -> KishuCommitGraph:
         return KishuCommitGraph(CommitGraphStore(root_path))
 
+    def iter_history(self, commit_id: Optional[CommitId] = None) -> CommitInfoIterator:
+        """
+        Makes history iterator from given commit.
+        """
+        if commit_id is None:
+            commit_id = self._current_commit_id
+        return self._store.begin_read(commit_id)
+
     def list_history(self, commit_id: Optional[CommitId] = None) -> List[CommitInfo]:
         """
         Lists past commit(s) leading to the given commit.
         """
-        if commit_id is None:
-            commit_id = self._current_commit_id
-        return list(self._store.begin_read(commit_id))
+        return list(self.iter_history(commit_id))
+
+    def list_all_history(self) -> List[CommitInfo]:
+        """
+        Lists all existing commit(s).
+        """
+        return self._store.read_all()
 
     def step(self, commit_id: CommitId) -> None:
         """
         Steps forward to the commit, associating the current commit as its past.
         """
-        self._store.insert(
-            commit_id,
-            self._current_commit_id,
-            CommitInfo(commit_id, self._current_commit_id),
-        )
+        self._store.insert(CommitInfo(commit_id, self._current_commit_id))
         self._current_commit_id = commit_id
 
     def jump(self, commit_id: CommitId) -> None:
@@ -493,11 +509,7 @@ class KishuCommitGraph:
         """
         commit_info = next(self._store.begin_read(commit_id), None)
         if commit_info is None:
-            self._store.insert(
-                commit_id,
-                ABSOLUTE_PAST,
-                CommitInfo(commit_id, ABSOLUTE_PAST),
-            )
+            self._store.insert(CommitInfo(commit_id, ABSOLUTE_PAST))
         self._current_commit_id = commit_id
 
 

@@ -8,7 +8,7 @@ There three types of information:
 """
 
 import sqlite3
-from typing import Dict
+from typing import Dict, List
 
 HISTORY_LOG_TABLE = 'history'
 
@@ -21,7 +21,7 @@ def get_from_table(dbfile: str, table_name: str, commit_id: str) -> bytes:
     con = sqlite3.connect(dbfile)
     cur = con.cursor()
     cur.execute(
-        "select data from {} where commit_id = ?".format(table_name), 
+        "select data from {} where commit_id = ?".format(table_name),
         (commit_id, )
         )
     res: tuple = cur.fetchone()
@@ -33,8 +33,8 @@ def save_into_table(dbfile: str, table_name: str, commit_id: str, data: bytes) -
     cur = con.cursor()
     cur.execute(
         "insert into {} values (?, ?)".format(table_name),
-        (commit_id, memoryview(data)) 
-        )
+        (commit_id, memoryview(data))
+    )
     con.commit()
 
 
@@ -74,6 +74,25 @@ def get_log_item(dbfile: str, commit_id: str) -> bytes:
     return res[0]
 
 
+def get_log_items(dbfile: str, commit_ids: List[str]) -> Dict[str, bytes]:
+    """
+    Returns a mapping from requested commit ID to its data. Order and completeness are not
+    guaranteed (i.e. not all commit IDs may be present). Data bytes are those from store_log_item
+    """
+    log = {}
+    con = sqlite3.connect(dbfile)
+    cur = con.cursor()
+    query = "select commit_id, data from {} where commit_id in ({})".format(
+        HISTORY_LOG_TABLE,
+        ', '.join('?' * len(commit_ids))
+    )
+    cur.execute(query, commit_ids)
+    res = cur.fetchall()
+    for key, data in res:
+        log[key] = data
+    return log
+
+
 def get_checkpoint(dbfile: str, commit_id: str) -> bytes:
     return get_from_table(dbfile, CHECKPOINT_TABLE, commit_id)
 
@@ -88,4 +107,3 @@ def get_restore_plan(dbfile: str, commit_id: str) -> bytes:
 
 def store_restore_plan(dbfile: str, commit_id: str, data: bytes) -> None:
     save_into_table(dbfile, RESTORE_PLAN_TABLE, commit_id, data)
-
