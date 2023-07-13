@@ -46,6 +46,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any, cast
 
 from kishu.checkpoint_io import init_checkpoint_database
+from kishu.commit_graph import KishuCommitGraph
 
 from .plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
 
@@ -91,10 +92,12 @@ class KishuForJupyter:
         @param _running_cell  A temporary data created during a cell execution.
         @param _checkpoint_file  The file for storing all the data.
         """
+        kishu_dir: str = create_kishu_dir()
         self._running_cell: Optional[CellExecInfo] = None
-        self._checkpoint_file: str = os.path.join(create_kishu_dir(), self._notebook_file())
+        self._checkpoint_file: str = os.path.join(kishu_dir, self._notebook_file())
         init_checkpoint_database(self._checkpoint_file)
         self._history: ExecutionHistory = ExecutionHistory(self._checkpoint_file)
+        self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(kishu_dir)
 
     def log(self) -> ExecutionHistory:
         return self._history
@@ -132,6 +135,9 @@ class KishuForJupyter:
         user_ns.update(target_ns)
         print('Checked-out variables: {}'.format(list(target_ns.keys())))
         # TODO: update execution count and database history
+
+        # update kishu internal state
+        self._graph.jump(commit_id)
         
 
     def pre_run_cell(self, info) -> None:
@@ -185,6 +191,7 @@ class KishuForJupyter:
 
         # epilogue
         self._history.append(cell_info)
+        self._graph.step(cell_info.exec_id)
         self._running_cell = None
 
     def _commit_id(self, result) -> str:

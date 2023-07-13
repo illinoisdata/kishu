@@ -3,6 +3,7 @@
 # Learn more: https://github.com/kennethreitz/setup.py
 
 from setuptools import setup, find_packages, Extension
+import numpy
 
 with open('README.md') as f:
     readme = f.read()
@@ -22,5 +23,6 @@ setup(
     license=license,
     packages=find_packages(exclude=('tests', 'docs', 'examples')),
     ext_modules=[Extension("c_idgraph", 
-                    sources = ["change/idgraphmodule.c","change/cJSON.c"])]
+                    sources = ["change/idgraphmodule.c","change/cJSON.c"], 
+                        include_dirs=[numpy.get_include()])]
 )
