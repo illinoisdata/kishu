@@ -1,7 +1,7 @@
 /*
  * @Author: University of Illinois at Urbana Champaign
  * @Date: 2023-06-18 10:20:09
- * @LastEditTime: 2023-07-14 16:53:07
+ * @LastEditTime: 2023-07-14 17:47:32
  * @FilePath: /src/components/Toolbar/index.tsx
  * @Description:
  */
@@ -75,6 +75,7 @@ function Toolbar({ selectedHistoryID }: Props) {
         <div>
           <Space wrap>
             <Dropdown.Button
+              type="primary"
               icon={<DownOutlined />}
               loading={loading}
               menu={{
