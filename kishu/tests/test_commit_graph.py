@@ -25,7 +25,7 @@ class TestCommitNode:
         Tests all methods in CommitNode.
         """
         info = CommitInfo(commit_id, parent_id)
-        node = CommitNode(commit_id, parent_id, info)
+        node = CommitNode(info)
         assert node.commit_id() == commit_id
         assert node.parent_id() == parent_id
         assert node.info() == info
@@ -54,8 +54,8 @@ class TestCommitNode:
 
     def test_too_large(self):
         large_id = "large_commit_" * NODE_SIZE
-        node = CommitNode(large_id, "", CommitInfo(large_id, ""))
-        with pytest.raises(ValueError, match=r"CommitNode is too large (.* > .*)"):
+        node = CommitNode(CommitInfo(large_id, ""))
+        with pytest.raises(ValueError, match=r"CommitNode .* is too large (.* > .*)"):
             node.serialize()  # Expect fail
 
 

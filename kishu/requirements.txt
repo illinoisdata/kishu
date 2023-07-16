@@ -5,4 +5,5 @@ ipynbname
 pytest
 loguru
 shortuuid
+simple_parsing
 typing
