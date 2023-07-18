@@ -52,3 +52,10 @@
   overflow-x: scroll;
   overflow-y: scroll;
 }
+
+.center-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}

@@ -1,29 +1,41 @@
-import { time } from "console";
+import { error, time } from "console";
+import { History } from "./History";
+import { MOCK_HISTORIES, MOCK_DETAILED_HISTORIES } from "./mockdata";
 
 /*
  * @Author: University of Illinois at Urbana Champaign
  * @Date: 2023-07-14 16:36:40
- * @LastEditTime: 2023-07-14 16:59:46
+ * @LastEditTime: 2023-07-18 14:12:27
  * @FilePath: /src/util/API.ts
  * @Description:
  */
+
 const BackEndAPI = {
-  rollbackBoth(historyID: Number) {
-    let fun = () => console.log("time out");
-    let sleep2 = (time: number) =>
-      new Promise((resolve) => {
-        setTimeout(resolve, time);
-      });
-    sleep2(2000).then(fun);
+  rollbackBoth(historyID: number) {
+    return new Promise((resolve) => setTimeout(resolve, 1000));
     // message.info(`rollback succeeds`);
   },
 
-  rollbackCodes(historyID: Number) {
+  rollbackCodes(historyID: number) {
     // message.info(`rollback succeeds`);
   },
 
-  rollbackVariables(historyID: Number) {
+  rollbackVariables(historyID: number) {
     // message.info(`rollback succeeds`);
+  },
+
+  getInitialData(): { histories: History[]; selectedID: number } {
+    return { histories: MOCK_HISTORIES, selectedID: 1004 };
+  },
+
+  getHistoryDetail(historyID: number): History {
+    console.log("get:" + historyID);
+    const result = MOCK_DETAILED_HISTORIES.get(historyID);
+    console.log(result);
+    if (!result) {
+      throw new Error("The detail information of this history doesn't exist!");
+    }
+    return result!;
   },
 };
 

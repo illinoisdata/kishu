@@ -1,35 +1,49 @@
 {
   "selected_history": {
-    "oid": "1003",
-    "branch_name": "master",
-    "timestamp": "2023-06-29,15:16:30",
+    "oid": "1004",
+    "branch_id": "1",
+    "timestamp": "2023-06-29,15:16:31",
+    "parent_branchID": "1",
+    "parent_oid": "1003",
     "exec_cell": "5001",
     "cells": [
       {
         "oid": "5001",
-        "version": "1003",
-        "content": "length_b=6\nlength_a=7",
+        "version": "1004",
+        "content": "print('hello world')\nprint('goodbye world')",
         "exec_num": "3"
       },
       {
         "oid": "5002",
-        "version": "1002",
-        "content": "print('hello Yongjoo')\nprint('goodbye Yongjoo')",
+        "version": "1004",
+        "content": "print('hello Supawit')\nprint('goodbye Supawit')",
         "exec_num": "2"
+      },
+      {
+        "oid": "5001",
+        "version": "1004",
+        "content": "length_c = 5",
+        "exec_num": ""
       }
     ],
     "variables": [
       {
+        "oid": 6000,
+        "variable_name": "length_c",
+        "version": 1004,
+        "state": 5
+      },
+      {
         "oid": 5999,
         "variable_name": "length_b",
         "version": 1003,
-        "content": 6
+        "state": 6
       },
       {
         "oid": 5998,
         "variable_name": "length_a",
         "version": 1003,
-        "content": 7
+        "state": 7
       }
     ]
   }
