@@ -23,14 +23,14 @@
         "oid": 5001,
         "version": 1004,
         "content": "length_c = 5",
-        "exec_num": -1
+        "exec_num": -1 //-1 means created but never executed
       }
     ],
     "variables": [
       {
         "variable_name": "length_c",
         "version": 1004,
-        "state": "5"
+        "state": "5" //the state of all variables is string(the output of print(variable_name) in python)
       },
       {
         "variable_name": "length_b",
