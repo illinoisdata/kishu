@@ -38,33 +38,17 @@ class Kernel:
         token (str): Token for the matching notebook.
     """
 
-    def __init__(self, token: str):
+    def __init__(self):
         """
         Initialize a NotebookRunner instance.
 
         Args:
             token (str): Token for the matching notebook.
         """
-        self.token = token
-
         runtime_command = "jupyter --runtime-dir"
         runtime_output = subprocess.check_output(runtime_command, shell=True)
         runtime_dir = runtime_output.decode("utf-8")
         self.runtime_dir = runtime_dir
-
-        notebook_command = "jupyter notebook list"
-        notebook_output = subprocess.check_output(notebook_command, shell=True)
-        notebook_string = notebook_output.decode("utf-8")
-        matching_notebook = None
-        lines = notebook_string.split("\n")
-        for line in lines:
-            if self.token in line:
-                matching_notebook = re.findall(r"http://localhost:\d+", line)
-                break
-        if matching_notebook:
-            self.notebook_url = matching_notebook[0]
-        else:
-            print("No matching notebook found.")
 
     def get_notebooks(self):
         """
@@ -83,25 +67,26 @@ class Kernel:
             line = line.strip()
             if line.startswith("http://"):
                 server_address = line.split("::")[0].strip()
-                token = line.split("?token=")[1].split("::")[0].strip()
+                curr_token = line.split("?token=")[1].split("::")[0].strip()
                 curr_notebook = re.findall(r"http://localhost:\d+", server_address)[0]
                 curr_port = re.search(r"http://localhost:(\d+)", curr_notebook).group(1)
-                notebook_servers[server_address] = []
-                headers = {"Authorization": f"token {token}"}
+                notebook_servers[curr_port] = []
+                headers = {"Authorization": f"token {curr_token}"}
                 response = requests.get(
                     f"{curr_notebook}/api/sessions", headers=headers
                 )
                 if response.status_code == 200:
                     running_notebooks = response.json()
+                    # Just get the path and then add the portname at the end
                     for notebook in running_notebooks:
                         notebook_path = notebook.get("notebook", {}).get("path")
-                        notebook_name = os.path.basename(notebook_path)
-                        notebook_name_with_port = f"{notebook_name} ({curr_port})"
-                        notebook_servers[server_address].append(notebook_name_with_port)
+                        notebook_kernel = notebook["kernel"]["id"]
+                        inp = (notebook_path, notebook_kernel)
+                        notebook_servers[curr_port].append(inp)
 
         return notebook_servers
 
-    def send_cmd(self, filename: str, command: str):
+    def send_cmd(self, port: str, filepath: str, command: str):
         """
         Send a command and save the output to a file.
 
@@ -110,46 +95,41 @@ class Kernel:
             command (str): Command to execute.
         """
 
-        # Get request to obtain running notebooks
-        headers = {"Authorization": f"token {self.token}"}
-        response = requests.get(f"{self.notebook_url}/api/sessions", headers=headers)
-        if response.status_code == 200:
-            running_notebooks = response.json()
-            # Search for the notebook with the desired name
-            for notebook in running_notebooks:
-                if notebook.get("notebook", {}).get("path") == filename:
-                    kernel_id = notebook.get("kernel", {}).get("id")
-                    break
-            else:
-                print(f"No running notebook found with the filename: {filename}")
-                return
-        else:
-            print("Failed to retrieve the list of running notebooks.")
-            return
+        # Get running notebooks
+        notebooks = self.get_notebooks()
+        print("notebooks", notebooks)
+        kernel_id = ""
+        for server_port, notebook_info_list in notebooks.items():
+            if server_port == port:
+                for notebook_info in notebook_info_list:
+                    notebook_path, curr_kernel = notebook_info
+                    if notebook_path == filepath:
+                        kernel_id = curr_kernel
 
         # Get the kernel ID
-        terminal_command = "ls -tr /Users/shriyangosavi/Library/Jupyter/runtime/"
+        terminal_command = "ls -tr " + self.runtime_dir
         runtime_list = subprocess.check_output(terminal_command, shell=True)
         runtimes = runtime_list.decode("utf-8")
         matching_line = next(
             (line.strip() for line in runtimes.split("\n") if kernel_id in line), None
         )
         if matching_line:
-            kernel = self.runtime_dir.rstrip("\n") + "/" + matching_line.rstrip("\n")
+            notebook_kernel = (
+                self.runtime_dir.rstrip("\n") + "/" + matching_line.rstrip("\n")
+            )
         else:
-            print("No matching line found.")
             return
 
         # Execute the command
         km = KernelManager()
-        km.load_connection_file(kernel)
+        km.load_connection_file(notebook_kernel)
         km.connect_iopub()
         client = km.client()
         client.start_channels()
         return client.execute_interactive(command)
 
 
-token = "40e27364aa593de54495a582fe7db71dceee0c4d883898ba"
-kernel = Kernel(token)
-# print(kernel.send_cmd("testNotebook.ipynb", "x = 20"))
-print(kernel.get_notebooks())
+kernel = Kernel()
+test_one = kernel.send_cmd("8888", "testNotebook.ipynb", "x = 10")
+test_two = kernel.send_cmd("8888", "Desktop/TestNotebook.ipynb", "x = 6")
+test_three = kernel.send_cmd("8889", "testNotebook.ipynb", "x = 6")
