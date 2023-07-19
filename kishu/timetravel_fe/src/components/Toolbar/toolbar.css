@@ -1,0 +1,7 @@
+.toolBar {
+  width: "100%";
+  background-color: azure;
+  padding: "10px";
+  display: flex;
+  justify-content: space-between;
+}

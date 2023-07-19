@@ -1,0 +1,32 @@
+.singleCellLayout {
+  display: flex;
+  flex-direction: row;
+}
+
+.executionOrder {
+  display: flex;
+  margin-right: 4px;
+  margin-left: 10px;
+  padding: 30px;
+}
+
+.code {
+  border: 4px solid #080808;
+  padding: 0.5em;
+  resize: vertical;
+}
+
+/* created but unexcecuted code cell*/
+.code.unexcecuted {
+  border-color: #989696;
+}
+
+/* newly successfully excecuted code cell */
+.code.success {
+  border-color: green;
+}
+
+/* newly unsuccessfully excecuted code cell */
+.code.fail {
+  border-color: red;
+}
