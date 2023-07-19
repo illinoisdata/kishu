@@ -27,14 +27,14 @@ def get_object_state(obj, visited=None):
         return obj
     
     elif isinstance(obj, tuple):
-        # visited.add(id(obj))
+        visited.add(id(obj))
         state_representation = []
         for item in obj:
             item_state = get_object_state(item, visited)
             state_representation.append(item_state)
         return tuple(state_representation)
 
-    elif isinstance(obj, (list, set)):
+    elif isinstance(obj, list):
         visited.add(id(obj))
         state_representation = []
         for item in obj:
@@ -42,11 +42,20 @@ def get_object_state(obj, visited=None):
             state_representation.append(item_state)
         return tuple(state_representation)
         # return tuple(get_object_state(item, visited | {id(obj)}) for item in obj)
+
+    elif isinstance(obj, set):
+        visited.add(id(obj))
+        state_representation = []
+        for item in sorted(obj):
+            item_state = get_object_state(item, visited)
+            state_representation.append(item_state)
+        return tuple(state_representation)    
     
     elif isinstance(obj, dict):
         # visited.add(id(obj))
-        dict_inst = obj.copy()
-        for key, value in dict_inst.items():
+        # dict_inst = dict(sorted(obj.copy().items()))
+        dict_inst = {}
+        for key, value in sorted(obj.items()):
             dict_inst[key] = get_object_state(value, visited)
         
         return dict_inst
@@ -95,15 +104,17 @@ def get_object_state(obj, visited=None):
 
         if hasattr(obj, '__getstate__'):
             if obj.__getstate__() == obj.__getstate__():
-                obj_dict =  obj.__getstate__()
-                for attr_name, attr_value in obj_dict.items():
+                # obj_dict =  dict(sorted(obj.__getstate__().items()))
+                obj_dict = {}
+                for attr_name, attr_value in sorted(obj.__getstate__().items()):
                     obj_dict[attr_name] = get_object_state(attr_value, visited)
                 
                 return obj_dict
             
         # Use __dict__ only
-        obj_dict = obj.__dict__.copy()
-        for attr_name, attr_value in obj_dict.items():
+        # obj_dict = obj.__dict__.copy()
+        obj_dict = {}
+        for attr_name, attr_value in sorted(obj.__dict__.items()):
             obj_dict[attr_name] = get_object_state(attr_value, visited)
         
         return obj_dict
