@@ -44,7 +44,12 @@ Restore a state.
 _kishu.checkout(checkpoint_file, commit_id)
 ```
 
+## Checkpoint Backend
 
+Deploy a restful server.
+```
+flask --app kishu/backend run
+```
 
 # Deployment
 

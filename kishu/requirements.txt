@@ -7,3 +7,4 @@ loguru
 shortuuid
 simple_parsing
 typing
+flask

@@ -5,7 +5,7 @@ from typing import Generator, List, Optional, Type
 from kishu.resources import KishuResource
 from kishu.jupyterint2 import CellExecInfo, KishuForJupyter
 from kishu.commit_graph import CommitInfo
-from kishu.commands import CommitSummary, KishuCommand
+from kishu.commands import CommitSummary, KishuCommand, SelectedHistory
 
 
 @pytest.fixture()
@@ -130,4 +130,17 @@ class TestKishuCommand:
             checkpoint_runtime_ms=status_result.cell_exec_info.checkpoint_runtime_ms,  # Not tested
             runtime_ms=status_result.cell_exec_info.runtime_ms,  # Not tested
             _restore_plan=status_result.cell_exec_info._restore_plan,  # Not tested
+        )
+
+    def test_fe_initialize(self, notebook_id, basic_execution_ids):
+        fe_initialize_result = KishuCommand.fe_initialize(notebook_id)
+        assert len(fe_initialize_result.histories) == 3
+
+    def test_fe_history(self, notebook_id, basic_execution_ids):
+        fe_history_result = KishuCommand.fe_history(notebook_id, basic_execution_ids[-1])
+        assert fe_history_result == SelectedHistory(
+            oid="3",
+            timestamp=fe_history_result.timestamp,  # Not tested
+            exec_cell="y = x + 1",
+            variables=[],
         )

@@ -1,31 +1,11 @@
 from __future__ import annotations
-import enum
-import json
-import simple_parsing
 import dataclasses
-from typing import Any, Callable, Dict, List, Optional
+import enum
+import simple_parsing
+from typing import Callable, Dict, List, Optional
 
+from kishu.serialization import into_json
 from kishu.commands import KishuCommand
-
-
-"""
-Printing dataclasses
-"""
-
-
-class DataclassJSONEncoder(json.JSONEncoder):
-
-    def default(self, o):
-        if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)
-        try:
-            return super().default(o)
-        except TypeError:
-            return o.__repr__()
-
-
-def print_dataclass(data: Any):
-    print(json.dumps(data, cls=DataclassJSONEncoder, indent=2))
 
 
 """
@@ -89,16 +69,16 @@ class KishuCLI:
     def log(self, args):
         assert args.notebook_id is not None, "log requires notebook_id."
         assert args.commit_id is not None, "log requires commit_id."
-        print_dataclass(KishuCommand.log(args.notebook_id, args.commit_id))
+        print(into_json(KishuCommand.log(args.notebook_id, args.commit_id)))
 
     def log_all(self, args):
         assert args.notebook_id is not None, "log_all requires notebook_id."
-        print_dataclass(KishuCommand.log_all(args.notebook_id))
+        print(into_json(KishuCommand.log_all(args.notebook_id)))
 
     def status(self, args):
         assert args.notebook_id is not None, "status requires notebook_id."
         assert args.commit_id is not None, "status requires commit_id."
-        print_dataclass(KishuCommand.status(args.notebook_id, args.commit_id))
+        print(into_json(KishuCommand.status(args.notebook_id, args.commit_id)))
 
 
 if __name__ == "__main__":
