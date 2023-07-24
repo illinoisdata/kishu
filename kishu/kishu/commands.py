@@ -49,30 +49,32 @@ class HistoryCommit:
 
 
 @dataclass
-class SelectedHistoryCommit:
-    oid: str
-    # version: str  # ???
+class SelectedHistoryCell:
+    cell_type: str
     content: str
-    exec_num: str
+    output: Optional[str]
+    exec_num: Optional[str]
+    # oid: str  # ???
+    # version: str  # ???
 
 
 @dataclass
 class SelectedHistoryVariable:
     variable_name: str
+    state: str
     # version: str  # ???
-    state: str  # string?
 
 
 @dataclass
 class SelectedHistory:
     oid: str
-    # parent_oid: str
     timestamp: str
-    exec_cell: str
+    cells: List[SelectedHistoryCell]
+    variables: List[SelectedHistoryVariable]
+    # parent_oid: str
     # branch_id: str
     # parent_branch_id: str
-    # cells: List[SelectedHistoryCommit]  # TODO: not yet recorded.
-    variables: List[SelectedHistoryVariable]
+    # exec_cell: str  # ???
 
 
 FESelectedHistory = SelectedHistory
@@ -127,7 +129,7 @@ class KishuCommand:
             reply = km.execute(
                 f"_kishu.checkout('{commit_id}')",
                 reply=True,
-                store_history=False,  # Do not increment cell count.
+                # store_history=False,  # Do not increment cell count.
             )
             km.stop_channels()
             return CheckoutResult(
@@ -227,12 +229,23 @@ class KishuCommand:
             ) for key, value in commit_variables.items()
         ]
 
+        # Compile list of cells.
+        cells: List[SelectedHistoryCell] = []
+        if cell_exec_info.executed_cells is not None:
+            for executed_cell in cell_exec_info.executed_cells:
+                cells.append(SelectedHistoryCell(
+                    cell_type=executed_cell.cell_type,
+                    content=executed_cell.source,
+                    output=executed_cell.output,
+                    exec_num=str(executed_cell.execution_count),
+                ))
+
         # Builds SelectedHistory.
         return SelectedHistory(
             oid=commit_id,
             timestamp=KishuCommand._to_datetime(cell_exec_info.end_time_ms),
-            exec_cell=cell_exec_info.code_block if cell_exec_info.code_block else "",
             variables=variables,
+            cells=cells,
         )
 
     @staticmethod
