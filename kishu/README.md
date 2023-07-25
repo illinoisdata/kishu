@@ -41,7 +41,7 @@ _kishu.checkpoint_file()
 
 Restore a state.
 ```
-_kishu.checkout(checkpoint_file, commit_id)
+_kishu.checkout(commit_id)
 ```
 
 ## Checkpoint Backend

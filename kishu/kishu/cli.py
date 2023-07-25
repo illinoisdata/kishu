@@ -19,6 +19,8 @@ class Command(enum.Enum):
     log_all = "log_all"
     status = "status"
 
+    checkout = "checkout"
+
 
 @dataclasses.dataclass
 class KishuCLIArguments:
@@ -53,6 +55,7 @@ class KishuCLI:
             Command.log: self.log,
             Command.log_all: self.log_all,
             Command.status: self.status,
+            Command.checkout: self.checkout,
         }
 
     def exec(self, args):
@@ -79,6 +82,11 @@ class KishuCLI:
         assert args.notebook_id is not None, "status requires notebook_id."
         assert args.commit_id is not None, "status requires commit_id."
         print(into_json(KishuCommand.status(args.notebook_id, args.commit_id)))
+
+    def checkout(self, args):
+        assert args.notebook_id is not None, "checkout requires notebook_id."
+        assert args.commit_id is not None, "checkout requires commit_id."
+        print(into_json(KishuCommand.checkout(args.notebook_id, args.commit_id)))
 
 
 if __name__ == "__main__":

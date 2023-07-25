@@ -1,12 +1,13 @@
 from __future__ import annotations
 import datetime
+import jupyter_client
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, cast
 
 from kishu.resources import KishuResource
 from kishu.commit_graph import CommitInfo, KishuCommitGraph
 from kishu.plan import UnitExecution
-from kishu.jupyterint2 import CellExecInfo
+from kishu.jupyterint2 import CellExecInfo, KishuForJupyter
 
 
 @dataclass
@@ -31,6 +32,11 @@ class LogAllResult:
 class StatusResult:
     commit_info: CommitInfo
     cell_exec_info: CellExecInfo
+
+
+@dataclass
+class CheckoutResult:
+    status: str
 
 
 @dataclass
@@ -104,6 +110,33 @@ class KishuCommand:
             commit_info=commit_info,
             cell_exec_info=cell_exec_info
         )
+
+    @staticmethod
+    def checkout(notebook_id: str, commit_id: str) -> CheckoutResult:
+        connection = KishuForJupyter.retrieve_connection(notebook_id)
+        if connection is None:
+            return CheckoutResult(
+                status="missing_kernel_connection"
+            )
+        cf = jupyter_client.find_connection_file(connection.kernel_id)
+        km = jupyter_client.BlockingKernelClient(connection_file=cf)
+        km.load_connection_file()
+        km.start_channels()
+        km.wait_for_ready()
+        if km.is_alive():
+            reply = km.execute(
+                f"_kishu.checkout('{commit_id}')",
+                reply=True,
+                store_history=False,  # Do not increment cell count.
+            )
+            km.stop_channels()
+            return CheckoutResult(
+                status=reply["content"]["status"]
+            )
+        else:
+            return CheckoutResult(
+                status="failed_connection"
+            )
 
     @staticmethod
     def fe_initialize(notebook_id: str) -> FEInitializeResult:

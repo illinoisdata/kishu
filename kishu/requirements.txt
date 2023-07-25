@@ -8,3 +8,4 @@ shortuuid
 simple_parsing
 typing
 flask
+dataclasses-json

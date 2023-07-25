@@ -39,8 +39,11 @@ Reference
 - https://ipython.readthedocs.io/en/stable/config/callbacks.html
 """
 from __future__ import annotations
+import json
+import os
 import time
 from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any, cast
 
@@ -82,6 +85,12 @@ class CellExecInfo(UnitExecution):
     _restore_plan: Optional[RestorePlan] = None
 
 
+@dataclass_json
+@dataclass
+class JupyterConnection:
+    kernel_id: str
+
+
 class KishuForJupyter:
     CURRENT_CELL_ID = 'current'
 
@@ -108,7 +117,7 @@ class KishuForJupyter:
     def checkpoint_file(self) -> str:
         return KishuResource.checkpoint_path(self._notebook_id)
 
-    def checkout(self, checkpoint_file: str, commit_id: str) -> None:
+    def checkout(self, commit_id: str) -> None:
         """
         Restores a variable state from commit_id.
         """
@@ -118,6 +127,7 @@ class KishuForJupyter:
         commit_id = str(commit_id)
 
         # read checkout plan
+        checkpoint_file = self.checkpoint_file()
         cell = cast(CellExecInfo, UnitExecution.get_from_db(checkpoint_file, commit_id))
         restore_plan: Optional[RestorePlan] = cell._restore_plan
         if restore_plan is None:
@@ -187,6 +197,27 @@ class KishuForJupyter:
         self._history.append(cell_info)
         self._graph.step(cell_info.exec_id)
         self._running_cell = None
+
+    def record_connection(self, connection_file_path) -> None:
+        connection_file = os.path.basename(connection_file_path)
+        if '-' not in connection_file:
+            # connection_file not in expected format.
+            # TODO: Find more stable way to extract kernel ID.
+            return
+        kernel_id = connection_file.split('-', 1)[1].split('.')[0]
+        with open(KishuResource.connection_path(self._notebook_id), 'w') as f:
+            f.write(JupyterConnection(  # type: ignore
+                kernel_id=kernel_id,
+            ).to_json())
+
+    @staticmethod
+    def retrieve_connection(notebook_id: str) -> Optional[JupyterConnection]:
+        try:
+            with open(KishuResource.connection_path(notebook_id), 'r') as f:
+                json_str = f.read()
+                return JupyterConnection.from_json(json_str)  # type: ignore
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
+            return None
 
     def _commit_id(self, result) -> str:
         return str(result.execution_count)
@@ -280,6 +311,10 @@ def load_kishu() -> None:
     ip.events.register('pre_run_cell', kishu.pre_run_cell)
     ip.events.register('post_run_cell', kishu.post_run_cell)
     ip.user_ns[KISHU_VAR_NAME] = kishu
+
+    import ipykernel
+    kishu.record_connection(ipykernel.get_connection_file())
+
     print("Kishu will now trace cell executions automatically.\n"
           "- You can inspect traced information using '_kishu'.\n"
           "- Checkpoint file: {}/\n".format(kishu.checkpoint_file()))
