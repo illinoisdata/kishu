@@ -1,7 +1,7 @@
 /*
  * @Author: University of Illinois at Urbana Champaign
  * @Date: 2023-07-14 11:38:34
- * @LastEditTime: 2023-07-18 14:22:55
+ * @LastEditTime: 2023-07-29 13:29:52
  * @FilePath: /src/components/CodePanel/SingleCell.tsx
  * @Description:
  */
@@ -12,7 +12,7 @@ import "ace-builds/src-noconflict/ext-language_tools";
 import "./SingleCell.css";
 export interface SingleCellProps {
   execNumber: number;
-  oid: number;
+  oid: string;
   content: string;
 }
 //helper functions

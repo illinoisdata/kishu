@@ -1,0 +1,96 @@
+{
+  "oid": "1004",
+  "branch_id": "1",
+  "timestamp": "2023-06-29,15:16:31",
+  "parent_branchID": "1",
+  "parent_oid": "1003",
+  "exec_cell": "5001",
+  "tag": "",
+  "cells": [
+    {
+      "oid": "5001",
+      "version": "1004",
+      "content": "print('hello world')\nprint('goodbye world')",
+      "exec_num": 3
+    },
+    {
+      "oid": "5002",
+      "version": "1004",
+      "content": "print('hello Supawit')\nprint('goodbye Supawit')",
+      "exec_num": 2
+    },
+    {
+      "oid": "5003",
+      "version": "1004",
+      "content": "length_c = 5",
+      "exec_num": -1
+    }
+  ],
+  "variables": [
+    {
+      "variable_name": "length_c",
+      "version": "1004",
+      "state": "5",
+      "type": "int"
+    },
+    {
+      "variable_name": "length_b",
+      "version": "1003",
+      "state": "6",
+      "type": "int"
+    },
+    {
+      "variable_name": "length_a",
+      "version": "1003",
+      "state": "7",
+      "type": "int"
+    },
+    {
+      "variable_name": "obj1",
+      "version": "1002",
+      "state": "class1 at <0X00000>",
+      "type": "class1",
+      "children": [
+        {
+          "variable_name": "obj2",
+          "version": "1002",
+          "state": "class2 at <0XFFFF>",
+          "type": "class2",
+          "children": [
+            {
+              "variable_name": "c",
+              "version": "1002",
+              "state": "5",
+              "type": "int"
+            },
+            {
+              "variable_name": "b",
+              "version": "1002",
+              "state": "6",
+              "type": "int"
+            },
+            {
+              "variable_name": "a",
+              "version": "1002",
+              "state": "7",
+              "type": "int"
+            }
+          ]
+        },
+        {
+          "variable_name": "k",
+          "version": "1002",
+          "state": "100",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "variable_name": "df1",
+      "version": 1002,
+      "size": "[3,6]",
+      "type": "pandas.df",
+      "state": "0     Braund   22   7.25      False\n1   Cummings   38  71.83       True\n2  Heikkinen   26   0.00       True\n3      Allen   35   8.05      False"
+    }
+  ]
+}
