@@ -2,7 +2,7 @@ Intelligent checkpointing framework for Python-based machine learning and scient
 Under development as part of a research project at the University of Illinois at Urbana-Champaign.
 
 
-# Installation
+# <span style="color: red;">Installation</span>
 
 Run the following command in a [virtual environment](https://docs.python.org/3/library/venv.html).
 ```
