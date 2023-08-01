@@ -55,6 +55,7 @@ from itertools import chain
 from pathlib import Path, PurePath
 from typing import Any, cast, Dict, Generator, List, Optional, Tuple
 
+from kishu.branch import KishuBranch
 from kishu.checkpoint_io import init_checkpoint_database
 from kishu.commit_graph import KishuCommitGraph
 from kishu.resources import KishuResource
@@ -232,6 +233,9 @@ class KishuForJupyter:
         # update kishu internal state
         self._graph.jump(commit_id)
 
+        # update branch head.
+        KishuBranch.update_head(self._notebook_id, commit_id=commit_id, is_detach=True)
+
     def pre_run_cell(self, info) -> None:
         """
         A hook invoked before running a cell.
@@ -288,6 +292,7 @@ class KishuForJupyter:
         # epilogue
         self._history.append(cell_info)
         self._graph.step(cell_info.exec_id)
+        self._step_branch(cell_info.exec_id)
         self._running_cell = None
 
     def record_connection(self) -> None:
@@ -399,6 +404,11 @@ class KishuForJupyter:
             else:
                 raise ValueError(f"Unknown output type: {cell_output}")
         return None
+
+    def _step_branch(self, commit_id: str) -> None:
+        head = KishuBranch.update_head(self._notebook_id, commit_id=commit_id)
+        if head.branch_name is not None:
+            KishuBranch.upsert_branch(self._notebook_id, head.branch_name, commit_id)
 
 
 def repr_if_not_none(obj: Any) -> Optional[str]:

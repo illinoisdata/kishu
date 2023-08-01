@@ -16,6 +16,8 @@ CHECKPOINT_TABLE = 'checkpoint'
 
 RESTORE_PLAN_TABLE = 'restore'
 
+BRANCH_TABLE = 'branch'
+
 
 def get_from_table(dbfile: str, table_name: str, commit_id: str) -> bytes:
     con = sqlite3.connect(dbfile)
@@ -44,6 +46,7 @@ def init_checkpoint_database(dbfile: str):
     cur.execute(f'create table if not exists {HISTORY_LOG_TABLE} (commit_id text primary key, data blob)')
     cur.execute(f'create table if not exists {CHECKPOINT_TABLE} (commit_id text primary key, data blob)')
     cur.execute(f'create table if not exists {RESTORE_PLAN_TABLE} (commit_id text primary key, data blob)')
+    cur.execute(f'create table if not exists {BRANCH_TABLE} (branch_name text primary key, commit_id text)')
 
 
 def store_log_item(dbfile: str, commit_id: str, data: bytes) -> None:
