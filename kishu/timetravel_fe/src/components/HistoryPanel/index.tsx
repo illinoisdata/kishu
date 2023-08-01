@@ -21,11 +21,17 @@ export interface HistoryTreeProps {
   setSelectedHistoryID: any;
   showAll: boolean; //if false, show only tags
 }
-
-//This function is to generate a random new key for the GitGraph everytime a props is changed.
-//To refresh the gitgraph when props are changed,
-// the key of the GitGraph must also be changed, or the gitgraph.js
-// will ignore the props' changes.
+function judgeShowByTag(history: History): boolean {
+  return (
+    history.tag !== undefined && history.tag !== null && history.tag !== ""
+  );
+}
+function judgeShowBySelect(history: History): boolean {
+  return true;
+}
+function judgeShowByShowAll(history: History): boolean {
+  return true;
+}
 
 function HistoryTree({
   selectedHistoryID,
@@ -34,6 +40,7 @@ function HistoryTree({
   setSelectedHistory,
   setSelectedHistoryID,
 }: HistoryTreeProps) {
+  const [judgeShow, setJudgeShow] = useState<any>(judgeShowByShowAll); //function to judge if show or not
   let branches = new Map<string, Branch>();
   useEffect(() => {
     return () => branches.clear();
@@ -61,11 +68,15 @@ function HistoryTree({
 
   return (
     <div onContextMenu={handleContextMenu} onClick={handleCloseContextMenu}>
+      {/* To refresh the gitgraph when props are changed, the key of the
+      GitGraph must also be changed, or the gitgraph.js will ignore the
+      props' changes. */}
       <Gitgraph key={Date.now()} options={{ mode: Mode.Compact }}>
         {(gitgraph) => {
           // console.log("try to rerender");
           // console.log(selectedHistoryID);
           for (let element of histories!) {
+            //if history belongs to a new branch, create a the on the parent branch
             if (!branches.has(element.branchId)) {
               if (element.parentBranchID === "-1") {
                 branches.set(
@@ -85,9 +96,6 @@ function HistoryTree({
               branches.get(element.branchId)!.commit({
                 subject: element.oid.toString(),
                 onClick(commit) {
-                  // alert("clicked");
-                  // props.setSelectedHistory(element);
-                  // setSelectedHistoryID(element.oid);
                   setSelectedHistoryID(element.oid);
                 },
                 tag: element.tag,
