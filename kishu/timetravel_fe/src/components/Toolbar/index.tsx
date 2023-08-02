@@ -86,7 +86,7 @@ function Toolbar({ selectedHistoryID }: Props) {
               }}
               onClick={() => enterLoading()}
             >
-              Submit Rollback
+              Rollback to Selected History
             </Dropdown.Button>
           </Space>
         </div>

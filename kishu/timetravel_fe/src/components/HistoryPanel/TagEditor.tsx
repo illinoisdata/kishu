@@ -12,7 +12,7 @@ export interface TagEditorProps {
   isModalOpen: boolean;
   setIsModalOpen: any;
   defaultContent: string;
-  submitHandler: any;
+  submitHandler: (arg: string) => Promise<void>;
   selectedHistoryID?: string;
 }
 

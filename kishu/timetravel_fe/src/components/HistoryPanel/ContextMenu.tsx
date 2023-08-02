@@ -13,10 +13,13 @@ import {
   LinkOutlined,
   MailOutlined,
   SettingOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import { Menu, message } from "antd";
 import type { MenuProps } from "antd/es/menu";
 import TagEditor from "./TagEditor";
+import { Judger } from "../../util/JudgeFunctions";
+import { History } from "../../util/History";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -35,46 +38,69 @@ function getItem(
 }
 
 const items: MenuItem[] = [
-  getItem("Add/Modify Tag for Selected History", "tag", <MailOutlined />),
+  getItem("Add/Modify Tag for Selected History", "tag", <EditOutlined />),
   getItem("Show All Histories", "show_all", <CalendarOutlined />),
   getItem("Show Only", "show_only", <AppstoreOutlined />, [
     getItem("Tagged Histories", "tag_only"),
     getItem("Searching Results", "search_only"),
-    // getItem("Submenu", "sub1-2", null, [
-    //   getItem("Option 5", "5"),
-    //   getItem("Option 6", "6"),
-    // ]),
   ]),
-  // getItem("Navigation Three", "sub2", <SettingOutlined />, [
-  //   getItem("Option 7", "7"),
-  //   getItem("Option 8", "8"),
-  //   getItem("Option 9", "9"),
-  //   getItem("Option 10", "10"),
-  // ]),
-  // getItem(
-  //   <a href="https://ant.design" target="_blank" rel="noopener noreferrer">
-  //     Ant Design
-  //   </a>,
-  //   "link",
-  //   <LinkOutlined />
-  // ),
+  getItem("RollBack to Selected History ", "rollback", <AppstoreOutlined />, [
+    getItem("Rollback Codes&Variable States", "both"),
+    getItem("Rollback Codes", "codes"),
+    getItem("Rollback States", "states"),
+  ]),
 ];
 
 interface ContextMenuProps {
   x: number;
   y: number;
   onClose: () => void;
-  setIsModalOpen: any;
+  setIsModalOpen: React.Dispatch<React.SetStateAction<boolean>>; //set if the tag editor is open
+  setJudgeFunctionID: any;
+  setIsGroupFolded: any;
+  judgeFunctionID: number;
+  isGroupFolded?: Map<string, boolean>;
 }
 
-function ContextMenu({ x, y, onClose, setIsModalOpen }: ContextMenuProps) {
+function ContextMenu({
+  x,
+  y,
+  onClose,
+  setIsModalOpen,
+  setJudgeFunctionID,
+  setIsGroupFolded,
+  judgeFunctionID,
+  isGroupFolded,
+}: ContextMenuProps) {
   const onClickMenuItem: MenuProps["onClick"] = ({ key, domEvent }) => {
     onClose();
     domEvent.preventDefault();
     if (key === "tag") {
       setIsModalOpen(true);
+    } else if (key === "tag_only") {
+      if (judgeFunctionID === 0) {
+        let newIsGroupFolded = new Map<string, boolean>();
+        isGroupFolded!.forEach((value, key, map) => {
+          newIsGroupFolded.set(key, true);
+        });
+        setIsGroupFolded(newIsGroupFolded);
+      } else {
+        setJudgeFunctionID(0);
+      }
+    } else if (key === "search_only") {
+      if (judgeFunctionID === 2) {
+        let newIsGroupFolded = new Map<string, boolean>();
+        isGroupFolded!.forEach((value, key, map) => {
+          newIsGroupFolded.set(key, true);
+        });
+        setIsGroupFolded(newIsGroupFolded);
+      } else {
+        setJudgeFunctionID(2);
+      }
+    } else if (key === "show_all") {
+      setJudgeFunctionID(1);
     }
-    message.info(key);
+    // message.info(key);
   };
 
   return (

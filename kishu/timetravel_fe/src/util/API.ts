@@ -49,6 +49,8 @@ const BackEndAPI = {
   },
 
   setTag(historyID: string, newTag: string) {
+    // TODO:call the API to set a tag, if succeed, then...
+
     let initial_histories = parseAllHistories(histories);
     initial_histories.filter((history) => history.oid === historyID)[0].tag =
       newTag;

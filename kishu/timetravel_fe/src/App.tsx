@@ -28,14 +28,14 @@ function App() {
   const [error, setError] = useState<string | undefined>(undefined);
 
   const [splitSizes1, setSplitSizes1] = useState([20, 80]);
-  const [splitSizes2, setSplitSizes2] = useState([60, 40]);
+  const [splitSizes2, setSplitSizes2] = useState([53, 47]);
   const [splitSizes3, setSplitSizes3] = useState([50, 50]);
 
   const [detailLoading, setDetailLoading] = useState(true);
   const [huntingCellID, setHuntingCellID] = useState<string | null>(null);
   globalThis.NotebookName = useParams().notebookName;
   // console.log(globalThis.NotebookName);
-  message.info(globalThis.NotebookName);
+  // message.info(globalThis.NotebookName);
   useEffect(() => {
     //initialize the states
     async function loadInitialData() {
@@ -107,7 +107,6 @@ function App() {
                 setHistories={setHistories}
                 setSelectedHistory={setSelectedHistory}
                 setSelectedHistoryID={setSelectedHistoryID}
-                showAll={true}
               />
             </div>
             <ReactSplit
