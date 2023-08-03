@@ -8,10 +8,10 @@
 import { Cell } from "./Cell";
 import { History } from "./History";
 import { Variable } from "./Variable";
-export function parseAllHistories(json: any) {
-  console.log("entered");
+export function parseAllCommits(json: any) {
+  // console.log("entered");
   console.log(json);
-  const items = json["Histories"];
+  const items = json["Commits"];
   const histories: History[] = items.map(
     (item: any) =>
       ({
@@ -25,7 +25,7 @@ export function parseAllHistories(json: any) {
   );
   return histories;
 }
-export function parseHistory(json: any) {
+export function parseCommitDetail(json: any) {
   console.log(json);
   const tmp = json;
   const history: History = {
@@ -39,8 +39,6 @@ export function parseHistory(json: any) {
     codes: tmp["cells"].map(
       (item: any) =>
         ({
-          oid: item["oid"],
-          version: item["version"],
           content: item["content"],
           execNum: item["exec_num"],
         } as Cell)
@@ -53,18 +51,16 @@ export function parseHistory(json: any) {
 function recursiveGetVariable(item: any): Variable {
   if (!item["children"]) {
     return {
-      key: item["variable_name"] + "_" + item["version"],
+      key: item["variable_name"],
       variableName: item["variable_name"],
-      version: item["version"],
       state: (item["state"] as string).replaceAll("\n", "\\n"),
       type: item["type"],
       size: item["size"],
     } as Variable;
   } else {
     return {
-      key: item["variable_name"] + "_" + item["version"],
+      key: item["variable_name"],
       variableName: item["variable_name"],
-      version: item["version"],
       state: (item["state"] as string).replaceAll("\n", "\\n"),
       type: item["type"],
       size: item["size"],

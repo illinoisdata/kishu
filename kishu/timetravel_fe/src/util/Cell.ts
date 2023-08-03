@@ -6,8 +6,6 @@
  * @Description:
  */
 export interface Cell {
-  oid: string;
-  version: string;
   content: string;
   execNum: number;
 }

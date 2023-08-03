@@ -15,12 +15,11 @@ export interface CodePanelProps {
 function CodePanel(props: CodePanelProps) {
   return (
     <>
-      {props.selectedHistory!.codes!.map((code) => (
+      {props.selectedHistory!.codes!.map((code, i) => (
         <>
           <SingleCell
-            key={code.oid}
+            key={i}
             execNumber={code.execNum}
-            oid={code.oid}
             content={code.content}
           />
           <br />

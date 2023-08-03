@@ -12,7 +12,6 @@ import "ace-builds/src-noconflict/ext-language_tools";
 import "./SingleCell.css";
 export interface SingleCellProps {
   execNumber: number;
-  oid: string;
   content: string;
 }
 //helper functions

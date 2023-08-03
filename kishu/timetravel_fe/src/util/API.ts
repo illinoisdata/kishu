@@ -1,8 +1,8 @@
 import { error, time } from "console";
 import { History } from "./History";
-import { parseAllHistories, parseHistory } from "./parser";
-import histories from "../example_jsons/Initialize.json";
-import history from "../example_jsons/history.json";
+import { parseAllCommits, parseCommitDetail } from "./parser";
+import commits from "../example_jsons/commit_graph.json";
+import commit_detail from "../example_jsons/commit.json";
 
 /*
  * @Author: University of Illinois at Urbana Champaign
@@ -34,7 +34,7 @@ const BackEndAPI = {
     //   .then((data) => parseAllHistories(data))
     //   .catch((error) => console.error("Error fetching data:", error));
 
-    return parseAllHistories(histories);
+    return parseAllCommits(commits);
   },
 
   getHistoryDetail(historyID: string) {
@@ -45,13 +45,13 @@ const BackEndAPI = {
     //   .then((response) => response.json())
     //   .then((data) => parseHistory(data))
     //   .catch((error) => console.error("Error fetching data:", error));
-    return parseHistory(history);
+    return parseCommitDetail(commit_detail);
   },
 
   setTag(historyID: string, newTag: string) {
     // TODO:call the API to set a tag, if succeed, then...
 
-    let initial_histories = parseAllHistories(histories);
+    let initial_histories = parseAllCommits(commits);
     initial_histories.filter((history) => history.oid === historyID)[0].tag =
       newTag;
     return initial_histories;

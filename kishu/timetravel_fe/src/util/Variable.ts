@@ -10,7 +10,6 @@ import React from "react";
 export interface Variable {
   key: React.ReactNode;
   variableName: string;
-  version: string;
   state: string;
   type?: string;
   size?: string;
