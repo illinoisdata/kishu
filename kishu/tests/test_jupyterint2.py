@@ -14,7 +14,7 @@ def test_history_to_sqlite():
     _checkpoint_file = NamedTemporaryFile()
     filename = _checkpoint_file.name
     init_checkpoint_database(filename)
-    
+
     # construct an example
     exec_info = CellExecInfo()
     exec_info.exec_id = '1'
@@ -63,7 +63,7 @@ def test_record_history():
         set_field_to(exec_info, 'runtime_ms', 0)
         set_field_to(exec_info, 'start_time_ms', 0)
         return exec_info
-    
+
     history_dict = json.loads(output['history'])
     assert replace_start_time(history_dict['1']) == {
             "checkpoint_runtime_ms": 0,
@@ -74,7 +74,7 @@ def test_record_history():
         }
     assert replace_start_time(history_dict['2']) == {
             "checkpoint_runtime_ms": 0,
-            "checkpoint_vars": [ "a" ],
+            "checkpoint_vars": ["a"],
             "code_block": "a = 1",
             "end_time_ms": 0,
             "exec_id": "2",

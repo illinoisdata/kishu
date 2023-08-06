@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import dill as pickle
-import os
 import types
 from io import BytesIO
 from types import CodeType, FrameType
-from typing import Any, Dict, Iterator, List, Set, Union
+from typing import Any, Dict, List
 
 from kishu.exceptions import TypeNotSupportedError
 
@@ -143,9 +142,10 @@ class Scope:
             cells = self.cells
         return f'Scope({cells})'
 
+
 class Code:
     def __init__(
-        self, 
+        self,
         argcount,
         cellvars,
         consts,
@@ -180,7 +180,7 @@ class Code:
     @staticmethod
     def parse_from(raw_code: CodeType) -> Code:
         """
-        Parse Python's code into serializable object. 
+        Parse Python's code into serializable object.
         Refer to https://docs.python.org/3/library/inspect.html for code object.
         """
         argcount = raw_code.co_argcount
@@ -265,7 +265,7 @@ class Frame:
     @staticmethod
     def parse_from(raw_frame: FrameType) -> Frame:
         """
-        Parse Python's frame into serializable object. 
+        Parse Python's frame into serializable object.
         Refer to https://docs.python.org/3/library/inspect.html for frame object.
         """
         # back = raw_frame.f_back
@@ -311,6 +311,7 @@ class Frame:
             f')' \
             f'\n\twith local {self.locals}' \
             f'\n\twith {self.code}'
+
 
 class State:
     """

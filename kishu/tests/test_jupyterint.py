@@ -4,11 +4,10 @@ from kishu.jupyterint import _is_kishu_function
 
 
 def test_is_kishu_function():
-    assert _is_kishu_function(_append_kishu_capture) == True
+    assert _is_kishu_function(_append_kishu_capture)
 
     # Any other functions will be evaluated to be false
-    assert _is_kishu_function(get_ipython) == False
+    assert not _is_kishu_function(get_ipython)
 
     # Non functions will be evaluated to be false
-    assert _is_kishu_function(1) == False
-
+    assert not _is_kishu_function(1)

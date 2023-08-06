@@ -12,24 +12,27 @@ from kishu.state import ContinuousPickler, Scope, State
 TestFrameParsing
 """
 
+
 def dummy_function_frame(i=9):
     a = 1
-    b = "2"
-    c = [3]
-    d = {4}
-    e = {5: 5}
+    b = "2"  # noqa
+    c = [3]  # noqa
+    d = {4}  # noqa
+    e = {5: 5}  # noqa
+
     def f():
         return 6
-    g = a + f()
-    h = type(8)
+
+    g = a + f()  # noqa
+    h = type(8)  # noqa
     return sys._getframe()
 
 
 def dummy_deep_function_frame(depth=3):
     if depth > 1:
         return dummy_deep_function_frame(depth=depth-1)
-    x = 1
-    y = "2"
+    x = 1  # noqa
+    y = "2"  # noqa
     return sys._getframe()
 
 
@@ -79,7 +82,6 @@ class TestFrameParsing:
         serialized_frame = pickle.dumps(frame)
         assert len(serialized_frame) > 0
 
-
     def test_deep_function_frame_frame(self):
         state = State.parse_from([dummy_deep_function_frame()])
         assert len(state.get_frames()) == 1
@@ -106,11 +108,9 @@ class TestFrameParsing:
         serialized_frame = pickle.dumps(frame)
         assert len(serialized_frame) > 0
 
-
     def test_many_frames(self):
         state = State.parse_from([dummy_function_frame(), dummy_function_frame()])
         assert len(state.get_frames()) == 2
-
 
     @pytest.mark.parametrize(
         "not_supported_obj",
@@ -127,6 +127,7 @@ class TestFrameParsing:
 """
 TestContinuousPickling
 """
+
 
 class TestContinuousPickling:
 

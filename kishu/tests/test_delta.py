@@ -1,8 +1,6 @@
 import pytest
 
-import dill as pickle
 import sys
-import types
 
 from kishu.state import State
 from kishu.delta import StateDelta
@@ -12,10 +10,11 @@ from kishu.delta import StateDelta
 TestDelta
 """
 
+
 def dummy_parameterized(a, make_b):
     if make_b:
-        b = "added"
-    c = [a]
+        b = "added"  # noqa
+    c = [a]  # noqa
     return sys._getframe()
 
 
