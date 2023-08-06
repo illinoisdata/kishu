@@ -39,19 +39,95 @@ Reference
 - https://ipython.readthedocs.io/en/stable/config/callbacks.html
 """
 from __future__ import annotations
+import hashlib
+import ipykernel
+import IPython
 import json
+import jupyter_core.paths
+import nbformat
 import os
 import time
+import urllib.request
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any, cast
+from itertools import chain
+from pathlib import Path, PurePath
+from typing import Any, cast, Dict, Generator, List, Optional, Tuple
 
 from kishu.checkpoint_io import init_checkpoint_database
 from kishu.commit_graph import KishuCommitGraph
 from kishu.resources import KishuResource
 
 from .plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
+
+
+"""
+Functions to find enclosing notebook name, distilled From ipynbname.
+"""
+
+
+def _list_maybe_running_servers() -> Generator[dict, None, None]:
+    runtime_dir = Path(jupyter_core.paths.jupyter_runtime_dir())
+    if runtime_dir.is_dir():
+        config_files = chain(
+            runtime_dir.glob("nbserver-*.json"),  # jupyter notebook (or lab 2)
+            runtime_dir.glob("jpserver-*.json"),  # jupyterlab 3
+        )
+        for file_name in sorted(config_files, key=os.path.getmtime, reverse=True):
+            try:
+                yield json.loads(file_name.read_bytes())
+            except json.JSONDecodeError:
+                pass
+
+
+def _get_sessions(srv: dict):
+    try:
+        url = f"{srv['url']}api/sessions"
+        if srv['token']:
+            url += f"?token={srv['token']}"
+        with urllib.request.urlopen(url, timeout=1.0) as req:
+            return json.load(req)
+    except Exception:
+        return []
+
+
+def _find_nb_path(kernel_id: str) -> Tuple[dict, PurePath]:
+    for srv in _list_maybe_running_servers():
+        for sess in _get_sessions(srv):
+            if sess["kernel"]["id"] == kernel_id:
+                return srv, PurePath(sess["notebook"]["path"])
+    raise LookupError("")
+
+
+def enclosing_notebook_path(kernel_id: str) -> Path:
+    srv, path = _find_nb_path(kernel_id)
+    if srv is not None and path is not None:
+        return Path(srv.get("root_dir") or srv["notebook_dir"]) / path
+    raise FileNotFoundError("Failed to identify notebook file path.")
+
+
+def enclosing_kernel_id() -> str:
+    connection_file_path = ipykernel.get_connection_file()
+    connection_file = os.path.basename(connection_file_path)
+    if '-' not in connection_file:
+        # connection_file not in expected format.
+        # TODO: Find more stable way to extract kernel ID.
+        raise FileNotFoundError("Failed to identify IPython connection file")
+    return connection_file.split('-', 1)[1].split('.')[0]
+
+
+"""
+Notebook instrument.
+"""
+
+
+@dataclass
+class NBFormatCell:
+    cell_type: str
+    source: str
+    output: Optional[str]
+    execution_count: Optional[int]
 
 
 @dataclass
@@ -82,6 +158,7 @@ class CellExecInfo(UnitExecution):
     runtime_ms: Optional[int] = None
     checkpoint_runtime_ms: Optional[int] = None
     checkpoint_vars: Optional[List[str]] = None
+    executed_cells: Optional[List[NBFormatCell]] = None
     _restore_plan: Optional[RestorePlan] = None
 
 
@@ -89,10 +166,12 @@ class CellExecInfo(UnitExecution):
 @dataclass
 class JupyterConnection:
     kernel_id: str
+    notebook_path: str
 
 
 class KishuForJupyter:
     CURRENT_CELL_ID = 'current'
+    SAVE_CMD = "IPython.notebook.save_checkpoint();"
 
     def __init__(self, notebook_id: Optional[str] = None) -> None:
         """
@@ -101,7 +180,7 @@ class KishuForJupyter:
         @param _checkpoint_file  The file for storing all the data.
         """
         if notebook_id is None:
-            self._notebook_id = datetime.now().strftime('%Y%m%dT%H%M%S')  # TODO: notebook name.
+            self._notebook_id = datetime.now().strftime('%Y%m%dT%H%M%S')  # TODO: Use notebook name.
         else:
             self._notebook_id = notebook_id
         self._running_cell: Optional[CellExecInfo] = None
@@ -110,6 +189,15 @@ class KishuForJupyter:
         self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
             KishuResource.commit_graph_directory(self._notebook_id)
         )
+
+        self._kernel_id = ""
+        self._notebook_path: Optional[Path] = None
+        try:
+            self._kernel_id = enclosing_kernel_id()
+            self._notebook_path = enclosing_notebook_path(self._kernel_id)
+            self.record_connection()
+        except Exception as e:
+            print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
 
     def log(self) -> ExecutionHistory:
         return self._history
@@ -174,6 +262,9 @@ class KishuForJupyter:
         print('result.info = ', result.info)
         print('result.result = ', result.result)
         """
+        # Force saving to observe all cells.
+        self._save_notebook()
+
         # running_cell may be None for the first time this callback is registered.
         cell_info = CellExecInfo() if self._running_cell is None else self._running_cell
         cell_info.end_time_ms = get_epoch_time_ms()
@@ -185,6 +276,7 @@ class KishuForJupyter:
         cell_info.error_before_exec = repr_if_not_none(result.error_before_exec)
         cell_info.error_in_exec = repr_if_not_none(result.error_in_exec)
         cell_info.result = repr_if_not_none(result.result)
+        cell_info.executed_cells = self._all_notebook_cells()
 
         # checkpointing
         checkpoint_start_sec = time.time()
@@ -198,16 +290,11 @@ class KishuForJupyter:
         self._graph.step(cell_info.exec_id)
         self._running_cell = None
 
-    def record_connection(self, connection_file_path) -> None:
-        connection_file = os.path.basename(connection_file_path)
-        if '-' not in connection_file:
-            # connection_file not in expected format.
-            # TODO: Find more stable way to extract kernel ID.
-            return
-        kernel_id = connection_file.split('-', 1)[1].split('.')[0]
+    def record_connection(self) -> None:
         with open(KishuResource.connection_path(self._notebook_id), 'w') as f:
             f.write(JupyterConnection(  # type: ignore
-                kernel_id=kernel_id,
+                kernel_id=self._kernel_id,
+                notebook_path=str(self._notebook_path),
             ).to_json())
 
     @staticmethod
@@ -241,6 +328,77 @@ class KishuForJupyter:
         # Step 2: prepare a restoration plan
         restore: RestorePlan = checkpoint.restore_plan()
         return restore
+
+    def _save_notebook(self) -> None:
+        if self._notebook_path is None:
+            return
+
+        with open(self._notebook_path, 'rb') as f:
+            start_md5 = hashlib.md5(f.read()).hexdigest()
+        IPython.display.display(IPython.display.Javascript(KishuForJupyter.SAVE_CMD))
+        current_md5 = start_md5
+
+        sleep_t = 0.2
+        time.sleep(sleep_t)
+        while start_md5 == current_md5 and sleep_t < 20:
+            with open(self._notebook_path, 'rb') as f:
+                current_md5 = hashlib.md5(f.read()).hexdigest()
+            sleep_t *= 1.2
+            time.sleep(sleep_t)
+        if sleep_t >= 20:
+            print("WARNING: Notebook saving is taking too long. Kishu may not capture every cell.")
+
+    def _all_notebook_cells(self) -> List[NBFormatCell]:
+        if self._notebook_path is None:
+            return []
+
+        with open(self._notebook_path, 'r') as f:
+            nb = nbformat.read(f, 4)
+
+        nb_cells = []
+        for cell in nb.cells:
+            if cell.cell_type == "code":
+                nb_cells.append(NBFormatCell(
+                    cell_type=cell.cell_type,
+                    source=cell.source,
+                    output=self._parse_cell_output(cell.outputs),
+                    execution_count=cell.execution_count,
+                ))
+            elif cell.cell_type == "markdown":
+                nb_cells.append(NBFormatCell(
+                    cell_type=cell.cell_type,
+                    source=cell.source,
+                    output=None,
+                    execution_count=None,
+                ))
+            else:
+                raise ValueError(f"Unknown cell type: {cell.cell_type}")
+        return nb_cells
+
+    def _parse_cell_output(self, cell_outputs: List[Dict[Any, Any]]) -> Optional[str]:
+        if len(cell_outputs) == 0:
+            return None
+        for cell_output in cell_outputs:
+            # Filter auto-saving output.
+            if (
+                cell_output["output_type"] == "display_data" and
+                cell_output["data"].get("application/javascript", "") == KishuForJupyter.SAVE_CMD
+            ):
+                continue
+
+            # Now parse output into text.
+            if cell_output["output_type"] == "stream":
+                return cell_output["text"]
+            elif cell_output["output_type"] == "execute_result":
+                if "text/plain" in cell_output["data"]:
+                    return cell_output["data"].get("text/plain", "<execute_result>")
+                else:
+                    raise ValueError(f"Unknown output data structure: {cell_output['data']}")
+            elif cell_output["output_type"] == "display_data":
+                return cell_output["data"].get("text/plain", "<display_data>")
+            else:
+                raise ValueError(f"Unknown output type: {cell_output}")
+        return None
 
 
 def repr_if_not_none(obj: Any) -> Optional[str]:
@@ -287,6 +445,13 @@ def get_jupyter_kernel():
     return _ipython_shell
 
 
+def get_executed_cells():
+    ip = get_jupyter_kernel()
+    if ip is None:
+        return None
+    return ip.user_ns["In"]
+
+
 # The singleton instance for execution history.
 _kishu_exec_history: Optional[KishuForJupyter] = None
 
@@ -311,9 +476,6 @@ def load_kishu() -> None:
     ip.events.register('pre_run_cell', kishu.pre_run_cell)
     ip.events.register('post_run_cell', kishu.post_run_cell)
     ip.user_ns[KISHU_VAR_NAME] = kishu
-
-    import ipykernel
-    kishu.record_connection(ipykernel.get_connection_file())
 
     print("Kishu will now trace cell executions automatically.\n"
           "- You can inspect traced information using '_kishu'.\n"

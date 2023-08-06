@@ -129,6 +129,7 @@ class TestKishuCommand:
             end_time_ms=status_result.cell_exec_info.end_time_ms,  # Not tested
             checkpoint_runtime_ms=status_result.cell_exec_info.checkpoint_runtime_ms,  # Not tested
             runtime_ms=status_result.cell_exec_info.runtime_ms,  # Not tested
+            executed_cells=status_result.cell_exec_info.executed_cells,  # Not tested
             _restore_plan=status_result.cell_exec_info._restore_plan,  # Not tested
         )
 
@@ -141,6 +142,6 @@ class TestKishuCommand:
         assert fe_history_result == SelectedHistory(
             oid="3",
             timestamp=fe_history_result.timestamp,  # Not tested
-            exec_cell="y = x + 1",
+            cells=fe_history_result.cells,  # Not tested
             variables=[],
         )
