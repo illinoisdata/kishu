@@ -133,6 +133,13 @@ class TestKishuCommand:
             _restore_plan=status_result.cell_exec_info._restore_plan,  # Not tested
         )
 
+    def test_branch(self, notebook_id, basic_execution_ids):
+        branch_result = KishuCommand.branch(notebook_id, "at_head", None)
+        assert branch_result.status == "ok"
+
+        branch_result = KishuCommand.branch(notebook_id, "historical", basic_execution_ids[1])
+        assert branch_result.status == "ok"
+
     def test_fe_initialize(self, notebook_id, basic_execution_ids):
         fe_initialize_result = KishuCommand.fe_initialize(notebook_id)
         assert len(fe_initialize_result.histories) == 3

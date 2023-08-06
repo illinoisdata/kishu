@@ -35,6 +35,10 @@ class KishuResource:
         return os.path.join(KishuResource.notebook_directory(notebook_id), "connection.json")
 
     @staticmethod
+    def head_path(notebook_id: str) -> str:
+        return os.path.join(KishuResource.notebook_directory(notebook_id), "head.json")
+
+    @staticmethod
     def _create_dir(dir: str) -> str:
         """
         Creates a new directory if not exists.

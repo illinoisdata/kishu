@@ -15,11 +15,13 @@ Command Line Interface.
 
 class Command(enum.Enum):
     help = "help"
+
     log = "log"
     log_all = "log_all"
     status = "status"
 
     checkout = "checkout"
+    branch = "branch"
 
 
 @dataclasses.dataclass
@@ -28,6 +30,7 @@ class KishuCLIArguments:
     command: Command = Command.help  # Kishu command.
     notebook_id: Optional[str] = None  # Notebook ID to interact with.
     commit_id: Optional[str] = None  # Commit ID to apply command on.
+    branch_name: Optional[str] = None  # Branch name.
 
     @staticmethod
     def from_argv(argv: List[str]) -> KishuCLIArguments:
@@ -56,6 +59,7 @@ class KishuCLI:
             Command.log_all: self.log_all,
             Command.status: self.status,
             Command.checkout: self.checkout,
+            Command.branch: self.branch,
         }
 
     def exec(self, args):
@@ -87,6 +91,11 @@ class KishuCLI:
         assert args.notebook_id is not None, "checkout requires notebook_id."
         assert args.commit_id is not None, "checkout requires commit_id."
         print(into_json(KishuCommand.checkout(args.notebook_id, args.commit_id)))
+
+    def branch(self, args):
+        assert args.notebook_id is not None, "branch requires notebook_id."
+        assert args.branch_name is not None, "branch requires branch_name."
+        print(into_json(KishuCommand.branch(args.notebook_id, args.branch_name, args.commit_id)))
 
 
 if __name__ == "__main__":

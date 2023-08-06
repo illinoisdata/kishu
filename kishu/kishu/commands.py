@@ -4,10 +4,11 @@ import jupyter_client
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, cast
 
-from kishu.resources import KishuResource
+from kishu.branch import BranchRow, KishuBranch
 from kishu.commit_graph import CommitInfo, KishuCommitGraph
-from kishu.plan import UnitExecution
 from kishu.jupyterint2 import CellExecInfo, KishuForJupyter
+from kishu.plan import UnitExecution
+from kishu.resources import KishuResource
 
 
 @dataclass
@@ -36,6 +37,11 @@ class StatusResult:
 
 @dataclass
 class CheckoutResult:
+    status: str
+
+
+@dataclass
+class BranchResult:
     status: str
 
 
@@ -141,6 +147,18 @@ class KishuCommand:
             )
 
     @staticmethod
+    def branch(notebook_id: str, branch_name: str, commit_id: Optional[str]) -> BranchResult:
+        if commit_id is None:
+            head = KishuBranch.update_head(notebook_id, branch_name=branch_name, commit_id=None)
+            if head.commit_id is not None:
+                KishuBranch.upsert_branch(notebook_id, branch_name, head.commit_id)
+            else:
+                return BranchResult(status="no_commit")
+        else:
+            KishuBranch.upsert_branch(notebook_id, branch_name, commit_id)
+        return BranchResult(status="ok")
+
+    @staticmethod
     def fe_initialize(notebook_id: str) -> FEInitializeResult:
         store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
@@ -159,6 +177,10 @@ class KishuCommand:
                 parent_branch_id="",  # To be set in _toposort_history.
             ))
         histories = KishuCommand._toposort_history(histories)
+
+        # Retreives and applies branch names.
+        branches = KishuBranch.list_branch(notebook_id)
+        histories = KishuCommand._rebranch_history(histories, branches)
 
         # Combines everything.
         return FEInitializeResult(
@@ -269,8 +291,8 @@ class KishuCommand:
             history = histories[free_commit_idx]
             if history.branch_id == "":
                 assert history.parent_oid == ""
-                history.branch_id = str(new_branch_id)
-                history.parent_branch_id = str(-1)
+                history.branch_id = f"tmp_{new_branch_id}"
+                history.parent_branch_id = "-1"
                 new_branch_id += 1
             sorted_histories.append(history)
 
@@ -278,7 +300,7 @@ class KishuCommand:
             child_idxs = refs.get(history.oid, [])
             for child_idx in child_idxs[1:]:
                 child_history = histories[child_idx]
-                child_history.branch_id = str(new_branch_id)
+                child_history.branch_id = f"tmp_{new_branch_id}"
                 child_history.parent_branch_id = history.branch_id
                 new_branch_id += 1
                 free_commit_idxs.append(child_idx)
@@ -288,6 +310,31 @@ class KishuCommand:
                 histories[child_idxs[0]].parent_branch_id = history.branch_id
                 free_commit_idxs.append(child_idxs[0])
         return sorted_histories
+
+    @staticmethod
+    def _rebranch_history(
+        histories: List[HistoryCommit],
+        branches: List[BranchRow],
+    ) -> List[HistoryCommit]:
+        # Each of new branches points to one commit, creating an aliasing mapping.
+        commit_to_branch_name = {
+            branch.commit_id: branch.branch_name
+            for branch in branches
+        }
+
+        # Find mapping between current branch names to new branch names base on commit.
+        old_to_new_branch_name = {
+            history.branch_id: commit_to_branch_name[history.oid]
+            for history in histories if history.oid in commit_to_branch_name
+        }
+
+        # Now relabel every branch names.
+        for history in histories:
+            if history.branch_id in old_to_new_branch_name:
+                history.branch_id = old_to_new_branch_name[history.branch_id]
+            if history.parent_branch_id in old_to_new_branch_name:
+                history.parent_branch_id = old_to_new_branch_name[history.parent_branch_id]
+        return histories
 
     @staticmethod
     def _to_datetime(epoch_time_ms: Optional[int]) -> str:

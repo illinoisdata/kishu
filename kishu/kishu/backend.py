@@ -38,6 +38,12 @@ def checkout(notebook_id: str, commit_id: str):
     return into_json(checkout_result)
 
 
+@app.get("/branch/<notebook_id>/<branch_name>")
+def branch(notebook_id: str, branch_name: str):
+    branch_result = KishuCommand.branch(notebook_id, branch_name, None)
+    return into_json(branch_result)
+
+
 @app.get("/fe/initialize/<notebook_id>")
 def fe_initialize(notebook_id: str):
     fe_initialize_result = KishuCommand.fe_initialize(notebook_id)
