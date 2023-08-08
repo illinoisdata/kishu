@@ -171,8 +171,8 @@ def convert_idgraph_to_list(node: GraphNode, ret_list):
             ret_list.append(child)
         
 def compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode) -> bool:
-    ls1 = []
-    ls2 = []
+    ls1: list = []
+    ls2: list = []
 
     convert_idgraph_to_list(idGraph1, ls1)
     convert_idgraph_to_list(idGraph2, ls2)
