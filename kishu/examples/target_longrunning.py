@@ -1,4 +1,5 @@
-"""Example of a long-running script.""" 
+"""Example of a long-running script."""
+
 
 def a():
     cnt_a = 0
@@ -38,6 +39,7 @@ def d():
         cnt_d += c()
         print(ddx)
     return cnt_d
+
 
 # print(locals())
 print(d())

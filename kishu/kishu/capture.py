@@ -131,6 +131,8 @@ Execute target code and passively periodically capture frames.
 
 Initial structure is inspired by scalene.
 """
+
+
 class WatchdogArguments(argparse.Namespace):
     def __init__(self) -> None:
         super().__init__()
@@ -154,7 +156,7 @@ class WatchdogSignals:
         self.memcpy_signal = signal.SIGPROF
         self.malloc_signal = signal.SIGXCPU
         self.free_signal = signal.SIGXFSZ
-        self.interrupt_signal = signal.SIGINT 
+        self.interrupt_signal = signal.SIGINT
 
 
 class WatchdogCaptureMetrics:
@@ -168,7 +170,7 @@ class WatchdogCaptureMetrics:
         for key, value in kwargs.items():
             self.columns.setdefault(key, []).append(value)
 
-    def save_to(self, filename: str, delimiter: str=",", newline: str="\n"):
+    def save_to(self, filename: str, delimiter: str = ",", newline: str = "\n"):
         with open(filename, "w") as f:
             for key, values in self.columns.items():
                 f.write(key)
@@ -199,7 +201,6 @@ class Watchdog:
       - Instrumentation (launch_exec_capture)
     """
 
-
     """Class Attributes"""
 
     # Configuration
@@ -223,7 +224,6 @@ class Watchdog:
     # Experimental properties
     __capture_metrics = WatchdogCaptureMetrics()
     __capture_id = 0
-
 
     """Class Attributes"""
 
@@ -284,7 +284,6 @@ class Watchdog:
     def process_args(args: WatchdogArguments) -> None:
         Watchdog.__args = args
 
-
     """Signals"""
 
     @staticmethod
@@ -315,7 +314,6 @@ class Watchdog:
     @staticmethod
     def stop() -> None:
         Watchdog._disable_signals()
-
 
     """Signal Handlers"""
 
@@ -352,7 +350,6 @@ class Watchdog:
         # TODO: Adaptive sampling.
         # TODO: Compensate for time drift.
         Watchdog._set_alarm(Watchdog.__args.cpu_sampling_rate)
-
 
     """Explicit Imports"""
 
@@ -469,7 +466,6 @@ class Watchdog:
         # Register the exit handler to run when the program terminates or we quit.
         atexit.register(Watchdog._exit_handler)
 
-
     """Capture Function"""
 
     @staticmethod
@@ -543,7 +539,6 @@ class Watchdog:
             )
         logger.info(f'Captured in {time_elapsed:.6f} seconds')
 
-
     """Execution"""
 
     def exec_capture(
@@ -571,7 +566,6 @@ class Watchdog:
         finally:
             self.stop()
         return exit_status
-
 
     """Instrumentation"""
 

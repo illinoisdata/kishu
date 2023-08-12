@@ -1,8 +1,6 @@
 import pytest
 
-import dill as pickle
 import sys
-import types
 
 from kishu.capture import StandardPythonCapture
 
@@ -10,6 +8,7 @@ from kishu.capture import StandardPythonCapture
 """
 TestStandardPythonCapture
 """
+
 
 def dummy_variable_depth(depth, truncate_at_depth, capture_depth, truncated_id):
     if depth == truncate_at_depth:
@@ -22,6 +21,7 @@ def dummy_variable_depth(depth, truncate_at_depth, capture_depth, truncated_id):
             depth=capture_depth,
             truncate_at_frame_id=truncated_id,
         )
+
 
 def dummy_capture_twice(
     depth,
@@ -63,7 +63,6 @@ class TestStandardPythonCapture:
         assert len(state.get_frames()) == len(same_frames)
         assert len(state.get_frames()) == max(starting_depth - capture_depth, 0)
         assert not any(same_frames)
-
 
     @pytest.mark.parametrize(
         "depth,capture_twice_at_depth",

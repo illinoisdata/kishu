@@ -3,7 +3,6 @@ Delta from one state to another.
 """
 from __future__ import annotations
 
-import dill as pickle
 from typing import List, Set, Tuple
 
 from kishu.state import Cells, ContinuousPickler, Execution, SerializedCells, State
@@ -20,6 +19,8 @@ StateDelta = List[ScopeCellsDelta], consisting of
 - The differences from older scope cells to newer scope cells
 - The newer execution states
 """
+
+
 class ScopeCellsDelta:
     """
     Represent differences from a scope cell to another with WRITE and DELETE deltas.
@@ -31,7 +32,7 @@ class ScopeCellsDelta:
         self.added = added  # Added/overwrite cells.
         self.deleted = deleted  # Deleted cells.
         self.execution = execution  # Execution state
-        
+
     @staticmethod
     def _from_to(
         from_cells: SerializedCells,

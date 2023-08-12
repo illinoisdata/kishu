@@ -51,7 +51,7 @@ class NotebookRunner:
         Args:
             cell_indices (List[int]): List of indices of the cells to be executed.
             var_names (List[str]): List of var_names to include in the resulting dictionary.
-            eval_expr (Dict[str, str]): Map from names to expressions to evaluate. 
+            eval_expr (Dict[str, str]): Map from names to expressions to evaluate.
 
         Returns:
             dict: A dictionary containing the output of the executed cells.

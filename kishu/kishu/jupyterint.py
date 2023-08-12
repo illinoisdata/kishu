@@ -24,8 +24,12 @@ IPython code modification:
 https://ipython.readthedocs.io/en/stable/config/inputtransforms.html
 '''
 
-from IPython.core.magic import (Magics, magics_class, line_magic,
-                                cell_magic, line_cell_magic)
+from IPython.core.magic import (
+    Magics,
+    magics_class,
+    line_magic,
+    cell_magic,
+)
 from IPython import get_ipython
 from ipylab import JupyterFrontEnd
 import dill
@@ -113,7 +117,7 @@ class KishuMagics(Magics):
         objects = self._collect_non_jupyter_objects()
         chk_dill_file = self._get_dill_file(filename)
         _save_dill_into(objects, chk_dill_file)
-        
+
         # 4. Save other metadata
         ip = get_ipython()
         meta = {
@@ -192,7 +196,7 @@ class KishuMagics(Magics):
         for entry in manager.get_range_by_str(''):  # extracts all
             line_no = entry[1]
             source = entry[2]
-            raw_source = None if len(entry) <= 3 else entry[3]
+            # raw_source = None if len(entry) <= 3 else entry[3]
             inputs.append((line_no, source))
 
     def _get_nb_file(self, filename):
@@ -216,7 +220,6 @@ class KishuMagics(Magics):
         while current_mtime == last_mtime:
             time.sleep(0.5)
             current_mtime = os.path.getmtime(filepath)
-
 
 
 def _save_dill_into(object, filename):
@@ -255,7 +258,7 @@ def _append_kishu_capture(lines):
 
     Note:
 
-    IPython already stores execution history, which we can access via 
+    IPython already stores execution history, which we can access via
     `IPython.get_ipython().history_manager.get_range_by_str('')`. Thus, this functionality
     is redundant, and may get removed in the future.
     '''
