@@ -80,7 +80,20 @@ def test_idgraph_pandas_df():
     assert idgraph1.id_obj == id(df)
 
     # Assert that the id graph does not change when the object remains unchanged
-    assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
+    # assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
+    ls1 = []
+    ls2 = []
+
+    idgraph.convert_idgraph_to_list(idgraph1, ls1)
+    idgraph.convert_idgraph_to_list(idgraph2, ls2)
+
+    length = len(ls1)
+    for i in range(length):
+        print(ls1[i], ls2[i])
+        if(pd.isnull(ls1[i])):
+            assert pd.isnull(ls2[i])
+            continue
+        assert ls1[i] == ls2[i]
 
     df.at[0,'species'] = "Changed"
     idgraph3 = idgraph.get_object_state(df)
