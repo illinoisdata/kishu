@@ -109,22 +109,22 @@ def get_object_state(obj, visited=None, include_id = True):
 
     # If __reduce__
     elif hasattr(obj, '__reduce__'):
-        if is_pickable(obj) and obj.__reduce__() == obj.__reduce__():
-            visited.add(id(obj))
-            reduced = obj.__reduce__()
+        # if is_pickable(obj) and obj.__reduce__() == obj.__reduce__():
+        visited.add(id(obj))
+        reduced = obj.__reduce__()
 
-            node = GraphNode(id_obj=id(obj))
+        node = GraphNode(id_obj=id(obj))
 
-            if isinstance(reduced, str):
-                node.children.append(reduced)
-                return node
-            
-            # node.id_obj = id(obj)
-            for item in reduced[1:]:
-                child = get_object_state(item, visited, False)
-                node.children.append(child)
-            
+        if isinstance(reduced, str):
+            node.children.append(reduced)
             return node
+        
+        # node.id_obj = id(obj)
+        for item in reduced[1:]:
+            child = get_object_state(item, visited, False)
+            node.children.append(child)
+        
+        return node
 
 
     elif hasattr(obj, '__dict__'):
