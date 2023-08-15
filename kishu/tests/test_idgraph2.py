@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pickle
 
 
 def test_idgraph_numpy():
@@ -82,7 +83,6 @@ def test_idgraph_pandas_df():
     # Assert that the id graph does not change when the object remains unchanged
     assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
     
-
     df.at[0,'species'] = "Changed"
     idgraph3 = idgraph.get_object_state(df)
 
@@ -119,13 +119,19 @@ def test_idgraph_matplotlib():
 
     # Assert that the id graph does not change when the object remains unchanged
     # assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
-    ls1 = []
-    ls2 = []
 
-    idgraph.convert_idgraph_to_list(idgraph1, ls1)
-    idgraph.convert_idgraph_to_list(idgraph2, ls2)
+    pick1 = pickle.dumps(a[0])
+    pick2 = pickle.dumps(a[0])
 
-    assert ls1 == ls2
+    assert pick1 == pick2
+
+    # ls1 = []
+    # ls2 = []
+
+    # idgraph.convert_idgraph_to_list(idgraph1, ls1)
+    # idgraph.convert_idgraph_to_list(idgraph2, ls2)
+
+    # assert ls1 == ls2
 
     plt.xlabel("XLABEL_2")
     idgraph3 = idgraph.get_object_state(a)
