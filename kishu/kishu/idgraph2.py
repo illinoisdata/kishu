@@ -150,6 +150,7 @@ def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
     else:
         node = GraphNode(check_value_only=True)
         node.children.append(str(obj))
+        return node
 
 def get_object_hash(obj):
     curr_state = get_object_state(obj)
