@@ -34,38 +34,38 @@ def test_idgraph_numpy():
     assert idgraph.compare_idgraph(idgraph1, idgraph4) == True
 
 def test_idgraph_pandas():
-    # test_idgraph_pandas_Series()
+    test_idgraph_pandas_Series()
     test_idgraph_pandas_df()
 
 
-# def test_idgraph_pandas_Series():
-#     """
-#         Test if idgraph is accurately generated for panda series
-#     """
-#     s1 = pd.Series([1,2,3,4])
+def test_idgraph_pandas_Series():
+    """
+        Test if idgraph is accurately generated for panda series
+    """
+    s1 = pd.Series([1,2,3,4])
 
-#     idgraph1 = idgraph.get_object_state(s1)
-#     idgraph2 = idgraph.get_object_state(s1)
+    idgraph1 = idgraph.get_object_state(s1)
+    idgraph2 = idgraph.get_object_state(s1)
 
-#     # Assert that the obj id is as expected
-#     assert idgraph1.id_obj == id(s1)
+    # Assert that the obj id is as expected
+    assert idgraph1.id_obj == id(s1)
 
-#     # Assert that the id graph does not change when the object remains unchanged
-#     assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
+    # Assert that the id graph does not change when the object remains unchanged
+    assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
 
-#     s1[2] = 0
+    s1[2] = 0
 
-#     idgraph3 = idgraph.get_object_state(s1)
+    idgraph3 = idgraph.get_object_state(s1)
 
-#     # Assert that the id graph changes when the object changes
-#     assert idgraph.compare_idgraph(idgraph1, idgraph3) == False
+    # Assert that the id graph changes when the object changes
+    assert idgraph.compare_idgraph(idgraph1, idgraph3) == False
 
-#     s1[2] = 3
+    s1[2] = 3
 
-#     idgraph4 = idgraph.get_object_state(s1)
+    idgraph4 = idgraph.get_object_state(s1)
 
-#     # Assert that the original id graph is restored when the original object state is restored
-#     assert idgraph.compare_idgraph(idgraph1, idgraph4) == True
+    # Assert that the original id graph is restored when the original object state is restored
+    assert idgraph.compare_idgraph(idgraph1, idgraph4) == True
 
     
 def test_idgraph_pandas_df():

@@ -1,5 +1,5 @@
 import hashlib
-import pandas as pd
+import pandas
 import pickle
 
 class GraphNode:
@@ -7,6 +7,9 @@ class GraphNode:
     def __init__(self, id_obj = 0):
         self.id_obj = id_obj 
         self.children = []
+    
+    def __eq__(self, other):
+        return compare_idgraph(self, other)
         
 def is_pickable(obj):
     try:
@@ -19,15 +22,14 @@ def is_pickable(obj):
         return False
 
 
-def get_object_state(obj, visited=None, include_id = True):
+def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
     if visited is None:
         visited = set()
 
-    if hasattr(obj, "persistent_id"):
-        print("-----------------------persistent_id-----------------")
-
     if id(obj) in visited:
-        return "CYCLIC_REFERENCE"
+        node = GraphNode()
+        node.children.append("CYCLIC_REFERENCE")
+        return node
 
     if isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
         # return obj
@@ -94,7 +96,9 @@ def get_object_state(obj, visited=None, include_id = True):
             # if obj.__reduce_ex__(4) == obj.__reduce_ex__(4):
             visited.add(id(obj))
             reduced = obj.__reduce_ex__(4)
-            node = GraphNode(id_obj=id(obj))
+            node = GraphNode()
+            if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
+                node.id_obj = id(obj)
 
             if isinstance(reduced, str):
                 node.children.append(reduced)
@@ -167,7 +171,6 @@ def convert_idgraph_to_list(node: GraphNode, ret_list):
         if isinstance(child, GraphNode):
             convert_idgraph_to_list(child, ret_list)
         else:
-            # print(child)
             ret_list.append(child)
         
 def compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode) -> bool:
