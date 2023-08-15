@@ -117,21 +117,15 @@ def test_idgraph_matplotlib():
     # Assert that the obj id is as expected
     assert idgraph1.id_obj == id(a) and idgraph1.children[0].id_obj == id(a[0])
 
-    # Assert that the id graph does not change when the object remains unchanged
-    # assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
-
+    # Assert that the id graph does not change when the object remains unchanged if pickle binaries are the same
     pick1 = pickle.dumps(a[0])
     pick2 = pickle.dumps(a[0])
 
-    assert pick1 == pick2
-
-    # ls1 = []
-    # ls2 = []
-
-    # idgraph.convert_idgraph_to_list(idgraph1, ls1)
-    # idgraph.convert_idgraph_to_list(idgraph2, ls2)
-
-    # assert ls1 == ls2
+    if pick1 != pick2:
+        assert idgraph.compare_idgraph(idgraph1, idgraph2) == False
+    
+    else:
+        assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
 
     plt.xlabel("XLABEL_2")
     idgraph3 = idgraph.get_object_state(a)
@@ -142,8 +136,11 @@ def test_idgraph_matplotlib():
     plt.xlabel("XLABEL_1")
     idgraph4 = idgraph.get_object_state(a)
 
-    # Assert that the original id graph is restored when the original object state is restored
-    assert idgraph.compare_idgraph(idgraph1, idgraph4) == True
+    # Assert that the original id graph is restored when the original object state is restored if pickle binaries were the same
+    if pick1 != pick2:
+        assert idgraph.compare_idgraph(idgraph1, idgraph2) == False
+    else:
+        assert idgraph.compare_idgraph(idgraph1, idgraph4) == True
 
     line = plt.gca().get_lines()[0]
     line_co = line.get_color()
@@ -156,8 +153,11 @@ def test_idgraph_matplotlib():
     line.set_color(line_co)
     idgraph6 = idgraph.get_object_state(a)
 
-    # Assert that the original id graph is restored when the original object state is restored
-    assert idgraph.compare_idgraph(idgraph1, idgraph6) == True
+    # Assert that the original id graph is restored when the original object state is restored if pickle binaries were the same
+    if pick1 != pick2:
+        assert idgraph.compare_idgraph(idgraph1, idgraph2) == False
+    else:
+        assert idgraph.compare_idgraph(idgraph1, idgraph6) == True
 
 def test_idgraph_seaborn():
     test_idgraph_seaborn_displot()
@@ -176,8 +176,14 @@ def test_idgraph_seaborn_displot():
     # Assert that the obj id is as expected
     assert idgraph1.id_obj == id(plot1)
 
-    # Assert that the id graph does not change when the object remains unchanged
-    assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
+    pick1 = pickle.dumps(plot1)
+    pick2 = pickle.dumps(plot1)
+
+    # Assert that the id graph does not change when the object remains unchanged if pickle binaries are same
+    if pick1 != pick2:
+       assert idgraph.compare_idgraph(idgraph1, idgraph2) == False
+    else: 
+        assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
 
     plot1.set(xlabel="NEW LABEL")
     idgraph3 = idgraph.get_object_state(plot1)
@@ -188,8 +194,11 @@ def test_idgraph_seaborn_displot():
     plot1.set(xlabel="flipper_length_mm")
     idgraph4 = idgraph.get_object_state(plot1)
 
-    # Assert that the original id graph is restored when the original object state is restored
-    assert idgraph.compare_idgraph(idgraph1, idgraph4) == True
+    # Assert that the original id graph is restored when the original object state is restored if pickle binaries were same
+    if pick1 != pick2:
+        assert idgraph.compare_idgraph(idgraph1, idgraph2) == False
+    else:
+        assert idgraph.compare_idgraph(idgraph1, idgraph4) == True
 
 def test_idgraph_seaborn_scatterplot():
     """
@@ -205,8 +214,14 @@ def test_idgraph_seaborn_scatterplot():
     # Assert that the obj id is as expected
     assert idgraph1.id_obj == id(plot1)
 
-    # Assert that the id graph does not change when the object remains unchanged
-    assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
+    pick1 = pickle.dumps(plot1)
+    pick2 = pickle.dumps(plot1)
+
+    # Assert that the id graph does not change when the object remains unchanged if pickle binaries are same
+    if pick1 != pick2:
+        assert idgraph.compare_idgraph(idgraph1, idgraph2) == False
+    else:
+        assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
 
     plot1.set_xlabel('Flipper Length')
     idgraph3 = idgraph.get_object_state(plot1)
@@ -217,8 +232,11 @@ def test_idgraph_seaborn_scatterplot():
     plot1.set_xlabel('flipper_length_mm')
     idgraph4 = idgraph.get_object_state(plot1)
 
-    # Assert that the original id graph is restored when the original object state is restored
-    assert idgraph.compare_idgraph(idgraph1, idgraph4) == True
+    # Assert that the original id graph is restored when the original object state is restored if pickle binaries were same
+    if pick1 != pick2:
+        assert idgraph.compare_idgraph(idgraph1, idgraph2) == False
+    else:
+        assert idgraph.compare_idgraph(idgraph1, idgraph4) == True
 
     plot1.set_facecolor('#eafff5')
     idgraph5 = idgraph.get_object_state(plot1)

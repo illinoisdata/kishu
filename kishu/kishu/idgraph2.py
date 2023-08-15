@@ -4,9 +4,10 @@ import pickle
 
 class GraphNode:
 
-    def __init__(self, id_obj = 0):
+    def __init__(self, id_obj = 0, check_value_only = False):
         self.id_obj = id_obj 
         self.children = []
+        self.check_value_only = check_value_only
     
     def __eq__(self, other):
         return compare_idgraph(self, other)
@@ -21,40 +22,38 @@ def is_pickable(obj):
     except (pickle.PicklingError, AttributeError, TypeError):
         return False
 
-
 def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
     if visited is None:
         visited = set()
 
     if id(obj) in visited:
-        node = GraphNode()
+        node = GraphNode(check_value_only=True)
         node.children.append("CYCLIC_REFERENCE")
         return node
 
     if isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
         # return obj
-        node = GraphNode()
+        node = GraphNode(check_value_only=True)
         node.children.append(obj)
         return node
 
     elif isinstance(obj, tuple):
-        node = GraphNode()
+        node = GraphNode(check_value_only=True)
         for item in obj:
             child = get_object_state(item, visited, include_id)
             node.children.append(child)
-        
         return node
 
     elif isinstance(obj, list):
         visited.add(id(obj))
-        node = GraphNode()
+        node = GraphNode(check_value_only = True)
         if include_id:
             node.id_obj = id(obj)
+            node.check_value_only = False
         
         for item in obj:
             child = get_object_state(item, visited, include_id)
             node.children.append(child)
-        
         return node
 
     elif isinstance(obj, set):
@@ -65,40 +64,37 @@ def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
             node.children.append(child)
         return node
 
-
     elif isinstance(obj, dict):
-        node = GraphNode()
+        node = GraphNode(check_value_only=True)
         if include_id:
             node.id_obj = id(obj)
+            node.check_value_only = False
         
         for key, value in sorted(obj.items()):
             node.children.append(key)
             child = get_object_state(value, visited, include_id)
             node.children.append(child)
-        
         return node
-            
-        
-
+               
     elif isinstance(obj, (bytes, bytearray)):
-        node = GraphNode()
+        node = GraphNode(check_value_only=True)
         node.children.append(obj)
         return node
 
     elif isinstance(obj, type):
-        node = GraphNode()
+        node = GraphNode(check_value_only=True)
         node.children.append(str(obj))
         return node
-
 
     elif hasattr(obj, '__reduce_ex__'):
         if is_pickable(obj): 
             # if obj.__reduce_ex__(4) == obj.__reduce_ex__(4):
             visited.add(id(obj))
             reduced = obj.__reduce_ex__(4)
-            node = GraphNode()
+            node = GraphNode(check_value_only=True)
             if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
                 node.id_obj = id(obj)
+                node.check_value_only = False
 
             if isinstance(reduced, str):
                 node.children.append(reduced)
@@ -111,7 +107,6 @@ def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
             
             return node
 
-    # If __reduce__
     elif hasattr(obj, '__reduce__'):
         # if is_pickable(obj) and obj.__reduce__() == obj.__reduce__():
         visited.add(id(obj))
@@ -129,7 +124,6 @@ def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
             node.children.append(child)
         
         return node
-
 
     elif hasattr(obj, '__dict__'):
         visited.add(id(obj))
@@ -154,17 +148,16 @@ def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
         return node
 
     else:
-        node = GraphNode()
+        node = GraphNode(check_value_only=True)
         node.children.append(str(obj))
 
 def get_object_hash(obj):
     curr_state = get_object_state(obj)
     return hashlib.md5(str(curr_state).encode('utf-8')).hexdigest()
 
-
 def convert_idgraph_to_list(node: GraphNode, ret_list):
     # pre oder
-    if node.id_obj != 0:
+    if not node.check_value_only:
         ret_list.append(node.id_obj)
     
     for child in node.children:
@@ -184,6 +177,3 @@ def compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode) -> bool:
         return True
     else:
         return False
-
-
-        
