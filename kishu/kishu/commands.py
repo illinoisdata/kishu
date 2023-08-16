@@ -1,13 +1,17 @@
+
+
 from __future__ import annotations
+
 import datetime
-import jupyter_client
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, cast
 
-from kishu.resources import KishuResource
+import jupyter_client
+
 from kishu.commit_graph import CommitInfo, KishuCommitGraph
-from kishu.plan import UnitExecution
 from kishu.jupyterint2 import CellExecInfo, KishuForJupyter
+from kishu.plan import UnitExecution
+from kishu.resources import KishuResource
 
 
 @dataclass
@@ -266,7 +270,7 @@ class KishuCommand:
             for child_idx in child_idxs[1:]:
                 child_history = histories[child_idx]
                 child_history.branch_id = str(new_branch_id)
-                child_history.parent_branch_id = history.branch_id
+                child_history.parent_branch_id = hi story.branch_id
                 new_branch_id += 1
                 free_commit_idxs.append(child_idx)
             if len(child_idxs) > 0:
@@ -282,3 +286,4 @@ class KishuCommand:
             "" if epoch_time_ms is None
             else datetime.datetime.fromtimestamp(epoch_time_ms / 1000).strftime("%Y-%m-%d,%H:%M:%S")
         )
+
