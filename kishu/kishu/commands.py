@@ -1,3 +1,5 @@
+
+
 from __future__ import annotations
 
 import datetime
@@ -86,20 +88,17 @@ class FEInitializeResult:
 
 
 class KishuCommand:
+
     @staticmethod
     def log(notebook_id: str, commit_id: str) -> LogResult:
-        store = KishuCommitGraph.new_on_file(
-            KishuResource.commit_graph_directory(notebook_id)
-        )
+        store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
         exec_infos = KishuCommand._find_exec_info(notebook_id, graph)
         return LogResult(KishuCommand._join_commit_summary(graph, exec_infos))
 
     @staticmethod
     def log_all(notebook_id: str) -> LogAllResult:
-        store = KishuCommitGraph.new_on_file(
-            KishuResource.commit_graph_directory(notebook_id)
-        )
+        store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
         exec_infos = KishuCommand._find_exec_info(notebook_id, graph)
         return LogAllResult(KishuCommand._join_commit_summary(graph, exec_infos))
@@ -107,18 +106,22 @@ class KishuCommand:
     @staticmethod
     def status(notebook_id: str, commit_id: str) -> StatusResult:
         commit_info = next(
-            KishuCommitGraph.new_on_file(
-                KishuResource.commit_graph_directory(notebook_id)
-            ).iter_history(commit_id)
+            KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+                            .iter_history(commit_id)
         )
         cell_exec_info = KishuCommand._find_cell_exec_info(notebook_id, commit_id)
-        return StatusResult(commit_info=commit_info, cell_exec_info=cell_exec_info)
+        return StatusResult(
+            commit_info=commit_info,
+            cell_exec_info=cell_exec_info
+        )
 
     @staticmethod
     def checkout(notebook_id: str, commit_id: str) -> CheckoutResult:
         connection = KishuForJupyter.retrieve_connection(notebook_id)
         if connection is None:
-            return CheckoutResult(status="missing_kernel_connection")
+            return CheckoutResult(
+                status="missing_kernel_connection"
+            )
         cf = jupyter_client.find_connection_file(connection.kernel_id)
         km = jupyter_client.BlockingKernelClient(connection_file=cf)
         km.load_connection_file()
@@ -131,15 +134,17 @@ class KishuCommand:
                 store_history=False,  # Do not increment cell count.
             )
             km.stop_channels()
-            return CheckoutResult(status=reply["content"]["status"])
+            return CheckoutResult(
+                status=reply["content"]["status"]
+            )
         else:
-            return CheckoutResult(status="failed_connection")
+            return CheckoutResult(
+                status="failed_connection"
+            )
 
     @staticmethod
     def fe_initialize(notebook_id: str) -> FEInitializeResult:
-        store = KishuCommitGraph.new_on_file(
-            KishuResource.commit_graph_directory(notebook_id)
-        )
+        store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
         exec_infos = KishuCommand._find_exec_info(notebook_id, graph)
 
@@ -148,15 +153,13 @@ class KishuCommand:
         for node in graph:
             exec_info = exec_infos.get(node.commit_id, UnitExecution())
             cell_exec_info = cast(CellExecInfo, exec_info)  # TODO: avoid this cast.
-            histories.append(
-                HistoryCommit(
-                    oid=node.commit_id,
-                    parent_oid=node.parent_id,
-                    timestamp=KishuCommand._to_datetime(cell_exec_info.end_time_ms),
-                    branch_id="",  # To be set in _toposort_history.
-                    parent_branch_id="",  # To be set in _toposort_history.
-                )
-            )
+            histories.append(HistoryCommit(
+                oid=node.commit_id,
+                parent_oid=node.parent_id,
+                timestamp=KishuCommand._to_datetime(cell_exec_info.end_time_ms),
+                branch_id="",  # To be set in _toposort_history.
+                parent_branch_id="",  # To be set in _toposort_history.
+            ))
         histories = KishuCommand._toposort_history(histories)
 
         # Combines everything.
@@ -166,22 +169,16 @@ class KishuCommand:
 
     @staticmethod
     def fe_history(notebook_id: str, commit_id: str) -> FESelectedHistory:
-        current_cell_exec_info = KishuCommand._find_cell_exec_info(
-            notebook_id, commit_id
-        )
-        return KishuCommand._join_selected_history(
-            notebook_id, commit_id, current_cell_exec_info
-        )
+        current_cell_exec_info = KishuCommand._find_cell_exec_info(notebook_id, commit_id)
+        return KishuCommand._join_selected_history(notebook_id, commit_id, current_cell_exec_info)
 
     """Helpers"""
 
     @staticmethod
-    def _find_exec_info(
-        notebook_id: str, graph: List[CommitInfo]
-    ) -> Dict[str, UnitExecution]:
+    def _find_exec_info(notebook_id: str, graph: List[CommitInfo]) -> Dict[str, UnitExecution]:
         exec_infos = UnitExecution.get_commits(
             KishuResource.checkpoint_path(notebook_id),
-            [node.commit_id for node in graph],
+            [node.commit_id for node in graph]
         )
         return exec_infos
 
@@ -193,7 +190,7 @@ class KishuCommand:
             UnitExecution.get_from_db(
                 KishuResource.checkpoint_path(notebook_id),
                 commit_id,
-            ),
+            )
         )
 
     @staticmethod
@@ -204,14 +201,12 @@ class KishuCommand:
         summaries = []
         for node in graph:
             exec_info = exec_infos.get(node.commit_id, UnitExecution())
-            summaries.append(
-                CommitSummary(
-                    commit_id=node.commit_id,
-                    parent_id=node.parent_id,
-                    code_block=exec_info.code_block,
-                    runtime_ms=exec_info.runtime_ms,
-                )
-            )
+            summaries.append(CommitSummary(
+                commit_id=node.commit_id,
+                parent_id=node.parent_id,
+                code_block=exec_info.code_block,
+                runtime_ms=exec_info.runtime_ms,
+            ))
         return summaries
 
     @staticmethod
@@ -225,14 +220,15 @@ class KishuCommand:
         restore_plan = cell_exec_info._restore_plan
         if restore_plan is not None:
             restore_plan.run(
-                commit_variables, KishuResource.checkpoint_path(notebook_id), commit_id
+                commit_variables,
+                KishuResource.checkpoint_path(notebook_id),
+                commit_id
             )
         variables = [
             SelectedHistoryVariable(
                 variable_name=key,
                 state=str(value),
-            )
-            for key, value in commit_variables.items()
+            ) for key, value in commit_variables.items()
         ]
 
         # Builds SelectedHistory.
@@ -255,7 +251,8 @@ class KishuCommand:
 
         sorted_histories = []
         free_commit_idxs = [
-            idx for idx, history in enumerate(histories) if history.parent_oid == ""
+            idx for idx, history in enumerate(histories)
+            if history.parent_oid == ""
         ]
         new_branch_id = 1
         for free_commit_idx in free_commit_idxs:
@@ -273,7 +270,7 @@ class KishuCommand:
             for child_idx in child_idxs[1:]:
                 child_history = histories[child_idx]
                 child_history.branch_id = str(new_branch_id)
-                child_history.parent_branch_id = history.branch_id
+                child_history.parent_branch_id = hi story.branch_id
                 new_branch_id += 1
                 free_commit_idxs.append(child_idx)
             if len(child_idxs) > 0:
@@ -286,9 +283,7 @@ class KishuCommand:
     @staticmethod
     def _to_datetime(epoch_time_ms: Optional[int]) -> str:
         return (
-            ""
-            if epoch_time_ms is None
-            else datetime.datetime.fromtimestamp(epoch_time_ms / 1000).strftime(
-                "%Y-%m-%d,%H:%M:%S"
-            )
+            "" if epoch_time_ms is None
+            else datetime.datetime.fromtimestamp(epoch_time_ms / 1000).strftime("%Y-%m-%d,%H:%M:%S")
         )
+
