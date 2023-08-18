@@ -99,22 +99,22 @@ def get_object_state(obj, visited: set, include_id = True) -> GraphNode:
             for item in reduced[1:]:
                 child = get_object_state(item, visited, False)
                 node.children.append(child)
-            return node
-        else:
-            return node
+        return node
 
     elif hasattr(obj, '__reduce__'):
         visited.add(id(obj))
-        reduced = obj.__reduce__()
-        node = GraphNode(id_obj=id(obj))
+        node = GraphNode()
+        if is_pickable(obj):
+            reduced = obj.__reduce__()
+            node.id_obj = id(obj)
 
-        if isinstance(reduced, str):
-            node.children.append(reduced)
-            return node
-        
-        for item in reduced[1:]:
-            child = get_object_state(item, visited, False)
-            node.children.append(child) 
+            if isinstance(reduced, str):
+                node.children.append(reduced)
+                return node
+            
+            for item in reduced[1:]:
+                child = get_object_state(item, visited, False)
+                node.children.append(child) 
         return node
     
     elif hasattr(obj, '__getstate__'):
