@@ -123,7 +123,6 @@ def test_idgraph_matplotlib():
 
     if pick1 != pick2:
         assert idgraph.compare_idgraph(idgraph1, idgraph2) == False
-    
     else:
         assert idgraph.compare_idgraph(idgraph1, idgraph2) == True
 
@@ -243,35 +242,3 @@ def test_idgraph_seaborn_scatterplot():
 
     # Assert that the id graph changes when the object changes
     assert idgraph.compare_idgraph(idgraph1, idgraph5) == False
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-    
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-    

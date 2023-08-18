@@ -87,11 +87,11 @@ def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
         return node
 
     elif hasattr(obj, '__reduce_ex__'):
+        visited.add(id(obj)) 
+        node = GraphNode(check_value_only=True)
         if is_pickable(obj): 
             # if obj.__reduce_ex__(4) == obj.__reduce_ex__(4):
-            visited.add(id(obj))
             reduced = obj.__reduce_ex__(4)
-            node = GraphNode(check_value_only=True)
             if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
                 node.id_obj = id(obj)
                 node.check_value_only = False
@@ -106,6 +106,12 @@ def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
                 node.children.append(child)
             
             return node
+        
+        else:
+            # node.children.append(str(obj))
+            return node
+
+
 
     elif hasattr(obj, '__reduce__'):
         # if is_pickable(obj) and obj.__reduce__() == obj.__reduce__():
@@ -174,7 +180,30 @@ def compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode) -> bool:
     convert_idgraph_to_list(idGraph1, ls1)
     convert_idgraph_to_list(idGraph2, ls2)
 
-    if ls1 == ls2:
-        return True
-    else:
+    if len(ls1) != len(ls2):
         return False
+
+    for i in range(len(ls1)):
+        if pandas.isnull(ls1[i]):
+            if pandas.isnull(ls2[i]):
+                continue
+            return False
+        if ls1[i] != ls2[i]:
+            return False
+    
+    return True
+
+    # if ls1 == ls2:
+    #     return True
+    # else:
+    #     return False
+    
+def compare_lists(list1, list2):
+    if(len(list1) != len(list2)):
+        print("Dif lengths")
+        return
+    
+    l = len(list1)
+    for i in range(l):
+        if list1[i] != list2[i]:
+            print(list1[i-2], list1[i-1], list1[i], list1[i+1], list1[i+2], "-------", list2[i-2], list2[i-1], list2[i], list2[i+1], list2[i+2])
