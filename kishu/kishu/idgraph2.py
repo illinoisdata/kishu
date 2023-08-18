@@ -22,9 +22,7 @@ def is_pickable(obj):
     except (pickle.PicklingError, AttributeError, TypeError):
         return False
 
-def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
-    if visited is None:
-        visited = set()
+def get_object_state(obj, visited: set, include_id = True) -> GraphNode:
 
     if id(obj) in visited:
         node = GraphNode(check_value_only=True)
@@ -32,7 +30,6 @@ def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
         return node
 
     if isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
-        # return obj
         node = GraphNode(check_value_only=True)
         node.children.append(obj)
         return node
@@ -90,7 +87,6 @@ def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
         visited.add(id(obj)) 
         node = GraphNode(check_value_only=True)
         if is_pickable(obj): 
-            # if obj.__reduce_ex__(4) == obj.__reduce_ex__(4):
             reduced = obj.__reduce_ex__(4)
             if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
                 node.id_obj = id(obj)
@@ -100,57 +96,47 @@ def get_object_state(obj, visited=None, include_id = True) -> GraphNode:
                 node.children.append(reduced)
                 return node
             
-            # node.id_obj = id(obj)
             for item in reduced[1:]:
                 child = get_object_state(item, visited, False)
                 node.children.append(child)
-            
             return node
-        
         else:
-            # node.children.append(str(obj))
             return node
-
-
 
     elif hasattr(obj, '__reduce__'):
-        # if is_pickable(obj) and obj.__reduce__() == obj.__reduce__():
         visited.add(id(obj))
         reduced = obj.__reduce__()
-
         node = GraphNode(id_obj=id(obj))
 
         if isinstance(reduced, str):
             node.children.append(reduced)
             return node
         
-        # node.id_obj = id(obj)
         for item in reduced[1:]:
             child = get_object_state(item, visited, False)
-            node.children.append(child)
-        
+            node.children.append(child) 
         return node
+    
+    elif hasattr(obj, '__getstate__'):
+            visited.add(id(obj))
+            node = GraphNode()
+            node.id_obj = id(obj)
+            
+            for attr_name, attr_value in sorted(obj.__getstate__().items()):
+                node.children.append(attr_name)
+                child = get_object_state(attr_value, visited, False)
+                node.children.append(child)
+            return node
 
     elif hasattr(obj, '__dict__'):
         visited.add(id(obj))
         node = GraphNode()
         node.id_obj = id(obj)
 
-        if hasattr(obj, '__getstate__'):
-            if obj.__getstate__() == obj.__getstate__():
-                
-                for attr_name, attr_value in sorted(obj.__getstate__().items()):
-                    node.children.append(attr_name)
-                    child = get_object_state(attr_value, visited, False)
-                    node.children.append(child)
-                
-                return node
-
         for attr_name, attr_value in sorted(obj.__dict__.items()):
             node.children.append(attr_name)
             child = get_object_state(attr_value, visited)
-            node.children.append(child)
-        
+            node.children.append(child)   
         return node
 
     else:
@@ -192,18 +178,3 @@ def compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode) -> bool:
             return False
     
     return True
-
-    # if ls1 == ls2:
-    #     return True
-    # else:
-    #     return False
-    
-def compare_lists(list1, list2):
-    if(len(list1) != len(list2)):
-        print("Dif lengths")
-        return
-    
-    l = len(list1)
-    for i in range(l):
-        if list1[i] != list2[i]:
-            print(list1[i-2], list1[i-1], list1[i], list1[i+1], list1[i+2], "-------", list2[i-2], list2[i-1], list2[i], list2[i+1], list2[i+2])
