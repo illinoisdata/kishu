@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 
 import json
 
@@ -44,13 +44,14 @@ def branch(notebook_id: str, branch_name: str):
     return into_json(branch_result)
 
 
-@app.get("/fe/initialize/<notebook_id>")
-def fe_initialize(notebook_id: str):
-    fe_initialize_result = KishuCommand.fe_initialize(notebook_id)
-    return into_json(fe_initialize_result)
+@app.get("/fe/commit_graph/<notebook_id>")
+def fe_commit_graph(notebook_id: str):
+    fe_commit_graph_result = KishuCommand.fe_commit_graph(notebook_id)
+    return into_json(fe_commit_graph_result)
 
 
-@app.get("/fe/history/<notebook_id>/<commit_id>")
-def fe_history(notebook_id: str, commit_id: str):
-    fe_history_result = KishuCommand.fe_history(notebook_id, commit_id)
-    return into_json(fe_history_result)
+@app.get("/fe/commit/<notebook_id>/<commit_id>")
+def fe_commit(notebook_id: str, commit_id: str):
+    vardepth = request.args.get('vardepth', default=1, type=int)
+    fe_commit_result = KishuCommand.fe_commit(notebook_id, commit_id, vardepth)
+    return into_json(fe_commit_result)

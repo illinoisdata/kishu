@@ -5,7 +5,7 @@ from typing import Generator, List, Optional, Type
 from kishu.resources import KishuResource
 from kishu.jupyterint2 import CellExecInfo, KishuForJupyter
 from kishu.commit_graph import CommitInfo
-from kishu.commands import CommitSummary, KishuCommand, SelectedHistory
+from kishu.commands import CommitSummary, KishuCommand, SelectedCommit
 
 
 @pytest.fixture()
@@ -140,15 +140,16 @@ class TestKishuCommand:
         branch_result = KishuCommand.branch(notebook_id, "historical", basic_execution_ids[1])
         assert branch_result.status == "ok"
 
-    def test_fe_initialize(self, notebook_id, basic_execution_ids):
-        fe_initialize_result = KishuCommand.fe_initialize(notebook_id)
-        assert len(fe_initialize_result.histories) == 3
+    def test_fe_commit_graph(self, notebook_id, basic_execution_ids):
+        fe_commit_graph_result = KishuCommand.fe_commit_graph(notebook_id)
+        assert len(fe_commit_graph_result.commits) == 3
 
-    def test_fe_history(self, notebook_id, basic_execution_ids):
-        fe_history_result = KishuCommand.fe_history(notebook_id, basic_execution_ids[-1])
-        assert fe_history_result == SelectedHistory(
+    def test_fe_commit(self, notebook_id, basic_execution_ids):
+        fe_commit_result = KishuCommand.fe_commit(notebook_id, basic_execution_ids[-1], vardepth=0)
+        assert fe_commit_result == SelectedCommit(
             oid="3",
-            timestamp=fe_history_result.timestamp,  # Not tested
-            cells=fe_history_result.cells,  # Not tested
+            parent_oid="2",
+            timestamp=fe_commit_result.timestamp,  # Not tested
+            cells=fe_commit_result.cells,  # Not tested
             variables=[],
         )
