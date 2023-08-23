@@ -66,7 +66,11 @@ class KishuBranch:
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
         query = f"select branch_name, commit_id from {BRANCH_TABLE}"
-        cur.execute(query)
+        try:
+            cur.execute(query)
+        except sqlite3.OperationalError:
+            # No such table means no branch
+            return []
         return [
             BranchRow(branch_name=branch_name, commit_id=commit_id)
             for branch_name, commit_id in cur

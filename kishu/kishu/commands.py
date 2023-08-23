@@ -46,7 +46,7 @@ class BranchResult:
 
 
 @dataclass
-class HistoryCommit:
+class HistoricalCommit:
     oid: str
     parent_oid: str
     timestamp: str
@@ -55,7 +55,7 @@ class HistoryCommit:
 
 
 @dataclass
-class SelectedHistoryCell:
+class SelectedCommitCell:
     cell_type: str
     content: str
     output: Optional[str]
@@ -65,30 +65,34 @@ class SelectedHistoryCell:
 
 
 @dataclass
-class SelectedHistoryVariable:
+class SelectedCommitVariable:
     variable_name: str
     state: str
+    type: str
+    children: List[SelectedCommitVariable]
+    size: Optional[str]
     # version: str  # ???
 
 
 @dataclass
-class SelectedHistory:
+class SelectedCommit:
     oid: str
+    parent_oid: str
     timestamp: str
-    cells: List[SelectedHistoryCell]
-    variables: List[SelectedHistoryVariable]
-    # parent_oid: str
+    cells: List[SelectedCommitCell]
+    variables: List[SelectedCommitVariable]
     # branch_id: str
     # parent_branch_id: str
     # exec_cell: str  # ???
+    # tag: str  # ???
 
 
-FESelectedHistory = SelectedHistory
+FESelectedCommit = SelectedCommit
 
 
 @dataclass
 class FEInitializeResult:
-    histories: List[HistoryCommit]
+    commits: List[HistoricalCommit]
 
 
 class KishuCommand:
@@ -159,38 +163,48 @@ class KishuCommand:
         return BranchResult(status="ok")
 
     @staticmethod
-    def fe_initialize(notebook_id: str) -> FEInitializeResult:
+    def fe_commit_graph(notebook_id: str) -> FEInitializeResult:
         store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
         exec_infos = KishuCommand._find_exec_info(notebook_id, graph)
 
-        # Collects list of HistoryCommits.
-        histories = []
+        # Collects list of HistoricalCommits.
+        commits = []
         for node in graph:
             exec_info = exec_infos.get(node.commit_id, UnitExecution())
             cell_exec_info = cast(CellExecInfo, exec_info)  # TODO: avoid this cast.
-            histories.append(HistoryCommit(
+            commits.append(HistoricalCommit(
                 oid=node.commit_id,
                 parent_oid=node.parent_id,
                 timestamp=KishuCommand._to_datetime(cell_exec_info.end_time_ms),
-                branch_id="",  # To be set in _toposort_history.
-                parent_branch_id="",  # To be set in _toposort_history.
+                branch_id="",  # To be set in _toposort_commits.
+                parent_branch_id="",  # To be set in _toposort_commits.
             ))
-        histories = KishuCommand._toposort_history(histories)
+        commits = KishuCommand._toposort_commits(commits)
 
         # Retreives and applies branch names.
         branches = KishuBranch.list_branch(notebook_id)
-        histories = KishuCommand._rebranch_history(histories, branches)
+        commits = KishuCommand._rebranch_commit(commits, branches)
 
         # Combines everything.
         return FEInitializeResult(
-            histories=histories,
+            commits=commits,
         )
 
     @staticmethod
-    def fe_history(notebook_id: str, commit_id: str) -> FESelectedHistory:
+    def fe_commit(notebook_id: str, commit_id: str, vardepth: int) -> FESelectedCommit:
+        commit_info = next(
+            KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+                            .iter_history(commit_id)
+        )
         current_cell_exec_info = KishuCommand._find_cell_exec_info(notebook_id, commit_id)
-        return KishuCommand._join_selected_history(notebook_id, commit_id, current_cell_exec_info)
+        return KishuCommand._join_selected_commit(
+            notebook_id,
+            commit_id,
+            commit_info,
+            current_cell_exec_info,
+            vardepth=vardepth,
+        )
 
     """Helpers"""
 
@@ -230,11 +244,13 @@ class KishuCommand:
         return summaries
 
     @staticmethod
-    def _join_selected_history(
+    def _join_selected_commit(
         notebook_id: str,
         commit_id: str,
+        commit_info: CommitInfo,
         cell_exec_info: CellExecInfo,
-    ) -> SelectedHistory:
+        vardepth: int,
+    ) -> SelectedCommit:
         # Restores variables.
         commit_variables: Dict[str, Any] = {}
         restore_plan = cell_exec_info._restore_plan
@@ -245,77 +261,76 @@ class KishuCommand:
                 commit_id
             )
         variables = [
-            SelectedHistoryVariable(
-                variable_name=key,
-                state=str(value),
-            ) for key, value in commit_variables.items()
+            KishuCommand._make_selected_variable(key, value, vardepth=vardepth)
+            for key, value in commit_variables.items()
         ]
 
         # Compile list of cells.
-        cells: List[SelectedHistoryCell] = []
+        cells: List[SelectedCommitCell] = []
         if cell_exec_info.executed_cells is not None:
             for executed_cell in cell_exec_info.executed_cells:
-                cells.append(SelectedHistoryCell(
+                cells.append(SelectedCommitCell(
                     cell_type=executed_cell.cell_type,
                     content=executed_cell.source,
                     output=executed_cell.output,
                     exec_num=str(executed_cell.execution_count),
                 ))
 
-        # Builds SelectedHistory.
-        return SelectedHistory(
+        # Builds SelectedCommit.
+        return SelectedCommit(
             oid=commit_id,
+            parent_oid=commit_info.parent_id,
             timestamp=KishuCommand._to_datetime(cell_exec_info.end_time_ms),
             variables=variables,
             cells=cells,
         )
 
     @staticmethod
-    def _toposort_history(histories: List[HistoryCommit]) -> List[HistoryCommit]:
+    def _toposort_commits(commits: List[HistoricalCommit]) -> List[HistoricalCommit]:
         refs: Dict[str, List[int]] = {}
-        for idx, history in enumerate(histories):
-            if history.parent_oid == "":
+        for idx, commit in enumerate(commits):
+            if commit.parent_oid == "":
                 continue
-            if history.parent_oid not in refs:
-                refs[history.parent_oid] = []
-            refs[history.parent_oid].append(idx)
+            if commit.parent_oid not in refs:
+                refs[commit.parent_oid] = []
+            refs[commit.parent_oid].append(idx)
 
-        sorted_histories = []
+        sorted_commits = []
         free_commit_idxs = [
-            idx for idx, history in enumerate(histories)
-            if history.parent_oid == ""
+            idx for idx, commit in enumerate(commits)
+            if commit.parent_oid == ""
         ]
         new_branch_id = 1
         for free_commit_idx in free_commit_idxs:
-            # Next history is next in topological order.
-            history = histories[free_commit_idx]
-            if history.branch_id == "":
-                assert history.parent_oid == ""
-                history.branch_id = f"tmp_{new_branch_id}"
-                history.parent_branch_id = "-1"
+            # Next commit is next in topological order.
+            commit = commits[free_commit_idx]
+            if commit.branch_id == "":
+                assert commit.parent_oid == ""
+                commit.branch_id = f"tmp_{new_branch_id}"
+                commit.parent_branch_id = "-1"
                 new_branch_id += 1
-            sorted_histories.append(history)
+            sorted_commits.append(commit)
 
             # Assigns children branch IDs.
-            child_idxs = refs.get(history.oid, [])
+            child_idxs = refs.get(commit.oid, [])
             for child_idx in child_idxs[1:]:
-                child_history = histories[child_idx]
-                child_history.branch_id = f"tmp_{new_branch_id}"
-                child_history.parent_branch_id = history.branch_id
+                child_commit = commits[child_idx]
+                child_commit.branch_id = f"tmp_{new_branch_id}"
+                child_commit.parent_branch_id = commit.branch_id
                 new_branch_id += 1
                 free_commit_idxs.append(child_idx)
             if len(child_idxs) > 0:
                 # Add first child last to continue this branch after branching out.
-                histories[child_idxs[0]].branch_id = history.branch_id
-                histories[child_idxs[0]].parent_branch_id = history.branch_id
+                commits[child_idxs[0]].branch_id = commit.branch_id
+                commits[child_idxs[0]].parent_branch_id = commit.branch_id
                 free_commit_idxs.append(child_idxs[0])
-        return sorted_histories
+        return sorted_commits
 
     @staticmethod
-    def _rebranch_history(
-        histories: List[HistoryCommit],
+    def _rebranch_commit(
+        commits: List[HistoricalCommit],
         branches: List[BranchRow],
-    ) -> List[HistoryCommit]:
+    ) -> List[HistoricalCommit]:
         # Each of new branches points to one commit, creating an aliasing mapping.
         commit_to_branch_name = {
             branch.commit_id: branch.branch_name
@@ -324,17 +339,17 @@ class KishuCommand:
 
         # Find mapping between current branch names to new branch names base on commit.
         old_to_new_branch_name = {
-            history.branch_id: commit_to_branch_name[history.oid]
-            for history in histories if history.oid in commit_to_branch_name
+            commit.branch_id: commit_to_branch_name[commit.oid]
+            for commit in commits if commit.oid in commit_to_branch_name
         }
 
         # Now relabel every branch names.
-        for history in histories:
-            if history.branch_id in old_to_new_branch_name:
-                history.branch_id = old_to_new_branch_name[history.branch_id]
-            if history.parent_branch_id in old_to_new_branch_name:
-                history.parent_branch_id = old_to_new_branch_name[history.parent_branch_id]
-        return histories
+        for commit in commits:
+            if commit.branch_id in old_to_new_branch_name:
+                commit.branch_id = old_to_new_branch_name[commit.branch_id]
+            if commit.parent_branch_id in old_to_new_branch_name:
+                commit.parent_branch_id = old_to_new_branch_name[commit.parent_branch_id]
+        return commits
 
     @staticmethod
     def _to_datetime(epoch_time_ms: Optional[int]) -> str:
@@ -342,3 +357,41 @@ class KishuCommand:
             "" if epoch_time_ms is None
             else datetime.datetime.fromtimestamp(epoch_time_ms / 1000).strftime("%Y-%m-%d,%H:%M:%S")
         )
+
+    @staticmethod
+    def _make_selected_variable(key: str, value: Any, vardepth: int = 1) -> SelectedCommitVariable:
+        return SelectedCommitVariable(
+            variable_name=key,
+            state=str(value),
+            type=str(type(value).__name__),
+            children=KishuCommand._recurse_variable(value, vardepth=vardepth),
+            size=KishuCommand._size_or_none(value),
+        )
+
+    @staticmethod
+    def _recurse_variable(value: Any, vardepth: int) -> List[SelectedCommitVariable]:
+        if vardepth <= 0:
+            return []
+
+        # TODO: Maybe we should iterate on other internal members too.
+        children = []
+        if hasattr(value, "__dict__"):
+            for sub_key, sub_value in value.__dict__.items():
+                children.append(KishuCommand._make_selected_variable(
+                    key=sub_key,
+                    value=sub_value,
+                    vardepth=vardepth-1,
+                ))
+        return children
+
+    @staticmethod
+    def _size_or_none(value: Any) -> Optional[str]:
+        if hasattr(value, "shape"):
+            return str(value.shape)
+        elif hasattr(value, '__len__'):
+            try:
+                return str(len(value))
+            except TypeError:
+                # Some type implements __len__ but not qualify for len().
+                return None
+        return None
