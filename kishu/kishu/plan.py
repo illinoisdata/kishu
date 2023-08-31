@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 import dataclasses
-import dill
 import json
-import shortuuid
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import dill
+import shortuuid
 
 from kishu.checkpoint_io import (
     get_checkpoint,
@@ -14,7 +16,6 @@ from kishu.checkpoint_io import (
     store_checkpoint,
     store_log_item,
 )
-
 
 CommitId = str
 

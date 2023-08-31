@@ -1,12 +1,16 @@
 from __future__ import annotations
+
 import dataclasses
 import enum
-import simple_parsing
+import hashlib
+import json
 from typing import Callable, Dict, List, Optional
 
-from kishu.serialization import into_json
-from kishu.commands import KishuCommand
+import nbformat
+import simple_parsing
 
+from kishu.commands import KishuCommand
+from kishu.serialization import into_json
 
 """
 Command Line Interface.
@@ -18,16 +22,17 @@ class Command(enum.Enum):
     log = "log"
     log_all = "log_all"
     status = "status"
-
     checkout = "checkout"
 
 
 @dataclasses.dataclass
 class KishuCLIArguments:
     """Interact with Kishu-powered programs."""
+
     command: Command = Command.help  # Kishu command.
     notebook_id: Optional[str] = None  # Notebook ID to interact with.
     commit_id: Optional[str] = None  # Commit ID to apply command on.
+    notebook_path: Optional[str] = None
 
     @staticmethod
     def from_argv(argv: List[str]) -> KishuCLIArguments:
@@ -47,7 +52,6 @@ class KishuCLIArguments:
 
 
 class KishuCLI:
-
     def __init__(self) -> None:
         # Per-session state goes here.
         self._commands: Dict[Command, Callable[[KishuCLIArguments], None]] = {
@@ -72,6 +76,7 @@ class KishuCLI:
     def log(self, args):
         assert args.notebook_id is not None, "log requires notebook_id."
         assert args.commit_id is not None, "log requires commit_id."
+        print("entered into log")
         print(into_json(KishuCommand.log(args.notebook_id, args.commit_id)))
 
     def log_all(self, args):
@@ -92,6 +97,7 @@ class KishuCLI:
 if __name__ == "__main__":
     # Parse argugments from command line.
     import sys
+
     args = KishuCLIArguments.from_argv(sys.argv[1:])
 
     # Execute
