@@ -1,6 +1,7 @@
 import hashlib
 import pandas
 import pickle
+import types
 
 class GraphNode:
 
@@ -90,6 +91,17 @@ def get_object_state(obj, visited: set, include_id = True) -> GraphNode:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         node.children.append(str(obj))
         return node
+    
+    # elif isinstance(obj, types.FunctionType):
+    elif callable(obj):
+        visited.add(id(obj))
+        node = GraphNode(obj_type=type(obj), check_value_only=True)
+        if include_id:
+            node.id_obj = id(obj)
+            node.check_value_only = False
+        node.children.append(pickle.dumps(obj))
+        return node
+
 
     elif hasattr(obj, '__reduce_ex__'):
         visited.add(id(obj)) 
@@ -148,8 +160,13 @@ def get_object_state(obj, visited: set, include_id = True) -> GraphNode:
         return node
 
     else:
-        node = GraphNode(check_value_only=True)
-        node.children.append(str(obj))
+        visited.add(id(obj))
+        node = GraphNode(obj_type=type(obj),check_value_only=True)
+        if include_id:
+            node.id_obj=id(obj)
+            node.check_value_only=False
+        # node.children.append(str(obj))
+        node.children.append(pickle.dumps(obj))
         return node
 
 def get_object_hash(obj):
