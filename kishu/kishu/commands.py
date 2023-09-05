@@ -1,5 +1,6 @@
 from __future__ import annotations
 import datetime
+import heapq
 import jupyter_client
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, cast
@@ -139,6 +140,7 @@ class KishuCommand:
             reply = km.execute(
                 f"_kishu.checkout('{commit_id}')",
                 reply=True,
+                silent=True,
                 # store_history=False,  # Do not increment cell count.
             )
             km.stop_channels()
@@ -297,13 +299,19 @@ class KishuCommand:
 
         sorted_commits = []
         free_commit_idxs = [
-            idx for idx, commit in enumerate(commits)
+            (0.0, commit.timestamp, idx) for idx, commit in enumerate(commits)
             if commit.parent_oid == ""
         ]
+        heapq.heapify(free_commit_idxs)
         new_branch_id = 1
-        for free_commit_idx in free_commit_idxs:
+        it = 0.0
+        while len(free_commit_idxs) > 0:
             # Next commit is next in topological order.
+            _, _, free_commit_idx = heapq.heappop(free_commit_idxs)
             commit = commits[free_commit_idx]
+            it += 1
+
+            # If branch not assigned, this commit is in a new branch.
             if commit.branch_id == "":
                 assert commit.parent_oid == ""
                 commit.branch_id = f"tmp_{new_branch_id}"
@@ -318,12 +326,13 @@ class KishuCommand:
                 child_commit.branch_id = f"tmp_{new_branch_id}"
                 child_commit.parent_branch_id = commit.branch_id
                 new_branch_id += 1
-                free_commit_idxs.append(child_idx)
+                heapq.heappush(free_commit_idxs, (it, child_commit.timestamp, child_idx))
             if len(child_idxs) > 0:
                 # Add first child last to continue this branch after branching out.
-                commits[child_idxs[0]].branch_id = commit.branch_id
-                commits[child_idxs[0]].parent_branch_id = commit.branch_id
-                free_commit_idxs.append(child_idxs[0])
+                child_commit = commits[child_idxs[0]]
+                child_commit.branch_id = commit.branch_id
+                child_commit.parent_branch_id = commit.branch_id
+                heapq.heappush(free_commit_idxs, (it + 0.5, child_commit.timestamp, child_idxs[0]))
         return sorted_commits
 
     @staticmethod
