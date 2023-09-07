@@ -39,8 +39,8 @@ Reference
 - https://ipython.readthedocs.io/en/stable/config/callbacks.html
 """
 from __future__ import annotations
-import hashlib
 import ipykernel
+import ipylab
 import IPython
 import json
 import jupyter_core.paths
@@ -52,6 +52,7 @@ from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from datetime import datetime
 from itertools import chain
+from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path, PurePath
 from typing import Any, cast, Dict, Generator, List, Optional, Tuple
 
@@ -118,6 +119,31 @@ def enclosing_kernel_id() -> str:
     return connection_file.split('-', 1)[1].split('.')[0]
 
 
+def enclosing_platform() -> str:
+    app = ipylab.JupyterFrontEnd()
+    num_trials = 10
+
+    def app_commands_fn():
+        nonlocal num_trials
+        if app.commands.list_commands() == [] and num_trials > 0:
+            num_trials -= 1
+            return None
+        return app.commands.list_commands()
+
+    # To fetch the command list, we need to unblock the frontend through polling loop.
+    try:
+        app_commands = run_ui_poll_loop(app_commands_fn)
+        if "docmanager:save" in app_commands:
+            # In JupyterLab.
+            return "jupyterlab"
+    except Exception:
+        # BUG: run_ui_poll_loop throws when not in a ipython kernel.
+        pass
+
+    # In Jupyter Notebook.
+    return "jupyternb"
+
+
 """
 Notebook instrument.
 """
@@ -172,7 +198,7 @@ class JupyterConnection:
 
 class KishuForJupyter:
     CURRENT_CELL_ID = 'current'
-    SAVE_CMD = "IPython.notebook.save_checkpoint();"
+    SAVE_CMD = "try { IPython.notebook.save_checkpoint(); } catch { }"
 
     def __init__(self, notebook_id: Optional[str] = None) -> None:
         """
@@ -200,6 +226,8 @@ class KishuForJupyter:
         except Exception as e:
             print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
 
+        self._platform = enclosing_platform()
+
     def log(self) -> ExecutionHistory:
         return self._history
 
@@ -226,7 +254,7 @@ class KishuForJupyter:
         user_ns = ip.user_ns   # will restore to global namespace
         target_ns: Dict[str, Any] = {}         # temp location
         restore_plan.run(target_ns, checkpoint_file, commit_id)
-        user_ns.update(target_ns)
+        self._apply_namespace(user_ns, target_ns)
         print('Checked-out variables: {}'.format(list(target_ns.keys())))
         # TODO: update execution count and database history
 
@@ -338,19 +366,31 @@ class KishuForJupyter:
         if self._notebook_path is None:
             return
 
-        with open(self._notebook_path, 'rb') as f:
-            start_md5 = hashlib.md5(f.read()).hexdigest()
-        IPython.display.display(IPython.display.Javascript(KishuForJupyter.SAVE_CMD))
-        current_md5 = start_md5
+        # Remember starting state.
+        start_mtime = os.path.getmtime(self._notebook_path)
+        current_mtime = start_mtime
 
+        # Issue save command.
+        if self._platform == "jupyterlab":
+            # In JupyterLab.
+            app = ipylab.JupyterFrontEnd()
+            run_ui_poll_loop(lambda: (  # This unblocks web UI to connect with app.
+                None if app.commands.list_commands() == []
+                else app.commands.list_commands()
+            ))
+            app.commands.execute("docmanager:save")
+        else:
+            # In Jupyter Notebook.
+            IPython.display.display(IPython.display.Javascript(KishuForJupyter.SAVE_CMD))
+
+        # Now wait for the saving to change the notebook.
         sleep_t = 0.2
         time.sleep(sleep_t)
-        while start_md5 == current_md5 and sleep_t < 20:
-            with open(self._notebook_path, 'rb') as f:
-                current_md5 = hashlib.md5(f.read()).hexdigest()
+        while start_mtime == current_mtime and sleep_t < 1.0:
+            current_mtime = os.path.getmtime(self._notebook_path)
             sleep_t *= 1.2
             time.sleep(sleep_t)
-        if sleep_t >= 20:
+        if sleep_t >= 1.0:
             print("WARNING: Notebook saving is taking too long. Kishu may not capture every cell.")
 
     def _all_notebook_cells(self) -> List[NBFormatCell]:
@@ -401,6 +441,11 @@ class KishuForJupyter:
                     raise ValueError(f"Unknown output data structure: {cell_output['data']}")
             elif cell_output["output_type"] == "display_data":
                 return cell_output["data"].get("text/plain", "<display_data>")
+            elif cell_output["output_type"] == "error":
+                return "\n".join([
+                    *cell_output["traceback"],
+                    f'{cell_output["ename"]}: {cell_output["evalue"]}',
+                ])
             else:
                 raise ValueError(f"Unknown output type: {cell_output}")
         return None
@@ -409,6 +454,12 @@ class KishuForJupyter:
         head = KishuBranch.update_head(self._notebook_id, commit_id=commit_id)
         if head.branch_name is not None:
             KishuBranch.upsert_branch(self._notebook_id, head.branch_name, commit_id)
+
+    def _apply_namespace(self, user_ns: Dict[Any, Any], target_ns: Dict[Any, Any]) -> None:
+        user_ns.update(target_ns)
+        for key, _ in list(filter(no_ipython_var, user_ns.items())):
+            if key not in target_ns:
+                del user_ns[key]
 
 
 def repr_if_not_none(obj: Any) -> Optional[str]:

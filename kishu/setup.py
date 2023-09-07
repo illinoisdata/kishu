@@ -3,7 +3,14 @@
 # Learn more: https://github.com/kennethreitz/setup.py
 
 from setuptools import setup, find_packages, Extension
-import numpy
+
+
+class get_numpy_include(object):
+    """Defer numpy.get_include() until after numpy is installed."""
+    def __str__(self):
+        import numpy
+        return numpy.get_include()
+
 
 with open('README.md') as f:
     readme = f.read()
@@ -22,11 +29,12 @@ setup(
     url='https://github.com/illinoisdata/kishu',
     license=license,
     packages=find_packages(exclude=('tests', 'docs', 'examples')),
+    setup_requires=["numpy"],
     ext_modules=[
         Extension(
             "c_idgraph",
             sources=["change/idgraphmodule.c", "change/cJSON.c"],
-            include_dirs=[numpy.get_include()]
+            include_dirs=[get_numpy_include()],
         ),
     ]
 )
