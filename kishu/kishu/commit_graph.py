@@ -333,6 +333,20 @@ class CommitGraphStore:
             node.set_parent_position(parent_node.position())
         self._insert(node)
 
+    def set_head(self, commit_id: CommitId):
+        with open(self._head_path(), "w") as f:
+            meta = {}
+            meta["commit_id"] = commit_id
+            json.dump(meta, f)
+
+    def get_head(self) -> CommitId:
+        try:
+            with open(self._head_path(), "r") as f:
+                meta = json.load(f)
+                return meta.get("commit_id", ABSOLUTE_PAST)
+        except FileNotFoundError:
+            return ABSOLUTE_PAST
+
     """
     Commit graph chain: management over collection of blocks.
     """
@@ -418,6 +432,9 @@ class CommitGraphStore:
     def _meta_path(self):
         return os.path.join(self._root_path, "meta.json")
 
+    def _head_path(self):
+        return os.path.join(self._root_path, "head.json")
+
 
 class InMemoryCommitGraphWalker(CommitInfoIterator):
 
@@ -448,6 +465,7 @@ class InMemoryCommitGraphStore:
     def __init__(self) -> None:
         self._edge_lists: Dict[CommitId, List[CommitId]] = {}
         self._infos: Dict[CommitId, CommitInfo] = {}
+        self._head_commit_id: CommitId = ABSOLUTE_PAST
 
     def begin_read(self, commit_id: CommitId) -> CommitInfoIterator:
         return InMemoryCommitGraphWalker(self, commit_id)
@@ -459,12 +477,17 @@ class InMemoryCommitGraphStore:
         self._edge_lists.setdefault(commit_info.commit_id, []).append(commit_info.parent_id)
         self._infos[commit_info.commit_id] = commit_info
 
+    def set_head(self, commit_id: CommitId):
+        self._head_commit_id = commit_id
+
+    def get_head(self) -> CommitId:
+        return self._head_commit_id
+
 
 class KishuCommitGraph:
 
     def __init__(self, store: Union[InMemoryCommitGraphStore, CommitGraphStore]):
         self._store = store
-        self._current_commit_id: CommitId = ABSOLUTE_PAST
 
     @staticmethod
     def new_in_memory() -> KishuCommitGraph:
@@ -479,7 +502,7 @@ class KishuCommitGraph:
         Makes history iterator from given commit.
         """
         if commit_id is None:
-            commit_id = self._current_commit_id
+            commit_id = self._store.get_head()
         return self._store.begin_read(commit_id)
 
     def list_history(self, commit_id: Optional[CommitId] = None) -> List[CommitInfo]:
@@ -494,12 +517,19 @@ class KishuCommitGraph:
         """
         return self._store.read_all()
 
+    def head(self) -> CommitId:
+        """
+        Get the lastest commit ID.
+        """
+        return self._store.get_head()
+
     def step(self, commit_id: CommitId) -> None:
         """
         Steps forward to the commit, associating the current commit as its past.
         """
-        self._store.insert(CommitInfo(commit_id, self._current_commit_id))
-        self._current_commit_id = commit_id
+        head_commit_id = self._store.get_head()
+        self._store.insert(CommitInfo(commit_id, head_commit_id))
+        self._store.set_head(commit_id)
 
     def jump(self, commit_id: CommitId) -> None:
         """
@@ -510,7 +540,7 @@ class KishuCommitGraph:
         commit_info = next(self._store.begin_read(commit_id), None)
         if commit_info is None:
             self._store.insert(CommitInfo(commit_id, ABSOLUTE_PAST))
-        self._current_commit_id = commit_id
+        self._store.set_head(commit_id)
 
 
 """

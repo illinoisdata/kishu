@@ -5,7 +5,7 @@ import jupyter_client
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, cast
 
-from kishu.branch import BranchRow, KishuBranch
+from kishu.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.commit_graph import CommitInfo, KishuCommitGraph
 from kishu.jupyterint2 import CellExecInfo, KishuForJupyter
 from kishu.plan import UnitExecution
@@ -94,6 +94,7 @@ FESelectedCommit = SelectedCommit
 @dataclass
 class FEInitializeResult:
     commits: List[HistoricalCommit]
+    head: Optional[HeadBranch]
 
 
 class KishuCommand:
@@ -185,12 +186,14 @@ class KishuCommand:
         commits = KishuCommand._toposort_commits(commits)
 
         # Retreives and applies branch names.
+        head_branch = KishuBranch.get_head(notebook_id)
         branches = KishuBranch.list_branch(notebook_id)
         commits = KishuCommand._rebranch_commit(commits, branches)
 
         # Combines everything.
         return FEInitializeResult(
             commits=commits,
+            head=head_branch,
         )
 
     @staticmethod
