@@ -85,6 +85,7 @@ class TestKishuCommitGraph:
             CommitInfo("2", "1"),
             CommitInfo("1", "")
         ]
+        assert graph.head() == "3"
 
         graph.step("4")
         graph.step("5")
@@ -95,6 +96,7 @@ class TestKishuCommitGraph:
             CommitInfo("2", "1"),
             CommitInfo("1", "")
         ]
+        assert graph.head() == "5"
 
         graph.jump("3")
         assert graph.list_history() == [
@@ -109,6 +111,7 @@ class TestKishuCommitGraph:
             CommitInfo("2", "1"),
             CommitInfo("1", "")
         ]
+        assert graph.head() == "3"
 
         graph.step("3_1")
         graph.step("3_2")
@@ -123,12 +126,14 @@ class TestKishuCommitGraph:
             CommitInfo("2", "1"),
             CommitInfo("1", "")
         ]
+        assert graph.head() == "3_4"
 
         # Jumps to non-existent commit, creating a new commit from empty state.
         graph.jump("A")
         assert graph.list_history() == [
             CommitInfo("A", "")
         ]
+        assert graph.head() == "A"
 
         graph.step("A_A")
         graph.step("A_B")
@@ -144,6 +149,7 @@ class TestKishuCommitGraph:
             CommitInfo("2", "1"),
             CommitInfo("1", "")
         ]
+        assert graph.head() == "A_B"
 
     def test_persist_on_file_after_reload(self, tmp_path):
         graph = KishuCommitGraph.new_on_file(str(tmp_path))
@@ -217,6 +223,7 @@ class TestKishuCommitGraph:
             CommitInfo("2", "1"),
             CommitInfo("1", "")
         ]
+        assert graph.head() == "A_B"
 
     @pytest.mark.parametrize(
         "mode",
