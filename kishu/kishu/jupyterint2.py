@@ -286,7 +286,6 @@ class KishuForJupyter:
         cell_info.code_block = info.raw_cell
         # self.history.append(cell_info)
         self._running_cell = cell_info
-        cell_info.current_time = datetime.now()
 
     def post_run_cell(self, result) -> None:
         """
