@@ -42,7 +42,7 @@ def basic_execution_ids(kishu_jupyter) -> Generator[List[str], None, None]:
     kishu_jupyter.pre_run_cell(info)
     kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
 
-    yield ["1", "2", "3"]  # List of commit IDs
+    yield ["0:1", "0:2", "0:3"]  # List of commit IDs
 
 
 @dataclasses.dataclass
@@ -52,7 +52,7 @@ class JupyterInfoMock:
 
 @dataclasses.dataclass
 class JupyterResultMock:
-    info: JupyterInfoMock = JupyterInfoMock()
+    info: JupyterInfoMock = dataclasses.field(default_factory=JupyterInfoMock)
     execution_count: Optional[int] = None
     error_before_exec: Optional[str] = None
     error_in_exec: Optional[str] = None
@@ -65,19 +65,19 @@ class TestKishuCommand:
         log_result = KishuCommand.log(notebook_id, basic_execution_ids[-1])
         assert len(log_result.commit_graph) == 3
         assert log_result.commit_graph[0] == CommitSummary(
-            commit_id="3",
-            parent_id="2",
+            commit_id="0:3",
+            parent_id="0:2",
             code_block="y = x + 1",
             runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
         )
         assert log_result.commit_graph[1] == CommitSummary(
-            commit_id="2",
-            parent_id="1",
+            commit_id="0:2",
+            parent_id="0:1",
             code_block="y = 2",
             runtime_ms=log_result.commit_graph[1].runtime_ms,  # Not tested
         )
         assert log_result.commit_graph[2] == CommitSummary(
-            commit_id="1",
+            commit_id="0:1",
             parent_id="",
             code_block="x = 1",
             runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
@@ -86,7 +86,7 @@ class TestKishuCommand:
         log_result = KishuCommand.log(notebook_id, basic_execution_ids[0])
         assert len(log_result.commit_graph) == 1
         assert log_result.commit_graph[0] == CommitSummary(
-            commit_id="1",
+            commit_id="0:1",
             parent_id="",
             code_block="x = 1",
             runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
@@ -96,20 +96,20 @@ class TestKishuCommand:
         log_all_result = KishuCommand.log_all(notebook_id)
         assert len(log_all_result.commit_graph) == 3
         assert log_all_result.commit_graph[0] == CommitSummary(
-            commit_id="1",
+            commit_id="0:1",
             parent_id="",
             code_block="x = 1",
             runtime_ms=log_all_result.commit_graph[0].runtime_ms,  # Not tested
         )
         assert log_all_result.commit_graph[1] == CommitSummary(
-            commit_id="2",
-            parent_id="1",
+            commit_id="0:2",
+            parent_id="0:1",
             code_block="y = 2",
             runtime_ms=log_all_result.commit_graph[1].runtime_ms,  # Not tested
         )
         assert log_all_result.commit_graph[2] == CommitSummary(
-            commit_id="3",
-            parent_id="2",
+            commit_id="0:3",
+            parent_id="0:2",
             code_block="y = x + 1",
             runtime_ms=log_all_result.commit_graph[2].runtime_ms,  # Not tested
         )
@@ -117,11 +117,11 @@ class TestKishuCommand:
     def test_status(self, notebook_id, basic_execution_ids):
         status_result = KishuCommand.status(notebook_id, basic_execution_ids[-1])
         assert status_result.commit_info == CommitInfo(
-            commit_id="3",
-            parent_id="2",
+            commit_id="0:3",
+            parent_id="0:2",
         )
         assert status_result.cell_exec_info == CellExecInfo(
-            exec_id="3",
+            exec_id="0:3",
             execution_count=3,
             code_block="y = x + 1",
             checkpoint_vars=[],
@@ -147,8 +147,8 @@ class TestKishuCommand:
     def test_fe_commit(self, notebook_id, basic_execution_ids):
         fe_commit_result = KishuCommand.fe_commit(notebook_id, basic_execution_ids[-1], vardepth=0)
         assert fe_commit_result == SelectedCommit(
-            oid="3",
-            parent_oid="2",
+            oid="0:3",
+            parent_oid="0:2",
             timestamp=fe_commit_result.timestamp,  # Not tested
             cells=fe_commit_result.cells,  # Not tested
             variables=[],

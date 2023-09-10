@@ -17,7 +17,7 @@ def test_history_to_sqlite():
 
     # construct an example
     exec_info = CellExecInfo()
-    exec_info.exec_id = '1'
+    exec_info.exec_id = '0:1'
     exec_info.code_block = 'code'
     exec_info.runtime_ms = 2
     exec_info.accessed_resources = ['a']
@@ -65,19 +65,19 @@ def test_record_history():
         return exec_info
 
     history_dict = json.loads(output['history'])
-    assert replace_start_time(history_dict['1']) == {
+    assert replace_start_time(history_dict['0:1']) == {
             "checkpoint_runtime_ms": 0,
             "code_block": "from kishu import load_kishu\nload_kishu()",
             "end_time_ms": 0,
-            "exec_id": "1",
+            "exec_id": "0:1",
             "execution_count": 1
         }
-    assert replace_start_time(history_dict['2']) == {
+    assert replace_start_time(history_dict['0:2']) == {
             "checkpoint_runtime_ms": 0,
             "checkpoint_vars": ["a"],
             "code_block": "a = 1",
             "end_time_ms": 0,
-            "exec_id": "2",
+            "exec_id": "0:2",
             "execution_count": 2,
             "runtime_ms": 0,
             "start_time_ms": 0
