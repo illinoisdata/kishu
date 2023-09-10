@@ -227,6 +227,10 @@ class KishuForJupyter:
             print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
 
         self._platform = enclosing_platform()
+        self._session_id = 0
+    
+    def set_session_id(self, session_id):
+        self._session_id = session_id
 
     def log(self) -> ExecutionHistory:
         return self._history
@@ -282,6 +286,7 @@ class KishuForJupyter:
         cell_info.code_block = info.raw_cell
         # self.history.append(cell_info)
         self._running_cell = cell_info
+        cell_info.current_time = datetime.now()
 
     def post_run_cell(self, result) -> None:
         """
@@ -340,7 +345,7 @@ class KishuForJupyter:
             return None
 
     def _commit_id(self, result) -> str:
-        return str(result.execution_count)
+        return str(self._session_id) + ":" + str(result.execution_count)
 
     def _checkpoint(self, cell_info: CellExecInfo) -> RestorePlan:
         """
@@ -524,16 +529,21 @@ def get_kishu_instance():
 KISHU_VAR_NAME = '_kishu'
 
 
-def load_kishu() -> None:
+def load_kishu(notebook_id=None, session_id=None) -> None:
     global _kishu_exec_history
     global _ipython_shell
     if _kishu_exec_history is not None:
         return
     _ipython_shell = eval('get_ipython()')
     ip = _ipython_shell
-
-    kishu = KishuForJupyter()
+    kishu = None
+    if notebook_id:
+        kishu = KishuForJupyter(notebook_id)
+    else:
+        kishu = KishuForJupyter()
     _kishu_exec_history = kishu
+    if session_id:
+        kishu.set_session_id(session_id)
     ip.events.register('pre_run_cell', kishu.pre_run_cell)
     ip.events.register('post_run_cell', kishu.post_run_cell)
     ip.user_ns[KISHU_VAR_NAME] = kishu
@@ -541,3 +551,33 @@ def load_kishu() -> None:
     print("Kishu will now trace cell executions automatically.\n"
           "- You can inspect traced information using '_kishu'.\n"
           "- Checkpoint file: {}/\n".format(kishu.checkpoint_file()))
+
+def init_kishu() -> None:
+    """
+    If notebook not already initialized, initializes by adding notebook id to metadata
+    Increments session number to ensure unique commit ids.
+    """
+    kernel_id = enclosing_kernel_id()
+    path = enclosing_notebook_path(kernel_id)
+    nb = None
+    with open(path, 'r') as f:
+        nb = nbformat.read(f, 4)
+    if "notebook_id" not in nb.metadata:
+        print("Adding kishu to notebook")
+        notebook_name = datetime.now().strftime('%Y%m%dT%H%M%S')
+        nb["metadata"]["notebook_id"] = notebook_name
+        nb["metadata"]["session_count"] = 1
+        nbformat.write(nb, path)
+    else:
+        print("already initialized")
+        if "session_count" in nb.metadata:
+            nb["metadata"]["session_count"] = nb["metadata"]["session_count"] + 1
+        else:
+            nb["metadata"]["session_count"] = 1
+        nbformat.write(nb, path)
+    load_kishu(nb.metadata["notebook_id"], nb.metadata["session_count"])
+    
+
+    
+        
+
