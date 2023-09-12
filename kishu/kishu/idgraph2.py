@@ -39,6 +39,7 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
     if isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         node.children.append(obj)
+        node.children.append("/EOC")
         return node
 
     elif isinstance(obj, tuple):
@@ -47,7 +48,7 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
             child = get_object_state(item, visited, include_id)
             node.children.append(child)
         
-        node.children.append("EndOfChildren")
+        node.children.append("/EOC")
         return node
 
     elif isinstance(obj, list):
@@ -62,7 +63,7 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
             child = get_object_state(item, visited, include_id)
             node.children.append(child)
         
-        node.children.append("EndOfChildren")
+        node.children.append("/EOC")
         return node
 
     elif isinstance(obj, set):
@@ -76,7 +77,7 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
             child = get_object_state(item, visited, include_id)
             node.children.append(child)
         
-        node.children.append("EndOfChildren")
+        node.children.append("/EOC")
         return node
 
     elif isinstance(obj, dict):
@@ -90,17 +91,19 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
             child = get_object_state(value, visited, include_id)
             node.children.append(child)
 
-        node.children.append("EndOfChildren")
+        node.children.append("/EOC")
         return node
                
     elif isinstance(obj, (bytes, bytearray)):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         node.children.append(obj)
+        node.children.append("/EOC")
         return node
 
     elif isinstance(obj, type):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         node.children.append(str(obj))
+        node.children.append("/EOC")
         return node
     
     # elif isinstance(obj, types.FunctionType):
@@ -112,6 +115,7 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
             node.id_obj = id(obj)
             node.check_value_only = False
         node.children.append(pickle.dumps(obj))
+        node.children.append("/EOC")
         return node
 
 
@@ -132,7 +136,7 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
             for item in reduced[1:]:
                 child = get_object_state(item, visited, False)
                 node.children.append(child)
-            node.children.append("EndOfChildren")
+            node.children.append("/EOC")
         return node
 
     elif hasattr(obj, '__reduce__'):
@@ -151,7 +155,7 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
                 child = get_object_state(item, visited, False)
                 node.children.append(child) 
             
-            node.children.append("EndOfChildren")
+            node.children.append("/EOC")
         return node
     
     elif hasattr(obj, '__getstate__'):
@@ -165,7 +169,7 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
                 child = get_object_state(attr_value, visited, False)
                 node.children.append(child)
             
-            node.children.append("EndOfChildren")
+            node.children.append("/EOC")
             return node
 
     elif hasattr(obj, '__dict__'):
@@ -179,7 +183,7 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
             child = get_object_state(attr_value, visited)
             node.children.append(child)  
 
-        node.children.append("EndOfChildren") 
+        node.children.append("/EOC") 
         return node
 
     else:
@@ -191,6 +195,7 @@ def get_object_state(obj, visited: dict, include_id = True) -> GraphNode:
             node.check_value_only=False
         # node.children.append(str(obj))
         node.children.append(pickle.dumps(obj))
+        node.children.append("/EOC")
         return node
 
 def get_object_hash(obj):
