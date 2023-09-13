@@ -56,6 +56,7 @@ class HistoricalCommit:
     timestamp: str
     branch_id: str
     parent_branch_id: str
+    other_branch_ids: List[str]
 
 
 @dataclass
@@ -207,6 +208,7 @@ class KishuCommand:
                 timestamp=KishuCommand._to_datetime(cell_exec_info.end_time_ms),
                 branch_id="",  # To be set in _toposort_commits.
                 parent_branch_id="",  # To be set in _toposort_commits.
+                other_branch_ids=[],
             ))
         commits = KishuCommand._toposort_commits(commits)
 
@@ -380,12 +382,33 @@ class KishuCommand:
             for commit in commits if commit.oid in commit_to_branch_name
         }
 
-        # Now relabel every branch names.
+        # List other branch names that will not show up.
+        selected_branch_names = {branch_name for _, branch_name in old_to_new_branch_name.items()}
+        commit_to_other_branch_names: Dict[str, List[str]] = {
+            commit_id: [] for commit_id in commit_to_branch_name
+        }
+        for branch in branches:
+            commit_to_other_branch_names[branch.commit_id].append(branch.branch_name)
+        for commit_id in commit_to_other_branch_names:
+            other_branch_names = filter(
+                lambda branch_name: branch_name not in selected_branch_names,
+                commit_to_other_branch_names[commit_id]
+            )
+            commit_to_other_branch_names[commit_id] = sorted(other_branch_names)
+        print(commit_to_branch_name)
+        print(commit_to_other_branch_names)
+
+        # Edit branches in commits.
         for commit in commits:
+            # Now relabel every branch names.
             if commit.branch_id in old_to_new_branch_name:
                 commit.branch_id = old_to_new_branch_name[commit.branch_id]
             if commit.parent_branch_id in old_to_new_branch_name:
                 commit.parent_branch_id = old_to_new_branch_name[commit.parent_branch_id]
+
+            # Insert other branch names.
+            if commit.oid in commit_to_other_branch_names:
+                commit.other_branch_ids = commit_to_other_branch_names[commit.oid]
         return commits
 
     @staticmethod
