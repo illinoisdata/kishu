@@ -44,6 +44,9 @@ class CheckoutResult:
 @dataclass
 class BranchResult:
     status: str
+    branch_name: Optional[str] = None
+    commit_id: Optional[str] = None
+    head: Optional[HeadBranch] = None
 
 
 @dataclass
@@ -155,15 +158,30 @@ class KishuCommand:
 
     @staticmethod
     def branch(notebook_id: str, branch_name: str, commit_id: Optional[str]) -> BranchResult:
+        head = KishuBranch.get_head(notebook_id)
+
         if commit_id is None:
-            head = KishuBranch.update_head(notebook_id, branch_name=branch_name, commit_id=None)
-            if head.commit_id is not None:
-                KishuBranch.upsert_branch(notebook_id, branch_name, head.commit_id)
-            else:
-                return BranchResult(status="no_commit")
-        else:
-            KishuBranch.upsert_branch(notebook_id, branch_name, commit_id)
-        return BranchResult(status="ok")
+            # If no commit ID, create branch pointing to the commit ID at HEAD.
+            head = KishuBranch.update_head(notebook_id, branch_name=branch_name)
+            commit_id = head.commit_id
+        elif branch_name == head.branch_name and commit_id != head.commit_id:
+            # Moving head branch somewhere else.
+            head = KishuBranch.update_head(notebook_id, is_detach=True)
+            print(f"detaching {head}")
+
+        # Fail to determine commit ID, possibly because a commit does not exist.
+        if commit_id is None:
+            return BranchResult(status="no_commit")
+
+        # Now add this branch.
+        KishuBranch.upsert_branch(notebook_id, branch_name, commit_id)
+
+        return BranchResult(
+            status="ok",
+            branch_name=branch_name,
+            commit_id=commit_id,
+            head=head,
+        )
 
     @staticmethod
     def fe_commit_graph(notebook_id: str) -> FEInitializeResult:
@@ -186,14 +204,14 @@ class KishuCommand:
         commits = KishuCommand._toposort_commits(commits)
 
         # Retreives and applies branch names.
-        head_branch = KishuBranch.get_head(notebook_id)
+        head = KishuBranch.get_head(notebook_id)
         branches = KishuBranch.list_branch(notebook_id)
         commits = KishuCommand._rebranch_commit(commits, branches)
 
         # Combines everything.
         return FEInitializeResult(
             commits=commits,
-            head=head_branch,
+            head=head,
         )
 
     @staticmethod

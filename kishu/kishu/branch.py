@@ -25,13 +25,13 @@ class BranchRow:
 class KishuBranch:
 
     @staticmethod
-    def get_head(notebook_id: str) -> Optional[HeadBranch]:
+    def get_head(notebook_id: str) -> HeadBranch:
         try:
             with open(KishuResource.head_path(notebook_id), "r") as f:
                 json_str = f.read()
                 return HeadBranch.from_json(json_str)  # type: ignore
         except (FileNotFoundError, json.decoder.JSONDecodeError):
-            return None
+            return HeadBranch(branch_name=None, commit_id=None)
 
     @staticmethod
     def update_head(
