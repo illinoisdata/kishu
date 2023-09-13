@@ -1,6 +1,6 @@
 {
   "oid": "1004",
-  "branch_id": "1",
+  "branch_id": ["1", "tmp_2", "tmp_3"],
   "timestamp": "2023-06-29,15:16:31",
   "parent_branchID": "1",
   "parent_oid": "1003",
