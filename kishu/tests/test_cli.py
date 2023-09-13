@@ -1,40 +1,24 @@
 import pytest
+from typer.testing import CliRunner
+from typing import Generator
 
-from kishu.cli import Command, KishuCLIArguments
+from kishu import __app_name__, __version__
+from kishu.cli import kishu_app
 
 
-class TestKishuCLIArguments:
+@pytest.fixture()
+def runner() -> Generator[CliRunner, None, None]:
+    yield CliRunner()
 
-    def test_no_arg(self):
-        args = KishuCLIArguments.from_argv([])
-        assert args.command == Command.help
-        assert args.notebook_id is None
-        assert args.commit_id is None
 
-    def test_help(self):
-        with pytest.raises(SystemExit):
-            KishuCLIArguments.from_argv(["--help"])
+class TestKishuApp:
 
-        with pytest.raises(SystemExit):
-            KishuCLIArguments.from_argv(["random", "args?", "--help", "--commit_id"])
+    def test_version(self, runner):
+        result = runner.invoke(kishu_app, ["--version"])
+        assert result.exit_code == 0
+        assert f"{__app_name__} v{__version__}\n" in result.stdout
 
-        with pytest.raises(SystemExit):
-            KishuCLIArguments.from_argv(["random", "args?", "-h", "--commit_id"])
-
-    def test_log(self):
-        args = KishuCLIArguments.from_argv(['log', '--notebook_id', '123', '--commit_id', '4567'])
-        assert args.command == Command.log
-        assert args.notebook_id == '123'
-        assert args.commit_id == '4567'
-
-    def test_log_all(self):
-        args = KishuCLIArguments.from_argv(['log_all', '--notebook_id', '123', '--commit_id', '4567'])
-        assert args.command == Command.log_all
-        assert args.notebook_id == '123'
-        assert args.commit_id == '4567'
-
-    def test_status(self):
-        args = KishuCLIArguments.from_argv(['status', '--notebook_id', '123', '--commit_id', '4567'])
-        assert args.command == Command.status
-        assert args.notebook_id == '123'
-        assert args.commit_id == '4567'
+    def test_v(self, runner):
+        result = runner.invoke(kishu_app, ["-v"])
+        assert result.exit_code == 0
+        assert f"{__app_name__} v{__version__}\n" in result.stdout

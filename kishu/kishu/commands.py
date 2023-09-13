@@ -103,7 +103,14 @@ class FEInitializeResult:
 class KishuCommand:
 
     @staticmethod
-    def log(notebook_id: str, commit_id: str) -> LogResult:
+    def log(notebook_id: str, commit_id: Optional[str] = None) -> LogResult:
+        if commit_id is None:
+            head = KishuBranch.get_head(notebook_id)
+            commit_id = head.commit_id
+
+        if commit_id is None:
+            return LogResult([])
+
         store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
         exec_infos = KishuCommand._find_exec_info(notebook_id, graph)
