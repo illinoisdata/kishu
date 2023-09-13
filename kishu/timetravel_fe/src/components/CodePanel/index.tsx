@@ -5,17 +5,15 @@
  * @FilePath: /src/components/CodePanel/index.tsx
  * @Description: The panel to display code cells of the currently selected history
  */
-import { History } from "../../util/History";
+import { useContext } from "react";
 import SingleCell from "./SingleCell";
+import { AppContext } from "../../App";
 
-export interface CodePanelProps {
-  selectedHistory: History | undefined;
-}
-
-function CodePanel(props: CodePanelProps) {
+function CodePanel() {
+  const props = useContext(AppContext);
   return (
     <>
-      {props.selectedHistory!.codes!.map((code, i) => (
+      {props!.selectedCommit!.codes!.map((code, i) => (
         <>
           <SingleCell
             key={i}

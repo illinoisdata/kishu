@@ -5,7 +5,7 @@
  * @FilePath: /src/components/HistoryPanel/ContextMenu.tsx
  * @Description:
  */
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import ReactDOM from "react-dom";
 import {
   AppstoreOutlined,
@@ -19,7 +19,9 @@ import { Menu, message } from "antd";
 import type { MenuProps } from "antd/es/menu";
 import TagEditor from "./TagEditor";
 import { Judger } from "../../util/JudgeFunctions";
-import { History } from "../../util/History";
+import { Commit } from "../../util/Commit";
+import { BackEndAPI } from "../../util/API";
+import { AppContext } from "../../App";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -40,6 +42,7 @@ function getItem(
 const items: MenuItem[] = [
   getItem("Add/Modify Tag for Selected History", "tag", <EditOutlined />),
   getItem("Show All Histories", "show_all", <CalendarOutlined />),
+  getItem("Create Branch", "branch", <CalendarOutlined />),
   getItem("Show Only", "show_only", <AppstoreOutlined />, [
     getItem("Tagged Histories", "tag_only"),
     getItem("Searching Results", "search_only"),
@@ -55,9 +58,11 @@ interface ContextMenuProps {
   x: number;
   y: number;
   onClose: () => void;
-  setIsModalOpen: React.Dispatch<React.SetStateAction<boolean>>; //set if the tag editor is open
+  setIsTagEditorOpen: React.Dispatch<React.SetStateAction<boolean>>; //set if the tag editor is open
   setJudgeFunctionID: any;
   setIsGroupFolded: any;
+  setIsWaitingModalOpen: any;
+  setWaitingfor: any;
   judgeFunctionID: number;
   isGroupFolded?: Map<string, boolean>;
 }
@@ -66,18 +71,22 @@ function ContextMenu({
   x,
   y,
   onClose,
-  setIsModalOpen,
+  setIsTagEditorOpen,
   setJudgeFunctionID,
   setIsGroupFolded,
+  setIsWaitingModalOpen: setIsWaitingModelOpen,
+  setWaitingfor,
   judgeFunctionID,
   isGroupFolded,
 }: ContextMenuProps) {
-  const onClickMenuItem: MenuProps["onClick"] = ({ key, domEvent }) => {
+  const props = useContext(AppContext);
+  const onClickMenuItem: MenuProps["onClick"] = async ({ key, domEvent }) => {
     onClose();
     domEvent.preventDefault();
     if (key === "tag") {
-      setIsModalOpen(true);
+      setIsTagEditorOpen(true);
     } else if (key === "tag_only") {
+      //fold all the groups again
       if (judgeFunctionID === 0) {
         let newIsGroupFolded = new Map<string, boolean>();
         isGroupFolded!.forEach((value, key, map) => {
@@ -88,6 +97,7 @@ function ContextMenu({
         setJudgeFunctionID(0);
       }
     } else if (key === "search_only") {
+      //fold all the groups again
       if (judgeFunctionID === 2) {
         let newIsGroupFolded = new Map<string, boolean>();
         isGroupFolded!.forEach((value, key, map) => {
@@ -99,6 +109,12 @@ function ContextMenu({
       }
     } else if (key === "show_all") {
       setJudgeFunctionID(1);
+    } else if (key === "both") {
+      setIsWaitingModelOpen(true);
+      setWaitingfor("checkout");
+    } else if (key === "branch") {
+      setIsWaitingModelOpen(true);
+      setWaitingfor("branch");
     }
     // message.info(key);
   };

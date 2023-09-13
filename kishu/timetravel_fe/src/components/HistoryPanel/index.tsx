@@ -14,45 +14,46 @@ import {
   TemplateName,
   CommitOptions,
 } from "@gitgraph/react";
-import { History } from "../../util/History";
-import React, { ReactSVGElement, useEffect, useMemo, useState } from "react";
+import { Commit } from "../../util/Commit";
+import React, {
+  ReactSVGElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { message } from "antd";
 import ContextMenu from "./ContextMenu";
 import TagEditor from "./TagEditor";
 import { BackEndAPI } from "../../util/API";
 import { Judger } from "../../util/JudgeFunctions";
 import { ReactSvgElement } from "@gitgraph/react/lib/types";
+import { AppContext } from "../../App";
+import { WaitingForModal } from "./WaitingForModal";
 
-export interface HistoryTreeProps {
-  selectedHistoryID: string | undefined;
-  histories: History[] | undefined;
-  setHistories: any;
-  setSelectedHistory: any;
-  setSelectedHistoryID: any;
-}
+function HistoryTree() {
+  const props = useContext(AppContext);
+  console.log("rerender again");
 
-function HistoryTree({
-  selectedHistoryID,
-  histories,
-  setHistories,
-  setSelectedHistory,
-  setSelectedHistoryID,
-}: HistoryTreeProps) {
-  //************states*************** */
+  //************states of history tree*************** */
   const [judgeShowFunctionID, setJudgeShowFunctionID] = useState(1); //0:show only histories with tags, 1: show all histories, 2: show only selected histories
-  const [groups, setGroups] = useState<Map<string, History[]>>(); // are the folded groups(Map<headOID, foldedGroupInfo>)
+  const [groups, setGroups] = useState<Map<string, Commit[]>>(); // are the folded groups(Map<headOID, foldedGroupInfo>)
   const [isGroupFolded, setIsGroupFolded] = useState<Map<string, boolean>>(); //<group header's OID, isGroupFolded>
   const [groupIndex, setGroupIndex] = useState<Map<string, string>>(); //<history oid, group head's oid>
-  //the context menu will show after right click
+  //********************************************************** */
+
+  //********status of pop-ups************************ */
   const [contextMenuPosition, setContextMenuPosition] = useState<{
     x: number;
     y: number;
   } | null>(null);
-  // the Modal will show after user choose to change the tag for the selected history
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
+  const [isWaitingModelOpen, setIsWaitingModelOpen] = useState(false);
+  const [waitingFor, setWaitingfor] = useState(""); //wait for what, like tag, checkout or XXX
+  //********************************************************************* */
 
   //**********************helper functions***********/
-  function judgeGrouped(history: History) {
+  function judgeGrouped(history: Commit) {
     if (judgeShowFunctionID === 0) {
       return Judger.JudgeGroupByTag(history);
     } else if (judgeShowFunctionID === 1) {
@@ -61,71 +62,37 @@ function HistoryTree({
       return Judger.JudgeGroupBySearch(history);
     }
   }
-  function findParent(child: History): History | null {
+  function findParent(child: Commit): Commit | null {
     if (child.parentOid === "-1") {
       return null;
     }
-    return histories!.filter((his) => his.oid === child.parentOid)[0];
+    return props!.commits!.filter((his) => his.oid === child.parentOid)[0];
   }
-  function handleContextMenu(event: React.MouseEvent) {
-    event.preventDefault();
-    setContextMenuPosition({ x: event.clientX, y: event.clientY });
-  }
-  function handleCloseContextMenu() {
-    setContextMenuPosition(null);
-  }
-  var renderDot = function (commit: any) {
-    return React.createElement(
-      "svg",
-      {
-        xmlns: "http://www.w3.org/2000/svg",
-        viewBox: "0 0 71.84 75.33",
-        height: "30",
-        width: "30",
-      },
-      React.createElement(
-        "g",
-        { fill: commit.style.dot.color, stroke: "white", strokeWidth: "2" },
-        React.createElement("path", {
-          d: "M68.91,35.38c4.08-1.15,3.81-3-.22-3.75-3.1-.7-18.24-5.75-20.71-6.74-2.15-1-4.67-.12-1,3.4,4,3.53,1.36,8.13,2.79,13.47C50.6,44.89,52.06,49,56,55.62c2.09,3.48,1.39,6.58-1.42,6.82-1.25.28-3.39-1.33-3.33-3.82h0L44.68,43.79c1.79-1.1,2.68-3,2-4.65s-2.5-2.29-4.46-1.93l-1.92-4.36a3.79,3.79,0,0,0,1.59-4.34c-.62-1.53-2.44-2.27-4.37-2L36,22.91c1.65-1.12,2.46-3,1.83-4.52a3.85,3.85,0,0,0-4.37-1.95c-.76-1.68-2.95-6.89-4.89-10.73C26.45,1.3,20.61-2,16.47,1.36c-5.09,4.24-1.46,9-6.86,12.92l2.05,5.35a18.58,18.58,0,0,0,2.54-2.12c1.93-2.14,3.28-6.46,3.28-6.46s1-4,2.2-.57c1.48,3.15,16.59,47.14,16.59,47.14a1,1,0,0,0,0,.11c.37,1.48,5.13,19,19.78,17.52,4.38-.52,6-1.1,9.14-3.83,3.49-2.71,5.75-6.08,5.91-12.62.12-4.67-6.22-12.62-5.81-17S66.71,36,68.91,35.38Z",
-        }),
-        React.createElement("path", {
-          d: "M2.25,14.53A28.46,28.46,0,0,1,0,17.28s3,4.75,9.58,3a47.72,47.72,0,0,0-1.43-5A10.94,10.94,0,0,1,2.25,14.53Z",
-        })
-      )
-    );
-  };
   function addCommitToGraph(
-    element: History,
+    element: Commit,
     text?: string,
     ClickHandler?: string
   ) {
     if (!text) {
       //not ""+" or "-"
-      if (element.oid !== selectedHistoryID) {
+      if (element.oid !== props!.selectedCommitID!) {
         branches.get(element.branchId)!.commit({
           subject: element.oid.toString(),
           onClick(commit) {
-            setSelectedHistoryID(element.oid);
+            props!.setSelectedCommitID(element.oid);
           },
           tag: element.tag,
           renderDot(commit) {
-            // const svgProps: React.SVGProps<SVGSVGElement> = {
-            //   width: 20,
-            //   height: 20,
-            //   viewBox: "0 0 200 200",
-            // };
-
             return (
               <svg
                 // {...svgProps}
                 onContextMenu={(event) => {
                   message.info("right clicked");
-                  setSelectedHistoryID(element.oid);
+                  props!.setSelectedCommitID(element.oid);
                 }}
                 onClick={(event) => {
                   message.info("left clicked");
-                  setSelectedHistoryID(element.oid);
+                  props!.setSelectedCommitID(element.oid);
                 }}
                 // onClick={setSelectedHistoryID(element.oid)}
               >
@@ -187,24 +154,73 @@ function HistoryTree({
       });
     }
   }
-  async function handleTagSubmit(newTag: string) {
-    const data = await BackEndAPI.setTag(selectedHistoryID!, newTag);
-    // const data = await BackEndAPI.getInitialData();
-    setHistories(data!);
+  /************************************************************************** */
+
+  //***********************event handelers************/
+  function handleContextMenu(event: React.MouseEvent) {
+    event.preventDefault();
+    setContextMenuPosition({ x: event.clientX, y: event.clientY });
   }
+  function handleCloseContextMenu() {
+    setContextMenuPosition(null);
+  }
+  async function handleTagSubmit(newTag: string) {
+    const data = await BackEndAPI.setTag(props!.selectedCommitID!!, newTag);
+    // const data = await BackEndAPI.getInitialData();
+    props!.setCommits(data!);
+  }
+  async function handleCheckout() {
+    try {
+      await BackEndAPI.rollbackBoth(props!.selectedCommitID!);
+      const newCommits = await BackEndAPI.getInitialData();
+      console.log(newCommits);
+      props!.setCommits(newCommits!);
+      props!.setBranchIDs(
+        new Set(newCommits!.map((commit) => commit.branchId))
+      );
+    } catch (error) {
+      setIsWaitingModelOpen(false);
+      message.error("checkout error" + (error as Error).message);
+    } finally {
+      setIsWaitingModelOpen(false);
+      message.info("checkout succeed");
+    }
+  }
+
+  async function handleBranch(newBranchName: string) {
+    try {
+      await BackEndAPI.createBranch(newBranchName, props!.selectedCommitID!);
+      const newCommits = await BackEndAPI.getInitialData();
+      props!.setCommits(newCommits!);
+      props!.setBranchIDs(
+        new Set(newCommits!.map((commit) => commit.branchId))
+      );
+    } catch (error) {
+      setIsWaitingModelOpen(false);
+      message.error("create branch error" + (error as Error).message);
+    } finally {
+      setIsWaitingModelOpen(false);
+      message.info("create branch succeed");
+    }
+  }
+  //*********************************************************************** */
 
   //**************Variables that are recreated per render*/
   //all the branches of GitGraph
   let branches = new Map<string, Branch>();
+  let previousTag4SelectedCommit = props!.commits!.filter(
+    (commit) => commit.oid === props!.selectedCommitID!
+  )[0].tag;
 
-  //initialize groups that are logically folded together, reinitialize when histories are changed, or
+  //initialize commits that are logically folded together into groups, reinitialize when commits are changed, or
   //visibility type is changed.
   useMemo(() => {
-    let newGroups = new Map<string, History[]>();
+    console.log("calculating the groups again");
+    let newGroups = new Map<string, Commit[]>();
     let newGroupIndex = new Map<string, string>();
     let newIsGroupFolded = new Map<string, boolean>();
     let tmpBranchFolderHead = new Map<string, string>(); //remember current branch's folded group's head
-    for (let element of histories!) {
+    for (let element of props!.commits!) {
       if (judgeGrouped(element)) {
         let parent = findParent(element);
         if (parent?.branchId !== element.branchId || !judgeGrouped(parent)) {
@@ -224,7 +240,7 @@ function HistoryTree({
     setGroups(newGroups);
     setGroupIndex(newGroupIndex);
     setIsGroupFolded(newIsGroupFolded);
-  }, [histories, judgeShowFunctionID]);
+  }, [props!.commits, judgeShowFunctionID]);
 
   return (
     <div onContextMenu={handleContextMenu} onClick={handleCloseContextMenu}>
@@ -241,7 +257,7 @@ function HistoryTree({
         }}
       >
         {(gitgraph) => {
-          for (let element of histories!) {
+          for (let element of props!.commits!) {
             //if history belongs to a new branch, create a the on the parent branch
             if (!branches.has(element.branchId)) {
               if (element.parentBranchID === "-1") {
@@ -279,7 +295,7 @@ function HistoryTree({
                 addCommitToGraph(element);
                 //judge if it's tail
                 if (
-                  currentGroup![currentGroup!.length - 1].oid == element.oid
+                  currentGroup![currentGroup!.length - 1].oid === element.oid
                 ) {
                   addCommitToGraph(currentGroup![0], "➖");
                 } else {
@@ -289,25 +305,38 @@ function HistoryTree({
           }
         }}
       </Gitgraph>
+
+      {/****************************pop-ups ***********************/}
       {contextMenuPosition && (
         <ContextMenu
           x={contextMenuPosition.x}
           y={contextMenuPosition.y}
           onClose={handleCloseContextMenu}
-          setIsModalOpen={setIsModalOpen}
+          setIsTagEditorOpen={setIsTagEditorOpen}
           setJudgeFunctionID={setJudgeShowFunctionID}
           setIsGroupFolded={setIsGroupFolded}
+          setIsWaitingModalOpen={setIsWaitingModelOpen}
+          setWaitingfor={setWaitingfor}
           judgeFunctionID={judgeShowFunctionID}
           isGroupFolded={isGroupFolded}
         />
       )}
       <TagEditor
-        isModalOpen={isModalOpen}
-        setIsModalOpen={setIsModalOpen}
-        defaultContent={"abc"}
+        isModalOpen={isTagEditorOpen}
+        setIsModalOpen={setIsTagEditorOpen}
+        defaultContent={
+          previousTag4SelectedCommit ? previousTag4SelectedCommit : ""
+        }
         submitHandler={handleTagSubmit}
-        selectedHistoryID={selectedHistoryID}
+        selectedHistoryID={props!.selectedCommitID!}
       ></TagEditor>
+      <WaitingForModal
+        waitingFor={waitingFor}
+        isWaitingModalOpen={isWaitingModelOpen}
+        setIsWaitingModalOpen={setIsWaitingModelOpen}
+        handleCheckout={handleCheckout}
+        handelCreatebranch={handleBranch}
+      ></WaitingForModal>
     </div>
   );
 }

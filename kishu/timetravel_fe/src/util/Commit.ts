@@ -7,7 +7,7 @@
  */
 import { Cell } from "./Cell";
 import { Variable } from "./Variable";
-export interface History {
+export interface Commit {
   oid: string;
   branchId: string;
   timestamp: string;

@@ -7,5 +7,5 @@
  */
 export interface Cell {
   content: string;
-  execNum: number;
+  execNum: string;
 }

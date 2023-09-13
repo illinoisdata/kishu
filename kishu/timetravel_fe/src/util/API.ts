@@ -1,8 +1,9 @@
 import { error, time } from "console";
-import { History } from "./History";
+import { Commit } from "./Commit";
 import { parseAllCommits, parseCommitDetail } from "./parser";
 import commits from "../example_jsons/commit_graph.json";
 import commit_detail from "../example_jsons/commit.json";
+import { message } from "antd";
 
 /*
  * @Author: University of Illinois at Urbana Champaign
@@ -13,9 +14,22 @@ import commit_detail from "../example_jsons/commit.json";
  */
 
 const BackEndAPI = {
-  rollbackBoth(historyID: number) {
-    return new Promise((resolve) => setTimeout(resolve, 1000));
+  async rollbackBoth(historyID: string) {
     // message.info(`rollback succeeds`);
+    const res = await fetch(
+      "/checkout/" + globalThis.NotebookID! + "/" + historyID
+    );
+    try {
+      const data = await res.json();
+      if (data.status === "ok") {
+        console.log("checkout done");
+      } else {
+        console.log(data);
+        throw new Error("backend error");
+      }
+    } catch (error) {
+      throw error;
+    }
   },
 
   rollbackCodes(historyID: number) {
@@ -26,18 +40,26 @@ const BackEndAPI = {
     // message.info(`rollback succeeds`);
   },
 
-  getInitialData() {
-    // const histories = fetch(
-    //   "/home/meng/elastic-notebook/kishu/timetravel_fe/public/Initialize.json"
-    // )
-    //   .then((response) => response.json())
-    //   .then((data) => parseAllHistories(data))
+  async getInitialData() {
+    const res = await fetch("/fe/commit_graph/" + globalThis.NotebookID!);
+    try {
+      const data = await res.json();
+      return parseAllCommits(data);
+    } catch (error) {
+      throw error;
+    }
+
+    // return fetch("/fe/commit_graph/" + globalThis.NotebookID!)
+    //   .then((res) => {
+    //     res.json();
+    //   })
+    //   .then((data) => parseAllCommits(data))
     //   .catch((error) => console.error("Error fetching data:", error));
 
-    return parseAllCommits(commits);
+    // return parseAllCommits(commits);
   },
 
-  getHistoryDetail(historyID: string) {
+  async getCommitDetail(historyID: string) {
     // console.log("get:" + historyID);
     // const history = fetch(
     //   "/home/meng/elastic-notebook/kishu/timetravel_fe/public/history.json"
@@ -45,7 +67,17 @@ const BackEndAPI = {
     //   .then((response) => response.json())
     //   .then((data) => parseHistory(data))
     //   .catch((error) => console.error("Error fetching data:", error));
-    return parseCommitDetail(commit_detail);
+    // return parseCommitDetail(commit_detail);
+
+    const res = await fetch(
+      "/fe/commit/" + globalThis.NotebookID! + "/" + historyID
+    );
+    try {
+      const data = await res.json();
+      return parseCommitDetail(data);
+    } catch (error) {
+      return console.error("Error fetching data:", error);
+    }
   },
 
   setTag(historyID: string, newTag: string) {
@@ -55,6 +87,24 @@ const BackEndAPI = {
     initial_histories.filter((history) => history.oid === historyID)[0].tag =
       newTag;
     return initial_histories;
+  },
+
+  async createBranch(commitID: string, newBranchname: string) {
+    // message.info(`rollback succeeds`);
+    const res = await fetch(
+      "/branch/" + globalThis.NotebookID! + "/" + newBranchname + "/" + commitID
+    );
+    try {
+      const data = await res.json();
+      if (data.status === "ok") {
+        console.log("creating branch done");
+      } else {
+        console.log(data);
+        throw new Error("backend error");
+      }
+    } catch (error) {
+      throw error;
+    }
   },
 };
 

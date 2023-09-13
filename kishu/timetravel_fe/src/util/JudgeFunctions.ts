@@ -1,9 +1,9 @@
 //judge if a certain history belongs to a group
 
-import { History } from "./History";
+import { Commit } from "./Commit";
 
 export const Judger = {
-  JudgeGroupByTag(history: History): boolean {
+  JudgeGroupByTag(history: Commit): boolean {
     const tagged =
       history !== undefined &&
       history.tag !== null &&
@@ -12,10 +12,10 @@ export const Judger = {
     return !tagged; //all histories that are not tagged belong to a certain group
   },
 
-  JudgeGroupByNoGroup(history: History) {
+  JudgeGroupByNoGroup(history: Commit) {
     return false;
   },
-  JudgeGroupBySearch(history: History) {
+  JudgeGroupBySearch(history: Commit) {
     return false;
   },
 };

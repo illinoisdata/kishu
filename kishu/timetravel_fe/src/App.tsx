@@ -5,145 +5,191 @@
  * @FilePath: /src/App.tsx
  * @Description:
  */
-import React, { useEffect, useState } from "react";
+import React, {
+  createContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import "./App.css";
 import ReactSplit, { SplitDirection } from "@devbookhq/splitter";
-// import { useEffect, useState } from "react";
 import Toolbar from "./components/Toolbar";
 import HistoryTree from "./components/HistoryPanel";
-import SearchPanel from "./components/SearchPanel";
 import CodePanel from "./components/CodePanel";
-import "./App.css";
 import { BackEndAPI } from "./util/API";
-import { History } from "./util/History";
+import { Commit } from "./util/Commit";
 import VariablePanel from "./components/VariablePanel";
 import { useParams } from "react-router-dom";
-import { info, log } from "console";
-import { message } from "antd";
+
+interface appContextType {
+  commits: Commit[];
+  setCommits: any;
+  branchIDs: Set<String> | undefined;
+  setBranchIDs: any;
+  selectedCommit: Commit | undefined;
+  setSelectedCommit: any;
+  selectedCommitID: string | undefined;
+  setSelectedCommitID: any;
+  selectedBranchID: string | undefined;
+  setSelectedBranchID: any;
+}
+export const AppContext = createContext<appContextType | undefined>(undefined);
 function App() {
-  const [histories, setHistories] = useState<History[]>([]);
-  const [selectedHistory, setSelectedHistory] = useState<History>();
-  const [selectedHistoryID, setSelectedHistoryID] = useState<string>();
-  const [globalLoading, setGlobalLoading] = useState(false);
+  const [commits, setCommits] = useState<Commit[]>([]);
+  const [branchIDs, setBranchIDs] = useState<Set<String>>();
+  const [selectedCommit, setSelectedCommit] = useState<Commit>();
+  const [selectedCommitID, setSelectedCommitID] = useState<string>();
+  const [selectedBranchID, setSelectedBranchID] = useState<string>();
+  const appContext: appContextType = {
+    commits,
+    setCommits,
+    branchIDs,
+    setBranchIDs,
+    selectedCommit,
+    setSelectedCommit,
+    selectedCommitID,
+    setSelectedCommitID,
+    selectedBranchID,
+    setSelectedBranchID,
+  };
+
+  const [globalLoading, setGlobalLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
 
   const [splitSizes1, setSplitSizes1] = useState([20, 80]);
   const [splitSizes2, setSplitSizes2] = useState([53, 47]);
-  const [splitSizes3, setSplitSizes3] = useState([50, 50]);
 
-  const [detailLoading, setDetailLoading] = useState(true);
-  const [huntingCellID, setHuntingCellID] = useState<string | null>(null);
-  globalThis.NotebookName = useParams().notebookName;
-  // console.log(globalThis.NotebookName);
-  // message.info(globalThis.NotebookName);
+  globalThis.NotebookID = useParams().notebookName;
+
   useEffect(() => {
     //initialize the states
     async function loadInitialData() {
+      console.log("load initial data now!");
       setGlobalLoading(true);
       try {
         const data = await BackEndAPI.getInitialData();
-        setSelectedHistoryID(data![data!.length - 1].oid);
-        setHistories(data!);
+        setCommits(data!);
+        setBranchIDs(new Set(data!.map((commit) => commit.branchId)));
+        setSelectedCommitID(data![data!.length - 1].oid);
+        setSelectedBranchID(data![data!.length - 1].branchId);
       } catch (e) {
         if (e instanceof Error) {
           setError(e.message);
         }
       } finally {
+        console.log("initial data is loaded now!");
         setGlobalLoading(false);
       }
     }
     loadInitialData();
   }, []);
 
-  useEffect(() => {
-    //initialize the states
-    async function loadHistoryDetail(selectedHistoryID: string) {
-      if (!selectedHistoryID) {
+  useMemo(() => {
+    async function loadCommitDetail(selectedCommitID: string) {
+      console.log("useMemo to load detail of commit " + selectedCommitID);
+      if (!selectedCommitID) {
         return;
       }
-      console.log(selectedHistoryID);
-      setDetailLoading(true);
       try {
-        const data = await BackEndAPI.getHistoryDetail(selectedHistoryID);
-        setSelectedHistory(data!);
+        const data = await BackEndAPI.getCommitDetail(selectedCommitID);
+        setSelectedCommit(data!);
       } catch (e) {
         if (e instanceof Error) {
           setError(e.message);
         }
-      } finally {
-        setDetailLoading(false);
       }
     }
-    loadHistoryDetail(selectedHistoryID!);
-  }, [selectedHistoryID]);
+    loadCommitDetail(selectedCommitID!);
+  }, [selectedCommitID]);
 
   return (
-    <>
-      {error && (
-        <>
-          <div className="center-page">
-            <p>{error}</p>
-          </div>
-        </>
-      )}
-
-      {!globalLoading && !error && !detailLoading && (
-        <>
-          <Toolbar selectedHistoryID={0} />
-          {/* if(huntingMode){
-            <
-          } */}
-          <ReactSplit
-            direction={SplitDirection.Horizontal}
-            initialSizes={splitSizes1}
-            onResizeFinished={(pairInd, newSizes) => {
-              setSplitSizes1(newSizes);
-            }}
-          >
-            <div className="tile-xy">
-              <HistoryTree
-                selectedHistoryID={selectedHistoryID}
-                histories={histories}
-                setHistories={setHistories}
-                setSelectedHistory={setSelectedHistory}
-                setSelectedHistoryID={setSelectedHistoryID}
-              />
+    <AppContext.Provider value={appContext}>
+      <>
+        {error && (
+          <>
+            <div className="center-page">
+              <p>{error}</p>
             </div>
+          </>
+        )}
+
+        {/* only the history tree has been loaded */}
+        {!globalLoading && !error && !selectedCommit && (
+          <>
+            <Toolbar />
             <ReactSplit
-              direction={SplitDirection.Vertical}
-              initialSizes={splitSizes2}
+              direction={SplitDirection.Horizontal}
+              initialSizes={splitSizes1}
               onResizeFinished={(pairInd, newSizes) => {
-                setSplitSizes2(newSizes);
+                setSplitSizes1(newSizes);
               }}
+              gutterClassName="custom_gutter"
             >
-              <div className="tile-xy u-showbottom">
-                <CodePanel selectedHistory={selectedHistory} />
+              <div className="tile-xy">
+                <HistoryTree />
               </div>
               <ReactSplit
-                direction={SplitDirection.Horizontal}
-                initialSizes={splitSizes3}
+                direction={SplitDirection.Vertical}
+                initialSizes={splitSizes2}
                 onResizeFinished={(pairInd, newSizes) => {
-                  setSplitSizes3(newSizes);
+                  setSplitSizes2(newSizes);
                 }}
+                gutterClassName="custom_gutter"
               >
-                <div className="tile-xy">
-                  <SearchPanel />
+                <div className="tile-xy u-showbottom">
+                  <div className="center-page">
+                    <p>Loading...</p>
+                  </div>
                 </div>
                 <div className="tile-xy">
-                  <VariablePanel variables={selectedHistory!.variables!} />
+                  <div className="center-page">
+                    <p>Loading...</p>
+                  </div>
                 </div>
               </ReactSplit>
             </ReactSplit>
-          </ReactSplit>
-        </>
-      )}
+          </>
+        )}
 
-      {globalLoading && (
-        <div className="center-page">
-          <p>Loading...</p>
-        </div>
-      )}
-    </>
+        {!globalLoading && !error && selectedCommit && (
+          <>
+            <Toolbar />
+            <ReactSplit
+              direction={SplitDirection.Horizontal}
+              initialSizes={splitSizes1}
+              onResizeFinished={(pairInd, newSizes) => {
+                setSplitSizes1(newSizes);
+              }}
+              gutterClassName="custom_gutter"
+            >
+              <div className="tile-xy">
+                <HistoryTree />
+              </div>
+              <ReactSplit
+                direction={SplitDirection.Vertical}
+                initialSizes={splitSizes2}
+                onResizeFinished={(pairInd, newSizes) => {
+                  setSplitSizes2(newSizes);
+                }}
+                gutterClassName="custom_gutter"
+              >
+                <div className="tile-xy u-showbottom">{<CodePanel />}</div>
+                <div className="tile-xy">
+                  <VariablePanel variables={selectedCommit!.variables!} />
+                </div>
+              </ReactSplit>
+            </ReactSplit>
+          </>
+        )}
+
+        {globalLoading && (
+          <div className="center-page">
+            <p>Loading...</p>
+          </div>
+        )}
+      </>
+    </AppContext.Provider>
   );
 }
 

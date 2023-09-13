@@ -1,13 +1,25 @@
 .singleCellLayout {
   display: flex;
-  flex-direction: row;
+  /* flex-direction: row; */
+  /* justify-content: center; */
+  /* text-align: center; */
+  justify-content: space-between;
+  align-items: flex-start; /* Align items to the start of the cross axis (top) */
+}
+
+.left {
+  text-align: left;
+}
+
+.right {
+  text-align: right;
 }
 
 .executionOrder {
   display: flex;
   margin-right: 4px;
   margin-left: 10px;
-  padding: 30px;
+  padding: 0px;
 }
 
 .code {
@@ -27,6 +39,6 @@
 }
 
 /* newly unsuccessfully excecuted code cell */
-.code.fail {
+.code.current {
   border-color: red;
 }
