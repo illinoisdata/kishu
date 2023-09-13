@@ -2,7 +2,7 @@
   "Commits": [
     {
       "oid": "1000",
-      "branch_id": "1",
+      "branch_id": ["1", "tmp_2", "tmp_3"],
       "timestamp": "2023-06-29,15:16:28",
       "parent_branchID": "-1",
       "parent_oid": "-1",
@@ -14,20 +14,6 @@
       "timestamp": "2023-06-29,15:16:29",
       "parent_branchID": "1",
       "parent_oid": "1000"
-    },
-    {
-      "oid": "-1",
-      "branch_id": "tmp1",
-      "timestamp": "2023-06-29,15:16:29",
-      "parent_branchID": "1",
-      "parent_oid": "1002"
-    },
-    {
-      "oid": "-1",
-      "branch_id": "tmp2",
-      "timestamp": "2023-06-29,15:16:29",
-      "parent_branchID": "1",
-      "parent_oid": "1002"
     },
     {
       "oid": "1020",
