@@ -528,7 +528,7 @@ def get_kishu_instance():
 KISHU_VAR_NAME = '_kishu'
 
 
-def load_kishu(notebook_id=None, session_id=None) -> None:
+def load_kishu(notebook_id: Optional[str]=None, session_id: Optional[int]=None) -> None:
     global _kishu_exec_history
     global _ipython_shell
     if _kishu_exec_history is not None:
@@ -536,10 +536,7 @@ def load_kishu(notebook_id=None, session_id=None) -> None:
     _ipython_shell = eval('get_ipython()')
     ip = _ipython_shell
     kishu = None
-    if notebook_id:
-        kishu = KishuForJupyter(notebook_id)
-    else:
-        kishu = KishuForJupyter()
+    kishu = KishuForJupyter(notebook_id)
     _kishu_exec_history = kishu
     if session_id:
         kishu.set_session_id(session_id)
@@ -551,30 +548,36 @@ def load_kishu(notebook_id=None, session_id=None) -> None:
           "- You can inspect traced information using '_kishu'.\n"
           "- Checkpoint file: {}/\n".format(kishu.checkpoint_file()))
 
-def init_kishu() -> None:
+def update_metadata(nb: Any, nb_path: Path) -> None:
+    if "kishu" not in nb.metadata:
+        notebook_name = datetime.now().strftime('%Y%m%dT%H%M%S')
+        nb["metadata"]["kishu"] = {}
+        nb["metadata"]["kishu"]["notebook_id"] = notebook_name
+    if "session_count" in nb.metadata.kishu:
+        nb["metadata"]["kishu"]["session_count"] = nb["metadata"]["kishu"]["session_count"] + 1
+    else:
+        nb["metadata"]["kishu"]["session_count"] = 1
+    nbformat.write(nb, nb_path)
+
+
+def init_kishu(path: Optional[Path] = None) -> None:
     """
     If notebook not already initialized, initializes by adding notebook id to metadata
     Increments session number to ensure unique commit ids.
     """
-    kernel_id = enclosing_kernel_id()
-    path = enclosing_notebook_path(kernel_id)
+    # Read enclosing notebook.
+    if path == None:
+        kernel_id = enclosing_kernel_id()
+        path = enclosing_notebook_path(kernel_id)
     nb = None
     with open(path, 'r') as f:
         nb = nbformat.read(f, 4)
-    if "notebook_id" not in nb.metadata:
-        print("Adding kishu to notebook")
-        notebook_name = datetime.now().strftime('%Y%m%dT%H%M%S')
-        nb["metadata"]["notebook_id"] = notebook_name
-        nb["metadata"]["session_count"] = 1
-        nbformat.write(nb, path)
-    else:
-        print("already initialized")
-        if "session_count" in nb.metadata:
-            nb["metadata"]["session_count"] = nb["metadata"]["session_count"] + 1
-        else:
-            nb["metadata"]["session_count"] = 1
-        nbformat.write(nb, path)
-    load_kishu(nb.metadata["notebook_id"], nb.metadata["session_count"])
+
+    # Update notebook metadata.
+    update_metadata(nb, path)
+
+    # Attach Kishu instrumentation.
+    load_kishu(nb.metadata.kishu.notebook_id, nb.metadata.kishu.session_count)
     
 
     

@@ -1,13 +1,20 @@
 import json
 import os
-from tempfile import NamedTemporaryFile
+import shutil
+from tempfile import NamedTemporaryFile, gettempdir
 
+import nbformat
 from typing import Any
 from kishu.checkpoint_io import init_checkpoint_database
 from kishu.jupyterint2 import CellExecInfo
 from kishu.nbexec import NotebookRunner
 from kishu.plan import ExecutionHistory
 
+def create_temporary_copy(path, filename):
+    temp_dir = gettempdir()
+    temp_path = os.path.join(temp_dir, filename)
+    shutil.copy2(path, temp_path)
+    return temp_path
 
 def test_history_to_sqlite():
     # create a temp file for database
@@ -40,7 +47,20 @@ def test_checkout():
     output = notebook.execute(cell_indices, vals)
     assert output['a'] == 1
 
-
+def test_reattatchment():
+    cell_indices = []
+    path_to_notebook = os.getcwd()
+    notebook_name = "test_init_kishu.ipynb"
+    notebook_full_path = path_to_notebook + "/tests/" + notebook_name
+    temp_path = create_temporary_copy(notebook_full_path, notebook_name)
+    vals = ['a']
+    notebook = NotebookRunner(temp_path)
+    output = notebook.execute(cell_indices, vals)
+    assert output['a'] == 1
+    with open(temp_path, "r") as temp_file:
+        nb = nbformat.read(temp_file, 4)
+        assert nb.metadata.kishu.session_count == 2
+    
 def test_record_history():
     cell_indices = []
     path_to_notebook = os.getcwd()
