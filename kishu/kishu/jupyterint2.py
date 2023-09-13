@@ -570,6 +570,7 @@ def init_kishu(path: Optional[Path] = None) -> None:
         kernel_id = enclosing_kernel_id()
         path = enclosing_notebook_path(kernel_id)
     nb = None
+    assert path is not None
     with open(path, 'r') as f:
         nb = nbformat.read(f, 4)
 
