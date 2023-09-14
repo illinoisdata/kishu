@@ -167,6 +167,7 @@ def test_idgraph_seaborn_displot():
     """
     df = sns.load_dataset('penguins')
     plot1 = sns.displot(data=df, x="flipper_length_mm", y="bill_length_mm", kind="kde")
+    plot1.set(xlabel="flipper_length_mm")
 
     idgraph1 = idgraph.get_object_state(plot1, {})
     idgraph2 = idgraph.get_object_state(plot1, {})
@@ -205,6 +206,8 @@ def test_idgraph_seaborn_scatterplot():
 
     df = sns.load_dataset('penguins')
     plot1 = sns.scatterplot(data = df, x = "flipper_length_mm", y = "bill_length_mm")
+    plot1.set_xlabel('flipper_length_mm')
+    plot1.set_facecolor('white')
 
     idgraph1 = idgraph.get_object_state(plot1, {})
     idgraph2 = idgraph.get_object_state(plot1, {})
