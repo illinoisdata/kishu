@@ -73,12 +73,15 @@ def status(
 @kishu_app.command()
 def checkout(
     notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
-    commit_id: str = typer.Argument(help="Commit ID to checkout to.", show_default=False),
+    branch_or_commit_id: str = typer.Argument(
+        help="Branch name or commit ID to checkout.",
+        show_default=False,
+    ),
 ) -> None:
     """
     Checkout a notebook to a commit.
     """
-    print(into_json(KishuCommand.checkout(notebook_id, commit_id)))
+    print(into_json(KishuCommand.checkout(notebook_id, branch_or_commit_id)))
 
 
 @kishu_app.command()
