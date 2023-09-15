@@ -42,8 +42,10 @@ class UnitExecution:
         store_log_item(checkpoint_file, self.exec_id, data)
 
     @staticmethod
-    def get_from_db(checkpoint_file: str, commit_id: str) -> UnitExecution:
+    def get_from_db(checkpoint_file: str, commit_id: str) -> Optional[UnitExecution]:
         data: bytes = get_log_item(checkpoint_file, commit_id)
+        if len(data) == 0:
+            return None
         return dill.loads(data)
 
     @staticmethod

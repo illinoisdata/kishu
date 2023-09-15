@@ -238,18 +238,33 @@ class KishuForJupyter:
     def checkpoint_file(self) -> str:
         return KishuResource.checkpoint_path(self._notebook_id)
 
-    def checkout(self, commit_id: str) -> None:
+    def checkout(self, branch_or_commit_id: str) -> None:
         """
         Restores a variable state from commit_id.
         """
         ip = get_jupyter_kernel()
         if ip is None:
             raise ValueError("Jupyter kernel is unexpectedly None.")
-        commit_id = str(commit_id)
+
+        # By default, checkout at commit ID in detach mode.
+        branch_name: Optional[str] = None
+        commit_id = branch_or_commit_id
+        is_detach = True
+
+        # Attempt to interpret target as a branch.
+        retrieved_branches = KishuBranch.get_branch(self._notebook_id, branch_or_commit_id)
+        if len(retrieved_branches) == 1:
+            assert retrieved_branches[0].branch_name == branch_or_commit_id
+            branch_name = retrieved_branches[0].branch_name
+            commit_id = retrieved_branches[0].commit_id
+            is_detach = False
 
         # read checkout plan
         checkpoint_file = self.checkpoint_file()
-        cell = cast(CellExecInfo, UnitExecution.get_from_db(checkpoint_file, commit_id))
+        unit_exec_cell = UnitExecution.get_from_db(checkpoint_file, commit_id)
+        if unit_exec_cell is None:
+            raise ValueError("No commit found for commit_id = {}".format(commit_id))
+        cell = cast(CellExecInfo, unit_exec_cell)
         restore_plan: Optional[RestorePlan] = cell._restore_plan
         if restore_plan is None:
             raise ValueError("No restore plan found for commit_id = {}".format(commit_id))
@@ -259,14 +274,17 @@ class KishuForJupyter:
         target_ns: Dict[str, Any] = {}         # temp location
         restore_plan.run(target_ns, checkpoint_file, commit_id)
         self._apply_namespace(user_ns, target_ns)
-        print('Checked-out variables: {}'.format(list(target_ns.keys())))
-        # TODO: update execution count and database history
 
         # update kishu internal state
         self._graph.jump(commit_id)
 
         # update branch head.
-        KishuBranch.update_head(self._notebook_id, commit_id=commit_id, is_detach=True)
+        KishuBranch.update_head(
+            self._notebook_id,
+            branch_name=branch_name,
+            commit_id=commit_id,
+            is_detach=is_detach,
+        )
 
     def pre_run_cell(self, info) -> None:
         """

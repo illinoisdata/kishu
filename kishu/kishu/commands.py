@@ -1,6 +1,7 @@
 from __future__ import annotations
 import datetime
 import heapq
+import json
 import jupyter_client
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, cast
@@ -39,6 +40,7 @@ class StatusResult:
 @dataclass
 class CheckoutResult:
     status: str
+    message: str
 
 
 @dataclass
@@ -137,31 +139,57 @@ class KishuCommand:
         )
 
     @staticmethod
-    def checkout(notebook_id: str, commit_id: str) -> CheckoutResult:
+    def checkout(notebook_id: str, branch_or_commit_id: str) -> CheckoutResult:
         connection = KishuForJupyter.retrieve_connection(notebook_id)
         if connection is None:
             return CheckoutResult(
-                status="missing_kernel_connection"
+                status="error",
+                message="Missing kernel connection information",
             )
-        cf = jupyter_client.find_connection_file(connection.kernel_id)
+
+        # Find connection file.
+        try:
+            cf = jupyter_client.find_connection_file(connection.kernel_id)
+        except OSError:
+            return CheckoutResult(
+                status="error",
+                message="Kernel is not alive",
+            )
+
+        # Connect to kernel.
         km = jupyter_client.BlockingKernelClient(connection_file=cf)
         km.load_connection_file()
         km.start_channels()
         km.wait_for_ready()
         if km.is_alive():
             reply = km.execute(
-                f"_kishu.checkout('{commit_id}')",
+                f"_kishu.checkout('{branch_or_commit_id}')",
                 reply=True,
                 silent=True,
                 # store_history=False,  # Do not increment cell count.
             )
             km.stop_channels()
+            if reply["content"]["status"] == "ok":
+                return CheckoutResult(
+                    status="ok",
+                    message=f"Checkout {branch_or_commit_id}",
+                )
+            elif reply["content"]["status"] == "error":
+                # print("\n".join(reply["content"]["traceback"]))
+                ename = reply["content"]["ename"]
+                evalue = reply["content"]["evalue"]
+                return CheckoutResult(
+                    status="error",
+                    message=f"{ename}: {evalue}",
+                )
             return CheckoutResult(
-                status=reply["content"]["status"]
+                status=reply["content"]["status"],
+                message=json.dumps(reply["content"]),
             )
         else:
             return CheckoutResult(
-                status="failed_connection"
+                status="error",
+                message="Failed to connect to kernel",
             )
 
     @staticmethod
