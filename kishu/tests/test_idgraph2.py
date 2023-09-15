@@ -33,6 +33,7 @@ def test_idgraph_numpy():
     # Assert that the original id graph is restored when the original object state is restored
     assert idgraph1 == idgraph4
 
+
 def test_idgraph_pandas():
     test_idgraph_pandas_Series()
     test_idgraph_pandas_df()
@@ -42,7 +43,7 @@ def test_idgraph_pandas_Series():
     """
         Test if idgraph is accurately generated for panda series
     """
-    s1 = pd.Series([1,2,3,4])
+    s1 = pd.Series([1, 2, 3, 4])
 
     idgraph1 = idgraph.get_object_state(s1, {})
     idgraph2 = idgraph.get_object_state(s1, {})
@@ -66,11 +67,12 @@ def test_idgraph_pandas_Series():
 
     # Assert that the original id graph is restored when the original object state is restored
     assert idgraph1 == idgraph4
- 
+
+
 def test_idgraph_pandas_df():
     """
         Test if idgraph is accurately generated for panda dataframes
-    """    
+    """
     df = sns.load_dataset('penguins')
 
     idgraph1 = idgraph.get_object_state(df, {})
@@ -81,20 +83,21 @@ def test_idgraph_pandas_df():
 
     # Assert that the id graph does not change when the object remains unchanged
     assert idgraph1 == idgraph2
-    
-    df.at[0,'species'] = "Changed"
+
+    df.at[0, 'species'] = "Changed"
     idgraph3 = idgraph.get_object_state(df, {})
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph3
 
-    df.at[0,'species'] = "Adelie"
+    df.at[0, 'species'] = "Adelie"
     idgraph4 = idgraph.get_object_state(df, {})
 
     # Assert that the original id graph is restored when the original object state is restored
     assert idgraph1 == idgraph4
 
-    new_row = {'species': "New Species", 'island': "New island", 'bill_length_mm': 999, 'bill_depth_mm': 999, 'flipper_length_mm': 999, 'body_mass_g': 999, 'sex': "Male"}
+    new_row = {'species': "New Species", 'island': "New island", 'bill_length_mm': 999,
+               'bill_depth_mm': 999, 'flipper_length_mm': 999, 'body_mass_g': 999, 'sex': "Male"}
     df.loc[len(df)] = new_row
 
     idgraph5 = idgraph.get_object_state(df, {})
@@ -102,12 +105,14 @@ def test_idgraph_pandas_df():
     # Assert that idgraph changes when new row is added to dataframe
     assert idgraph1 != idgraph5
 
+
 def test_idgraph_matplotlib():
     """
         Test if idgraph is accurately generated for matplotlib objects
-    """    
-    df = pd.DataFrame(np.array([[1,2,3],[4,5,6],[7,8,9]]), columns = ['a','b','c'])
-    a = plt.plot(df['a'],df['b'])
+    """
+    df = pd.DataFrame(
+        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+    a = plt.plot(df['a'], df['b'])
     plt.xlabel("XLABEL_1")
 
     idgraph1 = idgraph.get_object_state(a, {})
@@ -157,16 +162,22 @@ def test_idgraph_matplotlib():
     else:
         assert idgraph1 == idgraph6
 
+    # Close all figures
+    plt.close('all')
+
+
 def test_idgraph_seaborn():
     test_idgraph_seaborn_displot()
     test_idgraph_seaborn_scatterplot()
+
 
 def test_idgraph_seaborn_displot():
     """
         Test if idgraph is accurately generated for seaborn displot objects (figure-level object)
     """
     df = sns.load_dataset('penguins')
-    plot1 = sns.displot(data=df, x="flipper_length_mm", y="bill_length_mm", kind="kde")
+    plot1 = sns.displot(data=df, x="flipper_length_mm",
+                        y="bill_length_mm", kind="kde")
     plot1.set(xlabel="flipper_length_mm")
 
     idgraph1 = idgraph.get_object_state(plot1, {})
@@ -180,8 +191,8 @@ def test_idgraph_seaborn_displot():
 
     # Assert that the id graph does not change when the object remains unchanged if pickle binaries are same
     if pick1 != pick2:
-       assert idgraph1 != idgraph2
-    else: 
+        assert idgraph1 != idgraph2
+    else:
         assert idgraph1 == idgraph2
 
     plot1.set(xlabel="NEW LABEL")
@@ -199,13 +210,17 @@ def test_idgraph_seaborn_displot():
     else:
         assert idgraph1 == idgraph4
 
+    # Close all figures
+    plt.close('all')
+
+
 def test_idgraph_seaborn_scatterplot():
     """
         Test if idgraph is accurately generated for seaborn scatterplot objects (axes-level object)
     """
 
     df = sns.load_dataset('penguins')
-    plot1 = sns.scatterplot(data = df, x = "flipper_length_mm", y = "bill_length_mm")
+    plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
     plot1.set_xlabel('flipper_length_mm')
     plot1.set_facecolor('white')
 
@@ -244,3 +259,6 @@ def test_idgraph_seaborn_scatterplot():
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph5
+
+    # Close all figures
+    plt.close('all')
