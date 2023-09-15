@@ -228,7 +228,7 @@ class KishuForJupyter:
 
         self._platform = enclosing_platform()
         self._session_id = 0
-    
+
     def set_session_id(self, session_id):
         self._session_id = session_id
 
@@ -546,7 +546,7 @@ def get_kishu_instance():
 KISHU_VAR_NAME = '_kishu'
 
 
-def load_kishu(notebook_id: Optional[str]=None, session_id: Optional[int]=None) -> None:
+def load_kishu(notebook_id: Optional[str] = None, session_id: Optional[int] = None) -> None:
     global _kishu_exec_history
     global _ipython_shell
     if _kishu_exec_history is not None:
@@ -566,6 +566,7 @@ def load_kishu(notebook_id: Optional[str]=None, session_id: Optional[int]=None) 
           "- You can inspect traced information using '_kishu'.\n"
           "- Checkpoint file: {}/\n".format(kishu.checkpoint_file()))
 
+
 def update_metadata(nb: Any, nb_path: Path) -> None:
     if "kishu" not in nb.metadata:
         notebook_name = datetime.now().strftime('%Y%m%dT%H%M%S')
@@ -584,7 +585,7 @@ def init_kishu(path: Optional[Path] = None) -> None:
     Increments session number to ensure unique commit ids.
     """
     # Read enclosing notebook.
-    if path == None:
+    if path is None:
         kernel_id = enclosing_kernel_id()
         path = enclosing_notebook_path(kernel_id)
     nb = None
@@ -597,8 +598,3 @@ def init_kishu(path: Optional[Path] = None) -> None:
 
     # Attach Kishu instrumentation.
     load_kishu(nb.metadata.kishu.notebook_id, nb.metadata.kishu.session_count)
-    
-
-    
-        
-
