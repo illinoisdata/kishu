@@ -1,6 +1,7 @@
 from flask import Flask, request
 
 import json
+from typing import Optional
 
 from kishu.serialization import into_json
 from kishu.commands import KishuCommand
@@ -32,15 +33,16 @@ def status(notebook_id: str, commit_id: str):
     return into_json(status_result)
 
 
-@app.get("/checkout/<notebook_id>/<commit_id>")
-def checkout(notebook_id: str, commit_id: str):
-    checkout_result = KishuCommand.checkout(notebook_id, commit_id)
+@app.get("/checkout/<notebook_id>/<branch_or_commit_id>")
+def checkout(notebook_id: str, branch_or_commit_id: str):
+    checkout_result = KishuCommand.checkout(notebook_id, branch_or_commit_id)
     return into_json(checkout_result)
 
 
 @app.get("/branch/<notebook_id>/<branch_name>")
 def branch(notebook_id: str, branch_name: str):
-    branch_result = KishuCommand.branch(notebook_id, branch_name, None)
+    commit_id: Optional[str] = request.args.get('commit_id', default=None, type=str)
+    branch_result = KishuCommand.branch(notebook_id, branch_name, commit_id)
     return into_json(branch_result)
 
 

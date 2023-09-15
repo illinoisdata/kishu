@@ -25,13 +25,13 @@ class BranchRow:
 class KishuBranch:
 
     @staticmethod
-    def get_head(notebook_id: str) -> Optional[HeadBranch]:
+    def get_head(notebook_id: str) -> HeadBranch:
         try:
             with open(KishuResource.head_path(notebook_id), "r") as f:
                 json_str = f.read()
                 return HeadBranch.from_json(json_str)  # type: ignore
         except (FileNotFoundError, json.decoder.JSONDecodeError):
-            return None
+            return HeadBranch(branch_name=None, commit_id=None)
 
     @staticmethod
     def update_head(
@@ -68,6 +68,22 @@ class KishuBranch:
         query = f"select branch_name, commit_id from {BRANCH_TABLE}"
         try:
             cur.execute(query)
+        except sqlite3.OperationalError:
+            # No such table means no branch
+            return []
+        return [
+            BranchRow(branch_name=branch_name, commit_id=commit_id)
+            for branch_name, commit_id in cur
+        ]
+
+    @staticmethod
+    def get_branch(notebook_id: str, branch_name: str) -> List[BranchRow]:
+        dbfile = KishuResource.checkpoint_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+        query = f"select branch_name, commit_id from {BRANCH_TABLE} where branch_name = ?"
+        try:
+            cur.execute(query, (branch_name,))
         except sqlite3.OperationalError:
             # No such table means no branch
             return []

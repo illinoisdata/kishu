@@ -1,108 +1,115 @@
 from __future__ import annotations
-import dataclasses
-import enum
-import simple_parsing
-from typing import Callable, Dict, List, Optional
+import typer
 
+from kishu import __app_name__, __version__
 from kishu.serialization import into_json
 from kishu.commands import KishuCommand
 
 
+kishu_app = typer.Typer(add_completion=False)
+
+
+@kishu_app.command()
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"{__app_name__} v{__version__}")
+        raise typer.Exit()
+
+
+@kishu_app.callback()
+def app_main(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-v",
+        help="Show Kishu version.",
+        callback=_version_callback,
+        is_eager=True,
+    )
+) -> None:
+    return
+
+
 """
-Command Line Interface.
+Kishu Commands.
 """
 
 
-class Command(enum.Enum):
-    help = "help"
-
-    log = "log"
-    log_all = "log_all"
-    status = "status"
-
-    checkout = "checkout"
-    branch = "branch"
-
-
-@dataclasses.dataclass
-class KishuCLIArguments:
-    """Interact with Kishu-powered programs."""
-    command: Command = Command.help  # Kishu command.
-    notebook_id: Optional[str] = None  # Notebook ID to interact with.
-    commit_id: Optional[str] = None  # Commit ID to apply command on.
-    branch_name: Optional[str] = None  # Branch name.
-
-    @staticmethod
-    def from_argv(argv: List[str]) -> KishuCLIArguments:
-        if (
-            len(argv) >= 1
-            and "--command" not in argv
-            and "--help" not in argv
-            and "-h" not in argv
-        ):
-            # Takes first argument as the command.
-            argv = ["--command"] + argv
-        return simple_parsing.parse(KishuCLIArguments, args=argv)
-
-    @staticmethod
-    def print_help() -> None:
-        simple_parsing.parse(KishuCLIArguments, args="--help")
+@kishu_app.command()
+def log(
+    notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
+    commit_id: str = typer.Argument(
+        None,
+        help="Show the history of a commit ID.",
+        show_default=False,
+    ),
+    log_all: bool = typer.Option(
+        False,
+        "--all",
+        "-a",
+        help="Log all commits.",
+    )
+) -> None:
+    """
+    Show a history view of commit graph.
+    """
+    if log_all:
+        print(into_json(KishuCommand.log_all(notebook_id)))
+    else:
+        print(into_json(KishuCommand.log(notebook_id, commit_id)))
 
 
-class KishuCLI:
+@kishu_app.command()
+def status(
+    notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
+    commit_id: str = typer.Argument(help="Commit ID to get status.", show_default=False),
+) -> None:
+    """
+    Show a commit in detail.
+    """
+    print(into_json(KishuCommand.status(notebook_id, commit_id)))
 
-    def __init__(self) -> None:
-        # Per-session state goes here.
-        self._commands: Dict[Command, Callable[[KishuCLIArguments], None]] = {
-            Command.help: self.help,
-            Command.log: self.log,
-            Command.log_all: self.log_all,
-            Command.status: self.status,
-            Command.checkout: self.checkout,
-            Command.branch: self.branch,
-        }
 
-    def exec(self, args):
-        func = self.dispatch(args.command)
-        func(args)
+@kishu_app.command()
+def checkout(
+    notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
+    branch_or_commit_id: str = typer.Argument(
+        help="Branch name or commit ID to checkout.",
+        show_default=False,
+    ),
+) -> None:
+    """
+    Checkout a notebook to a commit.
+    """
+    print(into_json(KishuCommand.checkout(notebook_id, branch_or_commit_id)))
 
-    def dispatch(self, command) -> Callable[[KishuCLIArguments], None]:
-        return self._commands[command]
 
-    def help(self, args):
-        print(f"commands: {' | '.join([cmd.value for cmd in Command])}")
-        KishuCLIArguments.print_help()
+@kishu_app.command()
+def branch(
+    notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
+    commit_id: str = typer.Argument(
+        None,
+        help="Commit ID to create the branch on.",
+        show_default=False,
+    ),
+    create_branch_name: str = typer.Option(
+        None,
+        "--create-branch-name",
+        "-c",
+        help="Create branch with this name.",
+        show_default=False,
+    ),
+) -> None:
+    """
+    Create or delete branches.
+    """
+    if create_branch_name is not None:
+        print(into_json(KishuCommand.branch(notebook_id, create_branch_name, commit_id)))
 
-    def log(self, args):
-        assert args.notebook_id is not None, "log requires notebook_id."
-        assert args.commit_id is not None, "log requires commit_id."
-        print(into_json(KishuCommand.log(args.notebook_id, args.commit_id)))
 
-    def log_all(self, args):
-        assert args.notebook_id is not None, "log_all requires notebook_id."
-        print(into_json(KishuCommand.log_all(args.notebook_id)))
-
-    def status(self, args):
-        assert args.notebook_id is not None, "status requires notebook_id."
-        assert args.commit_id is not None, "status requires commit_id."
-        print(into_json(KishuCommand.status(args.notebook_id, args.commit_id)))
-
-    def checkout(self, args):
-        assert args.notebook_id is not None, "checkout requires notebook_id."
-        assert args.commit_id is not None, "checkout requires commit_id."
-        print(into_json(KishuCommand.checkout(args.notebook_id, args.commit_id)))
-
-    def branch(self, args):
-        assert args.notebook_id is not None, "branch requires notebook_id."
-        assert args.branch_name is not None, "branch requires branch_name."
-        print(into_json(KishuCommand.branch(args.notebook_id, args.branch_name, args.commit_id)))
+def main() -> None:
+    kishu_app(prog_name=__app_name__)
 
 
 if __name__ == "__main__":
-    # Parse argugments from command line.
-    import sys
-    args = KishuCLIArguments.from_argv(sys.argv[1:])
-
-    # Execute
-    cli = KishuCLI()
-    cli.exec(args)
+    main()

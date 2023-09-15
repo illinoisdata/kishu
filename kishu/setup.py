@@ -36,5 +36,10 @@ setup(
             sources=["change/idgraphmodule.c", "change/cJSON.c"],
             include_dirs=[get_numpy_include()],
         ),
-    ]
+    ],
+    entry_points={
+        'console_scripts': [
+            'kishu = kishu.cli:main',
+        ],
+    },
 )
