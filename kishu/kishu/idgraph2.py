@@ -1,6 +1,7 @@
 import hashlib
 import pandas
 import pickle
+import xxhash
 
 
 class GraphNode:
@@ -200,9 +201,128 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
 
+def build_object_hash(obj, visited: set, include_id=True, hash = xxhash.xxh32()):
+    if id(obj) in visited:
+        hash.update(str(type(obj)))
+        if include_id:
+            hash.update(str(id(obj)))
+
+    elif isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
+        hash.update(str(type(obj)))
+        hash.update(str(obj))
+        # hash.update(str(id(obj)))
+        hash.update("/EOC")
+    
+    elif isinstance(obj, tuple):
+        hash.update(str(type(obj)))
+        for item in obj:
+            build_object_hash(item, visited, include_id, hash)
+        
+        hash.update("/EOC")
+    
+    elif isinstance(obj, list):
+        visited.add(id(obj))
+        hash.update(str(type(obj)))
+        if include_id:
+            hash.update(str(id(obj)))
+        
+        for item in obj:
+            build_object_hash(item, visited, include_id, hash)
+        
+        hash.update("/EOC")
+    
+    elif isinstance(obj, set):
+        visited.add(id(obj))
+        hash.update(str(type(obj)))
+        if include_id:
+            hash.update(str(id(obj)))
+        
+        for item in sorted(obj):
+            build_object_hash(item, visited, include_id, hash)
+        
+        hash.update("/EOC")
+
+    elif isinstance(obj, dict):
+        hash.update(str(type(obj)))
+        if include_id:
+            hash.update(str(id(obj)))
+
+        for key, value in sorted(obj.items()):
+            hash.update(str(key))
+            build_object_hash(value, visited, include_id, hash)
+        
+        hash.update("/EOC")
+    
+    elif isinstance(obj, (bytes, bytearray)):
+        hash.update(str(type(obj)))
+        hash.update(obj)
+        hash.update("/EOC")
+
+    elif isinstance(obj, type):
+        hash.update(str(type(obj)))
+        hash.update(str(obj))
+        # hash.update("/EOC")
+    
+    elif callable(obj):
+        visited.add(id(obj))
+        hash.update(str(type(obj)))
+        if include_id:
+            hash.update(str(id(obj)))
+
+        hash.update(pickle.dumps(obj))
+        hash.update("/EOC")
+        # return
+    
+    elif hasattr(obj, '__reduce_ex__'):
+        visited.add(id(obj))
+        hash.update(str(type(obj)))
+
+        if is_pickable(obj):
+            reduced = obj.__reduce_ex__(4)
+            if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
+                hash.update(str(id(obj)))
+            
+            if isinstance(reduced, str):
+                hash.update(reduced)
+                return
+
+            for item in reduced[1:]:
+                build_object_hash(item, visited, False, hash)
+            
+            hash.update("/EOC")
+    
+    elif hasattr(obj, '__reduce__'):
+        visited.add(id(obj))
+        hash.update(str(type(obj)))
+        if is_pickable(obj):
+            reduced = obj.__reduce__()
+            hash.update(str(id(obj)))
+
+            if isinstance(reduced, str):
+                hash.udpate(reduced)
+                return 
+            
+            for item in reduced[1:]:
+                build_object_hash(item, visited, False, hash)
+
+            hash.update("/EOC")
+    
+    else:
+        print("Comes here")
+        visited.add(id(obj))
+        hash.update(str(type(obj)))
+        if include_id:
+            hash.update(str(id(obj)))
+        hash.update(pickle.dumps(obj))
+        hash.update("/EOC")
+        # return
+
+
+
 def get_object_hash(obj):
-    curr_state = get_object_state(obj)
-    return hashlib.md5(str(curr_state).encode('utf-8')).hexdigest()
+    x = xxhash.xxh32()
+    build_object_hash(obj, set(), True, x)
+    return x
 
 
 def convert_idgraph_to_list(node: GraphNode, ret_list, visited: set):
