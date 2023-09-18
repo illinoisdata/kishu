@@ -25,7 +25,7 @@ const BackEndAPI = {
         console.log("checkout done");
       } else {
         console.log(data);
-        throw new Error("backend error");
+        throw new Error("backend error, status != OK");
       }
     } catch (error) {
       throw error;
@@ -40,59 +40,63 @@ const BackEndAPI = {
     // message.info(`rollback succeeds`);
   },
 
-  async getInitialData() {
+  async getCommitGraph() {
     const res = await fetch("/fe/commit_graph/" + globalThis.NotebookID!);
     try {
       const data = await res.json();
+      console.log(data);
       return parseAllCommits(data);
     } catch (error) {
       throw error;
     }
-
-    // return fetch("/fe/commit_graph/" + globalThis.NotebookID!)
-    //   .then((res) => {
-    //     res.json();
-    //   })
-    //   .then((data) => parseAllCommits(data))
-    //   .catch((error) => console.error("Error fetching data:", error));
-
-    // return parseAllCommits(commits);
   },
 
-  async getCommitDetail(historyID: string) {
-    // console.log("get:" + historyID);
-    // const history = fetch(
-    //   "/home/meng/elastic-notebook/kishu/timetravel_fe/public/history.json"
-    // )
-    //   .then((response) => response.json())
-    //   .then((data) => parseHistory(data))
-    //   .catch((error) => console.error("Error fetching data:", error));
-    // return parseCommitDetail(commit_detail);
-
+  async getCommitDetail(commitID: string) {
     const res = await fetch(
-      "/fe/commit/" + globalThis.NotebookID! + "/" + historyID
+      "/fe/commit/" + globalThis.NotebookID! + "/" + commitID
     );
     try {
       const data = await res.json();
+      console.log(data);
       return parseCommitDetail(data);
     } catch (error) {
       return console.error("Error fetching data:", error);
     }
   },
 
-  setTag(historyID: string, newTag: string) {
-    // TODO:call the API to set a tag, if succeed, then...
-
-    let initial_histories = parseAllCommits(commits);
-    initial_histories.filter((history) => history.oid === historyID)[0].tag =
-      newTag;
-    return initial_histories;
+  async setTag(commitID: string, newTag: string) {
+    // message.info(`rollback succeeds`);
+    // TODO: call backend API according to API
+    const res = await fetch(
+      "/tag/" +
+        globalThis.NotebookID! +
+        "?commit_id=" +
+        commitID +
+        "&tag=" +
+        newTag
+    );
+    try {
+      const data = await res.json();
+      if (data.status === "ok") {
+        console.log("set tag done");
+      } else {
+        console.log(data);
+        throw Error("Setting tag failed, state != OK");
+      }
+    } catch (error) {
+      throw error;
+    }
   },
 
   async createBranch(commitID: string, newBranchname: string) {
     // message.info(`rollback succeeds`);
     const res = await fetch(
-      "/branch/" + globalThis.NotebookID! + "/" + newBranchname + "/" + commitID
+      "/branch/" +
+        globalThis.NotebookID! +
+        "/" +
+        newBranchname +
+        "?commit_id=" +
+        commitID
     );
     try {
       const data = await res.json();
@@ -100,7 +104,7 @@ const BackEndAPI = {
         console.log("creating branch done");
       } else {
         console.log(data);
-        throw new Error("backend error");
+        throw Error("create branch failed, state != OK");
       }
     } catch (error) {
       throw error;

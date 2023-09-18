@@ -59,6 +59,7 @@ interface ContextMenuProps {
   y: number;
   onClose: () => void;
   setIsTagEditorOpen: React.Dispatch<React.SetStateAction<boolean>>; //set if the tag editor is open
+  setIsBranchNameEditorOpen: any;
   setJudgeFunctionID: any;
   setIsGroupFolded: any;
   setIsWaitingModalOpen: any;
@@ -72,6 +73,7 @@ function ContextMenu({
   y,
   onClose,
   setIsTagEditorOpen,
+  setIsBranchNameEditorOpen,
   setJudgeFunctionID,
   setIsGroupFolded,
   setIsWaitingModalOpen: setIsWaitingModelOpen,
@@ -111,10 +113,9 @@ function ContextMenu({
       setJudgeFunctionID(1);
     } else if (key === "both") {
       setIsWaitingModelOpen(true);
-      setWaitingfor("checkout");
+      setWaitingfor("checkout codes and data");
     } else if (key === "branch") {
-      setIsWaitingModelOpen(true);
-      setWaitingfor("branch");
+      setIsBranchNameEditorOpen(true);
     }
     // message.info(key);
   };
@@ -126,6 +127,7 @@ function ContextMenu({
           position: "fixed",
           top: y,
           left: x,
+          zIndex: 9999,
         }}
       >
         <Menu

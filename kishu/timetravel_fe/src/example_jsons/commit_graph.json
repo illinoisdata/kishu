@@ -3,6 +3,7 @@
     {
       "oid": "1000",
       "branch_id": "1",
+      "other_branch_ids": ["abc", "bcd"],
       "timestamp": "2023-06-29,15:16:28",
       "parent_branchID": "-1",
       "parent_oid": "-1",
@@ -11,6 +12,7 @@
     {
       "oid": "1002",
       "branch_id": "1",
+      "other_branch_ids": [],
       "timestamp": "2023-06-29,15:16:29",
       "parent_branchID": "1",
       "parent_oid": "1000"
@@ -18,6 +20,7 @@
     {
       "oid": "-1",
       "branch_id": "tmp1",
+      "other_branch_ids": [],
       "timestamp": "2023-06-29,15:16:29",
       "parent_branchID": "1",
       "parent_oid": "1002"
@@ -25,6 +28,7 @@
     {
       "oid": "-1",
       "branch_id": "tmp2",
+      "other_branch_ids": [],
       "timestamp": "2023-06-29,15:16:29",
       "parent_branchID": "1",
       "parent_oid": "1002"
@@ -32,6 +36,7 @@
     {
       "oid": "1020",
       "branch_id": "2",
+      "other_branch_ids": [],
       "timestamp": "2023-06-31,15:16:28",
       "parent_branchID": "1",
       "parent_oid": "1000"
@@ -39,6 +44,7 @@
     {
       "oid": "1003",
       "branch_id": "1",
+      "other_branch_ids": [],
       "timestamp": "2023-06-29,15:16:30",
       "parent_branchID": "1",
       "parent_oid": "1002"
@@ -46,6 +52,7 @@
     {
       "oid": "1004",
       "branch_id": "1",
+      "other_branch_ids": [],
       "timestamp": "2023-06-29,15:16:31",
       "parent_branchID": "1",
       "parent_oid": "1003"
@@ -53,6 +60,7 @@
     {
       "oid": "1021",
       "branch_id": "2",
+      "other_branch_ids": [],
       "timestamp": "2023-06-31,15:16:28",
       "parent_branchID": "2",
       "parent_oid": "1020",
