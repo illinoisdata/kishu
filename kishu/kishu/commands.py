@@ -405,9 +405,11 @@ class KishuCommand:
         }
 
         # Find mapping between current branch names to new branch names base on commit.
+        # Assume: commits are sorted, so the head commit of a branch is the last commit in the list.
+        head_commits_by_old_branch = {commit.branch_id: commit.oid for commit in commits}
         old_to_new_branch_name = {
-            commit.branch_id: commit_to_branch_name[commit.oid]
-            for commit in commits if commit.oid in commit_to_branch_name
+            old_branch: commit_to_branch_name[commit_id]
+            for old_branch, commit_id in head_commits_by_old_branch.items() if commit_id in commit_to_branch_name
         }
 
         # List other branch names that will not show up.
@@ -422,9 +424,7 @@ class KishuCommand:
                 lambda branch_name: branch_name not in selected_branch_names,
                 commit_to_other_branch_names[commit_id]
             )
-            commit_to_other_branch_names[commit_id] = sorted(other_branch_names)
-        print(commit_to_branch_name)
-        print(commit_to_other_branch_names)
+            commit_to_other_branch_names[commit_id] = sorted(other_branch_names)    
 
         # Edit branches in commits.
         for commit in commits:
