@@ -8,8 +8,8 @@
 import React, {
   createContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import "./App.css";
@@ -33,6 +33,8 @@ interface appContextType {
   setSelectedCommitID: any;
   selectedBranchID: string | undefined;
   setSelectedBranchID: any;
+  currentHeadID: string | undefined;
+  setCurrentHeadID: any;
 }
 export const AppContext = createContext<appContextType | undefined>(undefined);
 function App() {
@@ -41,6 +43,7 @@ function App() {
   const [selectedCommit, setSelectedCommit] = useState<Commit>();
   const [selectedCommitID, setSelectedCommitID] = useState<string>();
   const [selectedBranchID, setSelectedBranchID] = useState<string>();
+  const [currentHeadID, setCurrentHeadID] = useState<string>();
   const appContext: appContextType = {
     commits,
     setCommits,
@@ -52,6 +55,8 @@ function App() {
     setSelectedCommitID,
     selectedBranchID,
     setSelectedBranchID,
+    currentHeadID,
+    setCurrentHeadID,
   };
 
   const [globalLoading, setGlobalLoading] = useState(true);
@@ -68,11 +73,13 @@ function App() {
       console.log("load initial data now!");
       setGlobalLoading(true);
       try {
-        const data = await BackEndAPI.getInitialData();
-        setCommits(data!);
-        setBranchIDs(new Set(data!.map((commit) => commit.branchId)));
-        setSelectedCommitID(data![data!.length - 1].oid);
-        setSelectedBranchID(data![data!.length - 1].branchId);
+        const data = await BackEndAPI.getCommitGraph();
+        console.log(data);
+        setCommits(data.commits);
+        setBranchIDs(new Set(data.commits.map((commit) => commit.branchId)));
+        setSelectedCommitID(data.currentHead);
+        setSelectedBranchID(data.currentHeadBranch);
+        setCurrentHeadID(data.currentHead);
       } catch (e) {
         if (e instanceof Error) {
           setError(e.message);
@@ -93,6 +100,7 @@ function App() {
       }
       try {
         const data = await BackEndAPI.getCommitDetail(selectedCommitID);
+        console.log(data);
         setSelectedCommit(data!);
       } catch (e) {
         if (e instanceof Error) {
@@ -103,6 +111,7 @@ function App() {
     loadCommitDetail(selectedCommitID!);
   }, [selectedCommitID]);
 
+  let codePanelRef = useRef<HTMLDivElement | null>(null);
   return (
     <AppContext.Provider value={appContext}>
       <>
@@ -174,7 +183,9 @@ function App() {
                 }}
                 gutterClassName="custom_gutter"
               >
-                <div className="tile-xy u-showbottom">{<CodePanel />}</div>
+                <div className="tile-xy u-showbottom" ref={codePanelRef}>
+                  {<CodePanel containerRef={codePanelRef} />}
+                </div>
                 <div className="tile-xy">
                   <VariablePanel variables={selectedCommit!.variables!} />
                 </div>

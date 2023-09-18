@@ -6,22 +6,32 @@
  * @Description:
  */
 import React, { useState } from "react";
-import { Button, Modal } from "antd";
+import { Button, Modal, message } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import { waitFor } from "@testing-library/react";
 export interface waitingforModalProps {
   waitingFor: string;
   isWaitingModalOpen: boolean;
   setIsWaitingModalOpen: any;
-  handleCheckout: any;
-  handelCreatebranch: any;
+  submitHandler: any;
 }
-export function WaitingForModal(props: waitingforModalProps) {
-  if (props.isWaitingModalOpen && props.waitingFor === "checkout") {
-    props.handleCheckout();
+export function CheckoutWaitingModal(props: waitingforModalProps) {
+  async function handleCheckout() {
+    try {
+      await props.submitHandler();
+      props.setIsWaitingModalOpen(false);
+      message.info("checkout succeed");
+    } catch (e) {
+      props.setIsWaitingModalOpen(false);
+      message.error("checkout error: " + (e as Error).message);
+    }
   }
-  if (props.isWaitingModalOpen && props.waitingFor === "branch") {
-    props.handelCreatebranch();
+
+  if (
+    props.isWaitingModalOpen &&
+    props.waitingFor === "checkout codes and data"
+  ) {
+    handleCheckout();
   }
   return (
     <>
