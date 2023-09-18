@@ -11,32 +11,30 @@ import { info } from "console";
 export interface TagEditorProps {
   isModalOpen: boolean;
   setIsModalOpen: any;
-  defaultContent: string;
   submitHandler: (arg: string) => Promise<void>;
   selectedHistoryID?: string;
 }
 
 function TagEditor(props: TagEditorProps) {
   const [loading, setLoading] = useState(false);
-  const [content, setContent] = useState(props.defaultContent);
+  const [content, setContent] = useState("");
 
   async function handleOk() {
     setLoading(true);
     try {
       await props.submitHandler(content);
       setLoading(false);
-      message.info("setting tag succeed");
+      message.info("create branch succeed");
       props.setIsModalOpen(false);
     } catch (e) {
       setLoading(false);
       if (e instanceof Error) {
-        message.error("tag submit error" + e.message);
+        message.error("branch create error" + e.message);
       }
     }
   }
 
   const handleCancel = () => {
-    setContent(props.defaultContent);
     props.setIsModalOpen(false);
   };
 
@@ -46,7 +44,7 @@ function TagEditor(props: TagEditorProps) {
 
   return (
     <Modal
-      title="Create/Edit tag for the selected history"
+      title="create a new branch the selected history"
       open={props.isModalOpen}
       onOk={handleOk}
       onCancel={handleCancel}

@@ -11,7 +11,7 @@ import { Variable } from "./Variable";
 export function parseAllCommits(object: any) {
   // console.log(object);
   const items = object["commits"];
-  const histories: Commit[] = items.map(
+  const commits: Commit[] = items.map(
     (item: any) =>
       ({
         oid: item["oid"],
@@ -22,11 +22,31 @@ export function parseAllCommits(object: any) {
         tag: item["tag"],
       } as Commit)
   );
-  return histories;
+  const currentHead = object["head"]["commit_id"];
+  const currentHeadBranch = object["head"]["branch_name"];
+
+  return {
+    commits: commits,
+    currentHead: currentHead,
+    currentHeadBranch: currentHeadBranch,
+  };
 }
 export function parseCommitDetail(json: any) {
   // console.log(json);
   const tmp = json;
+  console.log(tmp["cells"]);
+
+  //calculate the max cell to be the execute cell
+  let max = "-1";
+  for (let i = 0; i < tmp["cells"].length; i++) {
+    console.log(tmp["cells"][i]["exec_num"]);
+    if (tmp["cells"][i]["exec_num"] === "None") {
+      continue;
+    } else if (parseInt(tmp["cells"][i]["exec_num"]) > parseInt(max)) {
+      max = tmp["cells"][i]["exec_num"];
+    }
+  }
+
   const history: Commit = {
     oid: tmp["oid"],
     branchId: tmp["branch_id"],
@@ -34,7 +54,6 @@ export function parseCommitDetail(json: any) {
     parentBranchID: tmp["parent_branchID"],
     parentOid: tmp["parent_oid"],
     tag: tmp["tag"],
-    execCell: tmp["exec_num"],
     codes: tmp["cells"].map(
       (item: any) =>
         ({
@@ -42,6 +61,7 @@ export function parseCommitDetail(json: any) {
           execNum: item["exec_num"] === "None" ? "-1" : item["exec_num"],
         } as Cell)
     ),
+    execCell: max,
     variables: tmp["variables"].map((item: any) => recursiveGetVariable(item)),
   };
   return history;

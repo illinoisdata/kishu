@@ -29,11 +29,13 @@ import { BackEndAPI } from "../../util/API";
 import { Judger } from "../../util/JudgeFunctions";
 import { ReactSvgElement } from "@gitgraph/react/lib/types";
 import { AppContext } from "../../App";
-import { WaitingForModal } from "./WaitingForModal";
+import { CheckoutWaitingModal } from "./CheckoutWaitingForModal";
+import BranchNameEditor from "./BranchNameEditor";
+import HoverPopup from "./HoverOverModal";
 
 function HistoryTree() {
   const props = useContext(AppContext);
-  console.log("rerender again");
+  console.log("rerender history tree again");
 
   //************states of history tree*************** */
   const [judgeShowFunctionID, setJudgeShowFunctionID] = useState(1); //0:show only histories with tags, 1: show all histories, 2: show only selected histories
@@ -48,8 +50,15 @@ function HistoryTree() {
     y: number;
   } | null>(null);
   const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
-  const [isWaitingModelOpen, setIsWaitingModelOpen] = useState(false);
+  const [isBranchNameEditorOpen, setIsBranchNameEditorOpen] = useState(false);
+  const [isCheckoutWaitingModelOpen, setIsCheckoutWaitingModelOpen] =
+    useState(false);
   const [waitingFor, setWaitingfor] = useState(""); //wait for what, like tag, checkout or XXX
+  const [mouseOverPosition, setMouseOverPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [mouseOverTimestamp, setMouseOverTimestamp] = useState<string>("");
   //********************************************************************* */
 
   //**********************helper functions***********/
@@ -78,9 +87,6 @@ function HistoryTree() {
       if (element.oid !== props!.selectedCommitID!) {
         branches.get(element.branchId)!.commit({
           subject: element.oid.toString(),
-          onClick(commit) {
-            props!.setSelectedCommitID(element.oid);
-          },
           tag: element.tag,
           renderDot(commit) {
             return (
@@ -94,6 +100,12 @@ function HistoryTree() {
                   message.info("left clicked");
                   props!.setSelectedCommitID(element.oid);
                 }}
+                onMouseOver={(event) => {
+                  handleMouseOverCommit(commit.x, commit.y, element.timestamp);
+                }}
+                onMouseOut={(event) => {
+                  handleMouseOutCommit();
+                }}
                 // onClick={setSelectedHistoryID(element.oid)}
               >
                 <circle
@@ -101,7 +113,12 @@ function HistoryTree() {
                   cx={commit.style.dot.size}
                   cy={commit.style.dot.size}
                   r={commit.style.dot.size}
-                  fill={commit.style.dot.color as string}
+                  // fill={commit.style.dot.color as string}
+                  fill={
+                    element.oid! === props!.currentHeadID
+                      ? "red"
+                      : (commit.style.dot.color as string)
+                  }
                 />
               </svg>
             );
@@ -112,6 +129,12 @@ function HistoryTree() {
           subject: "select me" + element.oid.toString(),
           dotText: "🐞",
           tag: element.tag,
+          onMouseOver(commit) {
+            handleMouseOverCommit(commit.x, commit.y, element.timestamp);
+          },
+          onMouseOut(commit) {
+            handleMouseOutCommit();
+          },
         });
       }
     } else if (text === "➕") {
@@ -161,48 +184,63 @@ function HistoryTree() {
     event.preventDefault();
     setContextMenuPosition({ x: event.clientX, y: event.clientY });
   }
+  function handleMouseOverCommit(x: number, y: number, timestamp: string) {
+    if (mouseOverPosition === null) {
+      console.log("on_mouseOver");
+      setMouseOverTimestamp(timestamp);
+      setMouseOverPosition({ x: x + 100, y: y + 50 });
+    }
+  }
+  function handleMouseOutCommit() {
+    setMouseOverPosition(null);
+  }
   function handleCloseContextMenu() {
     setContextMenuPosition(null);
   }
   async function handleTagSubmit(newTag: string) {
-    const data = await BackEndAPI.setTag(props!.selectedCommitID!!, newTag);
-    // const data = await BackEndAPI.getInitialData();
-    props!.setCommits(data!);
-  }
-  async function handleCheckout() {
     try {
-      await BackEndAPI.rollbackBoth(props!.selectedCommitID!);
-      const newCommits = await BackEndAPI.getInitialData();
-      console.log(newCommits);
-      props!.setCommits(newCommits!);
+      await BackEndAPI.setTag(props!.selectedCommitID!!, newTag);
+      const newGraph = await BackEndAPI.getCommitGraph();
+      console.log(newGraph);
+      props!.setCommits(newGraph.commits);
       props!.setBranchIDs(
-        new Set(newCommits!.map((commit) => commit.branchId))
+        new Set(newGraph.commits.map((commit) => commit.branchId))
       );
+      props!.setCurrentHeadID(newGraph.currentHead);
     } catch (error) {
-      setIsWaitingModelOpen(false);
-      message.error("checkout error" + (error as Error).message);
-    } finally {
-      setIsWaitingModelOpen(false);
-      message.info("checkout succeed");
+      throw error;
+    }
+  }
+  async function handleBranchNameSubmit(newBranchName: string) {
+    try {
+      await BackEndAPI.createBranch(props!.selectedCommitID!, newBranchName);
+      const newGraph = await BackEndAPI.getCommitGraph();
+      console.log(newGraph);
+      props!.setCommits(newGraph.commits);
+      props!.setBranchIDs(
+        new Set(newGraph.commits.map((commit) => commit.branchId))
+      );
+      props!.setCurrentHeadID(newGraph.currentHead);
+    } catch (error) {
+      throw error;
     }
   }
 
-  async function handleBranch(newBranchName: string) {
+  async function handleCheckout() {
     try {
-      await BackEndAPI.createBranch(newBranchName, props!.selectedCommitID!);
-      const newCommits = await BackEndAPI.getInitialData();
-      props!.setCommits(newCommits!);
+      await BackEndAPI.rollbackBoth(props!.selectedCommitID!);
+      const newGraph = await BackEndAPI.getCommitGraph();
+      console.log(newGraph);
+      props!.setCommits(newGraph.commits);
       props!.setBranchIDs(
-        new Set(newCommits!.map((commit) => commit.branchId))
+        new Set(newGraph.commits.map((commit) => commit.branchId))
       );
+      props!.setCurrentHeadID(newGraph.currentHead);
     } catch (error) {
-      setIsWaitingModelOpen(false);
-      message.error("create branch error" + (error as Error).message);
-    } finally {
-      setIsWaitingModelOpen(false);
-      message.info("create branch succeed");
+      throw error;
     }
   }
+
   //*********************************************************************** */
 
   //**************Variables that are recreated per render*/
@@ -215,7 +253,9 @@ function HistoryTree() {
   //initialize commits that are logically folded together into groups, reinitialize when commits are changed, or
   //visibility type is changed.
   useMemo(() => {
-    console.log("calculating the groups again");
+    console.log(
+      "props.commit changed or judgeShow rule changed, re-calculate the groups again"
+    );
     let newGroups = new Map<string, Commit[]>();
     let newGroupIndex = new Map<string, string>();
     let newIsGroupFolded = new Map<string, boolean>();
@@ -309,16 +349,24 @@ function HistoryTree() {
       {/****************************pop-ups ***********************/}
       {contextMenuPosition && (
         <ContextMenu
+          setIsBranchNameEditorOpen={setIsBranchNameEditorOpen}
           x={contextMenuPosition.x}
           y={contextMenuPosition.y}
           onClose={handleCloseContextMenu}
           setIsTagEditorOpen={setIsTagEditorOpen}
           setJudgeFunctionID={setJudgeShowFunctionID}
           setIsGroupFolded={setIsGroupFolded}
-          setIsWaitingModalOpen={setIsWaitingModelOpen}
+          setIsWaitingModalOpen={setIsCheckoutWaitingModelOpen}
           setWaitingfor={setWaitingfor}
           judgeFunctionID={judgeShowFunctionID}
           isGroupFolded={isGroupFolded}
+        />
+      )}
+      {mouseOverPosition && (
+        <HoverPopup
+          x={mouseOverPosition.x}
+          y={mouseOverPosition.y}
+          timestamp={mouseOverTimestamp}
         />
       )}
       <TagEditor
@@ -330,13 +378,18 @@ function HistoryTree() {
         submitHandler={handleTagSubmit}
         selectedHistoryID={props!.selectedCommitID!}
       ></TagEditor>
-      <WaitingForModal
+      <BranchNameEditor
+        isModalOpen={isBranchNameEditorOpen}
+        setIsModalOpen={setIsBranchNameEditorOpen}
+        submitHandler={handleBranchNameSubmit}
+        selectedHistoryID={props!.selectedCommitID!}
+      ></BranchNameEditor>
+      <CheckoutWaitingModal
         waitingFor={waitingFor}
-        isWaitingModalOpen={isWaitingModelOpen}
-        setIsWaitingModalOpen={setIsWaitingModelOpen}
-        handleCheckout={handleCheckout}
-        handelCreatebranch={handleBranch}
-      ></WaitingForModal>
+        isWaitingModalOpen={isCheckoutWaitingModelOpen}
+        setIsWaitingModalOpen={setIsCheckoutWaitingModelOpen}
+        submitHandler={handleCheckout}
+      ></CheckoutWaitingModal>
     </div>
   );
 }
