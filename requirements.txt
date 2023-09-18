@@ -17,6 +17,7 @@ scipy==1.7.3
 six==1.16.0
 tomli==2.0.1
 dataclasses-json==0.5.14
+xxhash==3.3.0
 ipykernel~=6.16.0
 ipython~=8.5.0
 path~=16.5.0
