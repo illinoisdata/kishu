@@ -86,6 +86,7 @@ class SelectedCommit:
     oid: str
     parent_oid: str
     timestamp: str
+    latest_exec_num: Optional[str]
     cells: List[SelectedCommitCell]
     variables: List[SelectedCommitVariable]
     # branch_id: str
@@ -327,13 +328,13 @@ class KishuCommand:
 
         # Compile list of cells.
         cells: List[SelectedCommitCell] = []
-        if cell_exec_info.executed_cells is not None:
-            for executed_cell in cell_exec_info.executed_cells:
+        if cell_exec_info.formatted_cells is not None:
+            for executed_cell in cell_exec_info.formatted_cells:
                 cells.append(SelectedCommitCell(
                     cell_type=executed_cell.cell_type,
                     content=executed_cell.source,
                     output=executed_cell.output,
-                    exec_num=str(executed_cell.execution_count),
+                    exec_num=KishuCommand._str_or_none(executed_cell.execution_count),
                 ))
 
         # Builds SelectedCommit.
@@ -341,6 +342,7 @@ class KishuCommand:
             oid=commit_id,
             parent_oid=commit_info.parent_id,
             timestamp=KishuCommand._to_datetime(cell_exec_info.end_time_ms),
+            latest_exec_num=KishuCommand._str_or_none(cell_exec_info.execution_count),
             variables=variables,
             cells=cells,
         )
@@ -424,7 +426,7 @@ class KishuCommand:
                 lambda branch_name: branch_name not in selected_branch_names,
                 commit_to_other_branch_names[commit_id]
             )
-            commit_to_other_branch_names[commit_id] = sorted(other_branch_names)    
+            commit_to_other_branch_names[commit_id] = sorted(other_branch_names)
 
         # Edit branches in commits.
         for commit in commits:
@@ -483,3 +485,7 @@ class KishuCommand:
                 # Some type implements __len__ but not qualify for len().
                 return None
         return None
+
+    @staticmethod
+    def _str_or_none(value: Optional[Any]) -> Optional[str]:
+        return None if value is None else str(value)
