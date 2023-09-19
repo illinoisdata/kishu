@@ -70,8 +70,10 @@ from kishu.exceptions import (
     NoChannelError,
 )
 from kishu.resources import KishuResource
+from kishu.optimization.ahg import AHG
+from kishu.optimization.change import find_input_vars, find_created_and_deleted_vars
 
-from .plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
+from plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
 
 
 """
@@ -372,6 +374,11 @@ class KishuForJupyter:
     def checkpoint_file(self) -> str:
         return KishuResource.checkpoint_path(self._notebook_id)
 
+    def get_user_namespace_vars(self) -> list:
+        user_ns = {} if ip is None else ip.user_ns
+        checkpoint_file = self.checkpoint_file()
+        return [item[0] for item in filter(no_ipython_var, user_ns.items())]
+
     def checkout(self, branch_or_commit_id: str) -> None:
         """
         Restores a variable state from commit_id.
@@ -421,6 +428,11 @@ class KishuForJupyter:
             is_detach=is_detach,
         )
 
+        # Optimization items. The AHG for tracking per-cell variable accesses and
+        # modifications is initialized here.
+        self._ahg = AHG()
+        self._pre_run_cell_vars = None
+
     def pre_run_cell(self, info) -> None:
         """
         A hook invoked before running a cell.
@@ -434,6 +446,9 @@ class KishuForJupyter:
         print(dir(info))
         """
         self._start_time_ms = get_epoch_time_ms()
+
+        # Record variables in the user name prior to running cell.
+        self._pre_run_cell_vars = self.get_user_namespace_vars()
 
     def post_run_cell(self, result) -> None:
         """
@@ -460,6 +475,30 @@ class KishuForJupyter:
         entry.error_before_exec = repr_if_not_none(result.error_before_exec)
         entry.error_in_exec = repr_if_not_none(result.error_in_exec)
         entry.result = repr_if_not_none(result.result)
+
+        # Find accessed variables.
+        if ip is None:
+            accessed_vars = None
+        else:
+            accessed_vars, _ = find_input_vars(entry.code_block, post_run_cell_vars,
+                    ip.user_ns, set())
+
+        # Find created and deleted variables.
+        post_run_cell_vars = self.get_user_namespace_vars()
+        created_and_deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
+                post_run_cell_vars)
+
+        # Find modified variables.
+        modified_vars = set()
+
+        # Update AHG.
+        if cell_info.start_time_ms is not None:
+            self._ahg.update_graph(entry.code_block, entry.runtime_ms,
+                    entry.start_time_ms, accessed_vars,
+                    created_and_deleted_vars, modified_vars)
+        else:
+            self._ahg.update_graph(result.info.raw_cell, 0, 0, accessed_vars,
+                    created_and_deleted_vars, modified_vars)
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count
