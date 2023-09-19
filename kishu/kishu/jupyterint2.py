@@ -70,6 +70,7 @@ from kishu.exceptions import (
     NoChannelError,
 )
 from kishu.resources import KishuResource
+from kishu import idgraph2 as idgraph
 from kishu.optimization.ahg import AHG
 from kishu.optimization.change import find_input_vars, find_created_and_deleted_vars
 
@@ -431,6 +432,7 @@ class KishuForJupyter:
         # Optimization items. The AHG for tracking per-cell variable accesses and
         # modifications is initialized here.
         self._ahg = AHG()
+        self._id_graph_map = {}
         self._pre_run_cell_vars = None
 
     def pre_run_cell(self, info) -> None:
@@ -449,6 +451,10 @@ class KishuForJupyter:
 
         # Record variables in the user name prior to running cell.
         self._pre_run_cell_vars = self.get_user_namespace_vars()
+
+        for var in self._ahg.variable_snapshots.keys():
+            if ip is not None and (var not in self._id_graph_map and var in ip.user_ns):
+                self._id_graph_map[var] = idgraph.get_object_state(ip.user_ns[var], {})
 
     def post_run_cell(self, result) -> None:
         """
@@ -485,11 +491,19 @@ class KishuForJupyter:
 
         # Find created and deleted variables.
         post_run_cell_vars = self.get_user_namespace_vars()
-        created_and_deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
+        created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
                 post_run_cell_vars)
 
         # Find modified variables.
-        modified_vars = set()
+        if ip is None:
+            modified_vars = None
+        else:
+            modified_vars = set()
+            for k in self._id_graph_map.keys():
+                new_idgraph = idgraph.get_object_state(ip.user_ns[k], {})
+                if not idgraph.compare_id_graph(self._id_graph_map[k], new_idgraph):
+                    self._id_graph_map[k] = new_idgraph
+                    modified_vars.add(k)
 
         # Update AHG.
         if cell_info.start_time_ms is not None:
@@ -498,7 +512,12 @@ class KishuForJupyter:
                     created_and_deleted_vars, modified_vars)
         else:
             self._ahg.update_graph(result.info.raw_cell, 0, 0, accessed_vars,
-                    created_and_deleted_vars, modified_vars)
+                    created_vars.union(modified_vars), deleted_vars)
+
+        # Update ID graphs for newly created variables.
+        if ip is not None:
+            for var in created_vars:
+                self._id_graph_map[var] = idgraph.get_object_state(ip.user_ns[var], {})
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count
