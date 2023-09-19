@@ -62,6 +62,8 @@ from kishu.commit_graph import KishuCommitGraph
 from kishu.resources import KishuResource
 from kishu import idgraph2 as idgraph
 from kishu.optimization.ahg import AHG
+from kishu.optimization.optimizer import Optimizer
+from kishu.optimization.profiler import profile_variable_size, profile_migration_speed
 from kishu.optimization.change import find_input_vars, find_created_and_deleted_vars
 
 from plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
@@ -417,6 +419,28 @@ class KishuForJupyter:
         exec_id = cell_info.exec_id
         var_names = [item[0] for item in filter(no_ipython_var, user_ns.items())]
         cell_info.checkpoint_vars = var_names
+
+        # Step 2: invoke optimizer to compute restoration plan
+        # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
+        active_vss = set()
+        for vs_list in self._ahg.variable_snapshots.values():
+            if not vs_list[-1].deleted:
+                active_vss.add(vs_list[-1])
+
+        # Profile the size of each variable defined in the current session.
+        for active_vs in active_vss:
+            active_vs.size = profile_variable_size(user_ns[active_vs.name])
+
+        # Initialize the optimizer.
+        optimizer = Optimizer(profile_migration_speed())
+        optimizer.dependency_graph = self._ahg
+        optimizer.active_vss = active_vss
+        optimizer.overlapping_vss = overlapping_vss
+
+        # Use the optimizer to compute the checkpointing configuration.
+        vss_to_migrate, ces_to_recompute = selector.select_vss()
+        vss_to_recompute = active_vss - vss_to_migrate
+
         checkpoint = StoreEverythingCheckpointPlan.create(user_ns, checkpoint_file, exec_id, var_names)
         checkpoint.run(user_ns)
 
