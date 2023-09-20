@@ -619,6 +619,7 @@ class KishuForJupyter:
 
         # Step 2: prepare a restoration plan using results from the optimizer.
         restore_plan = RestorePlan.create(self._ahg, vss_to_migrate, ces_to_recompute)
+        print("commit id:", cell_info.exec_id)
         return restore_plan
 
     def _save_notebook(self) -> None:
