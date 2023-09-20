@@ -85,6 +85,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
     elif isinstance(obj, dict):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        visited[id(obj)] = node
         if include_id:
             node.id_obj = id(obj)
             node.check_value_only = False
