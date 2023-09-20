@@ -3,8 +3,8 @@ import dataclasses
 from typing import Generator, List, Optional, Type
 
 from kishu.resources import KishuResource
-from kishu.jupyterint2 import CellExecInfo, KishuForJupyter
-from kishu.commit_graph import CommitInfo
+from kishu.jupyterint2 import CommitEntryKind, CommitEntry, KishuForJupyter
+from kishu.commit_graph import CommitNodeInfo
 from kishu.commands import CommitSummary, KishuCommand, SelectedCommit
 
 
@@ -24,6 +24,7 @@ def notebook_id() -> Generator[str, None, None]:
 @pytest.fixture()
 def kishu_jupyter(kishu_resource, notebook_id) -> Generator[KishuForJupyter, None, None]:
     kishu_jupyter = KishuForJupyter(notebook_id=notebook_id)
+    kishu_jupyter.set_test_mode()
     yield kishu_jupyter
 
 
@@ -116,22 +117,23 @@ class TestKishuCommand:
 
     def test_status(self, notebook_id, basic_execution_ids):
         status_result = KishuCommand.status(notebook_id, basic_execution_ids[-1])
-        assert status_result.commit_info == CommitInfo(
+        assert status_result.commit_node_info == CommitNodeInfo(
             commit_id="0:3",
             parent_id="0:2",
         )
-        assert status_result.cell_exec_info == CellExecInfo(
+        assert status_result.commit_entry == CommitEntry(
+            kind=CommitEntryKind.jupyter,
             exec_id="0:3",
             execution_count=3,
             code_block="y = x + 1",
             checkpoint_vars=[],
-            start_time_ms=status_result.cell_exec_info.start_time_ms,  # Not tested
-            end_time_ms=status_result.cell_exec_info.end_time_ms,  # Not tested
-            checkpoint_runtime_ms=status_result.cell_exec_info.checkpoint_runtime_ms,  # Not tested
-            runtime_ms=status_result.cell_exec_info.runtime_ms,  # Not tested
-            raw_nb=status_result.cell_exec_info.raw_nb,  # Not tested
-            formatted_cells=status_result.cell_exec_info.formatted_cells,  # Not tested
-            _restore_plan=status_result.cell_exec_info._restore_plan,  # Not tested
+            start_time_ms=status_result.commit_entry.start_time_ms,  # Not tested
+            end_time_ms=status_result.commit_entry.end_time_ms,  # Not tested
+            checkpoint_runtime_ms=status_result.commit_entry.checkpoint_runtime_ms,  # Not tested
+            runtime_ms=status_result.commit_entry.runtime_ms,  # Not tested
+            raw_nb=status_result.commit_entry.raw_nb,  # Not tested
+            formatted_cells=status_result.commit_entry.formatted_cells,  # Not tested
+            restore_plan=status_result.commit_entry.restore_plan,  # Not tested
         )
 
     def test_branch(self, notebook_id, basic_execution_ids):

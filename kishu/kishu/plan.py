@@ -82,7 +82,7 @@ class ExecutionHistory:
         cell_info_dict = {}
         for key, exec_info in history.items():
             obj = dataclasses.asdict(exec_info)
-            null_value_keys = ['_restore_plan']
+            null_value_keys = ['restore_plan']
             for k, v in obj.items():
                 if v is None:
                     null_value_keys.append(k)
