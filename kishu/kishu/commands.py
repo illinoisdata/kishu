@@ -1,6 +1,7 @@
 from __future__ import annotations
 import datetime
 import heapq
+import json
 import jupyter_client
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, cast
@@ -39,6 +40,7 @@ class StatusResult:
 @dataclass
 class CheckoutResult:
     status: str
+    message: str
 
 
 @dataclass
@@ -56,6 +58,7 @@ class HistoricalCommit:
     timestamp: str
     branch_id: str
     parent_branch_id: str
+    other_branch_ids: List[str]
 
 
 @dataclass
@@ -83,6 +86,7 @@ class SelectedCommit:
     oid: str
     parent_oid: str
     timestamp: str
+    latest_exec_num: Optional[str]
     cells: List[SelectedCommitCell]
     variables: List[SelectedCommitVariable]
     # branch_id: str
@@ -103,7 +107,14 @@ class FEInitializeResult:
 class KishuCommand:
 
     @staticmethod
-    def log(notebook_id: str, commit_id: str) -> LogResult:
+    def log(notebook_id: str, commit_id: Optional[str] = None) -> LogResult:
+        if commit_id is None:
+            head = KishuBranch.get_head(notebook_id)
+            commit_id = head.commit_id
+
+        if commit_id is None:
+            return LogResult([])
+
         store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
         exec_infos = KishuCommand._find_exec_info(notebook_id, graph)
@@ -129,31 +140,57 @@ class KishuCommand:
         )
 
     @staticmethod
-    def checkout(notebook_id: str, commit_id: str) -> CheckoutResult:
+    def checkout(notebook_id: str, branch_or_commit_id: str) -> CheckoutResult:
         connection = KishuForJupyter.retrieve_connection(notebook_id)
         if connection is None:
             return CheckoutResult(
-                status="missing_kernel_connection"
+                status="error",
+                message="Missing kernel connection information",
             )
-        cf = jupyter_client.find_connection_file(connection.kernel_id)
+
+        # Find connection file.
+        try:
+            cf = jupyter_client.find_connection_file(connection.kernel_id)
+        except OSError:
+            return CheckoutResult(
+                status="error",
+                message="Kernel is not alive",
+            )
+
+        # Connect to kernel.
         km = jupyter_client.BlockingKernelClient(connection_file=cf)
         km.load_connection_file()
         km.start_channels()
         km.wait_for_ready()
         if km.is_alive():
             reply = km.execute(
-                f"_kishu.checkout('{commit_id}')",
+                f"_kishu.checkout('{branch_or_commit_id}')",
                 reply=True,
                 silent=True,
                 # store_history=False,  # Do not increment cell count.
             )
             km.stop_channels()
+            if reply["content"]["status"] == "ok":
+                return CheckoutResult(
+                    status="ok",
+                    message=f"Checkout {branch_or_commit_id}",
+                )
+            elif reply["content"]["status"] == "error":
+                # print("\n".join(reply["content"]["traceback"]))
+                ename = reply["content"]["ename"]
+                evalue = reply["content"]["evalue"]
+                return CheckoutResult(
+                    status="error",
+                    message=f"{ename}: {evalue}",
+                )
             return CheckoutResult(
-                status=reply["content"]["status"]
+                status=reply["content"]["status"],
+                message=json.dumps(reply["content"]),
             )
         else:
             return CheckoutResult(
-                status="failed_connection"
+                status="error",
+                message="Failed to connect to kernel",
             )
 
     @staticmethod
@@ -200,6 +237,7 @@ class KishuCommand:
                 timestamp=KishuCommand._to_datetime(cell_exec_info.end_time_ms),
                 branch_id="",  # To be set in _toposort_commits.
                 parent_branch_id="",  # To be set in _toposort_commits.
+                other_branch_ids=[],
             ))
         commits = KishuCommand._toposort_commits(commits)
 
@@ -290,13 +328,13 @@ class KishuCommand:
 
         # Compile list of cells.
         cells: List[SelectedCommitCell] = []
-        if cell_exec_info.executed_cells is not None:
-            for executed_cell in cell_exec_info.executed_cells:
+        if cell_exec_info.formatted_cells is not None:
+            for executed_cell in cell_exec_info.formatted_cells:
                 cells.append(SelectedCommitCell(
                     cell_type=executed_cell.cell_type,
                     content=executed_cell.source,
                     output=executed_cell.output,
-                    exec_num=str(executed_cell.execution_count),
+                    exec_num=KishuCommand._str_or_none(executed_cell.execution_count),
                 ))
 
         # Builds SelectedCommit.
@@ -304,6 +342,7 @@ class KishuCommand:
             oid=commit_id,
             parent_oid=commit_info.parent_id,
             timestamp=KishuCommand._to_datetime(cell_exec_info.end_time_ms),
+            latest_exec_num=KishuCommand._str_or_none(cell_exec_info.execution_count),
             variables=variables,
             cells=cells,
         )
@@ -368,17 +407,38 @@ class KishuCommand:
         }
 
         # Find mapping between current branch names to new branch names base on commit.
+        # Assume: commits are sorted, so the head commit of a branch is the last commit in the list.
+        head_commits_by_old_branch = {commit.branch_id: commit.oid for commit in commits}
         old_to_new_branch_name = {
-            commit.branch_id: commit_to_branch_name[commit.oid]
-            for commit in commits if commit.oid in commit_to_branch_name
+            old_branch: commit_to_branch_name[commit_id]
+            for old_branch, commit_id in head_commits_by_old_branch.items() if commit_id in commit_to_branch_name
         }
 
-        # Now relabel every branch names.
+        # List other branch names that will not show up.
+        selected_branch_names = {branch_name for _, branch_name in old_to_new_branch_name.items()}
+        commit_to_other_branch_names: Dict[str, List[str]] = {
+            commit_id: [] for commit_id in commit_to_branch_name
+        }
+        for branch in branches:
+            commit_to_other_branch_names[branch.commit_id].append(branch.branch_name)
+        for commit_id in commit_to_other_branch_names:
+            other_branch_names = filter(
+                lambda branch_name: branch_name not in selected_branch_names,
+                commit_to_other_branch_names[commit_id]
+            )
+            commit_to_other_branch_names[commit_id] = sorted(other_branch_names)
+
+        # Edit branches in commits.
         for commit in commits:
+            # Now relabel every branch names.
             if commit.branch_id in old_to_new_branch_name:
                 commit.branch_id = old_to_new_branch_name[commit.branch_id]
             if commit.parent_branch_id in old_to_new_branch_name:
                 commit.parent_branch_id = old_to_new_branch_name[commit.parent_branch_id]
+
+            # Insert other branch names.
+            if commit.oid in commit_to_other_branch_names:
+                commit.other_branch_ids = commit_to_other_branch_names[commit.oid]
         return commits
 
     @staticmethod
@@ -425,3 +485,7 @@ class KishuCommand:
                 # Some type implements __len__ but not qualify for len().
                 return None
         return None
+
+    @staticmethod
+    def _str_or_none(value: Optional[Any]) -> Optional[str]:
+        return None if value is None else str(value)

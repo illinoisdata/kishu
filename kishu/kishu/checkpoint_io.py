@@ -74,7 +74,7 @@ def get_log_item(dbfile: str, commit_id: str) -> bytes:
         (commit_id, )
         )
     res: tuple = cur.fetchone()
-    return res[0]
+    return res[0] if res else bytes()
 
 
 def get_log_items(dbfile: str, commit_ids: List[str]) -> Dict[str, bytes]:

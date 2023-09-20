@@ -156,7 +156,7 @@ Notebook instrument.
 
 
 @dataclass
-class NBFormatCell:
+class FormattedCell:
     cell_type: str
     source: str
     output: Optional[str]
@@ -191,7 +191,8 @@ class CellExecInfo(UnitExecution):
     runtime_ms: Optional[int] = None
     checkpoint_runtime_ms: Optional[int] = None
     checkpoint_vars: Optional[List[str]] = None
-    executed_cells: Optional[List[NBFormatCell]] = None
+    raw_nb: Optional[str] = None
+    formatted_cells: Optional[List[FormattedCell]] = None
     _restore_plan: Optional[RestorePlan] = None
 
 
@@ -205,6 +206,7 @@ class JupyterConnection:
 class KishuForJupyter:
     CURRENT_CELL_ID = 'current'
     SAVE_CMD = "try { IPython.notebook.save_checkpoint(); } catch { }"
+    NBFORMAT_VERSION = 4
 
     def __init__(self, notebook_id: Optional[str] = None) -> None:
         """
@@ -231,6 +233,8 @@ class KishuForJupyter:
             self.record_connection()
         except Exception as e:
             print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
+        if self._notebook_path:
+            print("WARNING: Enclosing notebook not found. Skipping notebook cell checkpoint and restoration.")
 
         self._platform = enclosing_platform()
         self._session_id = 0
@@ -251,35 +255,54 @@ class KishuForJupyter:
     def checkpoint_file(self) -> str:
         return KishuResource.checkpoint_path(self._notebook_id)
 
-    def checkout(self, commit_id: str) -> None:
+    def checkout(self, branch_or_commit_id: str) -> None:
         """
         Restores a variable state from commit_id.
         """
         ip = get_jupyter_kernel()
         if ip is None:
             raise ValueError("Jupyter kernel is unexpectedly None.")
-        commit_id = str(commit_id)
 
-        # read checkout plan
+        # By default, checkout at commit ID in detach mode.
+        branch_name: Optional[str] = None
+        commit_id = branch_or_commit_id
+        is_detach = True
+
+        # Attempt to interpret target as a branch.
+        retrieved_branches = KishuBranch.get_branch(self._notebook_id, branch_or_commit_id)
+        if len(retrieved_branches) == 1:
+            assert retrieved_branches[0].branch_name == branch_or_commit_id
+            branch_name = retrieved_branches[0].branch_name
+            commit_id = retrieved_branches[0].commit_id
+            is_detach = False
+
+        # Retrieve checkout plan
         checkpoint_file = self.checkpoint_file()
-        cell = cast(CellExecInfo, UnitExecution.get_from_db(checkpoint_file, commit_id))
-        restore_plan: Optional[RestorePlan] = cell._restore_plan
-        if restore_plan is None:
+        unit_exec_cell = UnitExecution.get_from_db(checkpoint_file, commit_id)
+        if unit_exec_cell is None:
+            raise ValueError("No commit found for commit_id = {}".format(commit_id))
+        cell_exec_info = cast(CellExecInfo, unit_exec_cell)
+        if cell_exec_info._restore_plan is None:
             raise ValueError("No restore plan found for commit_id = {}".format(commit_id))
 
-        # perform checkout
+        # Restore notebook cells
+        if cell_exec_info.raw_nb:
+            self._checkout_notebook(cell_exec_info.raw_nb)
+
+        # Restore user-namespace variables.
         user_ns = ip.user_ns   # will restore to global namespace
         target_ns: Dict[str, Any] = {}         # temp location
-        restore_plan.run(target_ns, checkpoint_file, commit_id)
-        self._apply_namespace(user_ns, target_ns)
-        print('Checked-out variables: {}'.format(list(target_ns.keys())))
-        # TODO: update execution count and database history
+        cell_exec_info._restore_plan.run(target_ns, checkpoint_file, commit_id)
+        self._checkout_namespace(user_ns, target_ns)
 
-        # update kishu internal state
+        # Update Kishu heads.
         self._graph.jump(commit_id)
-
-        # update branch head.
-        KishuBranch.update_head(self._notebook_id, commit_id=commit_id, is_detach=True)
+        KishuBranch.update_head(
+            self._notebook_id,
+            branch_name=branch_name,
+            commit_id=commit_id,
+            is_detach=is_detach,
+        )
 
     def pre_run_cell(self, info) -> None:
         """
@@ -334,7 +357,7 @@ class KishuForJupyter:
         cell_info.error_before_exec = repr_if_not_none(result.error_before_exec)
         cell_info.error_in_exec = repr_if_not_none(result.error_in_exec)
         cell_info.result = repr_if_not_none(result.result)
-        cell_info.executed_cells = self._all_notebook_cells()
+        cell_info.raw_nb, cell_info.formatted_cells = self._all_notebook_cells()
 
         # Find accessed variables.
         accessed_vars, _ = find_input_vars(result.info.raw_cell, self._pre_run_cell_vars,
@@ -478,24 +501,24 @@ class KishuForJupyter:
         if sleep_t >= 1.0:
             print("WARNING: Notebook saving is taking too long. Kishu may not capture every cell.")
 
-    def _all_notebook_cells(self) -> List[NBFormatCell]:
+    def _all_notebook_cells(self) -> Tuple[Optional[str], List[FormattedCell]]:
         if self._notebook_path is None:
-            return []
+            return None, []
 
         with open(self._notebook_path, 'r') as f:
-            nb = nbformat.read(f, 4)
+            nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
 
         nb_cells = []
         for cell in nb.cells:
             if cell.cell_type == "code":
-                nb_cells.append(NBFormatCell(
+                nb_cells.append(FormattedCell(
                     cell_type=cell.cell_type,
                     source=cell.source,
                     output=self._parse_cell_output(cell.outputs),
                     execution_count=cell.execution_count,
                 ))
             elif cell.cell_type == "markdown":
-                nb_cells.append(NBFormatCell(
+                nb_cells.append(FormattedCell(
                     cell_type=cell.cell_type,
                     source=cell.source,
                     output=None,
@@ -503,7 +526,7 @@ class KishuForJupyter:
                 ))
             else:
                 raise ValueError(f"Unknown cell type: {cell.cell_type}")
-        return nb_cells
+        return nbformat.writes(nb), nb_cells
 
     def _parse_cell_output(self, cell_outputs: List[Dict[Any, Any]]) -> Optional[str]:
         if len(cell_outputs) == 0:
@@ -540,7 +563,22 @@ class KishuForJupyter:
         if head.branch_name is not None:
             KishuBranch.upsert_branch(self._notebook_id, head.branch_name, commit_id)
 
-    def _apply_namespace(self, user_ns: Dict[Any, Any], target_ns: Dict[Any, Any]) -> None:
+    def _checkout_notebook(self, raw_nb: str) -> None:
+        if self._notebook_path is None:
+            return
+
+        # Read current notebook cells.
+        with open(self._notebook_path, 'r') as f:
+            nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
+
+        # Apply target cells.
+        target_nb = nbformat.reads(raw_nb, KishuForJupyter.NBFORMAT_VERSION)
+        nb.cells = target_nb.cells
+
+        # Save change
+        nbformat.write(nb, self._notebook_path)
+
+    def _checkout_namespace(self, user_ns: Dict[Any, Any], target_ns: Dict[Any, Any]) -> None:
         user_ns.update(target_ns)
         for key, _ in list(filter(no_ipython_var, user_ns.items())):
             if key not in target_ns:
@@ -591,13 +629,6 @@ def get_jupyter_kernel():
     return _ipython_shell
 
 
-def get_executed_cells():
-    ip = get_jupyter_kernel()
-    if ip is None:
-        return None
-    return ip.user_ns["In"]
-
-
 # The singleton instance for execution history.
 _kishu_exec_history: Optional[KishuForJupyter] = None
 
@@ -609,7 +640,7 @@ def get_kishu_instance():
 KISHU_VAR_NAME = '_kishu'
 
 
-def load_kishu(notebook_id: Optional[str]=None, session_id: Optional[int]=None) -> None:
+def load_kishu(notebook_id: Optional[str] = None, session_id: Optional[int] = None) -> None:
     global _kishu_exec_history
     global _ipython_shell
     if _kishu_exec_history is not None:
@@ -629,6 +660,7 @@ def load_kishu(notebook_id: Optional[str]=None, session_id: Optional[int]=None) 
           "- You can inspect traced information using '_kishu'.\n"
           "- Checkpoint file: {}/\n".format(kishu.checkpoint_file()))
 
+
 def update_metadata(nb: Any, nb_path: Path) -> None:
     if "kishu" not in nb.metadata:
         notebook_name = datetime.now().strftime('%Y%m%dT%H%M%S')
@@ -647,21 +679,16 @@ def init_kishu(path: Optional[Path] = None) -> None:
     Increments session number to ensure unique commit ids.
     """
     # Read enclosing notebook.
-    if path == None:
+    if path is None:
         kernel_id = enclosing_kernel_id()
         path = enclosing_notebook_path(kernel_id)
     nb = None
     assert path is not None
     with open(path, 'r') as f:
-        nb = nbformat.read(f, 4)
+        nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
 
     # Update notebook metadata.
     update_metadata(nb, path)
 
     # Attach Kishu instrumentation.
     load_kishu(nb.metadata.kishu.notebook_id, nb.metadata.kishu.session_count)
-    
-
-    
-        
-

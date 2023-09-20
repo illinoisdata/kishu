@@ -129,7 +129,8 @@ class TestKishuCommand:
             end_time_ms=status_result.cell_exec_info.end_time_ms,  # Not tested
             checkpoint_runtime_ms=status_result.cell_exec_info.checkpoint_runtime_ms,  # Not tested
             runtime_ms=status_result.cell_exec_info.runtime_ms,  # Not tested
-            executed_cells=status_result.cell_exec_info.executed_cells,  # Not tested
+            raw_nb=status_result.cell_exec_info.raw_nb,  # Not tested
+            formatted_cells=status_result.cell_exec_info.formatted_cells,  # Not tested
             _restore_plan=status_result.cell_exec_info._restore_plan,  # Not tested
         )
 
@@ -150,6 +151,7 @@ class TestKishuCommand:
             oid="0:3",
             parent_oid="0:2",
             timestamp=fe_commit_result.timestamp,  # Not tested
+            latest_exec_num="3",
             cells=fe_commit_result.cells,  # Not tested
             variables=[],
         )
