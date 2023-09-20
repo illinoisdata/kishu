@@ -364,6 +364,13 @@ class KishuForJupyter:
         self._last_execution_count = 0
         self._start_time_ms: Optional[int] = None
 
+        # Optimization items. The AHG for tracking per-cell variable accesses and
+        # modifications is initialized here.
+        self._ahg = AHG()
+        self._user_ns = {} if get_jupyter_kernel() is None else get_jupyter_kernel().user_ns
+        self._id_graph_map = {}
+        self._pre_run_cell_vars = set()
+
     def set_test_mode(self):
         # Configure this object for testing.
         self._commit_id_mode = "counter"
@@ -378,9 +385,7 @@ class KishuForJupyter:
         return KishuResource.checkpoint_path(self._notebook_id)
 
     def get_user_namespace_vars(self) -> list:
-        user_ns = {} if ip is None else ip.user_ns
-        checkpoint_file = self.checkpoint_file()
-        return [item[0] for item in filter(no_ipython_var, user_ns.items())]
+        return [item[0] for item in filter(no_ipython_var, self._user_ns.items())]
 
     def checkout(self, branch_or_commit_id: str) -> None:
         """
@@ -431,12 +436,6 @@ class KishuForJupyter:
             is_detach=is_detach,
         )
 
-        # Optimization items. The AHG for tracking per-cell variable accesses and
-        # modifications is initialized here.
-        self._ahg = AHG()
-        self._id_graph_map = {}
-        self._pre_run_cell_vars = None
-
     def pre_run_cell(self, info) -> None:
         """
         A hook invoked before running a cell.
@@ -452,11 +451,13 @@ class KishuForJupyter:
         self._start_time_ms = get_epoch_time_ms()
 
         # Record variables in the user name prior to running cell.
-        self._pre_run_cell_vars = self.get_user_namespace_vars()
-
+        self._pre_run_cell_vars = set(self.get_user_namespace_vars())
+        print("pre run cell vars:", self._pre_run_cell_vars)
+        
+        # Populate missing ID graph entries.
         for var in self._ahg.variable_snapshots.keys():
-            if ip is not None and (var not in self._id_graph_map and var in ip.user_ns):
-                self._id_graph_map[var] = idgraph.get_object_state(ip.user_ns[var], {})
+            if var not in self._id_graph_map and var in self._user_ns:
+                self._id_graph_map[var] = idgraph.get_object_state(self._user_ns[var], {})
 
     def post_run_cell(self, result) -> None:
         """
@@ -600,14 +601,16 @@ class KishuForJupyter:
         for active_vs in active_vss:
             active_vs.size = profile_variable_size(user_ns[active_vs.name])
 
-        # Initialize the optimizer.
-        optimizer = Optimizer(profile_migration_speed())
-        optimizer.dependency_graph = self._ahg
+        # Initialize the optimizer. Migration speed is currently set to large value to prompt optimizer to store everything.
+        optimizer = Optimizer(1000000000)
+        optimizer.ahg = self._ahg
         optimizer.active_vss = active_vss
-        optimizer.overlapping_vss = overlapping_vss
+
+        # TODO: add overlap detection in the future.
+        optimizer.linked_vs_pairs = set()
 
         # Use the optimizer to compute the checkpointing configuration.
-        vss_to_migrate, ces_to_recompute = selector.select_vss()
+        vss_to_migrate, ces_to_recompute = optimizer.select_vss()
         vss_to_recompute = active_vss - vss_to_migrate
 
         checkpoint = StoreEverythingCheckpointPlan.create(user_ns, checkpoint_file, exec_id, var_names)
