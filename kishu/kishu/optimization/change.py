@@ -89,7 +89,7 @@ def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set
 
     while udf_calls:
         # Visit the next nested UDF call.
-        v_nested = Visitor(shell=shell, shell_udfs=shell_udfs)
+        v_nested = Visitor(user_ns=user_ns, shell_udfs=shell_udfs)
         udf = udf_calls.popleft()
         v_nested.visit(ast.parse(inspect.getsource(user_ns[udf])))
 
