@@ -78,7 +78,7 @@ from kishu.optimization.optimizer import Optimizer
 from kishu.optimization.profiler import profile_variable_size, profile_migration_speed
 from kishu.optimization.change import find_input_vars, find_created_and_deleted_vars
 
-from plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
+from kishu.plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
 
 
 """
