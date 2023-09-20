@@ -251,9 +251,6 @@ class KishuForJupyter:
     def checkpoint_file(self) -> str:
         return KishuResource.checkpoint_path(self._notebook_id)
 
-    def get_user_namespace_vars(self) -> list:
-        return [item[0] for item in filter(no_ipython_var, self._user_ns.items())]
-
     def checkout(self, commit_id: str) -> None:
         """
         Restores a variable state from commit_id.
@@ -447,6 +444,7 @@ class KishuForJupyter:
 
         # Step 2: prepare a restoration plan using results from the optimizer.
         restore_plan = RestorePlan.create(self._ahg, vss_to_migrate, ces_to_recompute)
+        print("commit id:", cell_info.exec_id)
         return restore_plan
 
     def _save_notebook(self) -> None:
