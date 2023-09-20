@@ -116,7 +116,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         if include_id:
             node.id_obj = id(obj)
             node.check_value_only = False
-        node.children.append(pickle.dumps(obj))
+        #node.children.append(pickle.dumps(obj))
         node.children.append("/EOC")
         return node
 
