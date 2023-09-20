@@ -51,6 +51,8 @@ import os
 import time
 import urllib.request
 import uuid
+import numpy as np
+
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from datetime import datetime
@@ -602,7 +604,7 @@ class KishuForJupyter:
             active_vs.size = profile_variable_size(user_ns[active_vs.name])
 
         # Initialize the optimizer. Migration speed is currently set to large value to prompt optimizer to store everything.
-        optimizer = Optimizer(1000000000)
+        optimizer = Optimizer(np.inf)
         optimizer.ahg = self._ahg
         optimizer.active_vss = active_vss
 
@@ -611,14 +613,13 @@ class KishuForJupyter:
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.select_vss()
-        vss_to_recompute = active_vss - vss_to_migrate
 
         checkpoint = StoreEverythingCheckpointPlan.create(user_ns, checkpoint_file, exec_id, var_names)
         checkpoint.run(user_ns)
 
-        # Step 2: prepare a restoration plan
-        restore: RestorePlan = checkpoint.restore_plan()
-        return restore
+        # Step 2: prepare a restoration plan using results from the optimizer.
+        restore_plan = RestorePlan.create(self._ahg, vss_to_migrate, ces_to_recompute)
+        return restore_plan
 
     def _save_notebook(self) -> None:
         if self._notebook_path is None:

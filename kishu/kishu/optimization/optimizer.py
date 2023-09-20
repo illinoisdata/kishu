@@ -61,7 +61,11 @@ class Optimizer():
                 self.dfs_helper(ce, set(), prerequisite_ces)
                 self.req_func_mapping[ce] = prerequisite_ces
 
-    def select_vss(self) -> set:
+    def select_vss(self, only_migrate = True) -> set:
+        # TODO: Remove when recomputation is supported.
+        if only_migrate:
+            return self.active_vss, set()
+
         # Build prerequisite (rec) function mapping.
         self.find_prerequisites()
 
