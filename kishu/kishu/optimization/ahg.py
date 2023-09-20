@@ -143,3 +143,4 @@ class AHG:
 
         # Add the newly created OE to the graph.
         self.add_cell_execution(cell, cell_runtime, start_time, input_vss, output_vss_create.union(output_vss_delete))
+        print("cell executions:", len(self.cell_executions))

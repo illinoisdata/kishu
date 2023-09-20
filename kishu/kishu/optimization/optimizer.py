@@ -1,4 +1,4 @@
-from ahg import VariableSnapshot, CellExecution
+from kishu.optimization.ahg import VariableSnapshot, CellExecution
 
 from collections import defaultdict
 import networkx as nx
@@ -41,7 +41,7 @@ class Optimizer():
                 prerequisite_ces.add(current)
                 for vs in current.src_vss:
                     if vs not in self.active_vss and vs not in visited:
-                        self.dfs(vs, visited, prerequisite_ces)
+                        self.dfs_helper(vs, visited, prerequisite_ces)
 
         elif isinstance(current, VariableSnapshot):
             visited.add(current)
@@ -93,7 +93,7 @@ class Optimizer():
             flow_graph.add_edge(vs_pair[1], vs_pair[0], capacity=np.inf)
 
         # Prune CEs which produce no active variables to speedup computation.
-        for ce in self.dependency_graph.cell_executions:
+        for ce in self.ahg.cell_executions:
             if flow_graph.in_degree(ce) == 0:
                 flow_graph.remove_node(ce)
 
