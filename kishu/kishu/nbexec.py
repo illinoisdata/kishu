@@ -78,6 +78,7 @@ class NotebookRunner:
         code_two = "\n".join(
             [
                 "test = locals()",
+                "print(test)",
                 "result_dict = {}",
                 "result_dict.update({var: test[var] for var in my_list})",
                 "result_dict.update({name: eval(expr) for name, expr in my_dict.items()})",
