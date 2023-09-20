@@ -255,6 +255,9 @@ class KishuForJupyter:
     def checkpoint_file(self) -> str:
         return KishuResource.checkpoint_path(self._notebook_id)
 
+    def get_user_namespace_vars(self) -> list:
+        return [item[0] for item in filter(no_ipython_var, self._user_ns.items())]
+
     def checkout(self, branch_or_commit_id: str) -> None:
         """
         Restores a variable state from commit_id.
