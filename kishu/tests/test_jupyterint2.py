@@ -86,6 +86,7 @@ def test_record_history():
         set_field_to(commit_entry, 'end_time_ms', 0)
         set_field_to(commit_entry, 'runtime_ms', 0)
         set_field_to(commit_entry, 'start_time_ms', 0)
+        set_field_to(commit_entry, 'message', "")
         return commit_entry
 
     # TODO: This test is hacky; we ought to reach for list of commits through public methods.
@@ -97,6 +98,7 @@ def test_record_history():
             "exec_id": "0:1",
             "execution_count": 1,
             "kind": "jupyter",
+            "message": "",
         }
     assert replace_start_time(history_dict['0:2']) == {
             "checkpoint_runtime_ms": 0,
@@ -108,4 +110,5 @@ def test_record_history():
             "runtime_ms": 0,
             "start_time_ms": 0,
             "kind": "jupyter",
+            "message": "",
         }

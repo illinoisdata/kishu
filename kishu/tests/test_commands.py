@@ -68,18 +68,21 @@ class TestKishuCommand:
         assert log_result.commit_graph[0] == CommitSummary(
             commit_id="0:3",
             parent_id="0:2",
+            message=log_result.commit_graph[0].message,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
         )
         assert log_result.commit_graph[1] == CommitSummary(
             commit_id="0:2",
             parent_id="0:1",
+            message=log_result.commit_graph[1].message,  # Not tested
             code_block="y = 2",
             runtime_ms=log_result.commit_graph[1].runtime_ms,  # Not tested
         )
         assert log_result.commit_graph[2] == CommitSummary(
             commit_id="0:1",
             parent_id="",
+            message=log_result.commit_graph[2].message,  # Not tested
             code_block="x = 1",
             runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
         )
@@ -89,6 +92,7 @@ class TestKishuCommand:
         assert log_result.commit_graph[0] == CommitSummary(
             commit_id="0:1",
             parent_id="",
+            message=log_result.commit_graph[0].message,  # Not tested
             code_block="x = 1",
             runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
         )
@@ -99,18 +103,21 @@ class TestKishuCommand:
         assert log_all_result.commit_graph[0] == CommitSummary(
             commit_id="0:1",
             parent_id="",
+            message=log_all_result.commit_graph[0].message,  # Not tested
             code_block="x = 1",
             runtime_ms=log_all_result.commit_graph[0].runtime_ms,  # Not tested
         )
         assert log_all_result.commit_graph[1] == CommitSummary(
             commit_id="0:2",
             parent_id="0:1",
+            message=log_all_result.commit_graph[1].message,  # Not tested
             code_block="y = 2",
             runtime_ms=log_all_result.commit_graph[1].runtime_ms,  # Not tested
         )
         assert log_all_result.commit_graph[2] == CommitSummary(
             commit_id="0:3",
             parent_id="0:2",
+            message=log_all_result.commit_graph[2].message,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_all_result.commit_graph[2].runtime_ms,  # Not tested
         )
@@ -127,6 +134,7 @@ class TestKishuCommand:
             execution_count=3,
             code_block="y = x + 1",
             checkpoint_vars=[],
+            message=status_result.commit_entry.message,  # Not tested,
             start_time_ms=status_result.commit_entry.start_time_ms,  # Not tested
             end_time_ms=status_result.commit_entry.end_time_ms,  # Not tested
             checkpoint_runtime_ms=status_result.commit_entry.checkpoint_runtime_ms,  # Not tested

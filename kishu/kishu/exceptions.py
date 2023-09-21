@@ -31,3 +31,8 @@ class KernelNotAliveError(JupyterConnectionError):
 class StartChannelError(JupyterConnectionError):
     def __init__(self):
         super().__init__("Failed to start a channel to kernel.")
+
+
+class NoChannelError(JupyterConnectionError):
+    def __init__(self):
+        super().__init__("No channel is connected.")

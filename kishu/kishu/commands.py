@@ -1,14 +1,12 @@
 from __future__ import annotations
 import datetime
 import heapq
-import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, cast
 
 from kishu.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.commit_graph import CommitNodeInfo, KishuCommitGraph
-from kishu.exceptions import JupyterConnectionError
-from kishu.jupyterint2 import CommitEntry, JupyterConnection
+from kishu.jupyterint2 import CommitEntry, JupyterCommandResult, JupyterConnection
 from kishu.plan import UnitExecution
 from kishu.resources import KishuResource
 
@@ -17,6 +15,7 @@ from kishu.resources import KishuResource
 class CommitSummary:
     commit_id: str
     parent_id: str
+    message: str
     code_block: Optional[str]
     runtime_ms: Optional[int]
 
@@ -37,13 +36,8 @@ class StatusResult:
     commit_entry: CommitEntry
 
 
-@dataclass
-class JupyterCommandResult:
-    status: str
-    message: str
-
-
 CheckoutResult = JupyterCommandResult
+CommitResult = JupyterCommandResult
 
 
 @dataclass
@@ -143,8 +137,13 @@ class KishuCommand:
         )
 
     @staticmethod
+    def commit(notebook_id: str, message: Optional[str] = None) -> CommitResult:
+        command = "_kishu.commit()" if message is None else f"_kishu.commit(message=\"{message}\")"
+        return JupyterConnection.execute_one_command(notebook_id, command)
+
+    @staticmethod
     def checkout(notebook_id: str, branch_or_commit_id: str) -> CheckoutResult:
-        result = KishuCommand._execute_one_command(
+        result = JupyterConnection.execute_one_command(
             notebook_id,
             f"_kishu.checkout('{branch_or_commit_id}')",
         )
@@ -228,36 +227,6 @@ class KishuCommand:
     """Helpers"""
 
     @staticmethod
-    def _execute_one_command(notebook_id: str, command: str) -> JupyterCommandResult:
-        try:
-            with JupyterConnection(notebook_id) as conn:
-                reply = conn.execute(command)
-        except JupyterConnectionError as e:
-            return JupyterCommandResult(
-                status="error",
-                message=str(e),
-            )
-
-        # Translate to JupyterCommandResult.
-        if reply["content"]["status"] == "ok":
-            return JupyterCommandResult(
-                status="ok",
-                message=f"Successfully execute {command}.",
-            )
-        elif reply["content"]["status"] == "error":
-            # print("\n".join(reply["content"]["traceback"]))
-            ename = reply["content"]["ename"]
-            evalue = reply["content"]["evalue"]
-            return JupyterCommandResult(
-                status="error",
-                message=f"{ename}: {evalue}",
-            )
-        return JupyterCommandResult(
-            status=reply["content"]["status"],
-            message=json.dumps(reply["content"]),
-        )
-
-    @staticmethod
     def _find_commit_entries(notebook_id: str, graph: List[CommitNodeInfo]) -> Dict[str, CommitEntry]:
         unit_execs = UnitExecution.get_commits(
             KishuResource.checkpoint_path(notebook_id),
@@ -283,12 +252,13 @@ class KishuCommand:
     ) -> List[CommitSummary]:
         summaries = []
         for node in graph:
-            exec_info = commit_entries.get(node.commit_id, CommitEntry())
+            commit_entry = commit_entries.get(node.commit_id, CommitEntry())
             summaries.append(CommitSummary(
                 commit_id=node.commit_id,
                 parent_id=node.parent_id,
-                code_block=exec_info.code_block,
-                runtime_ms=exec_info.runtime_ms,
+                message=commit_entry.message,
+                code_block=commit_entry.code_block,
+                runtime_ms=commit_entry.runtime_ms,
             ))
         return summaries
 
