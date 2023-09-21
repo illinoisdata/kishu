@@ -71,6 +71,23 @@ def status(
 
 
 @kishu_app.command()
+def commit(
+    notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
+    message: str = typer.Option(
+        None,
+        "-m",
+        "--message",
+        help="Commit message.",
+        show_default=False,
+    ),
+) -> None:
+    """
+    Checkout a notebook to a commit.
+    """
+    print(into_json(KishuCommand.commit(notebook_id, message=message)))
+
+
+@kishu_app.command()
 def checkout(
     notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
     branch_or_commit_id: str = typer.Argument(
@@ -94,8 +111,8 @@ def branch(
     ),
     create_branch_name: str = typer.Option(
         None,
-        "--create-branch-name",
         "-c",
+        "--create-branch-name",
         help="Create branch with this name.",
         show_default=False,
     ),
