@@ -61,7 +61,7 @@ class Optimizer():
                 self.dfs_helper(ce, set(), prerequisite_ces)
                 self.req_func_mapping[ce] = prerequisite_ces
 
-    def select_vss(self, only_migrate = True) -> tuple[set, set]:
+    def select_vss(self, only_migrate = True) -> Tuple[set, set]:
         # TODO: Remove when recomputation is supported.
         if only_migrate:
             return self.active_vss, set()
