@@ -488,11 +488,8 @@ class KishuForJupyter:
         entry.result = repr_if_not_none(result.result)
 
         # Find accessed variables.
-        if ip is None:
-            accessed_vars = None
-        else:
-            accessed_vars, _ = find_input_vars(entry.code_block, post_run_cell_vars,
-                    ip.user_ns, set())
+        accessed_vars, _ = find_input_vars(entry.code_block, post_run_cell_vars,
+                self._user_ns, set())
 
         # Find created and deleted variables.
         post_run_cell_vars = self.get_user_namespace_vars()
@@ -500,18 +497,15 @@ class KishuForJupyter:
                 post_run_cell_vars)
 
         # Find modified variables.
-        if ip is None:
-            modified_vars = None
-        else:
-            modified_vars = set()
-            for k in self._id_graph_map.keys():
-                new_idgraph = idgraph.get_object_state(ip.user_ns[k], {})
-                if not idgraph.compare_id_graph(self._id_graph_map[k], new_idgraph):
-                    self._id_graph_map[k] = new_idgraph
-                    modified_vars.add(k)
+        modified_vars = set()
+        for k in self._id_graph_map.keys():
+            new_idgraph = idgraph.get_object_state(self._user_ns[k], {})
+            if not idgraph.compare_id_graph(self._id_graph_map[k], new_idgraph):
+                self._id_graph_map[k] = new_idgraph
+                modified_vars.add(k)
 
         # Update AHG.
-        if cell_info.start_time_ms is not None:
+        if entry.start_time_ms is not None:
             self._ahg.update_graph(entry.code_block, entry.runtime_ms,
                     entry.start_time_ms, accessed_vars,
                     created_and_deleted_vars, modified_vars)
@@ -520,9 +514,8 @@ class KishuForJupyter:
                     created_vars.union(modified_vars), deleted_vars)
 
         # Update ID graphs for newly created variables.
-        if ip is not None:
-            for var in created_vars:
-                self._id_graph_map[var] = idgraph.get_object_state(ip.user_ns[var], {})
+        for var in created_vars:
+            self._id_graph_map[var] = idgraph.get_object_state(self._user_ns[var], {})
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count
