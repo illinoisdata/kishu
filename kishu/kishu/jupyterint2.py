@@ -500,7 +500,7 @@ class KishuForJupyter:
         modified_vars = set()
         for k in self._id_graph_map.keys():
             new_idgraph = idgraph.get_object_state(self._user_ns[k], {})
-            if not idgraph.compare_id_graph(self._id_graph_map[k], new_idgraph):
+            if not idgraph.compare_idgraph(self._id_graph_map[k], new_idgraph):
                 self._id_graph_map[k] = new_idgraph
                 modified_vars.add(k)
 
