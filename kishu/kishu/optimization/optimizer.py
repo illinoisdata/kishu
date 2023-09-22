@@ -45,7 +45,7 @@ class Optimizer():
 
         elif isinstance(current, VariableSnapshot):
             visited.add(current)
-            if current.output_ce not in prerequisite_ces:
+            if current.output_ce and current.output_ce not in prerequisite_ces:
                 self.dfs_helper(current.output_ce, visited, prerequisite_ces)
 
     def find_prerequisites(self):
@@ -61,7 +61,7 @@ class Optimizer():
                 self.dfs_helper(ce, set(), prerequisite_ces)
                 self.req_func_mapping[ce] = prerequisite_ces
 
-    def select_vss(self, only_migrate = True) -> set:
+    def select_vss(self, only_migrate = True) -> tuple[set, set]:
         # TODO: Remove when recomputation is supported.
         if only_migrate:
             return self.active_vss, set()
