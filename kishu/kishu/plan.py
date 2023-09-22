@@ -279,7 +279,7 @@ class RerunCellRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).
     """
-    def __init__(self, cell_code: str = None):
+    def __init__(self, cell_code: str = ""):
         """
         cell_code: cell code to rerun.
         """
