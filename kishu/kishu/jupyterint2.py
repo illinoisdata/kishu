@@ -488,8 +488,9 @@ class KishuForJupyter:
         entry.result = repr_if_not_none(result.result)
 
         # Find accessed variables.
-        accessed_vars, _ = find_input_vars(entry.code_block, self._pre_run_cell_vars,
-                self._user_ns, set())
+        if entry.code_block:
+            accessed_vars, _ = find_input_vars(entry.code_block, self._pre_run_cell_vars,
+                    self._user_ns, set())
 
         # Find created and deleted variables.
         post_run_cell_vars = set(self.get_user_namespace_vars())
