@@ -492,7 +492,7 @@ class KishuForJupyter:
                 self._user_ns, set())
 
         # Find created and deleted variables.
-        post_run_cell_vars = self.get_user_namespace_vars()
+        post_run_cell_vars = set(self.get_user_namespace_vars())
         created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
                 post_run_cell_vars)
 
