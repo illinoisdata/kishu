@@ -3,6 +3,7 @@ import ast
 import inspect
 from collections import deque
 from ipykernel.zmqshell import ZMQInteractiveShell
+from typing import Deque, Any
 
 PRIMITIVES = {int, bool, str, float}
 
@@ -79,7 +80,7 @@ def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set
     function_defs = v1.functiondefs
 
     # Recurse into accessed UDFs.
-    udf_calls = deque()
+    udf_calls : Deque[Any] = deque()
     udf_calls_visited = set()
 
     for udf in v1.udfcalls:

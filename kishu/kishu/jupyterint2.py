@@ -370,8 +370,8 @@ class KishuForJupyter:
         # modifications is initialized here.
         self._ahg = AHG()
         self._user_ns = {} if get_jupyter_kernel() is None else get_jupyter_kernel().user_ns
-        self._id_graph_map = {}
-        self._pre_run_cell_vars = set()
+        self._id_graph_map : Dict[str, idgraph.GraphNode] = {}
+        self._pre_run_cell_vars : Set[str] = set()
 
     def set_test_mode(self):
         # Configure this object for testing.
