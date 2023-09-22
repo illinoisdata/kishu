@@ -25,7 +25,7 @@ class VariableSnapshot:
         self.deleted = deleted
 
         # Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
-        self.input_ces = []
+        self.input_ces : List[CellExecution] = []
 
         # The unique cell execution creating this variable snapshot.
         self.output_ce = None
@@ -93,7 +93,7 @@ class AHG:
         self.variable_snapshots[variable_name].append(vs)
         return vs
 
-    def add_cell_execution(self, cell, cell_runtime: float, start_time: float, src_vss: List, dst_vss: List):
+    def add_cell_execution(self, cell, cell_runtime: float, start_time: float, src_vss: set[VariableSnapshot], dst_vss: set[VariableSnapshot]):
         """
             Create a cell execution from captured metrics.
             Args:
