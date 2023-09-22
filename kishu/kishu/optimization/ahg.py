@@ -35,7 +35,7 @@ class CellExecution:
     """
         A cell execution (object) corresponds to a cell execution (action, i.e. press play) in the notebook session.
     """
-    def __init__(self, cell_num: int, cell: str, cell_runtime: float, start_time: float, src_vss: List, dst_vss: List):
+    def __init__(self, cell_num: int, cell: str, cell_runtime: float, start_time: float, src_vss: set, dst_vss: set):
         """
             Create an operation event from cell execution metrics.
             Args:
@@ -44,8 +44,8 @@ class CellExecution:
                 cell_runtime (float): Cell runtime.
                 start_time (time): Time of start of cell execution. Note that this is different from when the cell was
                     queued.
-                src_vss (List[VariableSnapshot]): Nodeset containing input VSs of the cell execution.
-                dst_vss (List[VariableSnapshot]): Nodeset containing output VSs of the cell execution.
+                src_vss (set[VariableSnapshot]): Nodeset containing input VSs of the cell execution.
+                dst_vss (set[VariableSnapshot]): Nodeset containing output VSs of the cell execution.
         """
         self.cell_num = cell_num
         self.cell = cell
@@ -120,7 +120,7 @@ class AHG:
             dst_vs.output_ce = ce
 
 
-    def update_graph(self, cell: str, cell_runtime: float, start_time: float, input_variables: set,
+    def update_graph(self, cell: Optional[str], cell_runtime: float, start_time: float, input_variables: set,
                  created_and_modified_variables: set, deleted_variables: set):
         """
             Updates the graph according to the newly executed cell and its input and output variables.
@@ -133,6 +133,8 @@ class AHG:
                 created_and_modified_variables (set): set of created and modified variables.
                 deleted_variables (set): set of deleted variables
         """
+        if not cell:
+            cell = ""
 
         # Retrieve input variable snapshots
         input_vss = set(self.variable_snapshots[variable][-1] for variable in input_variables)

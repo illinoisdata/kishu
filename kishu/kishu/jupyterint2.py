@@ -505,9 +505,9 @@ class KishuForJupyter:
                 modified_vars.add(k)
 
         # Update AHG.
-        if entry.start_time_ms is not None:
-            self._ahg.update_graph(entry.code_block, entry.runtime_ms,
-                    entry.start_time_ms, accessed_vars,
+        if entry.start_time_ms is not None and entry.runtime_ms is not None:
+            self._ahg.update_graph(entry.code_block, float(entry.runtime_ms * 1000),
+                    float(entry.start_time_ms * 1000), accessed_vars,
                     created_vars.union(modified_vars), deleted_vars)
         else:
             self._ahg.update_graph(entry.code_block, 0.0, 0.0, accessed_vars,
