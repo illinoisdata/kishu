@@ -488,7 +488,7 @@ class KishuForJupyter:
         entry.result = repr_if_not_none(result.result)
 
         # Find accessed variables.
-        accessed_vars, _ = find_input_vars(entry.code_block, post_run_cell_vars,
+        accessed_vars, _ = find_input_vars(entry.code_block, self._pre_run_cell_vars,
                 self._user_ns, set())
 
         # Find created and deleted variables.
@@ -508,7 +508,7 @@ class KishuForJupyter:
         if entry.start_time_ms is not None:
             self._ahg.update_graph(entry.code_block, entry.runtime_ms,
                     entry.start_time_ms, accessed_vars,
-                    created_and_deleted_vars, modified_vars)
+                    created_vars.union(modified_vars), deleted_vars)
         else:
             self._ahg.update_graph(result.info.raw_cell, 0, 0, accessed_vars,
                     created_vars.union(modified_vars), deleted_vars)
