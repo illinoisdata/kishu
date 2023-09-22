@@ -510,7 +510,7 @@ class KishuForJupyter:
                     entry.start_time_ms, accessed_vars,
                     created_vars.union(modified_vars), deleted_vars)
         else:
-            self._ahg.update_graph(result.info.raw_cell, 0, 0, accessed_vars,
+            self._ahg.update_graph(entry.code_block, 0.0, 0.0, accessed_vars,
                     created_vars.union(modified_vars), deleted_vars)
 
         # Update ID graphs for newly created variables.

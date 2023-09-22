@@ -24,7 +24,7 @@ class Optimizer():
         # CEs required to recompute a variables last modified by a given CE.
         self.req_func_mapping = {}
 
-    def dfs_helper(self, current: str, visited: set, prerequisite_ces: str):
+    def dfs_helper(self, current: str, visited: set, prerequisite_ces: set):
         """
             Perform DFS on the Application History Graph for finding the CEs required to recompute a variable.
             Args:
