@@ -3,6 +3,7 @@ import dataclasses
 import dill
 import json
 import shortuuid
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
 
@@ -274,6 +275,32 @@ class LoadVariableRestoreAction(RestoreAction):
         return self.__repr__()
 
 
+class RerunCellRestoreAction(RestoreAction):
+    """
+    Load variables from a pickled file (using the dill module).
+    """
+    def __init__(self, cell_code: str = ""):
+        """
+        cell_code: cell code to rerun.
+        """
+        if (cell_code is not None) and (not isinstance(cell_code, str)):
+            raise ValueError("Unexpected type for cell_code: {}".format(type(cell_code)))
+        self.cell_code: Optional[str] = cell_code
+
+    def run(self, user_ns: dict, checkpoint_file: str, exec_id: str):
+        """
+        @param user_ns  A target space where restored variables will be set.
+        """
+        # TODO: implement this when recomputation is required.
+        raise Exception("Restoration via cell rerunning is not supported yet.")
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(var_names={self.cell_code})"
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+
 @dataclass
 class RestorePlan:
     """
@@ -282,6 +309,25 @@ class RestorePlan:
     @param actions  A series of actions for restoring a state.
     """
     actions: List[RestoreAction] = field(default_factory=lambda: [])
+
+    @classmethod
+    def create(cls, ahg, vss_to_migrate, ces_to_recompute):
+        # Sort variables to migrate based on cells they were created in.
+        ce_to_vs_map = defaultdict(list)
+        for vs in vss_to_migrate:
+            ce_to_vs_map[vs.output_ce.cell_num].append(vs)
+
+        actions = []
+        for ce in ahg.cell_executions:
+            if ce in ces_to_recompute:
+                actions.append(RerunCellRestoreAction(ce.cell))
+            if len(ce_to_vs_map[ce.cell_num]) > 0:
+                actions.append(LoadVariableRestoreAction(
+                    [vs.name for vs in ce_to_vs_map[ce.cell_num]]))
+
+        print("Restore actions:", actions)
+
+        return cls(actions)
 
     def run(self, user_ns: dict, checkpoint_file: str, exec_id: str):
         """
@@ -292,3 +338,4 @@ class RestorePlan:
         """
         for action in self.actions:
             action.run(user_ns, checkpoint_file, exec_id)
+
