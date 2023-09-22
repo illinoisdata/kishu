@@ -93,7 +93,7 @@ class AHG:
         self.variable_snapshots[variable_name].append(vs)
         return vs
 
-    def add_cell_execution(self, cell, cell_runtime: float, start_time: float, src_vss: set[VariableSnapshot], dst_vss: set[VariableSnapshot]):
+    def add_cell_execution(self, cell, cell_runtime: float, start_time: float, src_vss: set, dst_vss: set):
         """
             Create a cell execution from captured metrics.
             Args:
@@ -101,8 +101,8 @@ class AHG:
                 cell_runtime (float): Cell runtime.
                 start_time (time): Time of start of cell execution. Note that this is different from when the cell was
                     queued.
-                src_vss (List): List containing input VSs of the cell execution.
-                dst_vss (List): List containing output VSs of the cell execution.
+                src_vss (Set): Set containing input VSs of the cell execution.
+                dst_vss (Set): Set containing output VSs of the cell execution.
         """
 
         # Create a cell execution.
