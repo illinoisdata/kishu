@@ -62,8 +62,8 @@ def profile_migration_speed(dirname: str, alpha=1) -> float:
 
     start_time = time.time()
 
-    total_read_time = 0
-    total_write_time = 0
+    total_read_time = 0.0
+    total_write_time = 0.0
     for i in range(filecount):
         write_array_large = np.random.rand(1000, 1000)
         write_array_small = np.random.rand(10, 10)
