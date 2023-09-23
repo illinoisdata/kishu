@@ -6,15 +6,17 @@ from tempfile import NamedTemporaryFile, gettempdir
 import nbformat
 from typing import Any
 from kishu.checkpoint_io import init_checkpoint_database
-from kishu.jupyterint2 import CellExecInfo
+from kishu.jupyterint2 import CommitEntry
 from kishu.nbexec import NotebookRunner
 from kishu.plan import ExecutionHistory
+
 
 def create_temporary_copy(path, filename):
     temp_dir = gettempdir()
     temp_path = os.path.join(temp_dir, filename)
     shutil.copy2(path, temp_path)
     return temp_path
+
 
 def test_history_to_sqlite():
     # create a temp file for database
@@ -23,19 +25,19 @@ def test_history_to_sqlite():
     init_checkpoint_database(filename)
 
     # construct an example
-    exec_info = CellExecInfo()
-    exec_info.exec_id = '0:1'
-    exec_info.code_block = 'code'
-    exec_info.runtime_ms = 2
-    exec_info.accessed_resources = ['a']
-    exec_info.modified_resources = ['b']
-    exec_info.save_into_db(filename)
+    commit_entry = CommitEntry()
+    commit_entry.exec_id = '0:1'
+    commit_entry.code_block = 'code'
+    commit_entry.runtime_ms = 2
+    commit_entry.accessed_resources = ['a']
+    commit_entry.modified_resources = ['b']
+    commit_entry.save_into_db(filename)
 
     log_dict = ExecutionHistory(filename).get_history()
-    assert exec_info.exec_id in log_dict
+    assert commit_entry.exec_id in log_dict
 
-    retrieved_item = log_dict[exec_info.exec_id]
-    assert retrieved_item == exec_info
+    retrieved_item = log_dict[commit_entry.exec_id]
+    assert retrieved_item == commit_entry
 
 
 def test_checkout():
@@ -46,6 +48,7 @@ def test_checkout():
     notebook = NotebookRunner(path_to_notebook + "/tests/" + notebook_name)
     output = notebook.execute(cell_indices, vals)
     assert output['a'] == 1
+
 
 def test_reattatchment():
     cell_indices = []
@@ -60,7 +63,8 @@ def test_reattatchment():
     with open(temp_path, "r") as temp_file:
         nb = nbformat.read(temp_file, 4)
         assert nb.metadata.kishu.session_count == 2
-    
+
+
 def test_record_history():
     cell_indices = []
     path_to_notebook = os.getcwd()
@@ -77,20 +81,24 @@ def test_record_history():
             return
         dict_obj[field] = value
 
-    def replace_start_time(exec_info):
-        set_field_to(exec_info, 'checkpoint_runtime_ms', 0)
-        set_field_to(exec_info, 'end_time_ms', 0)
-        set_field_to(exec_info, 'runtime_ms', 0)
-        set_field_to(exec_info, 'start_time_ms', 0)
-        return exec_info
+    def replace_start_time(commit_entry):
+        set_field_to(commit_entry, 'checkpoint_runtime_ms', 0)
+        set_field_to(commit_entry, 'end_time_ms', 0)
+        set_field_to(commit_entry, 'runtime_ms', 0)
+        set_field_to(commit_entry, 'start_time_ms', 0)
+        set_field_to(commit_entry, 'message', "")
+        return commit_entry
 
+    # TODO: This test is hacky; we ought to reach for list of commits through public methods.
     history_dict = json.loads(output['history'])
     assert replace_start_time(history_dict['0:1']) == {
             "checkpoint_runtime_ms": 0,
-            "code_block": "from kishu import load_kishu\nload_kishu()",
+            "code_block": "from kishu import load_kishu\nload_kishu()\n_kishu.set_test_mode()",
             "end_time_ms": 0,
             "exec_id": "0:1",
-            "execution_count": 1
+            "execution_count": 1,
+            "kind": "jupyter",
+            "message": "",
         }
     assert replace_start_time(history_dict['0:2']) == {
             "checkpoint_runtime_ms": 0,
@@ -100,5 +108,7 @@ def test_record_history():
             "exec_id": "0:2",
             "execution_count": 2,
             "runtime_ms": 0,
-            "start_time_ms": 0
+            "start_time_ms": 0,
+            "kind": "jupyter",
+            "message": "",
         }
