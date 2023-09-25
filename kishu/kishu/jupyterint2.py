@@ -51,15 +51,13 @@ import os
 import time
 import urllib.request
 import uuid
-import numpy as np
-
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from datetime import datetime
 from itertools import chain
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path, PurePath
-from typing import Set, Any, cast, Dict, Generator, List, Optional, Tuple
+from typing import Any, cast, Dict, Generator, List, Optional, Tuple
 
 from kishu.branch import KishuBranch
 from kishu.checkpoint_io import init_checkpoint_database
@@ -72,13 +70,8 @@ from kishu.exceptions import (
     NoChannelError,
 )
 from kishu.resources import KishuResource
-from kishu import idgraph2 as idgraph
-from kishu.optimization.ahg import AHG
-from kishu.optimization.optimizer import Optimizer
-from kishu.optimization.profiler import profile_variable_size, profile_migration_speed
-from kishu.optimization.change import find_input_vars, find_created_and_deleted_vars
 
-from kishu.plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
+from .plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
 
 
 """
@@ -366,13 +359,6 @@ class KishuForJupyter:
         self._last_execution_count = 0
         self._start_time_ms: Optional[int] = None
 
-        # Optimization items. The AHG for tracking per-cell variable accesses and
-        # modifications is initialized here.
-        self._ahg = AHG()
-        self._user_ns = {} if get_jupyter_kernel() is None else get_jupyter_kernel().user_ns
-        self._id_graph_map : Dict[str, idgraph.GraphNode] = {}
-        self._pre_run_cell_vars : Set[str] = set()
-
     def set_test_mode(self):
         # Configure this object for testing.
         self._commit_id_mode = "counter"
@@ -385,9 +371,6 @@ class KishuForJupyter:
 
     def checkpoint_file(self) -> str:
         return KishuResource.checkpoint_path(self._notebook_id)
-
-    def get_user_namespace_vars(self) -> list:
-        return [item[0] for item in filter(no_ipython_var, self._user_ns.items())]
 
     def checkout(self, branch_or_commit_id: str) -> None:
         """
@@ -452,15 +435,6 @@ class KishuForJupyter:
         """
         self._start_time_ms = get_epoch_time_ms()
 
-        # Record variables in the user name prior to running cell.
-        self._pre_run_cell_vars = set(self.get_user_namespace_vars())
-        print("pre run cell vars:", self._pre_run_cell_vars)
-        
-        # Populate missing ID graph entries.
-        for var in self._ahg.variable_snapshots.keys():
-            if var not in self._id_graph_map and var in self._user_ns:
-                self._id_graph_map[var] = idgraph.get_object_state(self._user_ns[var], {})
-
     def post_run_cell(self, result) -> None:
         """
         A hook executed after the execution of each cell.
@@ -486,37 +460,6 @@ class KishuForJupyter:
         entry.error_before_exec = repr_if_not_none(result.error_before_exec)
         entry.error_in_exec = repr_if_not_none(result.error_in_exec)
         entry.result = repr_if_not_none(result.result)
-
-        # Find accessed variables.
-        if entry.code_block:
-            accessed_vars, _ = find_input_vars(entry.code_block, self._pre_run_cell_vars,
-                    self._user_ns, set())
-
-        # Find created and deleted variables.
-        post_run_cell_vars = set(self.get_user_namespace_vars())
-        created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
-                post_run_cell_vars)
-
-        # Find modified variables.
-        modified_vars = set()
-        for k in self._id_graph_map.keys():
-            new_idgraph = idgraph.get_object_state(self._user_ns[k], {})
-            if not idgraph.compare_idgraph(self._id_graph_map[k], new_idgraph):
-                self._id_graph_map[k] = new_idgraph
-                modified_vars.add(k)
-
-        # Update AHG.
-        if entry.start_time_ms is not None and entry.runtime_ms is not None:
-            self._ahg.update_graph(entry.code_block, float(entry.runtime_ms * 1000),
-                    float(entry.start_time_ms * 1000), accessed_vars,
-                    created_vars.union(modified_vars), deleted_vars)
-        else:
-            self._ahg.update_graph(entry.code_block, 0.0, 0.0, accessed_vars,
-                    created_vars.union(modified_vars), deleted_vars)
-
-        # Update ID graphs for newly created variables.
-        for var in created_vars:
-            self._id_graph_map[var] = idgraph.get_object_state(self._user_ns[var], {})
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count
@@ -585,36 +528,12 @@ class KishuForJupyter:
         exec_id = cell_info.exec_id
         var_names = [item[0] for item in filter(no_ipython_var, user_ns.items())]
         cell_info.checkpoint_vars = var_names
-
-        # Step 2: invoke optimizer to compute restoration plan
-        # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
-        active_vss = set()
-        for vs_list in self._ahg.variable_snapshots.values():
-            if not vs_list[-1].deleted:
-                active_vss.add(vs_list[-1])
-
-        # Profile the size of each variable defined in the current session.
-        for active_vs in active_vss:
-            active_vs.size = profile_variable_size(user_ns[active_vs.name])
-
-        # Initialize the optimizer. Migration speed is currently set to large value to prompt optimizer to store everything.
-        optimizer = Optimizer(np.inf)
-        optimizer.ahg = self._ahg
-        optimizer.active_vss = active_vss
-
-        # TODO: add overlap detection in the future.
-        optimizer.linked_vs_pairs = set()
-
-        # Use the optimizer to compute the checkpointing configuration.
-        vss_to_migrate, ces_to_recompute = optimizer.select_vss()
-
         checkpoint = StoreEverythingCheckpointPlan.create(user_ns, checkpoint_file, exec_id, var_names)
         checkpoint.run(user_ns)
 
-        # Step 2: prepare a restoration plan using results from the optimizer.
-        restore_plan = RestorePlan.create(self._ahg, vss_to_migrate, ces_to_recompute)
-        print("commit id:", cell_info.exec_id)
-        return restore_plan
+        # Step 2: prepare a restoration plan
+        restore: RestorePlan = checkpoint.restore_plan()
+        return restore
 
     def _save_notebook(self) -> None:
         if self._notebook_path is None:
