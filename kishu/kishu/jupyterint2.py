@@ -51,7 +51,6 @@ import os
 import time
 import urllib.request
 import uuid
-import numpy as np
 
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
@@ -59,7 +58,7 @@ from datetime import datetime
 from itertools import chain
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path, PurePath
-from typing import Set, Any, cast, Dict, Generator, List, Optional, Tuple
+from typing import Any, cast, Dict, Generator, List, Optional, Tuple
 
 from kishu.branch import KishuBranch
 from kishu.checkpoint_io import init_checkpoint_database
@@ -545,13 +544,11 @@ class KishuForJupyter:
         exec_id = cell_info.exec_id
         var_names = [item[0] for item in filter(no_ipython_var, user_ns.items())]
         cell_info.checkpoint_vars = var_names
-
         checkpoint = StoreEverythingCheckpointPlan.create(user_ns, checkpoint_file, exec_id, var_names)
         checkpoint.run(user_ns)
 
         # Step 2: prepare a restoration plan using results from the optimizer.
         restore_plan = RestorePlan.create(self._optimization_manager)
-        print("commit id:", cell_info.exec_id)
         return restore_plan
 
     def _save_notebook(self) -> None:
