@@ -11,4 +11,3 @@ scipy
 scikit-learn
 textblob
 mypy
-networkx
