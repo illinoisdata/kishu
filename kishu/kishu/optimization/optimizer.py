@@ -1,24 +1,25 @@
-from kishu.optimization.ahg import VariableSnapshot, CellExecution
+from kishu.optimization.ahg import AHG, VariableSnapshot, CellExecution
 
 from collections import defaultdict
 import networkx as nx
 from networkx.algorithms.flow import shortest_augmenting_path
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Set, Any
 
 class Optimizer():
     """
         The optimizer constructs a flow graph and runs the min-cut algorithm to exactly find the best
         checkpointing configuration.
     """
-    def __init__(self, migration_speed_bps=1):
+    def __init__(self, ahg: AHG, active_vss: Set[VariableSnapshot], linked_vs_pairs: Tuple[Any, Any],
+            migration_speed_bps = 1) -> None:
         """
             Creates an optimizer with a migration speed estimate. The AHG and active VS fields
             must be populated prior to calling select_vss.
         """
-        self.ahg = None
-        self.active_vss = None
-        self.linked_vs_pairs = None
+        self.ahg = ahg
+        self.active_vss = active_vss
+        self.linked_vs_pairs = linked_vs_pairs
         self.migration_speed_bps = migration_speed_bps
 
         # CEs required to recompute a variables last modified by a given CE.

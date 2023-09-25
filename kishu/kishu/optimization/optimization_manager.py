@@ -46,6 +46,8 @@ class OptimizationManager:
         if code_block:
             accessed_vars, _ = find_input_vars(code_block, self._pre_run_cell_vars,
                     self._user_ns, set())
+        else:
+            accessed_vars = set()
 
         # Find created and deleted variables.
         post_run_cell_vars = set(post_run_cell_vars)
@@ -61,22 +63,15 @@ class OptimizationManager:
                 modified_vars.add(k)
 
         # Update AHG.
-        if start_time_ms is not None and runtime_ms is not None:
-            self._ahg.update_graph(code_block, float(runtime_ms * 1000),
-                    float(start_time_ms * 1000), accessed_vars,
-                    created_vars.union(modified_vars), deleted_vars)
-        else:
-            self._ahg.update_graph(code_block, 0.0, 0.0, accessed_vars,
-                    created_vars.union(modified_vars), deleted_vars)
+        start_time = 0.0 if start_time_ms is None else float(start_time_ms * 1000)
+        runtime = 0.0 if runtime_ms is None else float(runtime_ms * 1000)
+
+        self._ahg.update_graph(code_block, runtime, start_time, accessed_vars,
+                created_vars.union(modified_vars), deleted_vars)
 
         # Update ID graphs for newly created variables.
         for var in created_vars:
             self._id_graph_map[var] = idgraph.get_object_state(self._user_ns[var], {})
-
-        print("accessed vars:", accessed_vars)
-        print("modified vars:", modified_vars)
-        print("created vars:", created_vars)
-        print("deleted vars:", deleted_vars)
 
     def optimize(self) -> Tuple[Any, Any]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
@@ -90,12 +85,8 @@ class OptimizationManager:
             active_vs.size = profile_variable_size(self._user_ns[active_vs.name])
 
         # Initialize the optimizer. Migration speed is currently set to large value to prompt optimizer to store everything.
-        optimizer = Optimizer(np.inf)
-        optimizer.ahg = self._ahg
-        optimizer.active_vss = active_vss
-
         # TODO: add overlap detection in the future.
-        optimizer.linked_vs_pairs = set()
+        optimizer = Optimizer(self._ahg, active_vss, set(), np.inf)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.select_vss()
