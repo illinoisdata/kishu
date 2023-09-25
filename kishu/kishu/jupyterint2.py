@@ -360,7 +360,7 @@ class KishuForJupyter:
         self._last_execution_count = 0
         self._start_time_ms: Optional[int] = None
 
-        self._optimization_manager = OptimizationManager({} if get_jupyter_kernel is None
+        self._optimization_manager = OptimizationManager({} if get_jupyter_kernel() is None
                 else get_jupyter_kernel().user_ns)
 
     def set_test_mode(self):
