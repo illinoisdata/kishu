@@ -51,7 +51,6 @@ import os
 import time
 import urllib.request
 import uuid
-
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from datetime import datetime
@@ -361,8 +360,8 @@ class KishuForJupyter:
         self._last_execution_count = 0
         self._start_time_ms: Optional[int] = None
 
-        self._optimization_manager = OptimizationManager({}) if get_jupyter_kernel() is None \
-                else OptimizationManager(get_jupyter_kernel().user_ns)
+        self._optimization_manager = OptimizationManager({} if get_jupyter_kernel is None
+                else get_jupyter_kernel().user_ns)
 
     def set_test_mode(self):
         # Configure this object for testing.
@@ -380,7 +379,7 @@ class KishuForJupyter:
     def get_user_namespace_vars(self) -> list:
         ip = get_jupyter_kernel()
         user_ns = {} if ip is None else ip.user_ns
-        return [item[0] for item in filter(no_ipython_var, user_ns.items())]
+        return [varname for varname, _ in filter(no_ipython_var, user_ns.items())]
 
     def checkout(self, branch_or_commit_id: str) -> None:
         """

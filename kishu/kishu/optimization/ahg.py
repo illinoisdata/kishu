@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from typing import List, Optional
+from typing import List, Optional, Set
 
 class VariableSnapshot:
     """
@@ -8,7 +8,7 @@ class VariableSnapshot:
         I.e. if variable 'x' has been assigned 3 times (x = 1, x = 2, x = 3), then 'x' will have 3 corresponding
         variable snapshots.
     """
-    def __init__(self, name: str, version: int, deleted: bool):
+    def __init__(self, name: str, version: int, deleted: bool) -> None:
         """
             Create a variable snapshot from variable properties.
             Args:
@@ -35,7 +35,8 @@ class CellExecution:
     """
         A cell execution (object) corresponds to a cell execution (action, i.e. press play) in the notebook session.
     """
-    def __init__(self, cell_num: int, cell: str, cell_runtime: float, start_time: float, src_vss: set, dst_vss: set):
+    def __init__(self, cell_num: int, cell: str, cell_runtime: float, start_time: float,
+            src_vss: Set[VariableSnapshot], dst_vss: Set[VariableSnapshot]) -> None:
         """
             Create an operation event from cell execution metrics.
             Args:
@@ -62,7 +63,7 @@ class AHG:
         Variable Snapshots (VSs) and Cell Executions (CEs) are the nodes of the AHG.
         Edges represent dependencies between VSs and CEs.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         """
             Create a new AHG. Called when Kishu is initialized for a notebook.
         """
@@ -93,7 +94,8 @@ class AHG:
         self.variable_snapshots[variable_name].append(vs)
         return vs
 
-    def add_cell_execution(self, cell, cell_runtime: float, start_time: float, src_vss: set, dst_vss: set):
+    def add_cell_execution(self, cell, cell_runtime: float, start_time: float,
+            src_vss: Set[VariableSnapshot], dst_vss: Set[VariableSnapshot]) -> None:
         """
             Create a cell execution from captured metrics.
             Args:
@@ -120,8 +122,8 @@ class AHG:
             dst_vs.output_ce = ce
 
 
-    def update_graph(self, cell: Optional[str], cell_runtime: float, start_time: float, input_variables: set,
-                 created_and_modified_variables: set, deleted_variables: set):
+    def update_graph(self, cell: Optional[str], cell_runtime: float, start_time: float, input_variables: Set[str],
+                 created_and_modified_variables: Set[str], deleted_variables: Set[str]) -> None:
         """
             Updates the graph according to the newly executed cell and its input and output variables.
             Args:
