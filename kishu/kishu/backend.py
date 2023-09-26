@@ -7,6 +7,10 @@ from kishu.serialization import into_json
 from kishu.commands import KishuCommand
 
 
+def is_true(s: str) -> bool:
+    return s.lower() == "true"
+
+
 app = Flask("kishu_server")
 
 
@@ -42,7 +46,8 @@ def checkout(notebook_id: str, branch_or_commit_id: str):
 @app.get("/branch/<notebook_id>/<branch_name>")
 def branch(notebook_id: str, branch_name: str):
     commit_id: Optional[str] = request.args.get('commit_id', default=None, type=str)
-    branch_result = KishuCommand.branch(notebook_id, branch_name, commit_id)
+    do_commit: bool = request.args.get('do_commit', default=False, type=is_true)
+    branch_result = KishuCommand.branch(notebook_id, branch_name, commit_id, do_commit=do_commit)
     return into_json(branch_result)
 
 
