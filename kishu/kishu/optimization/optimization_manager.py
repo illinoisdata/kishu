@@ -4,7 +4,7 @@ import numpy as np
 from kishu import idgraph2 as idgraph
 from kishu.optimization.ahg import AHG
 from kishu.optimization.optimizer import Optimizer
-from kishu.optimization.profile import profile_variable_size
+from kishu.optimization.profiler import profile_variable_size
 from kishu.optimization.change import find_input_vars, find_created_and_deleted_vars
 
 
