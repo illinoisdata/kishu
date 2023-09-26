@@ -1,4 +1,4 @@
-from kishu.planner.ahg import AHG, VariableSnapshot, CellExecution
+from kishu.planning.ahg import AHG, VariableSnapshot, CellExecution
 
 import networkx as nx
 from networkx.algorithms.flow import shortest_augmenting_path

@@ -71,8 +71,7 @@ from kishu.exceptions import (
 )
 from kishu.resources import KishuResource
 from kishu.planning.planner import CheckpointRestorePlanner
-
-from kishu.plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
+from kishu.planning.plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
 
 
 """
@@ -550,7 +549,7 @@ class KishuForJupyter:
         checkpoint.run(user_ns)
 
         # Step 2: prepare a restoration plan using results from the optimizer.
-        restore_plan = RestorePlan.create(self._cr_planner)
+        restore_plan = self._cr_planner.generate_restore_plan()
         return restore_plan
 
     def _save_notebook(self) -> None:

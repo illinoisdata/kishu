@@ -7,7 +7,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
 
-from kishu.optimization.optimization_manager import OptimizationManager
+from kishu.planning.ahg import AHG
 
 from kishu.checkpoint_io import (
     get_checkpoint,
@@ -313,11 +313,7 @@ class RestorePlan:
     actions: List[RestoreAction] = field(default_factory=lambda: [])
 
     @classmethod
-    def create(cls, optimization_manager: OptimizationManager):
-        # Find VSs to migrate and CEs to recompute using optimization manager.
-        ahg = optimization_manager._ahg
-        vss_to_migrate, ces_to_recompute = optimization_manager.optimize()
-
+    def create(cls, ahg: AHG, vss_to_migrate: Set[str], ces_to_recompute: Set[int]):
         # Sort variables to migrate based on cells they were created in.
         ce_to_vs_map = defaultdict(list)
         for vs_name in vss_to_migrate:

@@ -2,11 +2,11 @@ from typing import Set, Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from kishu import idgraph2 as idgraph
-from kishu.planner.ahg import AHG
-from kishu.planner.optimizer import Optimizer
-from kishu.planner.profiler import profile_variable_size
-from kishu.planner.change import find_input_vars, find_created_and_deleted_vars
-
+from kishu.planning.ahg import AHG
+from kishu.planning.optimizer import Optimizer
+from kishu.planning.profiler import profile_variable_size
+from kishu.planning.change import find_input_vars, find_created_and_deleted_vars
+from kishu.planning.plan import RestorePlan
 
 class CheckpointRestorePlanner:
     """
@@ -69,7 +69,7 @@ class CheckpointRestorePlanner:
         for var in created_vars:
             self._id_graph_map[var] = idgraph.get_object_state(self._user_ns[var], {})
 
-    def optimize(self) -> Tuple[Any, Any]:
+    def generate_restore_plan(self) -> RestorePlan:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = []
         for vs_list in self._ahg.variable_snapshots.values():
@@ -87,4 +87,6 @@ class CheckpointRestorePlanner:
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
 
-        return vss_to_migrate, ces_to_recompute
+        # Create restore plan using optimization results.
+        restore_plan = RestorePlan.create(self._ahg, vss_to_migrate, ces_to_recomputte)
+        return restore_plan
