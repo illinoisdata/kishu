@@ -103,7 +103,9 @@ def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set
     # A variable is an input only if it is in the shell before cell execution.
     input_variables = input_variables.intersection(existing_variables)
 
-    return input_variables, function_defs
+    # As we are currently not recursing into UDFs, returning function defs won't be necessary.
+    # return input_variables, function_defs
+    return input_variables
 
 
 def find_created_and_deleted_vars(pre_execution, post_execution):

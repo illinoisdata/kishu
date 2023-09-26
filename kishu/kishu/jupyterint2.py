@@ -379,7 +379,7 @@ class KishuForJupyter:
     def get_user_namespace_vars(self) -> list:
         ip = get_jupyter_kernel()
         user_ns = {} if ip is None else ip.user_ns
-        return [varname for varname, _ in filter(no_ipython_var, user_ns.items())]
+        return set(varname for varname, _ in filter(no_ipython_var, user_ns.items()))
 
     def checkout(self, branch_or_commit_id: str) -> None:
         """
@@ -473,8 +473,11 @@ class KishuForJupyter:
         entry.result = repr_if_not_none(result.result)
 
         # Update optimization items.
-        self._optimization_manager.post_run_cell_update(entry.code_block, self.get_user_namespace_vars(),
-                entry.start_time_ms, entry.runtime_ms)
+        self._optimization_manager.post_run_cell_update(
+                entry.code_block, 
+                self.get_user_namespace_vars(), 
+                entry.start_time_ms, 
+                entry.runtime_ms)
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count

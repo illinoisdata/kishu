@@ -45,7 +45,6 @@ class VariableSnapshot:
     output_ce: CellExecution = CellExecution(0, "", 0.0, 0.0, [], [])
 
 
-@dataclass
 class AHG:
     """
         The Application History Graph (AHG) tracks the history of a notebook instance.

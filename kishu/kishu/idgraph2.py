@@ -117,7 +117,8 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         if include_id:
             node.id_obj = id(obj)
             node.check_value_only = False
-        #node.children.append(pickle.dumps(obj))
+        # This will break if obj is not pickleable. Commenting out for now.
+        # node.children.append(pickle.dumps(obj))
         node.children.append("/EOC")
         return node
 
