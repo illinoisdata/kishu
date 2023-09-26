@@ -331,7 +331,7 @@ class RestorePlan:
                 actions.append(LoadVariableRestoreAction(
                     [vs_name for vs_name in ce_to_vs_map[ce.cell_num]]))
 
-        return actions
+        return cls(actions)
 
     def run(self, user_ns: dict, checkpoint_file: str, exec_id: str):
         """
