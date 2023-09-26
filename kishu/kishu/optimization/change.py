@@ -108,7 +108,7 @@ def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set
     return input_variables
 
 
-def find_created_and_deleted_vars(pre_execution: Set[str], post_execution: Set[str]) -> Set[str], Set[str]:
+def find_created_and_deleted_vars(pre_execution: Set[str], post_execution: Set[str]) -> Tuple[Set[str], Set[str]]:
     """
         Find created and deleted variables through computing a difference of the user namespace pre and post execution.
     """
