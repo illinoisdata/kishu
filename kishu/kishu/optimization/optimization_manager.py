@@ -50,9 +50,8 @@ class OptimizationManager:
             accessed_vars = set()
 
         # Find created and deleted variables.
-        post_run_cell_vars = set(post_run_cell_vars)
         created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
-                                                                   post_run_cell_vars)
+                                                                   set(post_run_cell_vars))
 
         # Find modified variables.
         modified_vars = set()
@@ -86,7 +85,7 @@ class OptimizationManager:
 
         # Initialize the optimizer. Migration speed is currently set to large value to prompt optimizer to store everything.
         # TODO: add overlap detection in the future.
-        optimizer = Optimizer(self._ahg, active_vss, set(), np.inf)
+        optimizer = Optimizer(self._ahg, active_vss, [], np.inf)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()

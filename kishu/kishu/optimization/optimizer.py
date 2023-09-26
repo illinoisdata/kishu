@@ -12,7 +12,7 @@ class Optimizer():
         checkpointing configuration.
     """
     def __init__(self, ahg: AHG, active_vss: List[VariableSnapshot],
-                 linked_vs_pairs: Tuple[VariableSnapshot, VariableSnapshot],
+                 linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
                  migration_speed_bps=1) -> None:
         """
             Creates an optimizer with a migration speed estimate. The AHG and active VS fields

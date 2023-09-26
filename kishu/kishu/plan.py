@@ -323,7 +323,7 @@ class RestorePlan:
         for vs_name in vss_to_migrate:
             ce_to_vs_map[ahg.variable_snapshots[vs_name][-1].output_ce.cell_num].append(vs_name)
 
-        actions = []
+        actions: List[RestoreAction] = []
         for ce in ahg.cell_executions:
             if ce.cell_num in ces_to_recompute:
                 actions.append(RerunCellRestoreAction(ce.cell))
@@ -331,9 +331,7 @@ class RestorePlan:
                 actions.append(LoadVariableRestoreAction(
                     [vs_name for vs_name in ce_to_vs_map[ce.cell_num]]))
 
-        print("Restore actions:", actions)
-
-        return cls(actions)
+        return actions
 
     def run(self, user_ns: dict, checkpoint_file: str, exec_id: str):
         """
