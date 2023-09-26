@@ -4,7 +4,7 @@ from collections import defaultdict
 import networkx as nx
 from networkx.algorithms.flow import shortest_augmenting_path
 import numpy as np
-from typing import Tuple, List, Set, Any
+from typing import Tuple, List, Set, Dict, Any 
 
 class Optimizer():
     """

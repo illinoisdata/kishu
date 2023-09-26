@@ -40,7 +40,7 @@ class CellExecution:
     cell_runtime: float
     start_time: float
     src_vss: List[VariableSnapshot]
-    dst_vss: List[VariableSnaapshot]
+    dst_vss: List[VariableSnapshot]
 
 @dataclass
 class AHG:
