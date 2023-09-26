@@ -2,7 +2,6 @@ from typing import Tuple
 import ast
 import inspect
 from collections import deque
-from ipykernel.zmqshell import ZMQInteractiveShell
 from typing import Deque, Any
 
 PRIMITIVES = {int, bool, str, float}
@@ -14,7 +13,7 @@ class Visitor(ast.NodeVisitor):
         # Whether we are currently in local scope.
         self.is_local = False
 
-        # Functions declared in 
+        # Functions declared in the user namespace.
         self.functiondefs = set()
         self.udfcalls = set()
         self.loads = set()
@@ -59,8 +58,7 @@ class Visitor(ast.NodeVisitor):
         self.is_local = False
 
 
-def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set) -> Tuple[
-    set, dict]:
+def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set) -> Tuple[set, dict]:
     """
         Capture the input variables of the cell via AST analysis.
         Args:
@@ -80,7 +78,7 @@ def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set
     function_defs = v1.functiondefs
 
     # Recurse into accessed UDFs.
-    udf_calls : Deque[Any] = deque()
+    udf_calls: Deque[Any] = deque()
     udf_calls_visited = set()
 
     for udf in v1.udfcalls:

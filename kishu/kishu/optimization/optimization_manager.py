@@ -1,11 +1,12 @@
-from typing import Set, Any, cast, Dict, Generator, List, Optional, Tuple
+from typing import Set, Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from kishu import idgraph2 as idgraph
 from kishu.optimization.ahg import AHG
 from kishu.optimization.optimizer import Optimizer
-from kishu.optimization.profiler import profile_variable_size, profile_migration_speed
+from kishu.optimization.profile import profile_variable_size
 from kishu.optimization.change import find_input_vars, find_created_and_deleted_vars
+
 
 class OptimizationManager:
     """
@@ -18,8 +19,8 @@ class OptimizationManager:
         """
         self._ahg = AHG()
         self._user_ns = user_ns
-        self._id_graph_map : Dict[str, idgraph.GraphNode] = {}
-        self._pre_run_cell_vars : Set[str] = set()
+        self._id_graph_map: Dict[str, idgraph.GraphNode] = {}
+        self._pre_run_cell_vars: Set[str] = set()
 
     def pre_run_cell_update(self, pre_run_cell_vars: List[str]) -> None:
         """
@@ -34,7 +35,7 @@ class OptimizationManager:
                 self._id_graph_map[var] = idgraph.get_object_state(self._user_ns[var], {})
 
     def post_run_cell_update(self, code_block: Optional[str], post_run_cell_vars: List[str],
-            start_time_ms: Optional[float], runtime_ms: Optional[float]) -> None:
+                             start_time_ms: Optional[float], runtime_ms: Optional[float]) -> None:
         """
             @param code_block: code of executed cell.
             @param post_run_cell_vars: variables in the namespace post-cell execution.
@@ -44,14 +45,14 @@ class OptimizationManager:
         # Find accessed variables.
         if code_block:
             accessed_vars, _ = find_input_vars(code_block, self._pre_run_cell_vars,
-                    self._user_ns, set())
+                                               self._user_ns, set())
         else:
             accessed_vars = set()
 
         # Find created and deleted variables.
         post_run_cell_vars = set(post_run_cell_vars)
         created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
-                post_run_cell_vars)
+                                                                   post_run_cell_vars)
 
         # Find modified variables.
         modified_vars = set()
@@ -66,7 +67,7 @@ class OptimizationManager:
         runtime = 0.0 if runtime_ms is None else float(runtime_ms * 1000)
 
         self._ahg.update_graph(code_block, runtime, start_time, accessed_vars,
-                created_vars.union(modified_vars), deleted_vars)
+                               created_vars.union(modified_vars), deleted_vars)
 
         # Update ID graphs for newly created variables.
         for var in created_vars:

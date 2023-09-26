@@ -1,8 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-import logging
 from collections import defaultdict
 from typing import List, Optional, Set
+
 
 @dataclass
 class VariableSnapshot:
@@ -11,7 +11,7 @@ class VariableSnapshot:
         I.e. if variable 'x' has been assigned 3 times (x = 1, x = 2, x = 3), then 'x' will have 3 corresponding
         variable snapshots.
 
-        @param name: variable name. 
+        @param name: variable name.
         @param version: nth update to the corresponding variable name.
         @param deleted: whether this VS is created for the deletion of a variable, i.e., 'del x'.
         @param input_ces: Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
@@ -22,6 +22,7 @@ class VariableSnapshot:
     deleted: bool
     input_ces: List[CellExecution] = field(default_factory=lambda: [])
     output_ce: CellExecution = None
+
 
 @dataclass
 class CellExecution:
@@ -41,6 +42,7 @@ class CellExecution:
     start_time: float
     src_vss: List[VariableSnapshot]
     dst_vss: List[VariableSnapshot]
+
 
 @dataclass
 class AHG:
@@ -64,7 +66,7 @@ class AHG:
     def create_variable_snapshot(self, variable_name: str, deleted: bool) -> VariableSnapshot:
         """
             Creates a new variable snapshot for a given variable.
-            
+
             @param variable_name: name of variable.
             @param deleted: Whether this VS is created for the deletion of a variable, i.e. 'del x'.
         """
@@ -77,10 +79,10 @@ class AHG:
         return vs
 
     def add_cell_execution(self, cell, cell_runtime: float, start_time: float,
-            src_vss: List[VariableSnapshot], dst_vss: List[VariableSnapshot]) -> None:
+                           src_vss: List[VariableSnapshot], dst_vss: List[VariableSnapshot]) -> None:
         """
             Create a cell execution from captured metrics.
-            
+
             @param cell: Raw cell code.
             @param cell_runtime: Cell runtime in seconnds.
             @param start_time: Time of cell execution start. Note that this is different from when the cell was queued.
@@ -101,12 +103,11 @@ class AHG:
         for dst_vs in dst_vss:
             dst_vs.output_ce = ce
 
-
     def update_graph(self, cell: Optional[str], cell_runtime: float, start_time: float, input_variables: Set[str],
-                 created_and_modified_variables: Set[str], deleted_variables: Set[str]) -> None:
+                     created_and_modified_variables: Set[str], deleted_variables: Set[str]) -> None:
         """
             Updates the graph according to the newly executed cell and its input and output variables.
-            
+
             @param cell: Raw cell code.
             @param cell_runtime: Cell runtime in seconds.
             @param start_time: Time of cell execution start. Note that this is different from when the cell was queued.

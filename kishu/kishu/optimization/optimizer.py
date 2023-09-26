@@ -1,19 +1,19 @@
 from kishu.optimization.ahg import AHG, VariableSnapshot, CellExecution
 
-from collections import defaultdict
 import networkx as nx
 from networkx.algorithms.flow import shortest_augmenting_path
 import numpy as np
-from typing import Tuple, List, Set, Dict, Any 
+from typing import Tuple, List, Set, Dict
+
 
 class Optimizer():
     """
         The optimizer constructs a flow graph and runs the min-cut algorithm to exactly find the best
         checkpointing configuration.
     """
-    def __init__(self, ahg: AHG, active_vss: List[VariableSnapshot], 
-            linked_vs_pairs: Tuple[VariableSnapshot, VariableSnapshot],
-            migration_speed_bps = 1) -> None:
+    def __init__(self, ahg: AHG, active_vss: List[VariableSnapshot],
+                 linked_vs_pairs: Tuple[VariableSnapshot, VariableSnapshot],
+                 migration_speed_bps=1) -> None:
         """
             Creates an optimizer with a migration speed estimate. The AHG and active VS fields
             must be populated prior to calling select_vss.
@@ -70,7 +70,7 @@ class Optimizer():
                 self.dfs_helper(ce, set(), prerequisite_ces)
                 self.req_func_mapping[ce.cell_num] = prerequisite_ces
 
-    def compute_plan(self, only_migrate = True) -> Tuple[Set[str], Set[int]]:
+    def compute_plan(self, only_migrate=True) -> Tuple[Set[str], Set[int]]:
         """
             Returns the optimal replication plan for the stored AHG consisting of
             variables to migrate and cells to rerun.
@@ -120,5 +120,5 @@ class Optimizer():
         # Determine the replication plan from the partition.
         vss_to_migrate = set(partition[1]).intersection(self.active_vss_lookup)
         ces_to_recompute = set(partition[0]).intersection(set(ce.cell_num for ce in self.ahg.cell_executions))
-         
+
         return vss_to_migrate, ces_to_recompute
