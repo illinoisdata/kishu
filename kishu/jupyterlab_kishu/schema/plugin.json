@@ -1,0 +1,8 @@
+{
+  "jupyter.lab.shortcuts": [],
+  "title": "jupyterlab_kishu",
+  "description": "jupyterlab_kishu settings.",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
