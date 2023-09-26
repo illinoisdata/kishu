@@ -22,7 +22,7 @@ class VariableSnapshot:
     deleted: bool
     size: float = 0.0
     input_ces: List[CellExecution] = field(default_factory=lambda: [])
-    output_ce: Optional[CellExecution] = None
+    output_ce: CellExecution = CellExecution[0, "", 0.0, 0.0, [], []]
 
 
 @dataclass
@@ -125,5 +125,5 @@ class AHG:
         output_vss_create = [self.create_variable_snapshot(k, False) for k in created_and_modified_variables]
         output_vss_delete = [self.create_variable_snapshot(k, True) for k in deleted_variables]
 
-        # Add the newly created OE to the graph.
+        # Add the newly created CE to the graph.
         self.add_cell_execution(cell, cell_runtime, start_time, input_vss, output_vss_create + output_vss_delete)
