@@ -57,7 +57,7 @@ from datetime import datetime
 from itertools import chain
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path, PurePath
-from typing import Any, cast, Dict, Generator, List, Optional, Tuple
+from typing import Any, cast, Dict, Generator, List, Set, Optional, Tuple
 
 from kishu.branch import KishuBranch
 from kishu.checkpoint_io import init_checkpoint_database
