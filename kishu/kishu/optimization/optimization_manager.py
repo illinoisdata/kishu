@@ -27,7 +27,6 @@ class OptimizationManager:
         """
         # Record variables in the user name prior to running cell.
         self._pre_run_cell_vars = set(pre_run_cell_vars)
-        print("pre run cell vars:", self._pre_run_cell_vars)
 
         # Populate missing ID graph entries.
         for var in self._ahg.variable_snapshots.keys():
@@ -75,10 +74,10 @@ class OptimizationManager:
 
     def optimize(self) -> Tuple[Any, Any]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
-        active_vss = set()
+        active_vss = []
         for vs_list in self._ahg.variable_snapshots.values():
             if not vs_list[-1].deleted:
-                active_vss.add(vs_list[-1])
+                active_vss.append(vs_list[-1])
 
         # Profile the size of each variable defined in the current session.
         for active_vs in active_vss:
@@ -89,6 +88,6 @@ class OptimizationManager:
         optimizer = Optimizer(self._ahg, active_vss, set(), np.inf)
 
         # Use the optimizer to compute the checkpointing configuration.
-        vss_to_migrate, ces_to_recompute = optimizer.select_vss()
+        vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
 
         return vss_to_migrate, ces_to_recompute

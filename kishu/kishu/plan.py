@@ -320,16 +320,16 @@ class RestorePlan:
 
         # Sort variables to migrate based on cells they were created in.
         ce_to_vs_map = defaultdict(list)
-        for vs in vss_to_migrate:
-            ce_to_vs_map[vs.output_ce.cell_num].append(vs)
+        for vs_name in vss_to_migrate:
+            ce_to_vs_map[ahg.variable_snapshots[vs_name][-1].output_ce.cell_num].append(vs_name)
 
         actions = []
         for ce in ahg.cell_executions:
-            if ce in ces_to_recompute:
+            if ce.cell_num in ces_to_recompute:
                 actions.append(RerunCellRestoreAction(ce.cell))
             if len(ce_to_vs_map[ce.cell_num]) > 0:
                 actions.append(LoadVariableRestoreAction(
-                    [vs.name for vs in ce_to_vs_map[ce.cell_num]]))
+                    [vs_name for vs_name in ce_to_vs_map[ce.cell_num]]))
 
         print("Restore actions:", actions)
 
