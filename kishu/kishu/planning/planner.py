@@ -6,7 +6,7 @@ from kishu.planning.ahg import AHG
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.profiler import profile_variable_size
 from kishu.planning.change import find_input_vars, find_created_and_deleted_vars
-from kishu.planning.plan import RestorePlan
+from kishu.plan import RestorePlan
 
 class CheckpointRestorePlanner:
     """
