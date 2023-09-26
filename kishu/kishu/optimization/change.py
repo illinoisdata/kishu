@@ -2,7 +2,7 @@ from typing import Tuple
 import ast
 import inspect
 from collections import deque
-from typing import Deque, Any
+from typing import Deque, Set, Any
 
 PRIMITIVES = {int, bool, str, float}
 
@@ -58,7 +58,7 @@ class Visitor(ast.NodeVisitor):
         self.is_local = False
 
 
-def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set) -> Tuple[set, dict]:
+def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set) -> Set[str]:
     """
         Capture the input variables of the cell via AST analysis.
         Args:
@@ -108,7 +108,7 @@ def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set
     return input_variables
 
 
-def find_created_and_deleted_vars(pre_execution, post_execution):
+def find_created_and_deleted_vars(pre_execution: Set[str], post_execution: Set[str]) -> Set[str], Set[str]:
     """
         Find created and deleted variables through computing a difference of the user namespace pre and post execution.
     """

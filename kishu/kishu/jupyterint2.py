@@ -376,7 +376,7 @@ class KishuForJupyter:
     def checkpoint_file(self) -> str:
         return KishuResource.checkpoint_path(self._notebook_id)
 
-    def get_user_namespace_vars(self) -> list:
+    def get_user_namespace_vars(self) -> Set[str]:
         ip = get_jupyter_kernel()
         user_ns = {} if ip is None else ip.user_ns
         return set(varname for varname, _ in filter(no_ipython_var, user_ns.items()))
