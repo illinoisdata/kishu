@@ -70,7 +70,7 @@ from kishu.exceptions import (
     NoChannelError,
 )
 from kishu.resources import KishuResource
-from kishu.optimization.optimization_manager import OptimizationManager
+from kishu.planning.planner import CheckpointRestorePlanner
 
 from kishu.plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
 
@@ -360,7 +360,7 @@ class KishuForJupyter:
         self._last_execution_count = 0
         self._start_time_ms: Optional[int] = None
 
-        self._optimization_manager = OptimizationManager({} if get_jupyter_kernel() is None
+        self._cr_planner = CheckpointRestorePlanner({} if get_jupyter_kernel() is None
                 else get_jupyter_kernel().user_ns)
 
     def set_test_mode(self):
@@ -444,7 +444,7 @@ class KishuForJupyter:
         """
         self._start_time_ms = get_epoch_time_ms()
 
-        self._optimization_manager.pre_run_cell_update(self.get_user_namespace_vars())
+        self._cr_planner.pre_run_cell_update(self.get_user_namespace_vars())
 
     def post_run_cell(self, result) -> None:
         """
@@ -473,7 +473,7 @@ class KishuForJupyter:
         entry.result = repr_if_not_none(result.result)
 
         # Update optimization items.
-        self._optimization_manager.post_run_cell_update(
+        self._cr_planner.post_run_cell_update(
                 entry.code_block, 
                 self.get_user_namespace_vars(), 
                 entry.start_time_ms, 
@@ -550,7 +550,7 @@ class KishuForJupyter:
         checkpoint.run(user_ns)
 
         # Step 2: prepare a restoration plan using results from the optimizer.
-        restore_plan = RestorePlan.create(self._optimization_manager)
+        restore_plan = RestorePlan.create(self._cr_planner)
         return restore_plan
 
     def _save_notebook(self) -> None:
