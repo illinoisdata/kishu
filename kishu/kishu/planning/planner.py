@@ -1,5 +1,6 @@
 from typing import Set, Any, Dict, List, Optional, Tuple
 import numpy as np
+from collections import defaultdict
 
 from kishu import idgraph2 as idgraph
 from kishu.planning.ahg import AHG
@@ -87,7 +88,18 @@ class CheckpointRestorePlanner:
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
 
+        # Sort variables to migrate based on cells they were created in.
+        ce_to_vs_map = defaultdict(list)
+        for vs_name in vss_to_migrate:
+            ce_to_vs_map[self._ahg.variable_snapshots[vs_name][-1].output_ce.cell_num].append(vs_name)
+
         # Create restore plan using optimization results.
-        restore_plan = RestorePlan.create([ce.cell for ce in self._ahg.cell_executions],
-                                          vss_to_migrate, ces_to_recompute)
+        restore_plan = RestorePlan()
+        for ce in self._ahg.cell_executions:
+            if ce.cell_num in ces_to_recompute:
+                restore_plan.add_rerun_cell_restore_action(ce.cell)
+            if len(ce_to_vs_map[ce.cell_num]) > 0:
+                restore_plan.add_load_variable_restore_action(
+                        [vs_name for vs_name in ce_to_vs_map[ce.cell_num]])
+
         return restore_plan
