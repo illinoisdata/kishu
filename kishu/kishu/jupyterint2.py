@@ -449,7 +449,7 @@ class KishuForJupyter:
         entry = CommitEntry(kind=CommitEntryKind.jupyter)
         entry.execution_count = result.execution_count
         short_raw_cell = result.info.raw_cell if len(result.info.raw_cell) <= 20 else f"{result.info.raw_cell[:20]}..."
-        entry.message = f"Auto-commit after executing <{short_raw_cell}>"
+        entry.message = f"Auto-commit after executing < {short_raw_cell} >"
 
         # Jupyter-specific info for commit entry.
         entry.start_time_ms = self._start_time_ms

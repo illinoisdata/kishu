@@ -152,7 +152,12 @@ class KishuCommand:
         return result
 
     @staticmethod
-    def branch(notebook_id: str, branch_name: str, commit_id: Optional[str]) -> BranchResult:
+    def branch(
+        notebook_id: str,
+        branch_name: str,
+        commit_id: Optional[str],
+        do_commit: bool = False,
+    ) -> BranchResult:
         head = KishuBranch.get_head(notebook_id)
 
         if commit_id is None:
@@ -170,6 +175,10 @@ class KishuCommand:
 
         # Now add this branch.
         KishuBranch.upsert_branch(notebook_id, branch_name, commit_id)
+
+        # Create new commit for this branch action.
+        if do_commit:
+            commit_id = KishuCommand._checkout_and_commit_after_branch(notebook_id, branch_name, commit_id)
 
         return BranchResult(
             status="ok",
@@ -398,6 +407,33 @@ class KishuCommand:
             if commit.oid in commit_to_other_branch_names:
                 commit.other_branch_ids = commit_to_other_branch_names[commit.oid]
         return commits
+
+    @staticmethod
+    def _checkout_and_commit_after_branch(notebook_id: str, branch_name: str, commit_id: str) -> str:
+        # Checkout to move HEAD to branch.
+        checkout_result = KishuCommand.checkout(notebook_id, branch_name)
+        if checkout_result.status != "ok":
+            print(
+                f"Checkout failed after branch (message: {checkout_result.message}). "
+                "Skipping commit this branch action."
+            )
+            return commit_id
+
+        # Commit branch action.
+        commit_result = KishuCommand.commit(
+            notebook_id,
+            f"Set {branch_name} branch to {commit_id} commit.",
+        )
+        if commit_result.status != "ok":
+            print(
+                f"Commit failed after branch (message: {commit_result.message}). "
+                "Skipping commit this branch action."
+            )
+            return commit_id
+
+        # Return new commit ID
+        commit_id = commit_result.message
+        return commit_id
 
     @staticmethod
     def _to_datetime(epoch_time_ms: Optional[int]) -> str:
