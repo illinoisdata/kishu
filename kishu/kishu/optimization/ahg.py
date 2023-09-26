@@ -20,8 +20,9 @@ class VariableSnapshot:
     name: str
     version: int
     deleted: bool
+    size: float = 0.0
     input_ces: List[CellExecution] = field(default_factory=lambda: [])
-    output_ce: CellExecution = None
+    output_ce: Optional[CellExecution] = None
 
 
 @dataclass
@@ -56,12 +57,12 @@ class AHG:
             Create a new AHG. Called when Kishu is initialized for a notebook.
         """
         # Cell executions in chronological order.
-        self.cell_executions = []
+        self.cell_executions: List[CellExecution] = []
 
         # Dict of variable snapshots.
         # Keys are variable names, while values are lists of the actual VSs.
         # i.e. {"x": [(x, 1), (x, 2)], "y": [(y, 1), (y, 2), (y, 3)]}
-        self.variable_snapshots = defaultdict(list)
+        self.variable_snapshots: Dict[str, List[VariableSnapshot]] = defaultdict(list)
 
     def create_variable_snapshot(self, variable_name: str, deleted: bool) -> VariableSnapshot:
         """

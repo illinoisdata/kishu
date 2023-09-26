@@ -3,7 +3,7 @@ from kishu.optimization.ahg import AHG, VariableSnapshot, CellExecution
 import networkx as nx
 from networkx.algorithms.flow import shortest_augmenting_path
 import numpy as np
-from typing import Tuple, List, Set, Dict
+from typing import Tuple, List, Set, Dict, Any
 
 
 class Optimizer():
@@ -35,13 +35,13 @@ class Optimizer():
         # CEs required to recompute a variables last modified by a given CE.
         self.req_func_mapping: Dict[int, Set[int]] = {}
 
-    def dfs_helper(self, current: str, visited: set, prerequisite_ces: set):
+    def dfs_helper(self, current: Any, visited: Set[Any], prerequisite_ces: Set[int]):
         """
             Perform DFS on the Application History Graph for finding the CEs required to recompute a variable.
-            Args:
-                current (str): Name of current nodeset.
-                visited (set): Visited nodesets.
-                prerequisite_ces (set): Set of CEs needing re-execution to recompute the current nodeset.
+
+            @param current: Name of current nodeset.
+            @param visited: Visited nodesets.
+            @param prerequisite_ces: Set of CEs needing re-execution to recompute the current nodeset.
         """
         if isinstance(current, CellExecution):
             if current.cell_num in self.req_func_mapping:
