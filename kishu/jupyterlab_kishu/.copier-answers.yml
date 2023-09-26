@@ -1,0 +1,19 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v4.2.1
+_src_path: https://github.com/jupyterlab/extension-template
+author_email: yongjoo@g.illinois.edu
+author_name: Yongjoo Park
+data_format: string
+file_extension: ''
+has_binder: false
+has_settings: true
+kind: frontend
+labextension_name: jupyterlab_kishu
+mimetype: ''
+mimetype_name: ''
+project_short_description: A JupyterLab extension to interact with Kishu.
+python_name: jupyterlab_kishu
+repository: https://github.com/illinoisdata/kishu
+test: true
+viewer_name: ''
+

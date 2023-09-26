@@ -10,6 +10,3 @@ flask
 dataclasses-json
 jupyter_ui_poll
 typer
-xxhash
-networkx
-
