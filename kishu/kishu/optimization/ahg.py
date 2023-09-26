@@ -5,6 +5,26 @@ from typing import List, Optional, Set, Dict
 
 
 @dataclass
+class CellExecution:
+    """
+        A cell execution (object) corresponds to a cell execution (action, i.e. press play) in the notebook session.
+
+        @param cell_num: The nth cell execution of the current session.
+        @param cell: Raw cell code.
+        @param cell_runtime: Cell runtime in seconds.
+        @param start_time : Time of start of cell execution. Note that this is different from when the cell was queued.
+        @param src_vss: List containing input VSs of the cell execution.
+        @param dst_vss: List containing output VSs of the cell execution.
+    """
+    cell_num: int
+    cell: str
+    cell_runtime: float
+    start_time: float
+    src_vss: List[VariableSnapshot]
+    dst_vss: List[VariableSnapshot]
+
+
+@dataclass
 class VariableSnapshot:
     """
         A variable snapshot in the dependency graph corresponds to a version of a variable.
@@ -23,26 +43,6 @@ class VariableSnapshot:
     size: float = 0.0
     input_ces: List[CellExecution] = field(default_factory=lambda: [])
     output_ce: CellExecution = CellExecution[0, "", 0.0, 0.0, [], []]
-
-
-@dataclass
-class CellExecution:
-    """
-        A cell execution (object) corresponds to a cell execution (action, i.e. press play) in the notebook session.
-
-        @param cell_num: The nth cell execution of the current session.
-        @param cell: Raw cell code.
-        @param cell_runtime: Cell runtime in seconds.
-        @param start_time : Time of start of cell execution. Note that this is different from when the cell was queued.
-        @param src_vss: List containing input VSs of the cell execution.
-        @param dst_vss: List containing output VSs of the cell execution.
-    """
-    cell_num: int
-    cell: str
-    cell_runtime: float
-    start_time: float
-    src_vss: List[VariableSnapshot]
-    dst_vss: List[VariableSnapshot]
 
 
 @dataclass
