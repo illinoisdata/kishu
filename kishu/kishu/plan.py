@@ -7,8 +7,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
 
-from kishu.planning.ahg import AHG
-
 from kishu.checkpoint_io import (
     get_checkpoint,
     get_log,
@@ -313,19 +311,19 @@ class RestorePlan:
     actions: List[RestoreAction] = field(default_factory=lambda: [])
 
     @classmethod
-    def create(cls, ahg: AHG, vss_to_migrate: Set[str], ces_to_recompute: Set[int]):
+    def create(cls, cell_code_list: List[str], vss_to_migrate: Set[str], ces_to_recompute: Set[int]):
         # Sort variables to migrate based on cells they were created in.
         ce_to_vs_map = defaultdict(list)
         for vs_name in vss_to_migrate:
             ce_to_vs_map[ahg.variable_snapshots[vs_name][-1].output_ce.cell_num].append(vs_name)
 
         actions: List[RestoreAction] = []
-        for ce in ahg.cell_executions:
-            if ce.cell_num in ces_to_recompute:
-                actions.append(RerunCellRestoreAction(ce.cell))
-            if len(ce_to_vs_map[ce.cell_num]) > 0:
+        for cell_num in len(cell_code_list):
+            if cell_num in ces_to_recompute:
+                actions.append(RerunCellRestoreAction(cell_code_list[cell_num]))
+            if len(ce_to_vs_map[cell_num]) > 0:
                 actions.append(LoadVariableRestoreAction(
-                    [vs_name for vs_name in ce_to_vs_map[ce.cell_num]]))
+                    [vs_name for vs_name in ce_to_vs_map[cell_num]]))
 
         return cls(actions)
 

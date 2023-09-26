@@ -88,5 +88,6 @@ class CheckpointRestorePlanner:
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
 
         # Create restore plan using optimization results.
-        restore_plan = RestorePlan.create(self._ahg, vss_to_migrate, ces_to_recomputte)
+        restore_plan = RestorePlan.create([ce.cell for ce in self._ahg.cell_executions],
+                                          vss_to_migrate, ces_to_recompute)
         return restore_plan

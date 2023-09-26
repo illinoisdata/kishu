@@ -1,7 +1,7 @@
 import pytest
 
 from kishu.checkpoint_io import init_checkpoint_database
-from kishu.planning.plan import LoadVariableRestoreAction, StoreEverythingCheckpointPlan
+from kishu.plan import LoadVariableRestoreAction, StoreEverythingCheckpointPlan
 from tempfile import NamedTemporaryFile
 
 

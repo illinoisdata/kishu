@@ -8,7 +8,7 @@ from typing import Any
 from kishu.checkpoint_io import init_checkpoint_database
 from kishu.jupyterint2 import CommitEntry
 from kishu.nbexec import NotebookRunner
-from kishu.planning.plan import ExecutionHistory
+from kishu.plan import ExecutionHistory
 
 
 def create_temporary_copy(path, filename):
