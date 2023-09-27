@@ -57,7 +57,7 @@ from datetime import datetime
 from itertools import chain
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path, PurePath
-from typing import Any, cast, Dict, Generator, List, Optional, Tuple
+from typing import Any, cast, Dict, Generator, List, Set, Optional, Tuple
 
 from kishu.branch import KishuBranch
 from kishu.checkpoint_io import init_checkpoint_database
@@ -70,8 +70,8 @@ from kishu.exceptions import (
     NoChannelError,
 )
 from kishu.resources import KishuResource
-
-from .plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
+from kishu.planning.planner import CheckpointRestorePlanner
+from kishu.plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
 
 
 """
@@ -359,6 +359,9 @@ class KishuForJupyter:
         self._last_execution_count = 0
         self._start_time_ms: Optional[int] = None
 
+        self._cr_planner = CheckpointRestorePlanner({} if get_jupyter_kernel() is None
+                else get_jupyter_kernel().user_ns)
+
     def set_test_mode(self):
         # Configure this object for testing.
         self._commit_id_mode = "counter"
@@ -371,6 +374,11 @@ class KishuForJupyter:
 
     def checkpoint_file(self) -> str:
         return KishuResource.checkpoint_path(self._notebook_id)
+
+    def get_user_namespace_vars(self) -> Set[str]:
+        ip = get_jupyter_kernel()
+        user_ns = {} if ip is None else ip.user_ns
+        return set(varname for varname, _ in filter(no_ipython_var, user_ns.items()))
 
     def checkout(self, branch_or_commit_id: str) -> None:
         """
@@ -435,6 +443,8 @@ class KishuForJupyter:
         """
         self._start_time_ms = get_epoch_time_ms()
 
+        self._cr_planner.pre_run_cell_update(self.get_user_namespace_vars())
+
     def post_run_cell(self, result) -> None:
         """
         A hook executed after the execution of each cell.
@@ -460,6 +470,13 @@ class KishuForJupyter:
         entry.error_before_exec = repr_if_not_none(result.error_before_exec)
         entry.error_in_exec = repr_if_not_none(result.error_in_exec)
         entry.result = repr_if_not_none(result.result)
+
+        # Update optimization items.
+        self._cr_planner.post_run_cell_update(
+                entry.code_block, 
+                self.get_user_namespace_vars(), 
+                entry.start_time_ms, 
+                entry.runtime_ms)
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count
@@ -531,9 +548,9 @@ class KishuForJupyter:
         checkpoint = StoreEverythingCheckpointPlan.create(user_ns, checkpoint_file, exec_id, var_names)
         checkpoint.run(user_ns)
 
-        # Step 2: prepare a restoration plan
-        restore: RestorePlan = checkpoint.restore_plan()
-        return restore
+        # Step 2: prepare a restoration plan using results from the optimizer.
+        restore_plan = self._cr_planner.generate_restore_plan()
+        return restore_plan
 
     def _save_notebook(self) -> None:
         if self._notebook_path is None:
