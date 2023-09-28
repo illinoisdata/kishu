@@ -3,7 +3,7 @@ from kishu.planning.change import find_input_vars, find_created_and_deleted_vars
 
 def test_find_input_vars():
     """
-       TODO: add more test cases when recursing into UDFs is supported.       
+       TODO: add more test cases when recursing into UDFs is supported.
     """
     # Test access by name.
     code_cell_1 = "print(x)"
@@ -29,6 +29,7 @@ def test_find_input_vars():
 
     assert input_vars_4 == {"x"}
 
+
 def test_find_created_and_deleted_vars():
     pre_execution_1 = {"x", "y"}
     post_execution_1 = {"y", "z"}
@@ -46,4 +47,3 @@ def test_find_created_and_deleted_vars():
 
     assert created_vars_2 == set()
     assert deleted_vars_2 == set()
-

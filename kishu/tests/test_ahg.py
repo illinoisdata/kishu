@@ -20,6 +20,7 @@ def test_create_variable_snapshot():
     assert len(ahg.variable_snapshots["x"]) == 2
     assert len(ahg.variable_snapshots["y"]) == 1
 
+
 def test_add_cell_execution():
     ahg = AHG()
     vs1 = ahg.create_variable_snapshot("x", False)
@@ -34,10 +35,11 @@ def test_add_cell_execution():
     assert vs1.input_ces[0] == ahg.cell_executions[0]
     assert vs2.output_ce == ahg.cell_executions[0]
 
+
 def test_update_graph():
     ahg = AHG()
     vs1 = ahg.create_variable_snapshot("x", False)
-    vs2 = ahg.create_variable_snapshot("y", False)
+    _ = ahg.create_variable_snapshot("y", False)
 
     # x is read and modified, z is created, y is deleted
     ahg.update_graph("", 1, 1, {"x"}, {"x", "z"}, {"y"})
@@ -53,4 +55,3 @@ def test_update_graph():
     assert vs1.input_ces[0] == ahg.cell_executions[0]
     assert len(ahg.cell_executions[0].src_vss) == 1
     assert len(ahg.cell_executions[0].dst_vss) == 3
-

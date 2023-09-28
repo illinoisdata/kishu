@@ -10,7 +10,7 @@ def test_checkpoint_restore_planner():
 
     # Pre run cell 1
     planner.pre_run_cell_update(set())
-    
+
     # Post run cell 1
     user_ns["x"] = 1
     planner.post_run_cell_update("x = 1", {"x"}, 0.0, 1.0)
@@ -36,4 +36,3 @@ def test_checkpoint_restore_planner():
 
     # Assert that the restore plan has two actions in it.
     assert len(restore_plan.actions) == 2
-

@@ -1,6 +1,7 @@
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.ahg import AHG
 
+
 def test_optimizer():
     """
         Setup test graph.
@@ -33,4 +34,3 @@ def test_optimizer():
     vss_to_migrate, ces_to_recompute = opt.compute_plan(only_migrate=False)
     assert vss_to_migrate == set()
     assert ces_to_recompute == {0, 1, 2}
-

@@ -1,4 +1,4 @@
-from typing import Set, Any, Dict, List, Optional, Tuple
+from typing import Set, Any, Dict, Optional
 import numpy as np
 from collections import defaultdict
 
@@ -8,6 +8,7 @@ from kishu.planning.optimizer import Optimizer
 from kishu.planning.profiler import profile_variable_size
 from kishu.planning.change import find_input_vars, find_created_and_deleted_vars
 from kishu.plan import RestorePlan
+
 
 class CheckpointRestorePlanner:
     """
@@ -44,8 +45,10 @@ class CheckpointRestorePlanner:
             @param runtime_ms: runtime of cell execution.
         """
         # Find accessed variables.
-        accessed_vars = find_input_vars(code_block, self._pre_run_cell_vars, self._user_ns, set()) \
-                if code_block else set()
+        accessed_vars = (
+            find_input_vars(code_block, self._pre_run_cell_vars, self._user_ns, set())
+            if code_block else set()
+        )
 
         # Find created and deleted variables.
         created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
