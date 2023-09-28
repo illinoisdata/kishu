@@ -106,14 +106,14 @@ class CheckpointRestorePlanner:
         return restore_plan
 
     def get_ahg_bytestring(self):
-        return dill.dumps(self._ahg)
+        return dill.dumps(self._ahg).decode('latin1')
 
     def replace_state(self, new_ahg_bytestring: bytes, new_user_ns: Dict[Any, Any]) -> None:
         """
             Replace the current AHG with new_ahg_bytes and user namespace with new_user_ns. 
             Called when a checkout is performed.
         """
-        self._ahg = dill.loads(new_ahg_bytestring)
+        self._ahg = dill.loads(new_ahg_bytestring.encode('latin1'))
         self._user_ns = new_user_ns
 
         # Also clear the old ID graphs and pre-run cell info.
