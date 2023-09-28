@@ -71,6 +71,7 @@ from kishu.exceptions import (
 )
 from kishu.resources import KishuResource
 from kishu.planning.planner import CheckpointRestorePlanner
+from kishu.planning.ahg import AHG
 from kishu.plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
 
 
