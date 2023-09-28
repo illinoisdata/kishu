@@ -134,7 +134,7 @@ class TestKishuCommand:
             execution_count=3,
             code_block="y = x + 1",
             checkpoint_vars=[],
-            ahg = status_result.commit_entry.ahg # Not tested
+            ahg = status_result.commit_entry.ahg, # Not tested
             message=status_result.commit_entry.message,  # Not tested,
             start_time_ms=status_result.commit_entry.start_time_ms,  # Not tested
             end_time_ms=status_result.commit_entry.end_time_ms,  # Not tested
