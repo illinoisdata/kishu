@@ -39,7 +39,7 @@ def test_find_created_and_deleted_vars():
     assert deleted_vars_1 == {"x"}
 
     # Variables with underscores are skipped.
-    pre_execution_2 = {"x_", "y"}
+    pre_execution_2 = {"_x", "y"}
     post_execution_2 = {"y", "_z"}
 
     created_vars_2, deleted_vars_2 = find_created_and_deleted_vars(pre_execution_2, post_execution_2)

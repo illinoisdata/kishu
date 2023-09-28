@@ -19,7 +19,7 @@ def test_optimizer():
     vs3 = ahg.create_variable_snapshot("z", True)
     vs1.size = 2
     vs2.size = 2
-    active_vss = {vs1, vs2}
+    active_vss = [vs1, vs2]
 
     # Cell executions
     ahg.add_cell_execution("", 3, 0, [], [vs3])
@@ -32,5 +32,5 @@ def test_optimizer():
     # Tests that the exact optimizer correctly escapes the local minimum by recomputing both x and y.
     vss_to_migrate, ces_to_recompute = opt.compute_plan(only_migrate=False)
     assert vss_to_migrate == set()
-    assert ces_to_recompute == set()
+    assert ces_to_recompute == {0, 1, 2}
 

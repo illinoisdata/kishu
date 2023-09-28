@@ -17,8 +17,8 @@ def test_create_variable_snapshot():
 
     # VSs are stored in the graph correctly
     assert ahg.variable_snapshots.keys() == {"x", "y"}
-    assert len(ahg.variable_snapshots["x"] == 2)
-    assert len(ahg.variable_snapshots["y"] == 1)
+    assert len(ahg.variable_snapshots["x"]) == 2
+    assert len(ahg.variable_snapshots["y"]) == 1
 
 def test_add_cell_execution():
     ahg = AHG()
@@ -40,17 +40,17 @@ def test_update_graph():
     vs2 = ahg.create_variable_snapshot("y", False)
 
     # x is read and modified, z is created, y is deleted
-    ahg.update_graph("", 1, 1, {"x"}, {"x, z"}, {"y"})
+    ahg.update_graph("", 1, 1, {"x"}, {"x", "z"}, {"y"})
 
     # Check contents of AHG are correct
     assert len(ahg.cell_executions) == 1
     assert ahg.variable_snapshots.keys() == {"x", "y", "z"}
-    assert len(ahg.variable_snapshots["x"] == 2)
-    assert len(ahg.variable_snapshots["y"] == 1)
-    assert len(ahg.variable_snapshots["z"] == 1)
+    assert len(ahg.variable_snapshots["x"]) == 2
+    assert len(ahg.variable_snapshots["y"]) == 2
+    assert len(ahg.variable_snapshots["z"]) == 1
 
     # Check links between AHG contents are correct
-    assert vs1.input_ces[0] == self.graph.cell_executions[0]
+    assert vs1.input_ces[0] == ahg.cell_executions[0]
     assert len(ahg.cell_executions[0].src_vss) == 1
     assert len(ahg.cell_executions[0].dst_vss) == 3
 
