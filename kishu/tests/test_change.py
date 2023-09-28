@@ -44,6 +44,6 @@ def test_find_created_and_deleted_vars():
 
     created_vars_2, deleted_vars_2 = find_created_and_deleted_vars(pre_execution_2, post_execution_2)
 
-    assert created_vars_1 == set()
-    assert deleted_vars_1 == set()
+    assert created_vars_2 == set()
+    assert deleted_vars_2 == set()
 

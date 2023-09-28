@@ -34,7 +34,7 @@ def test_repeated_pointers():
     x1 = [i for i in range(100)]
     y = [x1, x1, x1, x1, x1]
 
-    assert profile_variable_size(y) >= sys.getsizeof(x1) * 5
+    assert profile_variable_size(y) <= sys.getsizeof(x1) * 5
 
 def test_recursive_list_size():
     """

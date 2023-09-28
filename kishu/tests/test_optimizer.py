@@ -22,9 +22,9 @@ def test_optimizer():
     active_vss = {vs1, vs2}
 
     # Cell executions
-    ahg.add_cell_execution("", 3, 0, set(), {vs3})
-    ahg.add_cell_execution("", 0.1, 0, {vs3}, {vs1})
-    ahg.add_cell_execution("", 0.1, 0, {vs3}, {vs2})
+    ahg.add_cell_execution("", 3, 0, [], [vs3])
+    ahg.add_cell_execution("", 0.1, 0, [vs3], [vs1])
+    ahg.add_cell_execution("", 0.1, 0, [vs3], [vs2])
 
     # Setup optimizer
     opt = Optimizer(ahg, active_vss, [], migration_speed_bps=1)
