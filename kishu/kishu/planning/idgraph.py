@@ -47,10 +47,9 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif isinstance(obj, list):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj), check_value_only=True)
-        visited[id(obj)] = node
         if include_id:
+            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
 
@@ -64,8 +63,8 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
     elif isinstance(obj, set):
         node = GraphNode(obj_type=type(obj), id_obj=id(obj),
                          check_value_only=True)
-        visited[id(obj)] = node
         if include_id:
+            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
         for item in sorted(obj):
@@ -77,8 +76,8 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
     elif isinstance(obj, dict):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
-        visited[id(obj)] = node
         if include_id:
+            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
 
@@ -103,10 +102,9 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif callable(obj):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj), check_value_only=True)
-        visited[id(obj)] = node
         if include_id:
+            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
         # This will break if obj is not pickleable. Commenting out for now.
@@ -115,7 +113,6 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif hasattr(obj, '__reduce_ex__'):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         if is_pickable(obj):
@@ -135,7 +132,6 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif hasattr(obj, '__reduce__'):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if is_pickable(obj):
@@ -154,7 +150,6 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif hasattr(obj, '__getstate__'):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         node.id_obj = id(obj)
@@ -184,8 +179,9 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
     else:
         # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj), check_value_only=True)
-        visited[id(obj)] = node
+        # visited[id(obj)] = node
         if include_id:
+            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
         # node.children.append(str(obj))
