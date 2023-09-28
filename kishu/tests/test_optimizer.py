@@ -27,10 +27,10 @@ def test_optimizer():
     ahg.add_cell_execution("", 0.1, 0, {vs3}, {vs2})
 
     # Setup optimizer
-    opt = OptimizerExact(ahg, active_vss, [], migration_speed_bps=1)
+    opt = Optimizer(ahg, active_vss, [], migration_speed_bps=1)
 
     # Tests that the exact optimizer correctly escapes the local minimum by recomputing both x and y.
     vss_to_migrate, ces_to_recompute = opt.compute_plan(only_migrate=False)
-    self.assertEqual(set(), vss_to_migrate)
-    self.assertEqual(set(), ces_to_recompute)
+    assert vss_to_migrate == set()
+    assert ces_to_recompute == set()
 
