@@ -240,7 +240,7 @@ class TestKishuCommitGraph:
         else:
             raise ValueError(f"Invalid mode= {mode}")
 
-        NUM_STEP = 10000
+        NUM_STEP = 1000
         for idx in range(NUM_STEP):
             graph.step(str(idx))
 

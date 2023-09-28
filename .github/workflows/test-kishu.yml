@@ -6,8 +6,12 @@ name: test-kishu
 on:
   push:
     branches: [ main ]
+    paths:
+      - kishu/**
   pull_request:
     branches: [ main ]
+    paths:
+      - kishu/**
 
 jobs:
   build:

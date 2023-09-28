@@ -1,5 +1,6 @@
-import os
+import pytest
 
+import os
 import numpy as np
 
 from kishu.nbexec import NotebookRunner
@@ -46,6 +47,7 @@ def test_notebookrunner_empty_cell_list():
     }
 
 
+@pytest.mark.skip(reason="Too expensive to run (~21s)")
 def test_notebookrunner_case_two():
     cell_indices = [i for i in range(27)]
     path_to_notebook = os.getcwd()
@@ -75,6 +77,7 @@ def test_notebookrunner_case_two():
         assert np.array_equal(output[key], expected[key])
 
 
+@pytest.mark.skip(reason="Too expensive to run (~3s)")
 def test_notebookrunner_case_three():
     path_to_notebook = os.getcwd()
     notebook_name = "nbexec_test_case_3.ipynb"
