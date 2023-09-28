@@ -103,3 +103,16 @@ class CheckpointRestorePlanner:
                         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]])
 
         return restore_plan
+
+    def replace_state(self, new_ahg: AHG, new_user_ns: Dict[Any, Any]) -> None:
+        """
+            Replace the current AHG with new_ahg and user namespace with new_user_ns. 
+            Called when a checkout is performed.
+        """
+        self._ahg = new_ahg
+        self._user_ns = new_user_ns
+
+        # Also clear the old ID graphs and pre-run cell info.
+        # TODO: only clear ID graphs of variables which have changed between pre and post-checkout.
+        self._id_graph_map = {}
+        self._pre_run_cell_vars = set()
