@@ -31,8 +31,8 @@ def test_add_cell_execution():
     assert len(ahg.cell_executions) == 1
 
     # Newly create CE correctly set as adjacent CE of variable snapshots
-    assert vs1.input_ces[0] == self.graph.cell_executions[0]
-    assert vs2.output_ce == self.graph.cell_executions[0]
+    assert vs1.input_ces[0] == ahg.cell_executions[0]
+    assert vs2.output_ce == ahg.cell_executions[0]
 
 def test_update_graph(self):
     ahg = AHG()
