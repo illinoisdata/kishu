@@ -1,6 +1,7 @@
 from typing import Set, Any, Dict, List, Optional, Tuple
 import numpy as np
 from collections import defaultdict
+import dill
 
 from kishu import idgraph2 as idgraph
 from kishu.planning.ahg import AHG
@@ -104,12 +105,15 @@ class CheckpointRestorePlanner:
 
         return restore_plan
 
-    def replace_state(self, new_ahg: AHG, new_user_ns: Dict[Any, Any]) -> None:
+    def get_ahg_bytestring(self):
+        return dill.dumps(self._ahg)
+
+    def replace_state(self, new_ahg_bytestring: bytes, new_user_ns: Dict[Any, Any]) -> None:
         """
-            Replace the current AHG with new_ahg and user namespace with new_user_ns. 
+            Replace the current AHG with new_ahg_bytes and user namespace with new_user_ns. 
             Called when a checkout is performed.
         """
-        self._ahg = new_ahg
+        self._ahg = dill.loads(new_ahg_bytestring)
         self._user_ns = new_user_ns
 
         # Also clear the old ID graphs and pre-run cell info.
