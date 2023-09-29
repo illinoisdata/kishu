@@ -29,14 +29,7 @@ def is_pickable(obj):
 def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
     if id(obj) in visited.keys():
-        # node = GraphNode(obj_type=type(obj), check_value_only=True)
-        # if include_id:
-        #     node.id_obj=id(obj)
-        #     node.check_value_only = False
-
-        # node.children.append("CYCLIC_REFERENCE")
         return visited[id(obj)]
-        # return obj
 
     if isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
@@ -69,7 +62,6 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif isinstance(obj, set):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj), id_obj=id(obj),
                          check_value_only=True)
         visited[id(obj)] = node
