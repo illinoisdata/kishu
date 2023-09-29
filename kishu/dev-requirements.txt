@@ -13,4 +13,5 @@ textblob
 mypy
 networkx
 flake8
+xxhash
 

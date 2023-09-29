@@ -1,4 +1,3 @@
-import hashlib
 import pandas
 import pickle
 import xxhash
@@ -203,7 +202,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
 
-def build_object_hash(obj, visited: set, include_id=True, hashed = xxhash.xxh32()):
+def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32()):
     if id(obj) in visited:
         hashed.update(str(type(obj)))
         if include_id:
@@ -213,34 +212,34 @@ def build_object_hash(obj, visited: set, include_id=True, hashed = xxhash.xxh32(
         hashed.update(str(type(obj)))
         hashed.update(str(obj))
         hashed.update("/EOC")
-    
+
     elif isinstance(obj, tuple):
         hashed.update(str(type(obj)))
         for item in obj:
             build_object_hash(item, visited, include_id, hashed)
-        
+
         hashed.update("/EOC")
-    
+
     elif isinstance(obj, list):
         hashed.update(str(type(obj)))
         if include_id:
             visited.add(id(obj))
             hashed.update(str(id(obj)))
-        
+
         for item in obj:
             build_object_hash(item, visited, include_id, hashed)
-        
+
         hashed.update("/EOC")
-    
+
     elif isinstance(obj, set):
         hashed.update(str(type(obj)))
         if include_id:
             visited.add(id(obj))
             hashed.update(str(id(obj)))
-        
+
         for item in sorted(obj):
             build_object_hash(item, visited, include_id, hashed)
-        
+
         hashed.update("/EOC")
 
     elif isinstance(obj, dict):
@@ -252,9 +251,9 @@ def build_object_hash(obj, visited: set, include_id=True, hashed = xxhash.xxh32(
         for key, value in sorted(obj.items()):
             build_object_hash(key, visited, include_id, hashed)
             build_object_hash(value, visited, include_id, hashed)
-        
+
         hashed.update("/EOC")
-    
+
     elif isinstance(obj, (bytes, bytearray)):
         hashed.update(str(type(obj)))
         hashed.update(obj)
@@ -263,7 +262,7 @@ def build_object_hash(obj, visited: set, include_id=True, hashed = xxhash.xxh32(
     elif isinstance(obj, type):
         hashed.update(str(type(obj)))
         hashed.update(str(obj))
-    
+
     elif callable(obj):
         hashed.update(str(type(obj)))
         if include_id:
@@ -271,7 +270,7 @@ def build_object_hash(obj, visited: set, include_id=True, hashed = xxhash.xxh32(
             hashed.update(str(id(obj)))
 
         hashed.update("/EOC")
-    
+
     elif hasattr(obj, '__reduce_ex__'):
         visited.add(id(obj))
         hashed.update(str(type(obj)))
@@ -280,16 +279,16 @@ def build_object_hash(obj, visited: set, include_id=True, hashed = xxhash.xxh32(
             reduced = obj.__reduce_ex__(4)
             if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
                 hashed.update(str(id(obj)))
-            
+
             if isinstance(reduced, str):
                 hashed.update(reduced)
                 return
 
             for item in reduced[1:]:
                 build_object_hash(item, visited, False, hashed)
-            
+
             hashed.update("/EOC")
-    
+
     elif hasattr(obj, '__reduce__'):
         visited.add(id(obj))
         hashed.update(str(type(obj)))
@@ -299,13 +298,13 @@ def build_object_hash(obj, visited: set, include_id=True, hashed = xxhash.xxh32(
 
             if isinstance(reduced, str):
                 hashed.udpate(reduced)
-                return 
-            
+                return
+
             for item in reduced[1:]:
                 build_object_hash(item, visited, False, hashed)
 
             hashed.update("/EOC")
-    
+
     else:
         print("Comes here")
         visited.add(id(obj))
@@ -314,7 +313,6 @@ def build_object_hash(obj, visited: set, include_id=True, hashed = xxhash.xxh32(
             hashed.update(str(id(obj)))
         hashed.update(pickle.dumps(obj))
         hashed.update("/EOC")
-
 
 
 def get_object_hash(obj):
