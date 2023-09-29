@@ -201,121 +201,117 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
 
-def build_object_hash(obj, visited: set, include_id=True, hash = xxhash.xxh32()):
+def build_object_hash(obj, visited: set, include_id=True, hashed = xxhash.xxh32()):
     if id(obj) in visited:
-        hash.update(str(type(obj)))
+        hashed.update(str(type(obj)))
         if include_id:
-            hash.update(str(id(obj)))
+            hashed.update(str(id(obj)))
 
     elif isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
-        hash.update(str(type(obj)))
-        hash.update(str(obj))
-        # hash.update(str(id(obj)))
-        hash.update("/EOC")
+        hashed.update(str(type(obj)))
+        hashed.update(str(obj))
+        hashed.update("/EOC")
     
     elif isinstance(obj, tuple):
-        hash.update(str(type(obj)))
+        hashed.update(str(type(obj)))
         for item in obj:
-            build_object_hash(item, visited, include_id, hash)
+            build_object_hash(item, visited, include_id, hashed)
         
-        hash.update("/EOC")
+        hashed.update("/EOC")
     
     elif isinstance(obj, list):
-        visited.add(id(obj))
-        hash.update(str(type(obj)))
+        hashed.update(str(type(obj)))
         if include_id:
-            hash.update(str(id(obj)))
+            visited.add(id(obj))
+            hashed.update(str(id(obj)))
         
         for item in obj:
-            build_object_hash(item, visited, include_id, hash)
+            build_object_hash(item, visited, include_id, hashed)
         
-        hash.update("/EOC")
+        hashed.update("/EOC")
     
     elif isinstance(obj, set):
-        visited.add(id(obj))
-        hash.update(str(type(obj)))
+        hashed.update(str(type(obj)))
         if include_id:
-            hash.update(str(id(obj)))
+            visited.add(id(obj))
+            hashed.update(str(id(obj)))
         
         for item in sorted(obj):
-            build_object_hash(item, visited, include_id, hash)
+            build_object_hash(item, visited, include_id, hashed)
         
-        hash.update("/EOC")
+        hashed.update("/EOC")
 
     elif isinstance(obj, dict):
-        hash.update(str(type(obj)))
+        hashed.update(str(type(obj)))
         if include_id:
-            hash.update(str(id(obj)))
+            visited.add(id(obj))
+            hashed.update(str(id(obj)))
 
         for key, value in sorted(obj.items()):
-            hash.update(str(key))
-            build_object_hash(value, visited, include_id, hash)
+            build_object_hash(key, visited, include_id, hashed)
+            build_object_hash(value, visited, include_id, hashed)
         
-        hash.update("/EOC")
+        hashed.update("/EOC")
     
     elif isinstance(obj, (bytes, bytearray)):
-        hash.update(str(type(obj)))
-        hash.update(obj)
-        hash.update("/EOC")
+        hashed.update(str(type(obj)))
+        hashed.update(obj)
+        hashed.update("/EOC")
 
     elif isinstance(obj, type):
-        hash.update(str(type(obj)))
-        hash.update(str(obj))
-        # hash.update("/EOC")
+        hashed.update(str(type(obj)))
+        hashed.update(str(obj))
     
     elif callable(obj):
-        visited.add(id(obj))
-        hash.update(str(type(obj)))
+        hashed.update(str(type(obj)))
         if include_id:
-            hash.update(str(id(obj)))
+            visited.add(id(obj))
+            hashed.update(str(id(obj)))
 
-        hash.update(pickle.dumps(obj))
-        hash.update("/EOC")
-        # return
+        hashed.update("/EOC")
     
     elif hasattr(obj, '__reduce_ex__'):
         visited.add(id(obj))
-        hash.update(str(type(obj)))
+        hashed.update(str(type(obj)))
 
         if is_pickable(obj):
             reduced = obj.__reduce_ex__(4)
             if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
-                hash.update(str(id(obj)))
+                hashed.update(str(id(obj)))
             
             if isinstance(reduced, str):
-                hash.update(reduced)
+                hashed.update(reduced)
                 return
 
             for item in reduced[1:]:
-                build_object_hash(item, visited, False, hash)
+                build_object_hash(item, visited, False, hashed)
             
-            hash.update("/EOC")
+            hashed.update("/EOC")
     
     elif hasattr(obj, '__reduce__'):
         visited.add(id(obj))
-        hash.update(str(type(obj)))
+        hashed.update(str(type(obj)))
         if is_pickable(obj):
             reduced = obj.__reduce__()
-            hash.update(str(id(obj)))
+            hashed.update(str(id(obj)))
 
             if isinstance(reduced, str):
-                hash.udpate(reduced)
+                hashed.udpate(reduced)
                 return 
             
             for item in reduced[1:]:
-                build_object_hash(item, visited, False, hash)
+                build_object_hash(item, visited, False, hashed)
 
-            hash.update("/EOC")
+            hashed.update("/EOC")
     
     else:
         print("Comes here")
         visited.add(id(obj))
-        hash.update(str(type(obj)))
+        hashed.update(str(type(obj)))
         if include_id:
-            hash.update(str(id(obj)))
-        hash.update(pickle.dumps(obj))
-        hash.update("/EOC")
-        # return
+            hashed.update(str(id(obj)))
+        hashed.update(pickle.dumps(obj))
+        hashed.update("/EOC")
 
 
 
