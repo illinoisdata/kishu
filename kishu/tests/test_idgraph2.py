@@ -4,7 +4,6 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pickle
-import xxhash
 
 
 def test_idgraph_numpy():
@@ -34,6 +33,7 @@ def test_idgraph_numpy():
     # Assert that the original id graph is restored when the original object state is restored
     assert idgraph1 == idgraph4
 
+
 def test_hash_numpy():
     """
         Test if idgraph is accurately generated for numpy arrays
@@ -57,7 +57,6 @@ def test_hash_numpy():
 
     # Assert that the original id graph is restored when the original object state is restored
     assert hash1.digest() == hash4.digest()
-
 
 
 def test_idgraph_pandas_Series():
@@ -88,6 +87,7 @@ def test_idgraph_pandas_Series():
 
     # Assert that the original id graph is restored when the original object state is restored
     assert idgraph1 == idgraph4
+
 
 def test_hash_pandas_Series():
     """
@@ -151,6 +151,7 @@ def test_idgraph_pandas_df():
 
     # Assert that idgraph changes when new row is added to dataframe
     assert idgraph1 != idgraph5
+
 
 def test_hash_pandas_df():
     """
@@ -245,6 +246,7 @@ def test_idgraph_matplotlib():
 
     # Close all figures
     plt.close('all')
+
 
 def test_hash_matplotlib():
     """
@@ -350,6 +352,7 @@ def test_idgraph_seaborn_displot():
     # Close all figures
     plt.close('all')
 
+
 def test_hash_seaborn_displot():
     """
         Test if idgraph is accurately generated for seaborn displot objects (figure-level object)
@@ -397,7 +400,7 @@ def test_idgraph_seaborn_scatterplot():
     """
     # Close all figures
     plt.close('all')
-    
+
     df = sns.load_dataset('penguins')
     plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
     plot1.set_xlabel('flipper_length_mm')
@@ -441,6 +444,7 @@ def test_idgraph_seaborn_scatterplot():
 
     # Close all figures
     plt.close('all')
+
 
 def test_hash_seaborn_scatterplot():
     """
