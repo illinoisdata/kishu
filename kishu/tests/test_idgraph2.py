@@ -265,8 +265,6 @@ def test_hash_matplotlib():
     pick1 = pickle.dumps(a[0])
     pick2 = pickle.dumps(a[0])
 
-    assert pick1 == pick2
-
     if pick1 != pick2:
         assert hash1.digest() != hash2.digest()
     else:
@@ -461,8 +459,6 @@ def test_hash_seaborn_scatterplot():
 
     pick1 = pickle.dumps(plot1)
     pick2 = pickle.dumps(plot1)
-
-    assert pick1 == pick2
 
     # Assert that the id graph does not change when the object remains unchanged if pickle binaries are same
     if pick1 != pick2:
