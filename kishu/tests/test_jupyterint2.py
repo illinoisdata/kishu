@@ -90,8 +90,9 @@ def test_record_history():
         return commit_entry
 
     # TODO: This test is hacky; we ought to reach for list of commits through public methods.
+    # AHG string is decoded bytes; adding assertion for it will make test case messy.
     history_dict = json.loads(output['history'])
-    assert replace_start_time(history_dict['0:1']) == {
+    assert replace_start_time(history_dict['0:1']).pop("ahg_string") == {
             "checkpoint_runtime_ms": 0,
             "code_block": "from kishu import load_kishu\nload_kishu()\n_kishu.set_test_mode()",
             "end_time_ms": 0,
@@ -100,7 +101,7 @@ def test_record_history():
             "kind": "jupyter",
             "message": "",
         }
-    assert replace_start_time(history_dict['0:2']) == {
+    assert replace_start_time(history_dict['0:2']).pop("ahg_string") == {
             "checkpoint_runtime_ms": 0,
             "checkpoint_vars": ["a"],
             "code_block": "a = 1",
