@@ -37,7 +37,11 @@ Kishu Commands.
 
 @kishu_app.command()
 def log(
-    notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
     commit_id: str = typer.Argument(
         None,
         help="Show the history of a commit ID.",
@@ -61,8 +65,12 @@ def log(
 
 @kishu_app.command()
 def status(
-    notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
-    commit_id: str = typer.Argument(help="Commit ID to get status.", show_default=False),
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
+    commit_id: str = typer.Argument(..., help="Commit ID to get status.", show_default=False),
 ) -> None:
     """
     Show a commit in detail.
@@ -72,7 +80,11 @@ def status(
 
 @kishu_app.command()
 def commit(
-    notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
     message: str = typer.Option(
         None,
         "-m",
@@ -89,8 +101,13 @@ def commit(
 
 @kishu_app.command()
 def checkout(
-    notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
     branch_or_commit_id: str = typer.Argument(
+        ...,
         help="Branch name or commit ID to checkout.",
         show_default=False,
     ),
@@ -103,7 +120,11 @@ def checkout(
 
 @kishu_app.command()
 def branch(
-    notebook_id: str = typer.Argument(help="Notebook ID to interact with.", show_default=False),
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
     commit_id: str = typer.Argument(
         None,
         help="Commit ID to create the branch on.",

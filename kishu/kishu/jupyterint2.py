@@ -208,10 +208,11 @@ class CommitEntry(UnitExecution):
     raw_nb: Optional[str] = None
     formatted_cells: Optional[List[FormattedCell]] = None
     restore_plan: Optional[RestorePlan] = None
+    message: str = ""
+    timestamp_ms: int = 0
 
     # Only available in jupyter commit entries
     execution_count: Optional[int] = None
-    message: str = ""
     error_before_exec: Optional[str] = None
     error_in_exec: Optional[str] = None
     result: Optional[str] = None
@@ -511,8 +512,9 @@ class KishuForJupyter:
         return BareReprStr(entry.exec_id)
 
     def _commit_entry(self, entry: CommitEntry) -> None:
-        # Generate commit ID/
+        # Generate commit ID.
         entry.exec_id = self._commit_id()
+        entry.timestamp_ms = get_epoch_time_ms()
 
         # Force saving to observe all cells and extract notebook informations.
         self._save_notebook()

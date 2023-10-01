@@ -83,6 +83,7 @@ def test_record_history():
 
     def replace_start_time(commit_entry):
         set_field_to(commit_entry, 'checkpoint_runtime_ms', 0)
+        set_field_to(commit_entry, 'timestamp_ms', 0)
         set_field_to(commit_entry, 'end_time_ms', 0)
         set_field_to(commit_entry, 'runtime_ms', 0)
         set_field_to(commit_entry, 'start_time_ms', 0)
@@ -99,6 +100,7 @@ def test_record_history():
             "execution_count": 1,
             "kind": "jupyter",
             "message": "",
+            "timestamp_ms": 0,
         }
     assert replace_start_time(history_dict['0:2']) == {
             "checkpoint_runtime_ms": 0,
@@ -111,4 +113,5 @@ def test_record_history():
             "start_time_ms": 0,
             "kind": "jupyter",
             "message": "",
+            "timestamp_ms": 0,
         }
