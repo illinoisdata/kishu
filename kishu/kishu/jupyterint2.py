@@ -359,8 +359,10 @@ class KishuForJupyter:
         self._last_execution_count = 0
         self._start_time_ms: Optional[int] = None
 
-        self._cr_planner = CheckpointRestorePlanner({} if get_jupyter_kernel() is None
-                else get_jupyter_kernel().user_ns)
+        self._cr_planner = CheckpointRestorePlanner(
+            {} if get_jupyter_kernel() is None
+            else get_jupyter_kernel().user_ns
+        )
 
     def set_test_mode(self):
         # Configure this object for testing.
@@ -473,10 +475,11 @@ class KishuForJupyter:
 
         # Update optimization items.
         self._cr_planner.post_run_cell_update(
-                entry.code_block, 
-                self.get_user_namespace_vars(), 
-                entry.start_time_ms, 
-                entry.runtime_ms)
+            entry.code_block,
+            self.get_user_namespace_vars(),
+            entry.start_time_ms,
+            entry.runtime_ms,
+        )
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count

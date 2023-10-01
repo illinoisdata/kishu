@@ -12,3 +12,4 @@ scikit-learn
 textblob
 mypy
 networkx
+flake8
