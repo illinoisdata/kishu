@@ -1,5 +1,6 @@
 from typing import Set, Any, Dict, Optional
 import numpy as np
+import dill
 from collections import defaultdict
 
 from kishu import idgraph2 as idgraph
@@ -106,3 +107,23 @@ class CheckpointRestorePlanner:
                         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]])
 
         return restore_plan
+
+    def get_ahg_string(self) -> str:
+        """
+            Returns the decoded serialized bytestring (str type) of the AHG.
+            Required as the AHG is not JSON serializable by default.
+        """
+        return dill.dumps(self._ahg).decode('latin1')
+
+    def replace_state(self, new_ahg_string: str, new_user_ns: Dict[Any, Any]) -> None:
+        """
+            Replace the current AHG with new_ahg_bytes and user namespace with new_user_ns.
+            Called when a checkout is performed.
+        """
+        self._ahg = dill.loads(new_ahg_string.encode('latin1'))
+        self._user_ns = new_user_ns
+
+        # Also clear the old ID graphs and pre-run cell info.
+        # TODO: only clear ID graphs of variables which have changed between pre and post-checkout.
+        self._id_graph_map = {}
+        self._pre_run_cell_vars = set()

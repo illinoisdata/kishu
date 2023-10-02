@@ -210,6 +210,7 @@ class CommitEntry(UnitExecution):
     restore_plan: Optional[RestorePlan] = None
     message: str = ""
     timestamp_ms: int = 0
+    ahg_string: Optional[str] = None
 
     # Only available in jupyter commit entries
     execution_count: Optional[int] = None
@@ -423,6 +424,11 @@ class KishuForJupyter:
         commit_entry.restore_plan.run(target_ns, checkpoint_file, commit_id)
         self._checkout_namespace(user_ns, target_ns)
 
+        # Update C/R planner with AHG from checkpoint file and new namespace.
+        if commit_entry.ahg_string is None:
+            raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
+        self._cr_planner.replace_state(commit_entry.ahg_string, user_ns)
+
         # Update Kishu heads.
         self._graph.jump(commit_id)
         KishuBranch.update_head(
@@ -524,6 +530,7 @@ class KishuForJupyter:
         checkpoint_start_sec = time.time()
         restore = self._checkpoint(entry)
         entry.restore_plan = restore
+        entry.ahg_string = self._cr_planner.get_ahg_string()
         checkpoint_runtime_ms = round((time.time() - checkpoint_start_sec) * 1000)
         entry.checkpoint_runtime_ms = checkpoint_runtime_ms
 
