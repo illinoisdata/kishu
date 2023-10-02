@@ -16,6 +16,7 @@ class CommitSummary:
     commit_id: str
     parent_id: str
     message: str
+    timestamp: str
     code_block: Optional[str]
     runtime_ms: Optional[int]
 
@@ -200,7 +201,7 @@ class KishuCommand:
             commits.append(HistoricalCommit(
                 oid=node.commit_id,
                 parent_oid=node.parent_id,
-                timestamp=KishuCommand._to_datetime(commit_entry.end_time_ms),
+                timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
                 branch_id="",  # To be set in _toposort_commits.
                 parent_branch_id="",  # To be set in _toposort_commits.
                 other_branch_ids=[],
@@ -266,6 +267,7 @@ class KishuCommand:
                 commit_id=node.commit_id,
                 parent_id=node.parent_id,
                 message=commit_entry.message,
+                timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
                 code_block=commit_entry.code_block,
                 runtime_ms=commit_entry.runtime_ms,
             ))
@@ -308,7 +310,7 @@ class KishuCommand:
         return SelectedCommit(
             oid=commit_id,
             parent_oid=commit_node_info.parent_id,
-            timestamp=KishuCommand._to_datetime(commit_entry.end_time_ms),
+            timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
             latest_exec_num=KishuCommand._str_or_none(commit_entry.execution_count),
             variables=variables,
             cells=cells,

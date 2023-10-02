@@ -25,22 +25,18 @@ export async function requestAPI<T>(
   try {
     response = await ServerConnection.makeRequest(requestUrl, init, settings);
   } catch (error) {
-    throw new ServerConnection.NetworkError(error as any);
+    throw new ServerConnection.NetworkError(error as TypeError);
   }
-
-  let data: any = await response.text();
-
+  const data: string = await response.text();
+  if (!response.ok) {
+    throw new ServerConnection.ResponseError(response, data);
+  }
   if (data.length > 0) {
     try {
-      data = JSON.parse(data);
+      return JSON.parse(data);
     } catch (error) {
       console.log('Not a JSON response body.', response);
     }
   }
-
-  if (!response.ok) {
-    throw new ServerConnection.ResponseError(response, data.message || data);
-  }
-
-  return data;
+  throw new ServerConnection.ResponseError(response, data);
 }
