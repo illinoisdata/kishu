@@ -59,14 +59,6 @@ def test_hash_numpy():
     assert hash1.digest() == hash4.digest()
 
 
-def test_idgraph_pandas():
-    test_idgraph_pandas_Series()
-    test_idgraph_pandas_df()
-
-def test_hash_pandas():
-    test_hash_pandas_Series()
-    test_hash_pandas_df()
-
 
 def test_idgraph_pandas_Series():
     """
@@ -314,11 +306,6 @@ def test_hash_matplotlib():
     plt.close('all')
 
 
-def test_idgraph_seaborn():
-    test_idgraph_seaborn_displot()
-    test_idgraph_seaborn_scatterplot()
-
-
 def test_idgraph_seaborn_displot():
     """
         Test if idgraph is accurately generated for seaborn displot objects (figure-level object)
@@ -326,7 +313,7 @@ def test_idgraph_seaborn_displot():
     plt.close('all')
     df = sns.load_dataset('penguins')
     plot1 = sns.displot(data=df, x="flipper_length_mm",
-                        y="bill_length_mm", kind="kde")
+                        y="bill_length_mm", kind="hist")
     plot1.set(xlabel="flipper_length_mm")
 
     idgraph1 = idgraph.get_object_state(plot1, {})

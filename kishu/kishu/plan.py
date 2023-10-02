@@ -274,6 +274,32 @@ class LoadVariableRestoreAction(RestoreAction):
         return self.__repr__()
 
 
+class RerunCellRestoreAction(RestoreAction):
+    """
+    Load variables from a pickled file (using the dill module).
+    """
+    def __init__(self, cell_code: str = ""):
+        """
+        cell_code: cell code to rerun.
+        """
+        if (cell_code is not None) and (not isinstance(cell_code, str)):
+            raise ValueError("Unexpected type for cell_code: {}".format(type(cell_code)))
+        self.cell_code: Optional[str] = cell_code
+
+    def run(self, user_ns: dict, checkpoint_file: str, exec_id: str):
+        """
+        @param user_ns  A target space where restored variables will be set.
+        """
+        # TODO: implement this when recomputation is required.
+        raise Exception("Restoration via cell rerunning is not supported yet.")
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(var_names={self.cell_code})"
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+
 @dataclass
 class RestorePlan:
     """
@@ -282,6 +308,12 @@ class RestorePlan:
     @param actions  A series of actions for restoring a state.
     """
     actions: List[RestoreAction] = field(default_factory=lambda: [])
+
+    def add_rerun_cell_restore_action(self, cell_code: str):
+        self.actions.append(RerunCellRestoreAction(cell_code))
+
+    def add_load_variable_restore_action(self, variable_names: List[str]):
+        self.actions.append(LoadVariableRestoreAction(variable_names))
 
     def run(self, user_ns: dict, checkpoint_file: str, exec_id: str):
         """
