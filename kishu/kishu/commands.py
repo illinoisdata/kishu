@@ -188,6 +188,14 @@ class KishuCommand:
         )
 
     @staticmethod
+    def rename_branch(notebook_id: str, old_name: str, new_name: str) -> RenameBranchResult:
+        KishuBranch.rename_branch(notebook_id, old_name, new_name)
+        return RenameBranchResult(
+            status="ok",
+            branch_name=new_name,
+        )
+
+    @staticmethod
     def fe_commit_graph(notebook_id: str) -> FEInitializeResult:
         store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
         graph = store.list_all_history()

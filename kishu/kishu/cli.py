@@ -116,6 +116,13 @@ def branch(
         help="Create branch with this name.",
         show_default=False,
     ),
+    create_branch_name: str = typer.Option(
+        None,
+        "-m",
+        "--rename-branch",
+        help="Rename branch from old name to new name.",
+        show_default=False,
+    ),
 ) -> None:
     """
     Create or delete branches.

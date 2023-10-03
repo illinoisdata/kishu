@@ -91,3 +91,18 @@ class KishuBranch:
             BranchRow(branch_name=branch_name, commit_id=commit_id)
             for branch_name, commit_id in cur
         ]
+
+    @staticmethod
+    def rename_branch(notebook_id: str, old_name: str, new_name: str) -> None:
+        dbfile = KishuResource.checkpoint_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+        query = f"update {BRANCH_TABLE} set branch_name = ? where branch_name = ?"
+        cur.execute(query, (new_name, old_name))
+        con.commit()
+
+        # update HEAD branch if HEAD is on branch
+        head = KishuBranch.get_head(notebook_id)
+        if old_name == head.branch_name:
+            KishuBranch.update_head(notebook_id, branch_name=new_name)
+        
