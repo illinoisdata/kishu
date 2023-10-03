@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import List, Optional, Set, Dict
+import dill
 
 
 @dataclass
@@ -126,3 +127,17 @@ class AHG:
 
         # Add the newly created CE to the graph.
         self.add_cell_execution(cell, cell_runtime, start_time, input_vss, output_vss_create + output_vss_delete)
+
+    def serialize(self) -> str:
+        """
+            Returns the decoded serialized bytestring (str type) of the AHG.
+            Required as the AHG is not JSON serializable by default.
+        """
+        return dill.dumps(self).decode('latin1')
+
+    @staticmethod
+    def deserialize(ahg_string: str) -> AHG:
+        """
+            Returns the AHG object from serialized AHG in string format.
+        """
+        return dill.loads(ahg_string.encode('latin1'))
