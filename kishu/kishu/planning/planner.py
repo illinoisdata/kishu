@@ -1,6 +1,5 @@
 from typing import Set, Any, Dict, Optional
 import numpy as np
-import dill
 from collections import defaultdict
 
 from kishu import idgraph2 as idgraph
@@ -108,19 +107,19 @@ class CheckpointRestorePlanner:
 
         return restore_plan
 
-    def get_ahg_string(self) -> str:
+    def serialize_ahg(self) -> str:
         """
             Returns the decoded serialized bytestring (str type) of the AHG.
             Required as the AHG is not JSON serializable by default.
         """
-        return dill.dumps(self._ahg).decode('latin1')
+        return self._ahg.serialize()
 
     def replace_state(self, new_ahg_string: str, new_user_ns: Dict[Any, Any]) -> None:
         """
             Replace the current AHG with new_ahg_bytes and user namespace with new_user_ns.
             Called when a checkout is performed.
         """
-        self._ahg = dill.loads(new_ahg_string.encode('latin1'))
+        self._ahg = AHG.deserialize(new_ahg_string)
         self._user_ns = new_user_ns
 
         # Also clear the old ID graphs and pre-run cell info.

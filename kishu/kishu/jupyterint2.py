@@ -530,7 +530,7 @@ class KishuForJupyter:
         checkpoint_start_sec = time.time()
         restore = self._checkpoint(entry)
         entry.restore_plan = restore
-        entry.ahg_string = self._cr_planner.get_ahg_string()
+        entry.ahg_string = self._cr_planner.serialize_ahg()
         checkpoint_runtime_ms = round((time.time() - checkpoint_start_sec) * 1000)
         entry.checkpoint_runtime_ms = checkpoint_runtime_ms
 
