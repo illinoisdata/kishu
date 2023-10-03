@@ -46,12 +46,12 @@ class CheckpointRestorePlanner:
         """
         # Find accessed variables.
         accessed_vars = (
-            find_input_vars(code_block, self._pre_run_cell_vars, self._user_ns, set())
+            find_input_vars(code_block, self._ahg.variable_snapshots.keys(), self._user_ns, set())
             if code_block else set()
         )
 
         # Find created and deleted variables.
-        created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
+        created_vars, deleted_vars = find_created_and_deleted_vars(set(self._ahg.variable_snapshots.keys()),
                                                                    post_run_cell_vars)
 
         # Find modified variables.
@@ -77,7 +77,7 @@ class CheckpointRestorePlanner:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = []
         for vs_list in self._ahg.variable_snapshots.values():
-            if not vs_list[-1].deleted:
+            if len(vs_list) and not vs_list[-1].deleted:
                 active_vss.append(vs_list[-1])
 
         # Profile the size of each variable defined in the current session.
