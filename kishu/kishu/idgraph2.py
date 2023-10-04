@@ -82,7 +82,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
             node.id_obj = id(obj)
             node.check_value_only = False
 
-        for key, value in obj.items():
+        for key, value in sorted(obj.items()):
             node.children.append(key)
             child = get_object_state(value, visited, include_id)
             node.children.append(child)
