@@ -18,7 +18,7 @@ Dependencies:
 """
 import os
 import pickle
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import random
 
 from nbconvert.preprocessors import ExecutePreprocessor
@@ -32,9 +32,21 @@ load_kishu()
 _kishu.set_test_mode()
 """
 
-def kishu_checkout_str(cell_num):
+
+def get_kishu_checkout_str(cell_num):
     return """
 _kishu.checkout("0:""" + str(cell_num) + """")
+"""
+
+
+def get_dump_namespace_str(pickle_file_name):
+    return """
+import dill
+test = locals()
+result_dict = {}
+exceptions = ['In', 'Out', 'get_ipython', 'exit', 'quit', 'load_kishu', 'fout', 'result_dict', 'exceptions', 'test']
+result_dict.update({var: test[var] for var in locals().keys() if not var.startswith('_') and var not in exceptions})
+dill.dump(result_dict, open('""" + pickle_file_name + """', 'wb'))
 """
 
 
@@ -55,7 +67,7 @@ class NotebookRunner:
         """
         self.test_notebook = test_notebook
         self.path_to_notebook = os.path.dirname(self.test_notebook)
-        self.pickle_file = "/data/elastic-notebook/tmp/pickle_" + os.path.basename(self.test_notebook)
+        self.pickle_file = "/tmp/pickle_" + os.path.basename(self.test_notebook)
 
     def execute(self, cell_indices: List[int], var_names: List[str], eval_expr: Dict[str, str] = {}):
         """
@@ -117,76 +129,47 @@ class NotebookRunner:
             data = pickle.load(file)
         return data
 
-
-    def execute_and_compare(self):
+    def execute_e2e_random_test(self) -> Tuple[Dict, Dict]:
+        """
+            Executes the e2e random test by storing the namespace at cell execution X in the middle of a notebook,
+            and namespace after checking out cell execution X completely executing the notebook.
+            X is randomly generated.
+            Returns a tuple containing the namespace dict before/after checking out, respectively.
+        """
+        # Open the notebook.
         with open(self.test_notebook) as nb_file:
             notebook = read(nb_file, as_version=4)
-        
-        # create an initialization cell and add it to the notebook.
-        kishu_init_cell = new_code_cell(source=KISHU_INIT_STR)
-        notebook.cells.insert(0, kishu_init_cell)
+
+        # Strip all non-code (e.g., markdown) cells. We won't be needing them.
+        notebook["cells"] = ([x for x in notebook["cells"] if x["cell_type"] == "code"])
+
+        # The notebook should have at least 2 cells to run this test.
+        assert len(notebook["cells"]) >= 2
+
+        # create a kishu initialization cell and add it to the start of the notebook.
+        notebook.cells.insert(0, new_code_cell(source=KISHU_INIT_STR))
 
         # Generate a random cell number to restore to.
-        num_code_cells = len([x for x in notebook["cells"] if x["cell_type"] == "code"])
-        cell_num_to_restore = random.randint(2, num_code_cells - 3)
-        print("cell num to restore:" , cell_num_to_restore)
+        cell_num_to_restore = random.randint(2, len(notebook["cells"]) - 1)
 
-        # Insert dump session code at middle of notebook
-        #dumpsession_code_middle = "\n".join(
-        #    [
-        #        "import dill",
-        #        "dill.dump_session('{}.middle')".format(self.pickle_file),
-        #    ]
-        #)
-        dumpsession_code_middle = "\n".join(
-            [
-                "import dill",
-                "test = locals()",
-                "result_dict = {}",
-                "exceptions = ['In', 'Out', 'get_ipython', 'exit', 'quit', 'load_kishu']",
-                "result_dict.update({var: test[var] for var in locals().keys() if not var.startswith('_') and var not in exceptions})",
-                "dill.dump(result_dict, open('{}.middle', 'wb'))".format(self.pickle_file),
-            ]
-        )
-        dumpsession_code_middle_cell = new_code_cell(source=dumpsession_code_middle)
-        notebook.cells.insert(cell_num_to_restore, dumpsession_code_middle_cell)
+        # Insert dump session code at middle of notebook after the **cell_num_to_restore**th code cell.
+        dumpsession_code_middle = get_dump_namespace_str(self.pickle_file + ".middle")
+        notebook.cells.insert(cell_num_to_restore, new_code_cell(source=dumpsession_code_middle))
 
-        # Insert kishu checkout code at end of nottebook
-        kishu_checkout_code = kishu_checkout_str(cell_num_to_restore)
-        kishu_checkout_code_cell = new_code_cell(source=kishu_checkout_code)
-        notebook.cells.append(kishu_checkout_code_cell)
+        # Insert kishu checkout code at end of notebook.
+        kishu_checkout_code = get_kishu_checkout_str(cell_num_to_restore)
+        notebook.cells.append(new_code_cell(source=kishu_checkout_code))
 
-        #kishu_log_code = "kishu_log = _kishu.log()"
-        #kishu_log_code_cell = new_code_cell(source=kishu_log_code)
-        #notebook.cells.append(kishu_log_code_cell)
+        # Insert dump session code at end of notebook after kishu checkout.
+        dumpsession_code_end = get_dump_namespace_str(self.pickle_file + ".end")
+        notebook.cells.append(new_code_cell(source=dumpsession_code_end))
 
-        # Insert dump session code at end of notebook
-        dumpsession_code_end = "\n".join(
-            [
-                "import dill",
-                "test = locals()",
-                "result_dict = {}",
-                "exceptions = ['In', 'Out', 'get_ipython', 'exit', 'quit', 'load_kishu']",
-                "result_dict.update({var: test[var] for var in locals().keys() if not var.startswith('_') and var not in exceptions})",
-                "dill.dump(result_dict, open('{}.end', 'wb'))".format(self.pickle_file),
-            ]
-        )
-        dumpsession_code_end_cell = new_code_cell(source=dumpsession_code_end)
-        notebook.cells.append(dumpsession_code_end_cell)
-
-        # Execute the notebook cells
+        # Execute the notebook cells.
         exec_prep = ExecutePreprocessor(timeout=600, kernel_name="python3")
         exec_prep.preprocess(notebook, {"metadata": {"path": self.path_to_notebook}})
 
-        # get the output dumped sessions
-        try:
-            print(self.pickle_file + '.middle')
-            data_middle = dill.load(open(self.pickle_file + '.middle', "rb"))
-        except:
-            print("middle failed")
-        try:
-            data_end = dill.load(open(self.pickle_file + '.end', "rb"))
-        except:
-            print("end failed")
+        # get the output dumped namespace dictionaries.
+        data_middle = dill.load(open(self.pickle_file + '.middle', "rb"))
+        data_end = dill.load(open(self.pickle_file + '.end', "rb"))
 
         return data_middle, data_end
