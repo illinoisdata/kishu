@@ -97,12 +97,23 @@ class KishuBranch:
         dbfile = KishuResource.checkpoint_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
+
+        if not KishuBranch.contains_branch(cur, old_name):
+            raise ValueError("The provided old branch name does not exist.")
+        if KishuBranch.contains_branch(cur, new_name):
+            raise ValueError("The provided new branch name already exists.")
+
         query = f"update {BRANCH_TABLE} set branch_name = ? where branch_name = ?"
         cur.execute(query, (new_name, old_name))
         con.commit()
 
-        # update HEAD branch if HEAD is on branch
+        # Update HEAD branch if HEAD is on branch
         head = KishuBranch.get_head(notebook_id)
         if old_name == head.branch_name:
             KishuBranch.update_head(notebook_id, branch_name=new_name)
-        
+
+    @staticmethod
+    def contains_branch(cur: sqlite3.Cursor, branch_name: str) -> bool:
+        query = f"select count(*) from {BRANCH_TABLE} where branch_name = ?"
+        cur.execute(query, (branch_name,))
+        return cur.fetchone()[0] == 1

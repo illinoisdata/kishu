@@ -6,6 +6,7 @@ from kishu.resources import KishuResource
 from kishu.jupyterint2 import CommitEntryKind, CommitEntry, KishuForJupyter
 from kishu.commit_graph import CommitNodeInfo
 from kishu.commands import CommitSummary, KishuCommand, SelectedCommit
+from kishu.branch import KishuBranch
 
 
 @pytest.fixture()
@@ -150,6 +151,31 @@ class TestKishuCommand:
 
         branch_result = KishuCommand.branch(notebook_id, "historical", basic_execution_ids[1])
         assert branch_result.status == "ok"
+
+    def test_rename_branch_basic(self, notebook_id, basic_execution_ids):
+        branch_1 = "branch_1"
+        KishuCommand.branch(notebook_id, branch_1, None)
+
+        rename_branch_result = KishuCommand.rename_branch(
+            notebook_id, branch_1, "new_branch")
+        head = KishuBranch.get_head(notebook_id)
+        assert rename_branch_result.status == "ok"
+        assert head.branch_name == "new_branch"
+
+    def test_rename_branch_non_existing_branch(
+            self, notebook_id, basic_execution_ids):
+        rename_branch_result = KishuCommand.rename_branch(
+            notebook_id, "non_existing_branch", "new_branch")
+        assert rename_branch_result.status == "error"
+
+    def test_rename_branch_new_repeating_branch(
+            self, notebook_id, basic_execution_ids):
+        branch_1 = "branch_1"
+        KishuCommand.branch(notebook_id, branch_1, None)
+
+        rename_branch_result = KishuCommand.rename_branch(
+            notebook_id, branch_1, branch_1)
+        assert rename_branch_result.status == "error"
 
     def test_fe_commit_graph(self, notebook_id, basic_execution_ids):
         fe_commit_graph_result = KishuCommand.fe_commit_graph(notebook_id)
