@@ -16,14 +16,14 @@ Dependencies:
 - nbconvert: Library for executing Jupyter notebook cells.
 - nbformat: Library for working with Jupyter notebook file format.
 """
+import dill
 import os
 import pickle
-import dill
 
-from typing import List, Dict, Tuple
 from nbconvert.preprocessors import ExecutePreprocessor
 from nbformat import read
 from nbformat.v4 import new_code_cell
+from typing import Dict, List, Tuple
 
 from kishu.jupyterint2 import IPYTHON_VARS, KISHU_VARS
 
@@ -31,7 +31,7 @@ KISHU_INIT_STR: str = "from kishu import load_kishu; load_kishu(); _kishu.set_te
 
 
 def get_kishu_checkout_str(cell_num: int, session_num: int = 0) -> str:
-    return f"_kishu.checkout('{repr(session_num)}:{repr(cell_num)}')"
+    return f"_kishu.checkout('{session_num}:{cell_num}')"
 
 
 def get_dump_namespace_str(pickle_file_name: str) -> str:
@@ -124,11 +124,13 @@ class NotebookRunner:
             data = pickle.load(file)
         return data
 
-    def execute_full_checkout_test(self, cell_num_to_restore) -> Tuple[Dict, Dict]:
+    def execute_full_checkout_test(self, cell_num_to_restore: int) -> Tuple[Dict, Dict]:
         """
             Executes the full checkout test by storing the namespace at cell_num_to_restore,
             and namespace after checking out cell_num_to_restore after completely executing the notebook.
             Returns a tuple containing the namespace dict before/after checking out, respectively.
+
+            @param cell_num_to_restore: the cell execution number to restore to.
         """
         # Open the notebook.
         with open(self.test_notebook) as nb_file:
