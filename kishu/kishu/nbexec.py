@@ -16,13 +16,33 @@ Dependencies:
 - nbconvert: Library for executing Jupyter notebook cells.
 - nbformat: Library for working with Jupyter notebook file format.
 """
+import dill
 import os
 import pickle
-from typing import List, Dict
 
 from nbconvert.preprocessors import ExecutePreprocessor
 from nbformat import read
 from nbformat.v4 import new_code_cell
+from typing import Dict, List, Tuple
+
+from kishu.jupyterint2 import IPYTHON_VARS, KISHU_VARS
+
+KISHU_INIT_STR: str = "from kishu import load_kishu; load_kishu(); _kishu.set_test_mode()"
+
+
+def get_kishu_checkout_str(cell_num: int, session_num: int = 0) -> str:
+    return f"_kishu.checkout('{session_num}:{cell_num}')"
+
+
+def get_dump_namespace_str(pickle_file_name: str) -> str:
+    return "\n".join(
+        [
+            "import dill",
+            "dill.dump({k: v for k, v in locals().items() if not k.startswith('_')",
+            f"and k not in {repr(IPYTHON_VARS.union(KISHU_VARS))}""},",
+            f"open({repr(pickle_file_name)}, 'wb'))",
+        ]
+    )
 
 
 class NotebookRunner:
@@ -103,3 +123,50 @@ class NotebookRunner:
         with open(self.pickle_file, "rb") as file:
             data = pickle.load(file)
         return data
+
+    def execute_full_checkout_test(self, cell_num_to_restore: int) -> Tuple[Dict, Dict]:
+        """
+            Executes the full checkout test by storing the namespace at cell_num_to_restore,
+            and namespace after checking out cell_num_to_restore after completely executing the notebook.
+            Returns a tuple containing the namespace dict before/after checking out, respectively.
+
+            @param cell_num_to_restore: the cell execution number to restore to.
+        """
+        # Open the notebook.
+        with open(self.test_notebook) as nb_file:
+            notebook = read(nb_file, as_version=4)
+
+        # Strip all non-code (e.g., markdown) cells. We won't be needing them.
+        notebook["cells"] = [x for x in notebook["cells"] if x["cell_type"] == "code"]
+
+        # The notebook should have at least 2 cells to run this test.
+        assert len(notebook["cells"]) >= 2
+
+        # The cell num to restore to should be valid. (the +1 is from the inserted kishu init cell below).
+        cell_num_to_restore += 1
+        assert cell_num_to_restore >= 2 and cell_num_to_restore <= len(notebook["cells"]) - 1
+
+        # create a kishu initialization cell and add it to the start of the notebook.
+        notebook.cells.insert(0, new_code_cell(source=KISHU_INIT_STR))
+
+        # Insert dump session code at middle of notebook after the **cell_num_to_restore**th code cell.
+        dumpsession_code_middle = get_dump_namespace_str(self.pickle_file + ".middle")
+        notebook.cells.insert(cell_num_to_restore, new_code_cell(source=dumpsession_code_middle))
+
+        # Insert kishu checkout code at end of notebook.
+        kishu_checkout_code = get_kishu_checkout_str(cell_num_to_restore)
+        notebook.cells.append(new_code_cell(source=kishu_checkout_code))
+
+        # Insert dump session code at end of notebook after kishu checkout.
+        dumpsession_code_end = get_dump_namespace_str(self.pickle_file + ".end")
+        notebook.cells.append(new_code_cell(source=dumpsession_code_end))
+
+        # Execute the notebook cells.
+        exec_prep = ExecutePreprocessor(timeout=600, kernel_name="python3")
+        exec_prep.preprocess(notebook, {"metadata": {"path": self.path_to_notebook}})
+
+        # get the output dumped namespace dictionaries.
+        data_middle = dill.load(open(self.pickle_file + '.middle', "rb"))
+        data_end = dill.load(open(self.pickle_file + '.end', "rb"))
+
+        return data_middle, data_end

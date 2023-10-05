@@ -1,5 +1,7 @@
 import json
 import os
+import dill
+import pytest
 import shutil
 from tempfile import NamedTemporaryFile, gettempdir
 
@@ -9,6 +11,9 @@ from kishu.checkpoint_io import init_checkpoint_database
 from kishu.jupyterint2 import CommitEntry
 from kishu.nbexec import NotebookRunner
 from kishu.plan import ExecutionHistory
+
+
+NB_DIR: str = "tests/notebooks"
 
 
 def create_temporary_copy(path, filename):
@@ -118,3 +123,35 @@ def test_record_history():
             "ahg_string": "",
             "timestamp_ms": 0,
         }
+
+
+@pytest.mark.parametrize(("notebook_name", "cell_num_to_restore"), [
+        ('simple.ipynb', 2),
+        ('simple.ipynb', 3),
+        ('numpy.ipynb', 2),
+        ('numpy.ipynb', 3),
+        ('numpy.ipynb', 4),
+        pytest.param('ml-ex1.ipynb', 10, marks=pytest.mark.skip(reason="Too expensive to run")),
+        pytest.param('04_training_linear_models.ipynb', 10, marks=pytest.mark.skip(reason="Too expensive to run")),
+        pytest.param('sklearn_tweet_classification.ipynb', 10, marks=pytest.mark.skip(reason="Too expensive to run"))]
+    )
+def test_full_checkout(notebook_name: str, cell_num_to_restore: int):
+    """
+        Tests checkout correctness by comparing namespace contents at cell_num_to_restore in the middle of a notebook,
+        and namespace contents after checking out cell_num_to_restore completely executing the notebook.
+
+        @param notebook_name: input notebook name.
+        @param cell_num_to_restore: the cell execution number to restore to.
+    """
+    # Open notebook.
+    path_to_notebook = os.getcwd()
+    notebook = NotebookRunner(os.path.join(path_to_notebook, NB_DIR, notebook_name))
+
+    # Get notebook namespace contents at cell execution X and contents after checking out cell execution X.
+    namespace_before_checkout, namespace_after_checkout = notebook.execute_full_checkout_test(cell_num_to_restore)
+
+    # The contents should be identical.
+    assert namespace_before_checkout.keys() == namespace_after_checkout.keys()
+    for key in namespace_before_checkout.keys():
+        # As certain classes don't have equality (__eq__) implemented, we compare serialized bytestrings.
+        assert dill.dumps(namespace_before_checkout[key]) == dill.dumps(namespace_after_checkout[key])
