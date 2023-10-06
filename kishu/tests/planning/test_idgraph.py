@@ -4,7 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pickle
 
-from kishu.planning.idgraph import *
+from kishu.planning.idgraph import get_object_hash, get_object_state
 
 
 def test_idgraph_numpy():
