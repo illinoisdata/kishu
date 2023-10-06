@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Tuple
 import typer
 
 from kishu import __app_name__, __version__
@@ -137,12 +138,28 @@ def branch(
         help="Create branch with this name.",
         show_default=False,
     ),
+    rename_branch: Tuple[str, str] = typer.Option(
+        None,
+        "-m",
+        "--rename-branch",
+        help="Rename branch from old name to new name.",
+        show_default=False,
+    ),
 ) -> None:
     """
-    Create or delete branches.
+    Create, rename, or delete branches.
     """
     if create_branch_name is not None:
         print(into_json(KishuCommand.branch(notebook_id, create_branch_name, commit_id)))
+    if rename_branch is not None:
+        old_name, new_name = rename_branch
+        try:
+            print(into_json(KishuCommand.rename_branch(
+                notebook_id, old_name, new_name)))
+        except Exception as error:
+            # Old_name does not exist and/or new_name already exists
+            typer.echo(f"Error: {str(error)}", err=True)
+            raise typer.Exit()
 
 
 def main() -> None:

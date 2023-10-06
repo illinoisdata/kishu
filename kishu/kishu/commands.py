@@ -50,6 +50,12 @@ class BranchResult:
 
 
 @dataclass
+class RenameBranchResult:
+    status: str
+    branch_name: str
+
+
+@dataclass
 class HistoricalCommit:
     oid: str
     parent_oid: str
@@ -187,6 +193,24 @@ class KishuCommand:
             commit_id=commit_id,
             head=head,
         )
+
+    @staticmethod
+    def rename_branch(
+        notebook_id: str,
+        old_name: str,
+        new_name: str,
+    ) -> RenameBranchResult:
+        try:
+            KishuBranch.rename_branch(notebook_id, old_name, new_name)
+            return RenameBranchResult(
+                status="ok",
+                branch_name=new_name,
+            )
+        except ValueError:
+            return RenameBranchResult(
+                status="error",
+                branch_name="",
+            )
 
     @staticmethod
     def fe_commit_graph(notebook_id: str) -> FEInitializeResult:

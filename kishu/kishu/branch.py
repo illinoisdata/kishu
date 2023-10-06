@@ -91,3 +91,29 @@ class KishuBranch:
             BranchRow(branch_name=branch_name, commit_id=commit_id)
             for branch_name, commit_id in cur
         ]
+
+    @staticmethod
+    def rename_branch(notebook_id: str, old_name: str, new_name: str) -> None:
+        dbfile = KishuResource.checkpoint_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+
+        if not KishuBranch.contains_branch(cur, old_name):
+            raise ValueError("The provided old branch name does not exist.")
+        if KishuBranch.contains_branch(cur, new_name):
+            raise ValueError("The provided new branch name already exists.")
+
+        query = f"update {BRANCH_TABLE} set branch_name = ? where branch_name = ?"
+        cur.execute(query, (new_name, old_name))
+        con.commit()
+
+        # Update HEAD branch if HEAD is on branch
+        head = KishuBranch.get_head(notebook_id)
+        if old_name == head.branch_name:
+            KishuBranch.update_head(notebook_id, branch_name=new_name)
+
+    @staticmethod
+    def contains_branch(cur: sqlite3.Cursor, branch_name: str) -> bool:
+        query = f"select count(*) from {BRANCH_TABLE} where branch_name = ?"
+        cur.execute(query, (branch_name,))
+        return cur.fetchone()[0] == 1
