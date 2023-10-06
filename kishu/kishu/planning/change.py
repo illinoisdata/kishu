@@ -8,6 +8,10 @@ from typing import Any, Deque, Dict, Set, Tuple
 PRIMITIVES = {int, bool, str, float}
 
 
+# TODO: replace with union of actual node types
+NodeType = Any
+
+
 # Node visitor for finding input variables.
 class Visitor(ast.NodeVisitor):
     def __init__(self, user_ns: Dict[str, Any], shell_udfs: Set[str]) -> None:
@@ -22,10 +26,10 @@ class Visitor(ast.NodeVisitor):
         self.user_ns = user_ns
         self.udfs = shell_udfs
 
-    def generic_visit(self, node: Any) -> None:
+    def generic_visit(self, node: NodeType) -> None:
         ast.NodeVisitor.generic_visit(self, node)
 
-    def visit_Name(self, node: Any) -> None:
+    def visit_Name(self, node: NodeType) -> None:
         if isinstance(node.ctx, ast.Load):
             # Only add as input if variable exists in current scope.
             if not (self.is_local and node.id not in self.globals and node.id in self.user_ns and
@@ -33,7 +37,7 @@ class Visitor(ast.NodeVisitor):
                 self.loads.add(node.id)
         ast.NodeVisitor.generic_visit(self, node)
 
-    def visit_AugAssign(self, node: Any) -> None:
+    def visit_AugAssign(self, node: NodeType) -> None:
         # Only add as input if variable exists in current scope.
         if isinstance(node.target, ast.Name):
             if not (self.is_local and node.target.id not in self.globals and node.target.id in self.user_ns and
@@ -41,17 +45,17 @@ class Visitor(ast.NodeVisitor):
                 self.loads.add(node.target.id)
         ast.NodeVisitor.generic_visit(self, node)
 
-    def visit_Global(self, node: Any) -> None:
+    def visit_Global(self, node: NodeType) -> None:
         for name in node.names:
             self.globals.add(name)
         ast.NodeVisitor.generic_visit(self, node)
 
-    def visit_Call(self, node: Any) -> None:
+    def visit_Call(self, node: NodeType) -> None:
         if isinstance(node.func, ast.Name):
             self.udfcalls.add(node.func.id)
         ast.NodeVisitor.generic_visit(self, node)
 
-    def visit_FunctionDef(self, node: Any) -> None:
+    def visit_FunctionDef(self, node: NodeType) -> None:
         # Only add as input if variable exists in current scope
         self.is_local = True
         self.functiondefs.add(node.name)
@@ -70,6 +74,7 @@ def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set
     """
     # Use TransformerManager to interpret special commands in the cell.
     # (e.g., cell magics - %, console commands - !)
+    # TODO: this may still leave some cases unhandled. Look into this later.
     transformer_manager = TransformerManager()
     cell = transformer_manager.transform_cell(cell)
 
