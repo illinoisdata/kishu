@@ -1,20 +1,21 @@
-import pytest
 import dataclasses
+import pytest
+
 from typing import Generator, List, Optional, Type
 
-from kishu.resources import KishuResource
-from kishu.jupyterint2 import CommitEntryKind, CommitEntry, KishuForJupyter
-from kishu.commit_graph import CommitNodeInfo
 from kishu.commands import CommitSummary, KishuCommand, SelectedCommit
-from kishu.branch import KishuBranch
+from kishu.jupyterint import CommitEntryKind, CommitEntry, KishuForJupyter
+from kishu.storage.branch import KishuBranch
+from kishu.storage.commit_graph import CommitNodeInfo
+from kishu.storage.path import KishuPath
 
 
 @pytest.fixture()
-def kishu_resource(tmp_path) -> Generator[Type[KishuResource], None, None]:
-    original_root = KishuResource.ROOT
-    KishuResource.ROOT = tmp_path
-    yield KishuResource
-    KishuResource.ROOT = original_root
+def kishu_resource(tmp_path) -> Generator[Type[KishuPath], None, None]:
+    original_root = KishuPath.ROOT
+    KishuPath.ROOT = tmp_path
+    yield KishuPath
+    KishuPath.ROOT = original_root
 
 
 @pytest.fixture()

@@ -1,14 +1,42 @@
 from __future__ import annotations
+
 import datetime
 import heapq
-from dataclasses import dataclass
+import json
+
+from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any, Dict, List, Optional, cast
 
-from kishu.branch import BranchRow, HeadBranch, KishuBranch
-from kishu.commit_graph import CommitNodeInfo, KishuCommitGraph
-from kishu.jupyterint2 import CommitEntry, JupyterCommandResult, JupyterConnection
-from kishu.plan import UnitExecution
-from kishu.resources import KishuResource
+from kishu.jupyterint import CommitEntry, JupyterCommandResult, JupyterConnection
+from kishu.planning.plan import UnitExecution
+from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
+from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
+from kishu.storage.path import KishuPath
+
+
+"""
+Printing dataclasses
+"""
+
+
+class DataclassJSONEncoder(json.JSONEncoder):
+
+    def default(self, o):
+        if is_dataclass(o):
+            return asdict(o)
+        try:
+            return super().default(o)
+        except TypeError:
+            return o.__repr__()
+
+
+def into_json(data):
+    return json.dumps(data, cls=DataclassJSONEncoder, indent=2)
+
+
+"""
+KishuCommand
+"""
 
 
 @dataclass
@@ -119,14 +147,14 @@ class KishuCommand:
         if commit_id is None:
             return LogResult([])
 
-        store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
         commit_entries = KishuCommand._find_commit_entries(notebook_id, graph)
         return LogResult(KishuCommand._join_commit_summary(graph, commit_entries))
 
     @staticmethod
     def log_all(notebook_id: str) -> LogAllResult:
-        store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
         commit_entries = KishuCommand._find_commit_entries(notebook_id, graph)
         return LogAllResult(KishuCommand._join_commit_summary(graph, commit_entries))
@@ -134,7 +162,7 @@ class KishuCommand:
     @staticmethod
     def status(notebook_id: str, commit_id: str) -> StatusResult:
         commit_node_info = next(
-            KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+            KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
         )
         commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
@@ -214,7 +242,7 @@ class KishuCommand:
 
     @staticmethod
     def fe_commit_graph(notebook_id: str) -> FEInitializeResult:
-        store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
         commit_entries = KishuCommand._find_commit_entries(notebook_id, graph)
 
@@ -246,7 +274,7 @@ class KishuCommand:
     @staticmethod
     def fe_commit(notebook_id: str, commit_id: str, vardepth: int) -> FESelectedCommit:
         commit_node_info = next(
-            KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+            KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
         )
         current_commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
@@ -263,7 +291,7 @@ class KishuCommand:
     @staticmethod
     def _find_commit_entries(notebook_id: str, graph: List[CommitNodeInfo]) -> Dict[str, CommitEntry]:
         unit_execs = UnitExecution.get_commits(
-            KishuResource.checkpoint_path(notebook_id),
+            KishuPath.checkpoint_path(notebook_id),
             [node.commit_id for node in graph]
         )
         return {key: cast(CommitEntry, unit_exec) for key, unit_exec in unit_execs.items()}
@@ -274,7 +302,7 @@ class KishuCommand:
         return cast(
             CommitEntry,
             UnitExecution.get_from_db(
-                KishuResource.checkpoint_path(notebook_id),
+                KishuPath.checkpoint_path(notebook_id),
                 commit_id,
             )
         )
@@ -311,7 +339,7 @@ class KishuCommand:
         if restore_plan is not None:
             restore_plan.run(
                 commit_variables,
-                KishuResource.checkpoint_path(notebook_id),
+                KishuPath.checkpoint_path(notebook_id),
                 commit_id
             )
         variables = [

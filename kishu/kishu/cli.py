@@ -3,8 +3,7 @@ from typing import Tuple
 import typer
 
 from kishu import __app_name__, __version__
-from kishu.serialization import into_json
-from kishu.commands import KishuCommand
+from kishu.commands import KishuCommand, into_json
 
 
 kishu_app = typer.Typer(add_completion=False)
