@@ -1,8 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from collections import defaultdict
-from typing import List, Optional, Set, Dict
+
 import dill
+
+from collections import defaultdict
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Set
 
 
 @dataclass

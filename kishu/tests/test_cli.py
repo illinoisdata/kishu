@@ -1,4 +1,5 @@
 import pytest
+
 from typer.testing import CliRunner
 from typing import Generator
 

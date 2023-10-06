@@ -1,5 +1,5 @@
-from kishu.planning.optimizer import Optimizer
 from kishu.planning.ahg import AHG
+from kishu.planning.optimizer import Optimizer
 
 
 def test_optimizer():

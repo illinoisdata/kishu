@@ -1,6 +1,8 @@
 from __future__ import annotations
-from typing import Tuple
+
 import typer
+
+from typing import Tuple
 
 from kishu import __app_name__, __version__
 from kishu.commands import KishuCommand, into_json

@@ -1,5 +1,6 @@
-from lib.idgraph import IDGraph
 import json
+
+from lib.idgraph import IDGraph
 
 
 # (1) These tests verify id graph generation for individual object types.

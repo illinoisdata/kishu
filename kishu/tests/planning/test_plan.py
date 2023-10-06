@@ -1,8 +1,9 @@
 import pytest
 
-from kishu.storage.checkpoint_io import init_checkpoint_database
-from kishu.planning.plan import LoadVariableRestoreAction, StoreEverythingCheckpointPlan
 from tempfile import NamedTemporaryFile
+
+from kishu.planning.plan import LoadVariableRestoreAction, StoreEverythingCheckpointPlan
+from kishu.storage.checkpoint_io import init_checkpoint_database
 
 
 def test_checkout_wrong_id_error():

@@ -1,10 +1,9 @@
-from flask import Flask, request
-
 import json
+
+from flask import Flask, request
 from typing import Optional
 
-from kishu.serialization import into_json
-from kishu.commands import KishuCommand
+from kishu.commands import KishuCommand, into_json
 
 
 def is_true(s: str) -> bool:

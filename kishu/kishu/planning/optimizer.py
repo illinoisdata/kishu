@@ -1,9 +1,10 @@
-from kishu.planning.ahg import AHG, VariableSnapshot, CellExecution
-
 import networkx as nx
-from networkx.algorithms.flow import shortest_augmenting_path
 import numpy as np
-from typing import Tuple, List, Set, Dict, Any
+
+from networkx.algorithms.flow import shortest_augmenting_path
+from typing import Any, Dict, List, Set, Tuple
+
+from kishu.planning.ahg import AHG, CellExecution, VariableSnapshot
 
 
 class Optimizer():
