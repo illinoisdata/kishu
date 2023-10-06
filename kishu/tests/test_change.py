@@ -30,6 +30,32 @@ def test_find_input_vars():
     assert input_vars_4 == {"x"}
 
 
+def test_special_inputs():
+    """
+        Test that the parser does not break on special commands (e.g., magics, console comands)
+    """
+    code_cell_1 = "a = %who_ls"
+    input_vars_1 = find_input_vars(code_cell_1, {}, {}, set())
+
+    assert input_vars_1 == set()
+
+    code_cell_2 = "%matplotlib inline"
+    input_vars_2 = find_input_vars(code_cell_2, {}, {}, set())
+
+    assert input_vars_2 == set()
+
+    code_cell_3 = "!pip install numpy"
+    input_vars_3 = find_input_vars(code_cell_3, {}, {}, set())
+
+    assert input_vars_3 == set()
+
+    # The who_ls here is not a magic. b and who_ls should be recognized as accessed for the modulo operator.
+    code_cell_4 = "a = b%who_ls"
+    input_vars_4 = find_input_vars(code_cell_4, {"b", "who_ls"}, {"b": 2, "who_ls": 3}, set())
+
+    assert input_vars_4 == {"b", "who_ls"}
+
+
 def test_find_created_and_deleted_vars():
     pre_execution_1 = {"x", "y"}
     post_execution_1 = {"y", "z"}
