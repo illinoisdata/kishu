@@ -3,7 +3,7 @@ import inspect
 
 from collections import deque
 from IPython.core.inputtransformer2 import TransformerManager
-from typing import Any, Deque, Dict, Set, Tuple
+from typing import Any, Deque, Dict, Set, Tuple, Type
 
 PRIMITIVES = {int, bool, str, float}
 
@@ -22,10 +22,10 @@ class Visitor(ast.NodeVisitor):
         self.user_ns = user_ns
         self.udfs = shell_udfs
 
-    def generic_visit(self, node: ast.AST) -> None:
+    def generic_visit(self, node: Type[ast.AST]) -> None:
         ast.NodeVisitor.generic_visit(self, node)
 
-    def visit_Name(self, node: ast.AST) -> None:
+    def visit_Name(self, node: Type[ast.AST]) -> None:
         if isinstance(node.ctx, ast.Load):
             # Only add as input if variable exists in current scope.
             if not (self.is_local and node.id not in self.globals and node.id in self.user_ns and
@@ -33,7 +33,7 @@ class Visitor(ast.NodeVisitor):
                 self.loads.add(node.id)
         ast.NodeVisitor.generic_visit(self, node)
 
-    def visit_AugAssign(self, node: ast.AST) -> None:
+    def visit_AugAssign(self, node: Type[ast.AST]) -> None:
         # Only add as input if variable exists in current scope.
         if isinstance(node.target, ast.Name):
             if not (self.is_local and node.target.id not in self.globals and node.target.id in self.user_ns and
@@ -41,17 +41,17 @@ class Visitor(ast.NodeVisitor):
                 self.loads.add(node.target.id)
         ast.NodeVisitor.generic_visit(self, node)
 
-    def visit_Global(self, node: ast.AST) -> None:
+    def visit_Global(self, node: Type[ast.AST]) -> None:
         for name in node.names:
             self.globals.add(name)
         ast.NodeVisitor.generic_visit(self, node)
 
-    def visit_Call(self, node: ast.AST) -> None:
+    def visit_Call(self, node: Type[ast.AST]) -> None:
         if isinstance(node.func, ast.Name):
             self.udfcalls.add(node.func.id)
         ast.NodeVisitor.generic_visit(self, node)
 
-    def visit_FunctionDef(self, node: ast.AST) -> None:
+    def visit_FunctionDef(self, node: Type[ast.AST]) -> None:
         # Only add as input if variable exists in current scope
         self.is_local = True
         self.functiondefs.add(node.name)
