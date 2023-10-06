@@ -3,8 +3,7 @@ import tornado
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 
-from kishu.commands import KishuCommand
-from kishu.serialization import into_json
+from kishu.commands import KishuCommand, into_json
 
 
 class LogAllHandler(APIHandler):
