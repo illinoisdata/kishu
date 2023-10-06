@@ -1,6 +1,7 @@
 import pandas as pd
-from kishu.planning.profiler import profile_variable_size
 import sys
+
+from kishu.planning.profiler import profile_variable_size
 
 
 def test_primitive_size():

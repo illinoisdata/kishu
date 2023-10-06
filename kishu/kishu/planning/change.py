@@ -1,8 +1,8 @@
 import ast
 import inspect
 
-from collections import deque
 from IPython.core.inputtransformer2 import TransformerManager
+from collections import deque
 from typing import Any, Deque, Dict, Set, Tuple
 
 PRIMITIVES = {int, bool, str, float}

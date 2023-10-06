@@ -39,10 +39,11 @@ Reference
 - https://ipython.readthedocs.io/en/stable/config/callbacks.html
 """
 from __future__ import annotations
+
+import IPython
 import enum
 import ipykernel
 import ipylab
-import IPython
 import json
 import jupyter_client
 import jupyter_core.paths
@@ -51,27 +52,28 @@ import os
 import time
 import urllib.request
 import uuid
+
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from datetime import datetime
 from itertools import chain
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path, PurePath
-from typing import Any, cast, Dict, Generator, List, Set, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, cast
 
+from kishu.exceptions import (
+    JupyterConnectionError,
+    KernelNotAliveError,
+    MissingConnectionInfoError,
+    NoChannelError,
+    StartChannelError,
+)
+from kishu.planning.plan import ExecutionHistory, RestorePlan, StoreEverythingCheckpointPlan, UnitExecution
+from kishu.planning.planner import CheckpointRestorePlanner
 from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint_io import init_checkpoint_database
 from kishu.storage.commit_graph import KishuCommitGraph
-from kishu.exceptions import (
-    JupyterConnectionError,
-    MissingConnectionInfoError,
-    KernelNotAliveError,
-    StartChannelError,
-    NoChannelError,
-)
 from kishu.storage.path import KishuPath
-from kishu.planning.planner import CheckpointRestorePlanner
-from kishu.planning.plan import ExecutionHistory, StoreEverythingCheckpointPlan, UnitExecution, RestorePlan
 
 
 """

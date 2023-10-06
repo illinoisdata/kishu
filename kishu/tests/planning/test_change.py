@@ -1,4 +1,4 @@
-from kishu.planning.change import find_input_vars, find_created_and_deleted_vars
+from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
 
 
 def test_find_input_vars_1():
