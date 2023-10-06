@@ -138,7 +138,7 @@ def branch(
         show_default=False,
     ),
     rename_branch: Tuple[str, str] = typer.Option(
-        None,
+        (None, None),
         "-m",
         "--rename-branch",
         help="Rename branch from old name to new name.",
@@ -150,7 +150,7 @@ def branch(
     """
     if create_branch_name is not None:
         print(into_json(KishuCommand.branch(notebook_id, create_branch_name, commit_id)))
-    if rename_branch is not None:
+    if rename_branch != (None, None):
         old_name, new_name = rename_branch
         try:
             print(into_json(KishuCommand.rename_branch(
