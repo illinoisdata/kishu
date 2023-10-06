@@ -6,7 +6,7 @@ import json
 import shortuuid
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List Optional
+from typing import Any, Dict, List, Optional
 
 from kishu.storage.checkpoint_io import (
     get_checkpoint,
