@@ -1,0 +1,48 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: test-kishu
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - kishu/**
+  pull_request:
+    branches: [ main ]
+    paths:
+      - kishu/**
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        cd kishu
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
+        # Install C module (for ID Graph)
+        python setup.py install
+    - name: Lint with flake8
+      run: |
+        cd kishu
+        flake8 kishu/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 kishu/ tests/ --count --max-complexity=100 --max-line-length=127 --statistics
+    - name: Test Kishu with pytest
+      run: |
+        cd kishu
+        pytest . -vv
+        mypy **/*.py

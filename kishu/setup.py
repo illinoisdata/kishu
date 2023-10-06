@@ -33,7 +33,7 @@ setup(
     ext_modules=[
         Extension(
             "c_idgraph",
-            sources=["change/idgraphmodule.c", "change/cJSON.c"],
+            sources=["lib/idgraphmodule.c", "lib/cJSON.c"],
             include_dirs=[get_numpy_include()],
         ),
     ],

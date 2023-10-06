@@ -9,7 +9,7 @@ class TypeNotSupportedError(Exception):
 
 
 """
-Raised by jupyterint2
+Raised by jupyterint
 """
 
 

@@ -2,12 +2,12 @@ from typing import Set, Any, Dict, Optional
 import numpy as np
 from collections import defaultdict
 
-from kishu import idgraph2 as idgraph
+from kishu.planning.idgraph import GraphNode, compare_idgraph, get_object_state
 from kishu.planning.ahg import AHG
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.profiler import profile_variable_size
 from kishu.planning.change import find_input_vars, find_created_and_deleted_vars
-from kishu.plan import RestorePlan
+from kishu.planning.plan import RestorePlan
 
 
 class CheckpointRestorePlanner:
@@ -21,7 +21,7 @@ class CheckpointRestorePlanner:
         """
         self._ahg = AHG()
         self._user_ns = user_ns
-        self._id_graph_map: Dict[str, idgraph.GraphNode] = {}
+        self._id_graph_map: Dict[str, GraphNode] = {}
         self._pre_run_cell_vars: Set[str] = set()
 
     def pre_run_cell_update(self, pre_run_cell_vars: Set[str]) -> None:
@@ -34,7 +34,7 @@ class CheckpointRestorePlanner:
         # Populate missing ID graph entries.
         for var in self._ahg.variable_snapshots.keys():
             if var not in self._id_graph_map and var in self._user_ns:
-                self._id_graph_map[var] = idgraph.get_object_state(self._user_ns[var], {})
+                self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
     def post_run_cell_update(self, code_block: Optional[str], post_run_cell_vars: Set[str],
                              start_time_ms: Optional[float], runtime_ms: Optional[float]) -> None:
@@ -57,8 +57,8 @@ class CheckpointRestorePlanner:
         # Find modified variables.
         modified_vars = set()
         for k in self._id_graph_map.keys():
-            new_idgraph = idgraph.get_object_state(self._user_ns[k], {})
-            if not idgraph.compare_idgraph(self._id_graph_map[k], new_idgraph):
+            new_idgraph = get_object_state(self._user_ns[k], {})
+            if not compare_idgraph(self._id_graph_map[k], new_idgraph):
                 self._id_graph_map[k] = new_idgraph
                 modified_vars.add(k)
 
@@ -71,7 +71,7 @@ class CheckpointRestorePlanner:
 
         # Update ID graphs for newly created variables.
         for var in created_vars:
-            self._id_graph_map[var] = idgraph.get_object_state(self._user_ns[var], {})
+            self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
     def generate_restore_plan(self) -> RestorePlan:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
