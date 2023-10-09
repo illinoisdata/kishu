@@ -1,14 +1,42 @@
 from __future__ import annotations
+
 import datetime
-import heapq
-from dataclasses import dataclass
+import json
+
+from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any, Dict, List, Optional, cast
 
-from kishu.branch import BranchRow, HeadBranch, KishuBranch
-from kishu.commit_graph import CommitNodeInfo, KishuCommitGraph
-from kishu.jupyterint2 import CommitEntry, JupyterCommandResult, JupyterConnection
-from kishu.plan import UnitExecution
-from kishu.resources import KishuResource
+from kishu.jupyterint import CommitEntry, JupyterCommandResult, JupyterConnection
+from kishu.planning.plan import UnitExecution
+from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
+from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
+from kishu.storage.path import KishuPath
+from kishu.storage.tag import KishuTag, TagRow
+
+
+"""
+Printing dataclasses
+"""
+
+
+class DataclassJSONEncoder(json.JSONEncoder):
+
+    def default(self, o):
+        if is_dataclass(o):
+            return asdict(o)
+        try:
+            return super().default(o)
+        except TypeError:
+            return o.__repr__()
+
+
+def into_json(data):
+    return json.dumps(data, cls=DataclassJSONEncoder, indent=2)
+
+
+"""
+KishuCommand
+"""
 
 
 @dataclass
@@ -16,6 +44,7 @@ class CommitSummary:
     commit_id: str
     parent_id: str
     message: str
+    timestamp: str
     code_block: Optional[str]
     runtime_ms: Optional[int]
 
@@ -49,13 +78,28 @@ class BranchResult:
 
 
 @dataclass
+class RenameBranchResult:
+    status: str
+    branch_name: str
+
+
+@dataclass
+class TagResult:
+    status: str
+    tag_name: Optional[str] = None
+    commit_id: Optional[str] = None
+    message: Optional[str] = None
+
+
+@dataclass
 class HistoricalCommit:
     oid: str
     parent_oid: str
     timestamp: str
-    branch_id: str
-    parent_branch_id: str
-    other_branch_ids: List[str]
+    branches: List[str]
+    tags: List[str]
+    # code_version: str
+    # variable_version: str
 
 
 @dataclass
@@ -64,8 +108,6 @@ class SelectedCommitCell:
     content: str
     output: Optional[str]
     exec_num: Optional[str]
-    # oid: str  # ???
-    # version: str  # ???
 
 
 @dataclass
@@ -75,21 +117,13 @@ class SelectedCommitVariable:
     type: str
     children: List[SelectedCommitVariable]
     size: Optional[str]
-    # version: str  # ???
 
 
 @dataclass
 class SelectedCommit:
-    oid: str
-    parent_oid: str
-    timestamp: str
-    latest_exec_num: Optional[str]
+    commit: HistoricalCommit
     cells: List[SelectedCommitCell]
     variables: List[SelectedCommitVariable]
-    # branch_id: str
-    # parent_branch_id: str
-    # exec_cell: str  # ???
-    # tag: str  # ???
 
 
 FESelectedCommit = SelectedCommit
@@ -112,14 +146,14 @@ class KishuCommand:
         if commit_id is None:
             return LogResult([])
 
-        store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
         commit_entries = KishuCommand._find_commit_entries(notebook_id, graph)
         return LogResult(KishuCommand._join_commit_summary(graph, commit_entries))
 
     @staticmethod
     def log_all(notebook_id: str) -> LogAllResult:
-        store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
         commit_entries = KishuCommand._find_commit_entries(notebook_id, graph)
         return LogAllResult(KishuCommand._join_commit_summary(graph, commit_entries))
@@ -127,7 +161,7 @@ class KishuCommand:
     @staticmethod
     def status(notebook_id: str, commit_id: str) -> StatusResult:
         commit_node_info = next(
-            KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+            KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
         )
         commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
@@ -152,7 +186,12 @@ class KishuCommand:
         return result
 
     @staticmethod
-    def branch(notebook_id: str, branch_name: str, commit_id: Optional[str]) -> BranchResult:
+    def branch(
+        notebook_id: str,
+        branch_name: str,
+        commit_id: Optional[str],
+        do_commit: bool = False,
+    ) -> BranchResult:
         head = KishuBranch.get_head(notebook_id)
 
         if commit_id is None:
@@ -171,6 +210,10 @@ class KishuCommand:
         # Now add this branch.
         KishuBranch.upsert_branch(notebook_id, branch_name, commit_id)
 
+        # Create new commit for this branch action.
+        if do_commit:
+            commit_id = KishuCommand._checkout_and_commit_after_branch(notebook_id, branch_name, commit_id)
+
         return BranchResult(
             status="ok",
             branch_name=branch_name,
@@ -179,8 +222,53 @@ class KishuCommand:
         )
 
     @staticmethod
+    def rename_branch(
+        notebook_id: str,
+        old_name: str,
+        new_name: str,
+    ) -> RenameBranchResult:
+        try:
+            KishuBranch.rename_branch(notebook_id, old_name, new_name)
+            return RenameBranchResult(
+                status="ok",
+                branch_name=new_name,
+            )
+        except ValueError:
+            return RenameBranchResult(
+                status="error",
+                branch_name="",
+            )
+
+    @staticmethod
+    def tag(
+        notebook_id: str,
+        tag_name: str,
+        commit_id: Optional[str],
+        message: str,
+    ) -> TagResult:
+        # Attempt to fill in omitted commit ID.
+        if commit_id is None:
+            # Try creating tag pointing to the commit ID at HEAD.
+            head = KishuBranch.get_head(notebook_id)
+            commit_id = head.commit_id
+
+        # Fail to determine commit ID, possibly because a commit does not exist.
+        if commit_id is None:
+            return TagResult(status="no_commit")
+
+        # Now add this tag.
+        tag = TagRow(tag_name=tag_name, commit_id=commit_id, message=message)
+        KishuTag.upsert_tag(notebook_id, tag)
+        return TagResult(
+            status="ok",
+            tag_name=tag_name,
+            commit_id=commit_id,
+            message=message,
+        )
+
+    @staticmethod
     def fe_commit_graph(notebook_id: str) -> FEInitializeResult:
-        store = KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
         commit_entries = KishuCommand._find_commit_entries(notebook_id, graph)
 
@@ -191,17 +279,22 @@ class KishuCommand:
             commits.append(HistoricalCommit(
                 oid=node.commit_id,
                 parent_oid=node.parent_id,
-                timestamp=KishuCommand._to_datetime(commit_entry.end_time_ms),
-                branch_id="",  # To be set in _toposort_commits.
-                parent_branch_id="",  # To be set in _toposort_commits.
-                other_branch_ids=[],
+                timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
+                branches=[],  # To be set in _branch_commit.
+                tags=[],  # To be set in _tag_commit.
             ))
-        commits = KishuCommand._toposort_commits(commits)
 
-        # Retreives and applies branch names.
+        # Retreives and joins branches.
         head = KishuBranch.get_head(notebook_id)
         branches = KishuBranch.list_branch(notebook_id)
-        commits = KishuCommand._rebranch_commit(commits, branches)
+        commits = KishuCommand._branch_commit(commits, branches)
+
+        # Joins with tag list.
+        tags = KishuTag.list_tag(notebook_id)
+        commits = KishuCommand._tag_commit(commits, tags)
+
+        # Sort commits by timestamp.
+        commits = sorted(commits, key=lambda commit: commit.timestamp)
 
         # Combines everything.
         return FEInitializeResult(
@@ -212,15 +305,19 @@ class KishuCommand:
     @staticmethod
     def fe_commit(notebook_id: str, commit_id: str, vardepth: int) -> FESelectedCommit:
         commit_node_info = next(
-            KishuCommitGraph.new_on_file(KishuResource.commit_graph_directory(notebook_id))
+            KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
         )
         current_commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
+        branches = KishuBranch.branches_for_commit(notebook_id, commit_id)
+        tags = KishuTag.tags_for_commit(notebook_id, commit_id)
         return KishuCommand._join_selected_commit(
             notebook_id,
             commit_id,
             commit_node_info,
             current_commit_entry,
+            branches,
+            tags,
             vardepth=vardepth,
         )
 
@@ -229,7 +326,7 @@ class KishuCommand:
     @staticmethod
     def _find_commit_entries(notebook_id: str, graph: List[CommitNodeInfo]) -> Dict[str, CommitEntry]:
         unit_execs = UnitExecution.get_commits(
-            KishuResource.checkpoint_path(notebook_id),
+            KishuPath.checkpoint_path(notebook_id),
             [node.commit_id for node in graph]
         )
         return {key: cast(CommitEntry, unit_exec) for key, unit_exec in unit_execs.items()}
@@ -240,7 +337,7 @@ class KishuCommand:
         return cast(
             CommitEntry,
             UnitExecution.get_from_db(
-                KishuResource.checkpoint_path(notebook_id),
+                KishuPath.checkpoint_path(notebook_id),
                 commit_id,
             )
         )
@@ -257,6 +354,7 @@ class KishuCommand:
                 commit_id=node.commit_id,
                 parent_id=node.parent_id,
                 message=commit_entry.message,
+                timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
                 code_block=commit_entry.code_block,
                 runtime_ms=commit_entry.runtime_ms,
             ))
@@ -268,6 +366,8 @@ class KishuCommand:
         commit_id: str,
         commit_node_info: CommitNodeInfo,
         commit_entry: CommitEntry,
+        branches: List[BranchRow],
+        tags: List[TagRow],
         vardepth: int,
     ) -> SelectedCommit:
         # Restores variables.
@@ -276,7 +376,7 @@ class KishuCommand:
         if restore_plan is not None:
             restore_plan.run(
                 commit_variables,
-                KishuResource.checkpoint_path(notebook_id),
+                KishuPath.checkpoint_path(notebook_id),
                 commit_id
             )
         variables = [
@@ -295,109 +395,84 @@ class KishuCommand:
                     exec_num=KishuCommand._str_or_none(executed_cell.execution_count),
                 ))
 
+        # Summarize branches and tags
+        branch_names = [branch.branch_name for branch in branches]
+        tag_names = [tag.tag_name for tag in tags]
+
         # Builds SelectedCommit.
-        return SelectedCommit(
+        commit_summary = HistoricalCommit(
             oid=commit_id,
             parent_oid=commit_node_info.parent_id,
-            timestamp=KishuCommand._to_datetime(commit_entry.end_time_ms),
-            latest_exec_num=KishuCommand._str_or_none(commit_entry.execution_count),
+            timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
+            branches=branch_names,
+            tags=tag_names,
+        )
+        return SelectedCommit(
+            commit=commit_summary,
             variables=variables,
             cells=cells,
         )
 
     @staticmethod
-    def _toposort_commits(commits: List[HistoricalCommit]) -> List[HistoricalCommit]:
-        refs: Dict[str, List[int]] = {}
-        for idx, commit in enumerate(commits):
-            if commit.parent_oid == "":
-                continue
-            if commit.parent_oid not in refs:
-                refs[commit.parent_oid] = []
-            refs[commit.parent_oid].append(idx)
-
-        sorted_commits = []
-        free_commit_idxs = [
-            (0.0, commit.timestamp, idx) for idx, commit in enumerate(commits)
-            if commit.parent_oid == ""
-        ]
-        heapq.heapify(free_commit_idxs)
-        new_branch_id = 1
-        it = 0.0
-        while len(free_commit_idxs) > 0:
-            # Next commit is next in topological order.
-            _, _, free_commit_idx = heapq.heappop(free_commit_idxs)
-            commit = commits[free_commit_idx]
-            it += 1
-
-            # If branch not assigned, this commit is in a new branch.
-            if commit.branch_id == "":
-                assert commit.parent_oid == ""
-                commit.branch_id = f"tmp_{new_branch_id}"
-                commit.parent_branch_id = "-1"
-                new_branch_id += 1
-            sorted_commits.append(commit)
-
-            # Assigns children branch IDs.
-            child_idxs = refs.get(commit.oid, [])
-            for child_idx in child_idxs[1:]:
-                child_commit = commits[child_idx]
-                child_commit.branch_id = f"tmp_{new_branch_id}"
-                child_commit.parent_branch_id = commit.branch_id
-                new_branch_id += 1
-                heapq.heappush(free_commit_idxs, (it, child_commit.timestamp, child_idx))
-            if len(child_idxs) > 0:
-                # Add first child last to continue this branch after branching out.
-                child_commit = commits[child_idxs[0]]
-                child_commit.branch_id = commit.branch_id
-                child_commit.parent_branch_id = commit.branch_id
-                heapq.heappush(free_commit_idxs, (it + 0.5, child_commit.timestamp, child_idxs[0]))
-        return sorted_commits
-
-    @staticmethod
-    def _rebranch_commit(
+    def _branch_commit(
         commits: List[HistoricalCommit],
         branches: List[BranchRow],
     ) -> List[HistoricalCommit]:
-        # Each of new branches points to one commit, creating an aliasing mapping.
-        commit_to_branch_name = {
-            branch.commit_id: branch.branch_name
-            for branch in branches
-        }
-
-        # Find mapping between current branch names to new branch names base on commit.
-        # Assume: commits are sorted, so the head commit of a branch is the last commit in the list.
-        head_commits_by_old_branch = {commit.branch_id: commit.oid for commit in commits}
-        old_to_new_branch_name = {
-            old_branch: commit_to_branch_name[commit_id]
-            for old_branch, commit_id in head_commits_by_old_branch.items() if commit_id in commit_to_branch_name
-        }
-
-        # List other branch names that will not show up.
-        selected_branch_names = {branch_name for _, branch_name in old_to_new_branch_name.items()}
-        commit_to_other_branch_names: Dict[str, List[str]] = {
-            commit_id: [] for commit_id in commit_to_branch_name
-        }
+        # Group branch names by commit ID
+        commit_to_branch: Dict[str, List[str]] = {}
         for branch in branches:
-            commit_to_other_branch_names[branch.commit_id].append(branch.branch_name)
-        for commit_id in commit_to_other_branch_names:
-            other_branch_names = filter(
-                lambda branch_name: branch_name not in selected_branch_names,
-                commit_to_other_branch_names[commit_id]
-            )
-            commit_to_other_branch_names[commit_id] = sorted(other_branch_names)
+            if branch.commit_id not in commit_to_branch:
+                commit_to_branch[branch.commit_id] = []
+            commit_to_branch[branch.commit_id].append(branch.branch_name)
 
-        # Edit branches in commits.
+        # Join branch names to commits.
         for commit in commits:
-            # Now relabel every branch names.
-            if commit.branch_id in old_to_new_branch_name:
-                commit.branch_id = old_to_new_branch_name[commit.branch_id]
-            if commit.parent_branch_id in old_to_new_branch_name:
-                commit.parent_branch_id = old_to_new_branch_name[commit.parent_branch_id]
-
-            # Insert other branch names.
-            if commit.oid in commit_to_other_branch_names:
-                commit.other_branch_ids = commit_to_other_branch_names[commit.oid]
+            commit.branches.extend(commit_to_branch.get(commit.oid, []))
         return commits
+
+    @staticmethod
+    def _tag_commit(
+        commits: List[HistoricalCommit],
+        tags: List[TagRow],
+    ) -> List[HistoricalCommit]:
+        # Group tag names by commit ID
+        commit_to_tag: Dict[str, List[str]] = {}
+        for tag in tags:
+            if tag.commit_id not in commit_to_tag:
+                commit_to_tag[tag.commit_id] = []
+            commit_to_tag[tag.commit_id].append(tag.tag_name)
+
+        # Join tag names to commits.
+        for commit in commits:
+            commit.tags.extend(commit_to_tag.get(commit.oid, []))
+        return commits
+
+    @staticmethod
+    def _checkout_and_commit_after_branch(notebook_id: str, branch_name: str, commit_id: str) -> str:
+        # Checkout to move HEAD to branch.
+        checkout_result = KishuCommand.checkout(notebook_id, branch_name)
+        if checkout_result.status != "ok":
+            print(
+                f"Checkout failed after branch (message: {checkout_result.message}). "
+                "Skipping commit this branch action."
+            )
+            return commit_id
+
+        # Commit branch action.
+        commit_result = KishuCommand.commit(
+            notebook_id,
+            f"Set {branch_name} branch to {commit_id} commit.",
+        )
+        if commit_result.status != "ok":
+            print(
+                f"Commit failed after branch (message: {commit_result.message}). "
+                "Skipping commit this branch action."
+            )
+            return commit_id
+
+        # Return new commit ID
+        commit_id = commit_result.message
+        return commit_id
 
     @staticmethod
     def _to_datetime(epoch_time_ms: Optional[int]) -> str:

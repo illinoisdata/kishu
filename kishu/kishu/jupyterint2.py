@@ -886,3 +886,4 @@ def init_kishu(path: Optional[Path] = None) -> None:
 
     # Attach Kishu instrumentation.
     load_kishu(nb_id, nb.metadata.kishu.session_count)
+

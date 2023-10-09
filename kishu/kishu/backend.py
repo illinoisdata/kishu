@@ -1,10 +1,13 @@
-from flask import Flask, request
-
 import json
+
+from flask import Flask, request
 from typing import Optional
 
-from kishu.serialization import into_json
-from kishu.commands import KishuCommand
+from kishu.commands import KishuCommand, into_json
+
+
+def is_true(s: str) -> bool:
+    return s.lower() == "true"
 
 
 app = Flask("kishu_server")
@@ -42,8 +45,17 @@ def checkout(notebook_id: str, branch_or_commit_id: str):
 @app.get("/branch/<notebook_id>/<branch_name>")
 def branch(notebook_id: str, branch_name: str):
     commit_id: Optional[str] = request.args.get('commit_id', default=None, type=str)
-    branch_result = KishuCommand.branch(notebook_id, branch_name, commit_id)
+    do_commit: bool = request.args.get('do_commit', default=False, type=is_true)
+    branch_result = KishuCommand.branch(notebook_id, branch_name, commit_id, do_commit=do_commit)
     return into_json(branch_result)
+
+
+@app.get("/tag/<notebook_id>/<tag_name>")
+def tag(notebook_id: str, tag_name: str):
+    commit_id: Optional[str] = request.args.get('commit_id', default=None, type=str)
+    message: str = request.args.get('message', default="", type=str)
+    tag_result = KishuCommand.tag(notebook_id, tag_name, commit_id, message)
+    return into_json(tag_result)
 
 
 @app.get("/fe/commit_graph/<notebook_id>")
