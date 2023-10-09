@@ -47,6 +47,8 @@ class CommitSummary:
     timestamp: str
     code_block: Optional[str]
     runtime_ms: Optional[int]
+    branches: List[str]
+    tags: List[str]
 
 
 @dataclass
@@ -148,15 +150,13 @@ class KishuCommand:
 
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
-        commit_entries = KishuCommand._find_commit_entries(notebook_id, graph)
-        return LogResult(KishuCommand._join_commit_summary(graph, commit_entries))
+        return LogResult(KishuCommand._decorate_graph(notebook_id, graph))
 
     @staticmethod
     def log_all(notebook_id: str) -> LogAllResult:
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
-        commit_entries = KishuCommand._find_commit_entries(notebook_id, graph)
-        return LogAllResult(KishuCommand._join_commit_summary(graph, commit_entries))
+        return LogAllResult(KishuCommand._decorate_graph(notebook_id, graph))
 
     @staticmethod
     def status(notebook_id: str, commit_id: str) -> StatusResult:
@@ -270,7 +270,8 @@ class KishuCommand:
     def fe_commit_graph(notebook_id: str) -> FEInitializeResult:
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
-        commit_entries = KishuCommand._find_commit_entries(notebook_id, graph)
+        graph_commit_ids = [node.commit_id for node in graph]
+        commit_entries = KishuCommand._find_commit_entries(notebook_id, graph_commit_ids)
 
         # Collects list of HistoricalCommits.
         commits = []
@@ -324,10 +325,25 @@ class KishuCommand:
     """Helpers"""
 
     @staticmethod
-    def _find_commit_entries(notebook_id: str, graph: List[CommitNodeInfo]) -> Dict[str, CommitEntry]:
+    def _decorate_graph(notebook_id: str, graph: List[CommitNodeInfo]) -> List[CommitSummary]:
+        graph_commit_ids = [node.commit_id for node in graph]
+        commit_entries = KishuCommand._find_commit_entries(notebook_id, graph_commit_ids)
+        branch_by_commit = KishuBranch.branches_for_many_commits(notebook_id, graph_commit_ids)
+        tag_by_commit = KishuTag.tags_for_many_commits(notebook_id, graph_commit_ids)
+        commits = KishuCommand._join_commit_summary(
+            graph,
+            commit_entries,
+            branch_by_commit,
+            tag_by_commit,
+        )
+        commits = sorted(commits, key=lambda commit: commit.timestamp)
+        return commits
+
+    @staticmethod
+    def _find_commit_entries(notebook_id: str, commit_ids: List[str]) -> Dict[str, CommitEntry]:
         unit_execs = UnitExecution.get_commits(
             KishuPath.checkpoint_path(notebook_id),
-            [node.commit_id for node in graph]
+            commit_ids,
         )
         return {key: cast(CommitEntry, unit_exec) for key, unit_exec in unit_execs.items()}
 
@@ -346,10 +362,16 @@ class KishuCommand:
     def _join_commit_summary(
         graph: List[CommitNodeInfo],
         commit_entries: Dict[str, CommitEntry],
+        branch_by_commit: Dict[str, List[BranchRow]],
+        tag_by_commit: Dict[str, List[TagRow]],
     ) -> List[CommitSummary]:
         summaries = []
         for node in graph:
             commit_entry = commit_entries.get(node.commit_id, CommitEntry())
+            branch_names = [
+                branch.branch_name for branch in branch_by_commit.get(node.commit_id, [])
+            ]
+            tag_names = [tag.tag_name for tag in tag_by_commit.get(node.commit_id, [])]
             summaries.append(CommitSummary(
                 commit_id=node.commit_id,
                 parent_id=node.parent_id,
@@ -357,6 +379,8 @@ class KishuCommand:
                 timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
                 code_block=commit_entry.code_block,
                 runtime_ms=commit_entry.runtime_ms,
+                branches=branch_names,
+                tags=tag_names,
             ))
         return summaries
 
@@ -478,7 +502,9 @@ class KishuCommand:
     def _to_datetime(epoch_time_ms: Optional[int]) -> str:
         return (
             "" if epoch_time_ms is None
-            else datetime.datetime.fromtimestamp(epoch_time_ms / 1000).strftime("%Y-%m-%d,%H:%M:%S")
+            else datetime.datetime
+                         .fromtimestamp(epoch_time_ms / 1000)
+                         .strftime("%Y-%m-%d %H:%M:%S.%f")
         )
 
     @staticmethod

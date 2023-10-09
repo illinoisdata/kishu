@@ -5,7 +5,7 @@ import sqlite3
 
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from kishu.storage.checkpoint_io import BRANCH_TABLE
 from kishu.storage.path import KishuPath
@@ -109,6 +109,34 @@ class KishuBranch:
             BranchRow(branch_name=branch_name, commit_id=commit_id)
             for branch_name, commit_id in cur
         ]
+
+    @staticmethod
+    def branches_for_many_commits(
+        notebook_id: str,
+        commit_ids: List[str],
+    ) -> Dict[str, List[BranchRow]]:
+        dbfile = KishuPath.checkpoint_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+        query = "select branch_name, commit_id from {} where commit_id in ({})".format(
+            BRANCH_TABLE,
+            ', '.join('?' * len(commit_ids))
+        )
+        try:
+            cur.execute(query, commit_ids)
+        except sqlite3.OperationalError:
+            # No such table means no branch
+            return {}
+        raw_branches = cur.fetchall()
+        branch_by_commit: Dict[str, List[BranchRow]] = {}
+        for branch_name, commit_id in raw_branches:
+            if commit_id not in branch_by_commit:
+                branch_by_commit[commit_id] = []
+            branch_by_commit[commit_id].append(BranchRow(
+                branch_name=branch_name,
+                commit_id=commit_id,
+            ))
+        return branch_by_commit
 
     @staticmethod
     def rename_branch(notebook_id: str, old_name: str, new_name: str) -> None:
