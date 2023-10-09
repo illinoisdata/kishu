@@ -163,6 +163,35 @@ def branch(
             raise typer.Exit()
 
 
+@kishu_app.command()
+def tag(
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
+    tag_name: str = typer.Argument(
+        ...,
+        help="Tag name.",
+        show_default=False,
+    ),
+    commit_id: str = typer.Argument(
+        None,
+        help="Commit ID to create the tag on. If not given, use the current commit ID.",
+        show_default=False,
+    ),
+    message: str = typer.Option(
+        "",
+        "-m",
+        help="Message to annotate the tag with.",
+    ),
+) -> None:
+    """
+    Create or edit tags.
+    """
+    print(into_json(KishuCommand.tag(notebook_id, tag_name, commit_id, message)))
+
+
 def main() -> None:
     kishu_app(prog_name=__app_name__)
 

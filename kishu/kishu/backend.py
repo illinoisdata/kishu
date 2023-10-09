@@ -50,6 +50,14 @@ def branch(notebook_id: str, branch_name: str):
     return into_json(branch_result)
 
 
+@app.get("/tag/<notebook_id>/<tag_name>")
+def tag(notebook_id: str, tag_name: str):
+    commit_id: Optional[str] = request.args.get('commit_id', default=None, type=str)
+    message: str = request.args.get('message', default="", type=str)
+    tag_result = KishuCommand.tag(notebook_id, tag_name, commit_id, message)
+    return into_json(tag_result)
+
+
 @app.get("/fe/commit_graph/<notebook_id>")
 def fe_commit_graph(notebook_id: str):
     fe_commit_graph_result = KishuCommand.fe_commit_graph(notebook_id)
