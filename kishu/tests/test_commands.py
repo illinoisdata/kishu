@@ -3,7 +3,7 @@ import pytest
 
 from typing import Generator, List, Optional, Type
 
-from kishu.commands import CommitSummary, KishuCommand, SelectedCommit
+from kishu.commands import CommitSummary, KishuCommand, HistoricalCommit, SelectedCommit
 from kishu.jupyterint import CommitEntryKind, CommitEntry, KishuForJupyter
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
@@ -207,10 +207,13 @@ class TestKishuCommand:
     def test_fe_commit(self, notebook_id, basic_execution_ids):
         fe_commit_result = KishuCommand.fe_commit(notebook_id, basic_execution_ids[-1], vardepth=0)
         assert fe_commit_result == SelectedCommit(
-            oid="0:3",
-            parent_oid="0:2",
-            timestamp=fe_commit_result.timestamp,  # Not tested
-            latest_exec_num="3",
+            commit=HistoricalCommit(
+                oid="0:3",
+                parent_oid="0:2",
+                timestamp=fe_commit_result.commit.timestamp,  # Not tested
+                branches=[],
+                tags=[],
+            ),
             cells=fe_commit_result.cells,  # Not tested
             variables=[],
         )

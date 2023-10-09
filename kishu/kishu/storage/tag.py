@@ -42,3 +42,19 @@ class KishuTag:
             TagRow(tag_name=tag_name, commit_id=commit_id, message=message)
             for tag_name, commit_id, message in cur
         ]
+
+    @staticmethod
+    def tags_for_commit(notebook_id: str, commit_id: str) -> List[TagRow]:
+        dbfile = KishuPath.checkpoint_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+        query = f"select tag_name, commit_id, message from {TAG_TABLE} where commit_id = ?"
+        try:
+            cur.execute(query, (commit_id,))
+        except sqlite3.OperationalError:
+            # No such table means no branch
+            return []
+        return [
+            TagRow(tag_name=tag_name, commit_id=commit_id, message=message)
+            for tag_name, commit_id, message in cur
+        ]
