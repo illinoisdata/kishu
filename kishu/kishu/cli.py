@@ -114,11 +114,21 @@ def checkout(
         help="Branch name or commit ID to checkout.",
         show_default=False,
     ),
+    skip_notebook: bool = typer.Option(
+        False,
+        "--skip-notebook",
+        "--skip_notebook",
+        help="Skip recovering notebook cells and outputs.",
+    )
 ) -> None:
     """
     Checkout a notebook to a commit.
     """
-    print(into_json(KishuCommand.checkout(notebook_id, branch_or_commit_id)))
+    print(into_json(KishuCommand.checkout(
+        notebook_id,
+        branch_or_commit_id,
+        skip_notebook=skip_notebook,
+    )))
 
 
 @kishu_app.command()
@@ -137,6 +147,7 @@ def branch(
         None,
         "-c",
         "--create-branch-name",
+        "--create_branch_name",
         help="Create branch with this name.",
         show_default=False,
     ),
@@ -144,6 +155,7 @@ def branch(
         (None, None),
         "-m",
         "--rename-branch",
+        "--rename_branch",
         help="Rename branch from old name to new name.",
         show_default=False,
     ),
