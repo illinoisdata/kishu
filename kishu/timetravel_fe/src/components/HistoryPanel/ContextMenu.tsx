@@ -29,7 +29,7 @@ function getItem(
   label: React.ReactNode,
   key?: React.Key | null,
   icon?: React.ReactNode,
-  children?: MenuItem[]
+  children?: MenuItem[],
 ): MenuItem {
   return {
     key,
@@ -41,15 +41,9 @@ function getItem(
 
 const items: MenuItem[] = [
   getItem("Add/Modify Tag for Selected History", "tag", <EditOutlined />),
-  getItem("Show All Histories", "show_all", <CalendarOutlined />),
   getItem("Create Branch", "branch", <CalendarOutlined />),
-  getItem("Show Only", "show_only", <AppstoreOutlined />, [
-    getItem("Tagged Histories", "tag_only"),
-    getItem("Searching Results", "search_only"),
-  ]),
   getItem("RollBack to Selected History ", "rollback", <AppstoreOutlined />, [
     getItem("Rollback Codes&Variable States", "both"),
-    getItem("Rollback Codes", "codes"),
     getItem("Rollback States", "states"),
   ]),
 ];
@@ -60,12 +54,9 @@ interface ContextMenuProps {
   onClose: () => void;
   setIsTagEditorOpen: React.Dispatch<React.SetStateAction<boolean>>; //set if the tag editor is open
   setIsBranchNameEditorOpen: any;
-  setJudgeFunctionID: any;
-  setIsGroupFolded: any;
-  setIsWaitingModalOpen: any;
-  setWaitingfor: any;
-  judgeFunctionID: number;
-  isGroupFolded?: Map<string, boolean>;
+  setIsCheckoutWaitingModalOpen: any;
+  setChooseCheckoutBranchModelOpen: any;
+  setChckoutMode: any;
 }
 
 function ContextMenu({
@@ -74,12 +65,9 @@ function ContextMenu({
   onClose,
   setIsTagEditorOpen,
   setIsBranchNameEditorOpen,
-  setJudgeFunctionID,
-  setIsGroupFolded,
-  setIsWaitingModalOpen: setIsWaitingModelOpen,
-  setWaitingfor,
-  judgeFunctionID,
-  isGroupFolded,
+  setIsCheckoutWaitingModalOpen,
+  setChooseCheckoutBranchModelOpen,
+  setChckoutMode,
 }: ContextMenuProps) {
   const props = useContext(AppContext);
   const onClickMenuItem: MenuProps["onClick"] = async ({ key, domEvent }) => {
@@ -87,35 +75,24 @@ function ContextMenu({
     domEvent.preventDefault();
     if (key === "tag") {
       setIsTagEditorOpen(true);
-    } else if (key === "tag_only") {
-      //fold all the groups again
-      if (judgeFunctionID === 0) {
-        let newIsGroupFolded = new Map<string, boolean>();
-        isGroupFolded!.forEach((value, key, map) => {
-          newIsGroupFolded.set(key, true);
-        });
-        setIsGroupFolded(newIsGroupFolded);
-      } else {
-        setJudgeFunctionID(0);
-      }
-    } else if (key === "search_only") {
-      //fold all the groups again
-      if (judgeFunctionID === 2) {
-        let newIsGroupFolded = new Map<string, boolean>();
-        isGroupFolded!.forEach((value, key, map) => {
-          newIsGroupFolded.set(key, true);
-        });
-        setIsGroupFolded(newIsGroupFolded);
-      } else {
-        setJudgeFunctionID(2);
-      }
-    } else if (key === "show_all") {
-      setJudgeFunctionID(1);
     } else if (key === "both") {
-      setIsWaitingModelOpen(true);
-      setWaitingfor("checkout codes and data");
+      if (!props!.selectedCommit!.commit.branchIds) {
+        setIsCheckoutWaitingModalOpen(true);
+        setChckoutMode("checkout codes and data");
+      } else {
+        setChooseCheckoutBranchModelOpen(true);
+        setChckoutMode("checkout codes and data");
+      }
     } else if (key === "branch") {
       setIsBranchNameEditorOpen(true);
+    } else if (key === "states") {
+      if (!props!.selectedCommit!.commit.branchIds) {
+        setIsCheckoutWaitingModalOpen(true);
+        setChckoutMode("checkout variables only");
+      } else {
+        setChooseCheckoutBranchModelOpen(true);
+        setChckoutMode("checkout variables only");
+      }
     }
     // message.info(key);
   };

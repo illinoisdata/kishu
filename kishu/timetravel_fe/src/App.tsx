@@ -18,16 +18,17 @@ import Toolbar from "./components/Toolbar";
 import HistoryTree from "./components/HistoryPanel";
 import CodePanel from "./components/CodePanel";
 import { BackEndAPI } from "./util/API";
-import { Commit } from "./util/Commit";
+import { Commit, CommitDetail } from "./util/Commit";
 import VariablePanel from "./components/VariablePanel";
 import { useParams } from "react-router-dom";
+import ExecutedCodePanel from "./components/CodePanel/ExecutedCodePanel";
 
 interface appContextType {
   commits: Commit[];
   setCommits: any;
-  branchIDs: Set<String> | undefined;
-  setBranchIDs: any;
-  selectedCommit: Commit | undefined;
+  branchID2CommitMap: Map<string, string>;
+  setBranchID2CommitMap: any;
+  selectedCommit: CommitDetail | undefined;
   setSelectedCommit: any;
   selectedCommitID: string | undefined;
   setSelectedCommitID: any;
@@ -36,19 +37,23 @@ interface appContextType {
   currentHeadID: string | undefined;
   setCurrentHeadID: any;
 }
+
 export const AppContext = createContext<appContextType | undefined>(undefined);
+
 function App() {
   const [commits, setCommits] = useState<Commit[]>([]);
-  const [branchIDs, setBranchIDs] = useState<Set<String>>();
-  const [selectedCommit, setSelectedCommit] = useState<Commit>();
+  const [selectedCommit, setSelectedCommit] = useState<CommitDetail>();
   const [selectedCommitID, setSelectedCommitID] = useState<string>();
   const [selectedBranchID, setSelectedBranchID] = useState<string>();
   const [currentHeadID, setCurrentHeadID] = useState<string>();
+  const [branchID2CommitMap, setBranchID2CommitMap] = useState<
+    Map<string, string>
+  >(new Map());
   const appContext: appContextType = {
     commits,
     setCommits,
-    branchIDs,
-    setBranchIDs,
+    branchID2CommitMap,
+    setBranchID2CommitMap,
     selectedCommit,
     setSelectedCommit,
     selectedCommitID,
@@ -64,19 +69,26 @@ function App() {
 
   const [splitSizes1, setSplitSizes1] = useState([20, 80]);
   const [splitSizes2, setSplitSizes2] = useState([53, 47]);
+  const [splitSizes3, setSplitSizes3] = useState([50, 50]);
 
   globalThis.NotebookID = useParams().notebookName;
 
   useEffect(() => {
     //initialize the states
     async function loadInitialData() {
-      console.log("load initial data now!");
       setGlobalLoading(true);
       try {
         const data = await BackEndAPI.getCommitGraph();
+        console.log("git graph after parse:");
         console.log(data);
         setCommits(data.commits);
-        setBranchIDs(new Set(data.commits.map((commit) => commit.branchId)));
+        const newSetBranchID2CommitMap = new Map<string, string>();
+        data.commits.map((commit) => {
+          commit.branchIds.map((branchID) => {
+            newSetBranchID2CommitMap.set(branchID, commit.oid);
+          });
+        });
+        setBranchID2CommitMap(newSetBranchID2CommitMap);
         setSelectedCommitID(data.currentHead);
         setSelectedBranchID(data.currentHeadBranch);
         setCurrentHeadID(data.currentHead);
@@ -85,21 +97,21 @@ function App() {
           setError(e.message);
         }
       } finally {
-        console.log("initial data is loaded now!");
         setGlobalLoading(false);
       }
     }
+
     loadInitialData();
   }, []);
 
   useMemo(() => {
     async function loadCommitDetail(selectedCommitID: string) {
-      console.log("useMemo to load detail of commit " + selectedCommitID);
       if (!selectedCommitID) {
         return;
       }
       try {
         const data = await BackEndAPI.getCommitDetail(selectedCommitID);
+        console.log("commit detail after parse:");
         console.log(data);
         setSelectedCommit(data!);
       } catch (e) {
@@ -108,6 +120,7 @@ function App() {
         }
       }
     }
+
     loadCommitDetail(selectedCommitID!);
   }, [selectedCommitID]);
 
@@ -183,9 +196,21 @@ function App() {
                 }}
                 gutterClassName="custom_gutter"
               >
-                <div className="tile-xy u-showbottom" ref={codePanelRef}>
-                  {<CodePanel containerRef={codePanelRef} />}
-                </div>
+                <ReactSplit
+                  direction={SplitDirection.Horizontal}
+                  initialSizes={splitSizes3}
+                  onResizeFinished={(pairInd, newSizes) => {
+                    setSplitSizes3(newSizes);
+                  }}
+                  gutterClassName="custom_gutter"
+                >
+                  <div className="tile-xy u-showbottom">
+                    {<ExecutedCodePanel />}
+                  </div>
+                  <div className="tile-xy u-showbottom" ref={codePanelRef}>
+                    {<CodePanel containerRef={codePanelRef} />}
+                  </div>
+                </ReactSplit>
                 <div className="tile-xy">
                   <VariablePanel variables={selectedCommit!.variables!} />
                 </div>

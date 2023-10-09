@@ -10,27 +10,42 @@ import { Button, Modal, message } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import { waitFor } from "@testing-library/react";
 export interface waitingforModalProps {
-  waitingFor: string;
+  checkoutMode: string;
   isWaitingModalOpen: boolean;
   setIsWaitingModalOpen: any;
-  submitHandler: any;
+  checkoutBothHandler: any;
+  checkoutVariableHandler: any;
+  checkoutBranchID?: string;
+  setCheckoutBranchID?: any;
 }
+
+// checkoutMode={checkoutMode}
+// isWaitingModalOpen={isCheckoutWaitingModelOpen}
+// setIsWaitingModalOpen={setIsCheckoutWaitingModelOpen}
+// checkoutBothHandler={handleCheckoutBoth}
+// checkoutVariableHandler={handleCheckoutVariable}
+// checkoutBranchID={checkoutBranchID}
+// setCheckoutBranchID={setCheckoutBranchID} //after checkout succeed, the checkoutBranchID will be set to undefined
+
 export function CheckoutWaitingModal(props: waitingforModalProps) {
   async function handleCheckout() {
     try {
-      await props.submitHandler();
+      if (props.checkoutMode === "checkout codes and data") {
+        await props.checkoutBothHandler(props.checkoutBranchID);
+      } else if (props.checkoutMode === "checkout variables only") {
+        await props.checkoutVariableHandler(props.checkoutBranchID);
+      }
       props.setIsWaitingModalOpen(false);
       message.info("checkout succeed");
+      props.setCheckoutBranchID(undefined);
     } catch (e) {
       props.setIsWaitingModalOpen(false);
+      props.setCheckoutBranchID(undefined);
       message.error("checkout error: " + (e as Error).message);
     }
   }
 
-  if (
-    props.isWaitingModalOpen &&
-    props.waitingFor === "checkout codes and data"
-  ) {
+  if (props.isWaitingModalOpen) {
     handleCheckout();
   }
   return (
@@ -42,7 +57,7 @@ export function CheckoutWaitingModal(props: waitingforModalProps) {
         closeIcon={null}
         centered={true}
       >
-        <LoadingOutlined /> waiting for {props.waitingFor} ...
+        <LoadingOutlined /> waiting for {props.checkoutMode} ...
       </Modal>
     </>
   );

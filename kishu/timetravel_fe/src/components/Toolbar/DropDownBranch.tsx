@@ -14,14 +14,13 @@ import { AppContext } from "../../App";
 
 function DropdownBranch() {
   const props = useContext(AppContext);
-  let options:
-    | {
-        value: String;
-        label: String;
-      }[] = [];
+  let options: {
+    value: string;
+    label: string;
+  }[] = [];
   let index: number = 1;
 
-  props!.branchIDs!.forEach((label) => {
+  props!.branchID2CommitMap.forEach((commit, label) => {
     let value = index.toString();
     options.push({ value, label });
     index++;
@@ -43,13 +42,7 @@ function DropdownBranch() {
       options={options}
       dropdownStyle={{ backgroundColor: "#588157" }}
       onSelect={(value, { value: value1, label }) => {
-        props!.setSelectedBranchID(label);
-        const commitsInBranch = props!.commits.filter(
-          (commit) => commit.branchId === label
-        );
-        props!.setSelectedCommitID(
-          commitsInBranch[commitsInBranch.length - 1].oid
-        );
+        props?.setSelectedCommitID(props?.branchID2CommitMap.get(label));
       }}
     />
   );

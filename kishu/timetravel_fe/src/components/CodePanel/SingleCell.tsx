@@ -13,7 +13,7 @@ import "./SingleCell.css";
 import { useContext } from "react";
 import { AppContext } from "../../App";
 export interface SingleCellProps {
-  execNumber: string;
+  execNumber?: string;
   content: string;
 }
 //helper functions
@@ -24,20 +24,13 @@ function countLines(text: string) {
 
 function SingleCell(props: SingleCellProps) {
   const props1 = useContext(AppContext);
-  console.log(props1!.selectedCommit!.execCell);
   return (
     <div className="singleCellLayout">
       <span className="executionOrder left">
         &#91;{props.execNumber === "-1" ? " " : props.execNumber}&#93;
       </span>
       <AceEditor
-        className={
-          props.execNumber === "-1" || props.execNumber === undefined
-            ? "code unexcecuted"
-            : props.execNumber === props1!.selectedCommit!.execCell
-            ? "code current"
-            : "code success"
-        }
+        className={!props.execNumber ? "code unexcecuted" : "code executed"}
         placeholder="Placeholder Text"
         mode="python"
         theme="github"

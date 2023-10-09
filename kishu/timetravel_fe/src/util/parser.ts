@@ -6,24 +6,33 @@
  * @Description:
  */
 import { Cell } from "./Cell";
-import { Commit } from "./Commit";
+import { Commit, CommitDetail } from "./Commit";
 import { Variable } from "./Variable";
-export function parseAllCommits(object: any) {
-  // console.log(object);
+
+//parse and sort the data from backend
+export function preprocessCommitGraph(object: any) {
+  console.log("git graph from backend");
+  console.log(object);
   const items = object["commits"];
   const commits: Commit[] = items.map(
     (item: any) =>
       ({
         oid: item["oid"],
-        branchId: item["branch_id"],
+        // branchIds: item["branch_ids"],
+        branchIds: item["branches"],
         timestamp: item["timestamp"],
-        parentBranchID: item["parent_branch_id"],
         parentOid: item["parent_oid"],
-        tag: item["tag"],
-      } as Commit)
+        tags: item["tags"],
+      }) as Commit,
   );
   const currentHead = object["head"]["commit_id"];
   const currentHeadBranch = object["head"]["branch_name"];
+  //sorted by time, from newest to oldest
+  commits.sort((a, b) => {
+    const timestampA = new Date(a.timestamp).getTime();
+    const timestampB = new Date(b.timestamp).getTime();
+    return timestampB - timestampA;
+  });
 
   return {
     commits: commits,
@@ -31,40 +40,36 @@ export function parseAllCommits(object: any) {
     currentHeadBranch: currentHeadBranch,
   };
 }
+
 export function parseCommitDetail(json: any) {
-  // console.log(json);
-  const tmp = json;
-  console.log(tmp["cells"]);
+  console.log("commit detail from backend");
+  console.log(json);
+  const item = json["commit"];
 
-  //calculate the max cell to be the execute cell
-  let max = "-1";
-  for (let i = 0; i < tmp["cells"].length; i++) {
-    console.log(tmp["cells"][i]["exec_num"]);
-    if (tmp["cells"][i]["exec_num"] === "None") {
-      continue;
-    } else if (parseInt(tmp["cells"][i]["exec_num"]) > parseInt(max)) {
-      max = tmp["cells"][i]["exec_num"];
-    }
-  }
-
-  const history: Commit = {
-    oid: tmp["oid"],
-    branchId: tmp["branch_id"],
-    timestamp: tmp["timestamp"],
-    parentBranchID: tmp["parent_branchID"],
-    parentOid: tmp["parent_oid"],
-    tag: tmp["tag"],
-    codes: tmp["cells"].map(
+  const commitDetail: CommitDetail = {
+    commit: {
+      codeVersion: item["code_version"],
+      variableVersion: item["variable_version"],
+      oid: item["oid"],
+      timestamp: item["timestamp"],
+      parentOid: item["parent_oid"],
+      branchIds: item["branches"],
+      tags: item["tags"],
+    },
+    codes: json["cells"].map(
       (item: any) =>
         ({
           content: item["content"],
           execNum: item["exec_num"] === "None" ? "-1" : item["exec_num"],
-        } as Cell)
+        }) as Cell,
     ),
-    execCell: max,
-    variables: tmp["variables"].map((item: any) => recursiveGetVariable(item)),
+    variables: json["variables"].map((variable: any) =>
+      recursiveGetVariable(variable),
+    ),
+    // historyExecCells: json["cells"]
+    historyExecCells: [],
   };
-  return history;
+  return commitDetail;
 }
 
 function recursiveGetVariable(item: any): Variable {
@@ -84,7 +89,7 @@ function recursiveGetVariable(item: any): Variable {
       type: item["type"],
       size: item["size"],
       children: item["children"].map((child: any) =>
-        recursiveGetVariable(child)
+        recursiveGetVariable(child),
       ),
     } as Variable;
   }
