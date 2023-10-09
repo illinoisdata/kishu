@@ -144,6 +144,7 @@ class KishuCommand:
         if commit_id is None:
             head = KishuBranch.get_head(notebook_id)
             commit_id = head.commit_id
+            print(commit_id)
 
         if commit_id is None:
             return LogResult([])
@@ -176,14 +177,15 @@ class KishuCommand:
         return JupyterConnection.execute_one_command(notebook_id, command)
 
     @staticmethod
-    def checkout(notebook_id: str, branch_or_commit_id: str) -> CheckoutResult:
-        result = JupyterConnection.execute_one_command(
+    def checkout(
+        notebook_id: str,
+        branch_or_commit_id: str,
+        skip_notebook: bool = False,
+    ) -> CheckoutResult:
+        return JupyterConnection.execute_one_command(
             notebook_id,
-            f"_kishu.checkout('{branch_or_commit_id}')",
+            f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
         )
-        if result.status == "ok":
-            result.message = f"Checkout {branch_or_commit_id}"
-        return result
 
     @staticmethod
     def branch(

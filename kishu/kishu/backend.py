@@ -38,7 +38,12 @@ def status(notebook_id: str, commit_id: str):
 
 @app.get("/checkout/<notebook_id>/<branch_or_commit_id>")
 def checkout(notebook_id: str, branch_or_commit_id: str):
-    checkout_result = KishuCommand.checkout(notebook_id, branch_or_commit_id)
+    skip_notebook: bool = request.args.get('skip_notebook', default=False, type=is_true)
+    checkout_result = KishuCommand.checkout(
+        notebook_id,
+        branch_or_commit_id,
+        skip_notebook=skip_notebook,
+    )
     return into_json(checkout_result)
 
 

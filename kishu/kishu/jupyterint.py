@@ -305,24 +305,26 @@ class JupyterConnection:
             )
 
         # Reply status is ok.
-        command_result = JupyterConnection.extract_command_result(reply)
-        if command_result is not None:
+        command_result = reply["content"].get("user_expressions", {}).get("command_result", {})
+        command_result_status = command_result.get("status", "")
+        if command_result_status == 'error':
+            ename = command_result["ename"]
+            evalue = command_result["evalue"]
+            return JupyterCommandResult(
+                status="error",
+                message=f"{ename}: {evalue}",
+            )
+        elif command_result_status == 'ok':
+            command_result_data = command_result.get("data", {}).get("text/plain", "")
             return JupyterCommandResult(
                 status="ok",
-                message=command_result,
+                message=command_result_data,
             )
         else:
             return JupyterCommandResult(
                 status="ok",
-                message=f"Successfully execute {command}.",
+                message=f"Executed {command} but no result.",
             )
-
-    @staticmethod
-    def extract_command_result(reply: Dict[str, Any]) -> None:
-        command_result = reply["content"].get("user_expressions", {}).get("command_result", {})
-        if command_result.get("status", "") != "ok":
-            return None
-        return command_result.get("data", {}).get("text/plain", None)
 
 
 class KishuForJupyter:
@@ -386,7 +388,7 @@ class KishuForJupyter:
         user_ns = {} if ip is None else ip.user_ns
         return set(varname for varname, _ in filter(no_ipython_var, user_ns.items()))
 
-    def checkout(self, branch_or_commit_id: str) -> None:
+    def checkout(self, branch_or_commit_id: str, skip_notebook: bool = False) -> BareReprStr:
         """
         Restores a variable state from commit_id.
         """
@@ -417,7 +419,7 @@ class KishuForJupyter:
             raise ValueError("No restore plan found for commit_id = {}".format(commit_id))
 
         # Restore notebook cells
-        if commit_entry.raw_nb:
+        if not skip_notebook and commit_entry.raw_nb is not None:
             self._checkout_notebook(commit_entry.raw_nb)
 
         # Restore user-namespace variables.
@@ -439,6 +441,9 @@ class KishuForJupyter:
             commit_id=commit_id,
             is_detach=is_detach,
         )
+        if is_detach:
+            return BareReprStr(f"Checkout {branch_or_commit_id} in detach mode.")
+        return BareReprStr(f"Checkout {branch_or_commit_id} ({commit_id}).")
 
     def pre_run_cell(self, info) -> None:
         """

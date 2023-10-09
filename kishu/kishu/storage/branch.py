@@ -42,13 +42,22 @@ class KishuBranch:
         commit_id: Optional[str] = None,
         is_detach: bool = False
     ) -> HeadBranch:
+        # Get current head.
         head = KishuBranch.get_head(notebook_id)
         if head is None:
             head = HeadBranch(branch_name=None, commit_id=None)
-        if branch_name is not None or is_detach:
+
+        # Assign head branch.
+        if is_detach:
+            head.branch_name = None
+        elif branch_name is not None:
             head.branch_name = branch_name
+
+        # Assign commit ID.
         if commit_id is not None:
             head.commit_id = commit_id
+
+        # Write head.
         with open(KishuPath.head_path(notebook_id), 'w') as f:
             f.write(head.to_json())  # type: ignore
         return head
