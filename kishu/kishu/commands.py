@@ -12,6 +12,7 @@ from kishu.planning.plan import UnitExecution
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
+from kishu.storage.tag import KishuTag, TagRow
 
 
 """
@@ -84,6 +85,14 @@ class RenameBranchResult:
 
 
 @dataclass
+class TagResult:
+    status: str
+    tag_name: Optional[str] = None
+    commit_id: Optional[str] = None
+    message: Optional[str] = None
+
+
+@dataclass
 class HistoricalCommit:
     oid: str
     parent_oid: str
@@ -91,6 +100,7 @@ class HistoricalCommit:
     branch_id: str
     parent_branch_id: str
     other_branch_ids: List[str]
+    tags: List[str]
 
 
 @dataclass
@@ -241,6 +251,33 @@ class KishuCommand:
             )
 
     @staticmethod
+    def tag(
+        notebook_id: str,
+        tag_name: str,
+        commit_id: Optional[str],
+        message: str,
+    ) -> TagResult:
+        # Attempt to fill in omitted commit ID.
+        if commit_id is None:
+            # Try creating tag pointing to the commit ID at HEAD.
+            head = KishuBranch.get_head(notebook_id)
+            commit_id = head.commit_id
+
+        # Fail to determine commit ID, possibly because a commit does not exist.
+        if commit_id is None:
+            return TagResult(status="no_commit")
+
+        # Now add this tag.
+        tag = TagRow(tag_name=tag_name, commit_id=commit_id, message=message)
+        KishuTag.upsert_tag(notebook_id, tag)
+        return TagResult(
+            status="ok",
+            tag_name=tag_name,
+            commit_id=commit_id,
+            message=message,
+        )
+
+    @staticmethod
     def fe_commit_graph(notebook_id: str) -> FEInitializeResult:
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
@@ -257,6 +294,7 @@ class KishuCommand:
                 branch_id="",  # To be set in _toposort_commits.
                 parent_branch_id="",  # To be set in _toposort_commits.
                 other_branch_ids=[],
+                tags=[],
             ))
         commits = KishuCommand._toposort_commits(commits)
 
@@ -264,6 +302,10 @@ class KishuCommand:
         head = KishuBranch.get_head(notebook_id)
         branches = KishuBranch.list_branch(notebook_id)
         commits = KishuCommand._rebranch_commit(commits, branches)
+
+        # Joins with tag list.
+        tags = KishuTag.list_tag(notebook_id)
+        commits = KishuCommand._tag_commit(commits, tags)
 
         # Combines everything.
         return FEInitializeResult(
@@ -460,6 +502,23 @@ class KishuCommand:
             # Insert other branch names.
             if commit.oid in commit_to_other_branch_names:
                 commit.other_branch_ids = commit_to_other_branch_names[commit.oid]
+        return commits
+
+    @staticmethod
+    def _tag_commit(
+        commits: List[HistoricalCommit],
+        tags: List[TagRow],
+    ) -> List[HistoricalCommit]:
+        # Group tag names by commit ID
+        commit_to_tag: Dict[str, List[str]] = {}
+        for tag in tags:
+            if tag.commit_id not in commit_to_tag:
+                commit_to_tag[tag.commit_id] = []
+            commit_to_tag[tag.commit_id].append(tag.tag_name)
+
+        # Join tag names to commits.
+        for commit in commits:
+            commit.tags.extend(commit_to_tag.get(commit.oid, []))
         return commits
 
     @staticmethod

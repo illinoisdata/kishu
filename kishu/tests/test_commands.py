@@ -187,6 +187,19 @@ class TestKishuCommand:
             notebook_id, branch_1, branch_1)
         assert rename_branch_result.status == "error"
 
+    def test_tag(self, notebook_id, basic_execution_ids):
+        tag_result = KishuCommand.tag(notebook_id, "athead", None, "In current time")
+        assert tag_result.status == "ok"
+        assert tag_result.tag_name == "athead"
+        assert tag_result.commit_id == basic_execution_ids[-1]
+        assert tag_result.message == "In current time"
+
+        tag_result = KishuCommand.tag(notebook_id, "historical", basic_execution_ids[1], "")
+        assert tag_result.status == "ok"
+        assert tag_result.tag_name == "historical"
+        assert tag_result.commit_id == basic_execution_ids[1]
+        assert tag_result.message == ""
+
     def test_fe_commit_graph(self, notebook_id, basic_execution_ids):
         fe_commit_graph_result = KishuCommand.fe_commit_graph(notebook_id)
         assert len(fe_commit_graph_result.commits) == 3
