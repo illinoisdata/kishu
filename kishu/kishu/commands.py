@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import heapq
 import json
 
 from dataclasses import asdict, dataclass, is_dataclass
@@ -97,10 +96,10 @@ class HistoricalCommit:
     oid: str
     parent_oid: str
     timestamp: str
-    branch_id: str
-    parent_branch_id: str
-    other_branch_ids: List[str]
+    branches: List[str]
     tags: List[str]
+    # code_version: str
+    # variable_version: str
 
 
 @dataclass
@@ -109,8 +108,6 @@ class SelectedCommitCell:
     content: str
     output: Optional[str]
     exec_num: Optional[str]
-    # oid: str  # ???
-    # version: str  # ???
 
 
 @dataclass
@@ -120,21 +117,13 @@ class SelectedCommitVariable:
     type: str
     children: List[SelectedCommitVariable]
     size: Optional[str]
-    # version: str  # ???
 
 
 @dataclass
 class SelectedCommit:
-    oid: str
-    parent_oid: str
-    timestamp: str
-    latest_exec_num: Optional[str]
+    commit: HistoricalCommit
     cells: List[SelectedCommitCell]
     variables: List[SelectedCommitVariable]
-    # branch_id: str
-    # parent_branch_id: str
-    # exec_cell: str  # ???
-    # tag: str  # ???
 
 
 FESelectedCommit = SelectedCommit
@@ -291,21 +280,21 @@ class KishuCommand:
                 oid=node.commit_id,
                 parent_oid=node.parent_id,
                 timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
-                branch_id="",  # To be set in _toposort_commits.
-                parent_branch_id="",  # To be set in _toposort_commits.
-                other_branch_ids=[],
-                tags=[],
+                branches=[],  # To be set in _branch_commit.
+                tags=[],  # To be set in _tag_commit.
             ))
-        commits = KishuCommand._toposort_commits(commits)
 
-        # Retreives and applies branch names.
+        # Retreives and joins branches.
         head = KishuBranch.get_head(notebook_id)
         branches = KishuBranch.list_branch(notebook_id)
-        commits = KishuCommand._rebranch_commit(commits, branches)
+        commits = KishuCommand._branch_commit(commits, branches)
 
         # Joins with tag list.
         tags = KishuTag.list_tag(notebook_id)
         commits = KishuCommand._tag_commit(commits, tags)
+
+        # Sort commits by timestamp.
+        commits = sorted(commits, key=lambda commit: commit.timestamp)
 
         # Combines everything.
         return FEInitializeResult(
@@ -320,11 +309,15 @@ class KishuCommand:
                             .iter_history(commit_id)
         )
         current_commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
+        branches = KishuBranch.branches_for_commit(notebook_id, commit_id)
+        tags = KishuTag.tags_for_commit(notebook_id, commit_id)
         return KishuCommand._join_selected_commit(
             notebook_id,
             commit_id,
             commit_node_info,
             current_commit_entry,
+            branches,
+            tags,
             vardepth=vardepth,
         )
 
@@ -373,6 +366,8 @@ class KishuCommand:
         commit_id: str,
         commit_node_info: CommitNodeInfo,
         commit_entry: CommitEntry,
+        branches: List[BranchRow],
+        tags: List[TagRow],
         vardepth: int,
     ) -> SelectedCommit:
         # Restores variables.
@@ -400,108 +395,39 @@ class KishuCommand:
                     exec_num=KishuCommand._str_or_none(executed_cell.execution_count),
                 ))
 
+        # Summarize branches and tags
+        branch_names = [branch.branch_name for branch in branches]
+        tag_names = [tag.tag_name for tag in tags]
+
         # Builds SelectedCommit.
-        return SelectedCommit(
+        commit_summary = HistoricalCommit(
             oid=commit_id,
             parent_oid=commit_node_info.parent_id,
             timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
-            latest_exec_num=KishuCommand._str_or_none(commit_entry.execution_count),
+            branches=branch_names,
+            tags=tag_names,
+        )
+        return SelectedCommit(
+            commit=commit_summary,
             variables=variables,
             cells=cells,
         )
 
     @staticmethod
-    def _toposort_commits(commits: List[HistoricalCommit]) -> List[HistoricalCommit]:
-        refs: Dict[str, List[int]] = {}
-        for idx, commit in enumerate(commits):
-            if commit.parent_oid == "":
-                continue
-            if commit.parent_oid not in refs:
-                refs[commit.parent_oid] = []
-            refs[commit.parent_oid].append(idx)
-
-        sorted_commits = []
-        free_commit_idxs = [
-            (0.0, commit.timestamp, idx) for idx, commit in enumerate(commits)
-            if commit.parent_oid == ""
-        ]
-        heapq.heapify(free_commit_idxs)
-        new_branch_id = 1
-        it = 0.0
-        while len(free_commit_idxs) > 0:
-            # Next commit is next in topological order.
-            _, _, free_commit_idx = heapq.heappop(free_commit_idxs)
-            commit = commits[free_commit_idx]
-            it += 1
-
-            # If branch not assigned, this commit is in a new branch.
-            if commit.branch_id == "":
-                assert commit.parent_oid == ""
-                commit.branch_id = f"tmp_{new_branch_id}"
-                commit.parent_branch_id = "-1"
-                new_branch_id += 1
-            sorted_commits.append(commit)
-
-            # Assigns children branch IDs.
-            child_idxs = refs.get(commit.oid, [])
-            for child_idx in child_idxs[1:]:
-                child_commit = commits[child_idx]
-                child_commit.branch_id = f"tmp_{new_branch_id}"
-                child_commit.parent_branch_id = commit.branch_id
-                new_branch_id += 1
-                heapq.heappush(free_commit_idxs, (it, child_commit.timestamp, child_idx))
-            if len(child_idxs) > 0:
-                # Add first child last to continue this branch after branching out.
-                child_commit = commits[child_idxs[0]]
-                child_commit.branch_id = commit.branch_id
-                child_commit.parent_branch_id = commit.branch_id
-                heapq.heappush(free_commit_idxs, (it + 0.5, child_commit.timestamp, child_idxs[0]))
-        return sorted_commits
-
-    @staticmethod
-    def _rebranch_commit(
+    def _branch_commit(
         commits: List[HistoricalCommit],
         branches: List[BranchRow],
     ) -> List[HistoricalCommit]:
-        # Each of new branches points to one commit, creating an aliasing mapping.
-        commit_to_branch_name = {
-            branch.commit_id: branch.branch_name
-            for branch in branches
-        }
-
-        # Find mapping between current branch names to new branch names base on commit.
-        # Assume: commits are sorted, so the head commit of a branch is the last commit in the list.
-        head_commits_by_old_branch = {commit.branch_id: commit.oid for commit in commits}
-        old_to_new_branch_name = {
-            old_branch: commit_to_branch_name[commit_id]
-            for old_branch, commit_id in head_commits_by_old_branch.items() if commit_id in commit_to_branch_name
-        }
-
-        # List other branch names that will not show up.
-        selected_branch_names = {branch_name for _, branch_name in old_to_new_branch_name.items()}
-        commit_to_other_branch_names: Dict[str, List[str]] = {
-            commit_id: [] for commit_id in commit_to_branch_name
-        }
+        # Group branch names by commit ID
+        commit_to_branch: Dict[str, List[str]] = {}
         for branch in branches:
-            commit_to_other_branch_names[branch.commit_id].append(branch.branch_name)
-        for commit_id in commit_to_other_branch_names:
-            other_branch_names = filter(
-                lambda branch_name: branch_name not in selected_branch_names,
-                commit_to_other_branch_names[commit_id]
-            )
-            commit_to_other_branch_names[commit_id] = sorted(other_branch_names)
+            if branch.commit_id not in commit_to_branch:
+                commit_to_branch[branch.commit_id] = []
+            commit_to_branch[branch.commit_id].append(branch.branch_name)
 
-        # Edit branches in commits.
+        # Join branch names to commits.
         for commit in commits:
-            # Now relabel every branch names.
-            if commit.branch_id in old_to_new_branch_name:
-                commit.branch_id = old_to_new_branch_name[commit.branch_id]
-            if commit.parent_branch_id in old_to_new_branch_name:
-                commit.parent_branch_id = old_to_new_branch_name[commit.parent_branch_id]
-
-            # Insert other branch names.
-            if commit.oid in commit_to_other_branch_names:
-                commit.other_branch_ids = commit_to_other_branch_names[commit.oid]
+            commit.branches.extend(commit_to_branch.get(commit.oid, []))
         return commits
 
     @staticmethod

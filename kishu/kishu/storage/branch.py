@@ -95,6 +95,22 @@ class KishuBranch:
         ]
 
     @staticmethod
+    def branches_for_commit(notebook_id: str, commit_id: str) -> List[BranchRow]:
+        dbfile = KishuPath.checkpoint_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+        query = f"select branch_name, commit_id from {BRANCH_TABLE} where commit_id = ?"
+        try:
+            cur.execute(query, (commit_id,))
+        except sqlite3.OperationalError:
+            # No such table means no branch
+            return []
+        return [
+            BranchRow(branch_name=branch_name, commit_id=commit_id)
+            for branch_name, commit_id in cur
+        ]
+
+    @staticmethod
     def rename_branch(notebook_id: str, old_name: str, new_name: str) -> None:
         dbfile = KishuPath.checkpoint_path(notebook_id)
         con = sqlite3.connect(dbfile)
