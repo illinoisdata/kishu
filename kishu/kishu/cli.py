@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import typer
 
 from typing import Tuple
@@ -190,6 +191,52 @@ def tag(
     Create or edit tags.
     """
     print(into_json(KishuCommand.tag(notebook_id, tag_name, commit_id, message)))
+
+
+"""
+Kishu Experimental Commands.
+"""
+
+
+kishu_experimental_app = typer.Typer(add_completion=False)
+
+
+@kishu_experimental_app.command()
+def fegraph(
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
+) -> None:
+    """
+    Show the frontend commit graph.
+    """
+    print(into_json(KishuCommand.fe_commit_graph(notebook_id)))
+
+
+@kishu_experimental_app.command()
+def fecommit(
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
+    commit_id: str = typer.Argument(..., help="Commit ID to get detail.", show_default=False),
+    vardepth: int = typer.Option(
+        1,
+        "--vardepth",
+        help="Depth to resurce into variable attributes.",
+    ),
+) -> None:
+    """
+    Show the commit in frontend detail.
+    """
+    print(into_json(KishuCommand.fe_commit(notebook_id, commit_id, vardepth)))
+
+
+if os.environ.get("KISHU_ENABLE_EXPERIMENTAL", "false").lower() in ('true', '1', 't'):
+    kishu_app.add_typer(kishu_experimental_app, name="experimental")
 
 
 def main() -> None:
