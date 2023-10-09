@@ -11,14 +11,13 @@ import { info } from "console";
 export interface TagEditorProps {
   isModalOpen: boolean;
   setIsModalOpen: any;
-  defaultContent: string;
   submitHandler: (arg: string) => Promise<void>;
   selectedHistoryID?: string;
 }
 
 function TagEditor(props: TagEditorProps) {
   const [loading, setLoading] = useState(false);
-  const [content, setContent] = useState(props.defaultContent);
+  const [content, setContent] = useState("");
 
   async function handleOk() {
     setLoading(true);
@@ -36,7 +35,6 @@ function TagEditor(props: TagEditorProps) {
   }
 
   const handleCancel = () => {
-    setContent(props.defaultContent);
     props.setIsModalOpen(false);
   };
 

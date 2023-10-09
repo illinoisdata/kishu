@@ -2,7 +2,7 @@
  * @Author: University of Illinois at Urbana Champaign
  * @Date: 2023-07-14 10:34:27
  * @LastEditTime: 2023-08-01 09:38:18
- * @FilePath: /src/index.tsx
+ * @FilePath: /src/ExecutedCodePanel.tsx
  * @Description:
  */
 import React from "react";
@@ -23,7 +23,7 @@ function UserRouter() {
 }
 
 const root = ReactDOM.createRoot(
-  document.getElementById("root") as HTMLElement
+  document.getElementById("root") as HTMLElement,
 );
 root.render(<UserRouter />);
 

@@ -2,7 +2,7 @@
  * @Author: University of Illinois at Urbana Champaign
  * @Date: 2023-06-18 10:20:09
  * @LastEditTime: 2023-07-15 22:18:28
- * @FilePath: /src/components/Toolbar/index.tsx
+ * @FilePath: /src/components/Toolbar/ExecutedCodePanel.tsx
  * @Description: toolBar includes rollback buttons, and the menu to choose rollback type.
  */
 import React, { SyntheticEvent, useContext, useState } from "react";
@@ -52,7 +52,6 @@ function Toolbar() {
         {" "}
         <div className="toolBar">
           <div>
-            {/* <Space wrap>branch name : </Space> */}
             <DropdownBranch />
           </div>
           <Search

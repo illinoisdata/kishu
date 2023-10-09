@@ -1,6 +1,6 @@
 elastic/examples/data/
 elastic/examples/*.pth
-
+.idea/
 .DS_Store
 */.DS_Store
 

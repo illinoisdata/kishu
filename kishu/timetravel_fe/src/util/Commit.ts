@@ -9,13 +9,17 @@ import { Cell } from "./Cell";
 import { Variable } from "./Variable";
 export interface Commit {
   oid: string;
-  branchId: string;
   timestamp: string;
-  parentBranchID: string;
   parentOid: string;
-  branchName?: string;
-  tag?: string;
-  codes?: Cell[];
-  variables?: Variable[];
-  execCell?: string;
+  codeVersion: string;
+  variableVersion: string;
+  branchIds: string[];
+  tags: string[];
+}
+
+export interface CommitDetail {
+  commit: Commit;
+  codes: Cell[]; //no need for get commit_graph
+  variables: Variable[]; //no need for get commit_graph
+  historyExecCells: Cell[];
 }

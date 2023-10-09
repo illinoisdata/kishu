@@ -2,7 +2,7 @@
  * @Author: University of Illinois at Urbana Champaign
  * @Date: 2023-06-18 13:46:16
  * @LastEditTime: 2023-08-01 13:21:53
- * @FilePath: /src/components/HistoryPanel/index.tsx
+ * @FilePath: /src/components/HistoryPanel/ExecutedCodePanel.tsx
  * @Description:
  */
 // import HistoryPoint from "../HistoryPoint";
@@ -32,17 +32,22 @@ import { AppContext } from "../../App";
 import { CheckoutWaitingModal } from "./CheckoutWaitingForModal";
 import BranchNameEditor from "./BranchNameEditor";
 import HoverPopup from "./HoverOverModal";
+import { HistoryGraph } from "./HistoryGraph";
+import { getPointRenderInfos } from "../../util/getPointRenderInfo";
+import "./historyPanel.css";
+import { CommitInfo } from "./CommitInfo";
+import { PointRenderInfo } from "../../util/PointRenderInfo";
+import { CheckoutBranchModel } from "./CheckoutBranchModel";
 
 function HistoryTree() {
   const props = useContext(AppContext);
-  console.log("rerender history tree again");
 
-  //************states of history tree*************** */
-  const [judgeShowFunctionID, setJudgeShowFunctionID] = useState(1); //0:show only histories with tags, 1: show all histories, 2: show only selected histories
-  const [groups, setGroups] = useState<Map<string, Commit[]>>(); // are the folded groups(Map<headOID, foldedGroupInfo>)
-  const [isGroupFolded, setIsGroupFolded] = useState<Map<string, boolean>>(); //<group header's OID, isGroupFolded>
-  const [groupIndex, setGroupIndex] = useState<Map<string, string>>(); //<history oid, group head's oid>
-  //********************************************************** */
+  //***********************state for git graph************************ */
+  const [pointRenderInfos, setPointRenderInfos] = useState<
+    Map<string, PointRenderInfo>
+  >(new Map());
+  const [svgMaxX, setsvgMaxX] = useState<number>(0);
+  const [svgMaxY, setsvgMaxY] = useState<number>(0);
 
   //********status of pop-ups************************ */
   const [contextMenuPosition, setContextMenuPosition] = useState<{
@@ -53,130 +58,20 @@ function HistoryTree() {
   const [isBranchNameEditorOpen, setIsBranchNameEditorOpen] = useState(false);
   const [isCheckoutWaitingModelOpen, setIsCheckoutWaitingModelOpen] =
     useState(false);
-  const [waitingFor, setWaitingfor] = useState(""); //wait for what, like tag, checkout or XXX
+  const [chooseCheckoutBranchModelOpen, setChooseCheckoutBranchModelOpen] =
+    useState(false);
+  const [checkoutMode, setCheckoutMode] = useState(""); //wait for what, like tag, checkout or XXX
   const [mouseOverPosition, setMouseOverPosition] = useState<{
     x: number;
     y: number;
   } | null>(null);
+  const [checkoutBranchID, setCheckoutBranchID] = useState<string | undefined>(
+    undefined,
+  );
   const [mouseOverTimestamp, setMouseOverTimestamp] = useState<string>("");
+
   //********************************************************************* */
 
-  //**********************helper functions***********/
-  function judgeGrouped(history: Commit) {
-    if (judgeShowFunctionID === 0) {
-      return Judger.JudgeGroupByTag(history);
-    } else if (judgeShowFunctionID === 1) {
-      return Judger.JudgeGroupByNoGroup(history);
-    } else {
-      return Judger.JudgeGroupBySearch(history);
-    }
-  }
-  function findParent(child: Commit): Commit | null {
-    if (child.parentOid === "-1") {
-      return null;
-    }
-    return props!.commits!.filter((his) => his.oid === child.parentOid)[0];
-  }
-  function addCommitToGraph(
-    element: Commit,
-    text?: string,
-    ClickHandler?: string
-  ) {
-    if (!text) {
-      //not ""+" or "-"
-      if (element.oid !== props!.selectedCommitID!) {
-        branches.get(element.branchId)!.commit({
-          subject: element.oid.toString(),
-          tag: element.tag,
-          renderDot(commit) {
-            return (
-              <svg
-                // {...svgProps}
-                onContextMenu={(event) => {
-                  message.info("right clicked");
-                  props!.setSelectedCommitID(element.oid);
-                }}
-                onClick={(event) => {
-                  message.info("left clicked");
-                  props!.setSelectedCommitID(element.oid);
-                }}
-                onMouseOver={(event) => {
-                  handleMouseOverCommit(commit.x, commit.y, element.timestamp);
-                }}
-                onMouseOut={(event) => {
-                  handleMouseOutCommit();
-                }}
-                // onClick={setSelectedHistoryID(element.oid)}
-              >
-                <circle
-                  id={commit.hash}
-                  cx={commit.style.dot.size}
-                  cy={commit.style.dot.size}
-                  r={commit.style.dot.size}
-                  // fill={commit.style.dot.color as string}
-                  fill={
-                    element.oid! === props!.currentHeadID
-                      ? "red"
-                      : (commit.style.dot.color as string)
-                  }
-                />
-              </svg>
-            );
-          },
-        });
-      } else {
-        branches.get(element.branchId)!.commit({
-          subject: "select me" + element.oid.toString(),
-          dotText: "🐞",
-          tag: element.tag,
-          onMouseOver(commit) {
-            handleMouseOverCommit(commit.x, commit.y, element.timestamp);
-          },
-          onMouseOut(commit) {
-            handleMouseOutCommit();
-          },
-        });
-      }
-    } else if (text === "➕") {
-      branches.get(element.branchId)!.commit({
-        subject: element.oid.toString(),
-        dotText: text!,
-        style: {
-          dot: {
-            color: "grey",
-            size: 10,
-          },
-        },
-        onClick(commit) {
-          const gOID = groupIndex!.get(element.oid);
-          setIsGroupFolded((previous) => {
-            let newMap = new Map(previous);
-            newMap.set(gOID!, false);
-            return newMap;
-          });
-        },
-      });
-    } else {
-      branches.get(element.branchId)!.commit({
-        subject: element.oid.toString(),
-        dotText: text!,
-        style: {
-          dot: {
-            color: "grey",
-            size: 12,
-          },
-        },
-        onClick(commit) {
-          const gOID = groupIndex!.get(element.oid);
-          setIsGroupFolded((previous) => {
-            let newMap = new Map(previous);
-            newMap.set(gOID!, true);
-            return newMap;
-          });
-        },
-      });
-    }
-  }
   /************************************************************************** */
 
   //***********************event handelers************/
@@ -184,168 +79,137 @@ function HistoryTree() {
     event.preventDefault();
     setContextMenuPosition({ x: event.clientX, y: event.clientY });
   }
-  function handleMouseOverCommit(x: number, y: number, timestamp: string) {
-    if (mouseOverPosition === null) {
-      console.log("on_mouseOver");
-      setMouseOverTimestamp(timestamp);
-      setMouseOverPosition({ x: x + 100, y: y + 50 });
-    }
-  }
-  function handleMouseOutCommit() {
-    setMouseOverPosition(null);
-  }
+
+  // function handleMouseOverCommit(x: number, y: number, timestamp: string) {
+  //   if (mouseOverPosition === null) {
+  //     setMouseOverTimestamp(timestamp);
+  //     setMouseOverPosition({ x: x + 100, y: y + 50 });
+  //   }
+  // }
+  // function handleMouseOutCommit() {
+  //   setMouseOverPosition(null);
+  // }
   function handleCloseContextMenu() {
     setContextMenuPosition(null);
   }
+
   async function handleTagSubmit(newTag: string) {
     try {
       await BackEndAPI.setTag(props!.selectedCommitID!!, newTag);
       const newGraph = await BackEndAPI.getCommitGraph();
+      console.log("tag submit, git graph after parse:");
       console.log(newGraph);
       props!.setCommits(newGraph.commits);
-      props!.setBranchIDs(
-        new Set(newGraph.commits.map((commit) => commit.branchId))
-      );
+      const newSetBranchID2CommitMap = new Map<string, string>();
+      props!.commits.map((commit) => {
+        commit.branchIds.map((branchID) => {
+          newSetBranchID2CommitMap.set(branchID, commit.oid);
+        });
+      });
+      props!.setBranchID2CommitMap(newSetBranchID2CommitMap);
       props!.setCurrentHeadID(newGraph.currentHead);
     } catch (error) {
       throw error;
     }
   }
+
   async function handleBranchNameSubmit(newBranchName: string) {
     try {
       await BackEndAPI.createBranch(props!.selectedCommitID!, newBranchName);
       const newGraph = await BackEndAPI.getCommitGraph();
+      console.log("branch name submit, git graph after parse:");
       console.log(newGraph);
       props!.setCommits(newGraph.commits);
-      props!.setBranchIDs(
-        new Set(newGraph.commits.map((commit) => commit.branchId))
-      );
+      const newSetBranchID2CommitMap = new Map<string, string>();
+      props!.commits.map((commit) => {
+        commit.branchIds.map((branchID) => {
+          newSetBranchID2CommitMap.set(branchID, commit.oid);
+        });
+      });
+      props!.setBranchID2CommitMap(newSetBranchID2CommitMap);
       props!.setCurrentHeadID(newGraph.currentHead);
     } catch (error) {
       throw error;
     }
   }
 
-  async function handleCheckout() {
+  async function handleCheckoutBoth(branchID?: string) {
     try {
-      await BackEndAPI.rollbackBoth(props!.selectedCommitID!);
+      await BackEndAPI.rollbackBoth(props!.selectedCommitID!, branchID);
       const newGraph = await BackEndAPI.getCommitGraph();
+      console.log("checkout submit, git graph after parse:");
       console.log(newGraph);
       props!.setCommits(newGraph.commits);
-      props!.setBranchIDs(
-        new Set(newGraph.commits.map((commit) => commit.branchId))
-      );
+      const newSetBranchID2CommitMap = new Map<string, string>();
+      props!.commits.map((commit) => {
+        commit.branchIds.map((branchID) => {
+          newSetBranchID2CommitMap.set(branchID, commit.oid);
+        });
+      });
+      props!.setBranchID2CommitMap(newSetBranchID2CommitMap);
       props!.setCurrentHeadID(newGraph.currentHead);
     } catch (error) {
       throw error;
     }
+  }
+
+  async function handleCheckoutVariable(branchID?: string) {
+    // try {
+    //   await BackEndAPI.rollbackBoth(props!.selectedCommitID!, branchID);
+    //   const newGraph = await BackEndAPI.getCommitGraph();
+    //   console.log("checkout submit, git graph after parse:");
+    //   console.log(newGraph);
+    //   props!.setCommits(newGraph.commits);
+    //   props!.setBranchIDs(
+    //     new Set(newGraph.commits.flatMap((commit) => commit.branchIds)),
+    //   );
+    //   props!.setCurrentHeadID(newGraph.currentHead);
+    // } catch (error) {
+    //   throw error;
+    // }
   }
 
   //*********************************************************************** */
 
-  //**************Variables that are recreated per render*/
-  //all the branches of GitGraph
-  let branches = new Map<string, Branch>();
-  let previousTag4SelectedCommit = props!.commits!.filter(
-    (commit) => commit.oid === props!.selectedCommitID!
-  )[0].tag;
+  let commitIDMap = new Map<string, Commit>();
+  props?.commits.map((commit) => commitIDMap.set(commit.oid, commit));
 
-  //initialize commits that are logically folded together into groups, reinitialize when commits are changed, or
-  //visibility type is changed.
+  //usememo for pointRenderInfos
   useMemo(() => {
-    console.log(
-      "props.commit changed or judgeShow rule changed, re-calculate the groups again"
+    let infos = getPointRenderInfos(props?.commits!);
+    setPointRenderInfos(infos["info"]);
+    setsvgMaxX(infos["maxX"]);
+    setsvgMaxY(infos["maxY"]);
+  }, [props?.commits]);
+
+  const commitInfos = props?.commits.map((commit) => {
+    return (
+      <CommitInfo
+        commit={commit}
+        pointRendererInfo={pointRenderInfos.get(commit.oid)!}
+        onclick={() => {
+          props!.setSelectedCommitID(commit.oid);
+        }}
+        onContextMenu={(event: React.MouseEvent) => {
+          event.preventDefault();
+          props!.setSelectedCommitID(commit.oid);
+          setContextMenuPosition({ x: event.clientX, y: event.clientY });
+        }}
+      />
     );
-    let newGroups = new Map<string, Commit[]>();
-    let newGroupIndex = new Map<string, string>();
-    let newIsGroupFolded = new Map<string, boolean>();
-    let tmpBranchFolderHead = new Map<string, string>(); //remember current branch's folded group's head
-    for (let element of props!.commits!) {
-      if (judgeGrouped(element)) {
-        let parent = findParent(element);
-        if (parent?.branchId !== element.branchId || !judgeGrouped(parent)) {
-          //the element is head of a group
-          newGroups.set(element.oid, [element]);
-          newGroupIndex.set(element.oid, element.oid);
-          newIsGroupFolded.set(element.oid, true);
-          tmpBranchFolderHead.set(element.branchId, element.oid);
-        } else {
-          //find the header and input to the fold
-          let headerOID = tmpBranchFolderHead.get(element.branchId);
-          newGroups.get(headerOID!)!.push(element);
-          newGroupIndex.set(element.oid, headerOID!);
-        }
-      }
-    }
-    setGroups(newGroups);
-    setGroupIndex(newGroupIndex);
-    setIsGroupFolded(newIsGroupFolded);
-  }, [props!.commits, judgeShowFunctionID]);
+  });
 
   return (
-    <div onContextMenu={handleContextMenu} onClick={handleCloseContextMenu}>
-      {/* To refresh the gitgraph when props are changed, the key of the
-      GitGraph must also be changed, or the gitgraph.js will ignore the
-      props' changes. */}
-      <Gitgraph
-        key={Date.now()}
-        options={{
-          mode: Mode.Compact,
-          template: templateExtend(TemplateName.Metro, {
-            colors: ["#FFCC66", "#CCCC66", "#FF00CC", "#6633CC", "#999900"],
-          }),
-        }}
-      >
-        {(gitgraph) => {
-          for (let element of props!.commits!) {
-            //if history belongs to a new branch, create a the on the parent branch
-            if (!branches.has(element.branchId)) {
-              if (element.parentBranchID === "-1") {
-                branches.set(
-                  element.branchId,
-                  gitgraph.branch(element.branchId.toString())
-                );
-              } else {
-                branches.set(
-                  element.branchId,
-                  branches
-                    .get(element.parentBranchID)!
-                    .branch(element.branchId.toString())
-                );
-              }
-            }
-            if (!judgeGrouped(element)) {
-              addCommitToGraph(element);
-            } else {
-              //find the group
-              let groupOID = groupIndex!.get(element.oid);
-              if (isGroupFolded!.get(groupOID!)) {
-                //group is folded
-                //judge if it's the head
-                if (groupOID === element.oid) {
-                  addCommitToGraph(element, "➕");
-                }
-              } else {
-                //group is unfolded
-                let currentGroup = groups!.get(groupOID!);
-                //judge if it's head
-                if (groupOID === element.oid) {
-                  addCommitToGraph(element, "➖");
-                }
-                addCommitToGraph(element);
-                //judge if it's tail
-                if (
-                  currentGroup![currentGroup!.length - 1].oid === element.oid
-                ) {
-                  addCommitToGraph(currentGroup![0], "➖");
-                } else {
-                }
-              }
-            }
-          }
-        }}
-      </Gitgraph>
-
+    <div className="historyPanel" onClick={handleCloseContextMenu}>
+      <HistoryGraph
+        Commits={commitIDMap}
+        pointRendererInfos={pointRenderInfos}
+        selectedCommitID={props?.selectedCommitID!}
+        currentCommitID={props?.currentHeadID!}
+        svgMaxX={svgMaxX}
+        svgMaxY={svgMaxY}
+      />
+      <div className={"commitInfos"}>{commitInfos}</div>
       {/****************************pop-ups ***********************/}
       {contextMenuPosition && (
         <ContextMenu
@@ -354,27 +218,14 @@ function HistoryTree() {
           y={contextMenuPosition.y}
           onClose={handleCloseContextMenu}
           setIsTagEditorOpen={setIsTagEditorOpen}
-          setJudgeFunctionID={setJudgeShowFunctionID}
-          setIsGroupFolded={setIsGroupFolded}
-          setIsWaitingModalOpen={setIsCheckoutWaitingModelOpen}
-          setWaitingfor={setWaitingfor}
-          judgeFunctionID={judgeShowFunctionID}
-          isGroupFolded={isGroupFolded}
-        />
-      )}
-      {mouseOverPosition && (
-        <HoverPopup
-          x={mouseOverPosition.x}
-          y={mouseOverPosition.y}
-          timestamp={mouseOverTimestamp}
+          setIsCheckoutWaitingModalOpen={setIsCheckoutWaitingModelOpen}
+          setChckoutMode={setCheckoutMode}
+          setChooseCheckoutBranchModelOpen={setChooseCheckoutBranchModelOpen}
         />
       )}
       <TagEditor
         isModalOpen={isTagEditorOpen}
         setIsModalOpen={setIsTagEditorOpen}
-        defaultContent={
-          previousTag4SelectedCommit ? previousTag4SelectedCommit : ""
-        }
         submitHandler={handleTagSubmit}
         selectedHistoryID={props!.selectedCommitID!}
       ></TagEditor>
@@ -384,11 +235,21 @@ function HistoryTree() {
         submitHandler={handleBranchNameSubmit}
         selectedHistoryID={props!.selectedCommitID!}
       ></BranchNameEditor>
+      <CheckoutBranchModel
+        branchIDOptions={props?.selectedCommit?.commit.branchIds}
+        isModalOpen={chooseCheckoutBranchModelOpen}
+        setCheckoutBranchID={setCheckoutBranchID}
+        setIsCheckoutWaitingModalOpen={setIsCheckoutWaitingModelOpen}
+        setIsModalOpen={setChooseCheckoutBranchModelOpen}
+      ></CheckoutBranchModel>
       <CheckoutWaitingModal
-        waitingFor={waitingFor}
+        checkoutMode={checkoutMode}
         isWaitingModalOpen={isCheckoutWaitingModelOpen}
         setIsWaitingModalOpen={setIsCheckoutWaitingModelOpen}
-        submitHandler={handleCheckout}
+        checkoutBothHandler={handleCheckoutBoth}
+        checkoutVariableHandler={handleCheckoutVariable}
+        checkoutBranchID={checkoutBranchID}
+        setCheckoutBranchID={setCheckoutBranchID} //after checkout succeed, the checkoutBranchID will be set to undefined
       ></CheckoutWaitingModal>
     </div>
   );
@@ -396,3 +257,136 @@ function HistoryTree() {
 
 React.createElement("svg");
 export default HistoryTree;
+
+{
+  /****************************pop-ups ***********************/
+}
+{
+  /*{contextMenuPosition && (*/
+}
+{
+  /*  <ContextMenu*/
+}
+{
+  /*    setIsBranchNameEditorOpen={setIsBranchNameEditorOpen}*/
+}
+{
+  /*    x={contextMenuPosition.x}*/
+}
+{
+  /*    y={contextMenuPosition.y}*/
+}
+{
+  /*    onClose={handleCloseContextMenu}*/
+}
+{
+  /*    setIsTagEditorOpen={setIsTagEditorOpen}*/
+}
+{
+  /*    setJudgeFunctionID={setJudgeShowFunctionID}*/
+}
+{
+  /*    setIsGroupFolded={setIsGroupFolded}*/
+}
+{
+  /*    setIsWaitingModalOpen={setIsCheckoutWaitingModelOpen}*/
+}
+{
+  /*    setWaitingfor={setWaitingfor}*/
+}
+{
+  /*    judgeFunctionID={judgeShowFunctionID}*/
+}
+{
+  /*    isGroupFolded={isGroupFolded}*/
+}
+{
+  /*  />*/
+}
+{
+  /*)}*/
+}
+{
+  /*{mouseOverPosition && (*/
+}
+{
+  /*  <HoverPopup*/
+}
+{
+  /*    x={mouseOverPosition.x}*/
+}
+{
+  /*    y={mouseOverPosition.y}*/
+}
+{
+  /*    timestamp={mouseOverTimestamp}*/
+}
+{
+  /*  />*/
+}
+{
+  /*)}*/
+}
+{
+  /*<TagEditor*/
+}
+{
+  /*  isModalOpen={isTagEditorOpen}*/
+}
+{
+  /*  setIsModalOpen={setIsTagEditorOpen}*/
+}
+{
+  /*  defaultContent={*/
+}
+{
+  /*    previousTag4SelectedCommit ? previousTag4SelectedCommit : ""*/
+}
+{
+  /*  }*/
+}
+{
+  /*  submitHandler={handleTagSubmit}*/
+}
+{
+  /*  selectedHistoryID={props!.selectedCommitID!}*/
+}
+{
+  /*></TagEditor>*/
+}
+{
+  /*<BranchNameEditor*/
+}
+{
+  /*  isModalOpen={isBranchNameEditorOpen}*/
+}
+{
+  /*  setIsModalOpen={setIsBranchNameEditorOpen}*/
+}
+{
+  /*  submitHandler={handleBranchNameSubmit}*/
+}
+{
+  /*  selectedHistoryID={props!.selectedCommitID!}*/
+}
+{
+  /*></BranchNameEditor>*/
+}
+{
+  /*<CheckoutWaitingModal*/
+}
+{
+  /*  waitingFor={waitingFor}*/
+}
+{
+  /*  isWaitingModalOpen={isCheckoutWaitingModelOpen}*/
+}
+{
+  /*  setIsWaitingModalOpen={setIsCheckoutWaitingModelOpen}*/
+}
+{
+  /*  submitHandler={handleCheckout}*/
+}
+{
+  /*></CheckoutWaitingModal>*/
+}

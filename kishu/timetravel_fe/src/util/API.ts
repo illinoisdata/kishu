@@ -1,6 +1,6 @@
 import { error, time } from "console";
 import { Commit } from "./Commit";
-import { parseAllCommits, parseCommitDetail } from "./parser";
+import { preprocessCommitGraph, parseCommitDetail } from "./parser";
 import commits from "../example_jsons/commit_graph.json";
 import commit_detail from "../example_jsons/commit.json";
 import { message } from "antd";
@@ -14,11 +14,14 @@ import { message } from "antd";
  */
 
 const BackEndAPI = {
-  async rollbackBoth(historyID: string) {
+  async rollbackBoth(commitID: string, branchID?: string) {
     // message.info(`rollback succeeds`);
-    const res = await fetch(
-      "/checkout/" + globalThis.NotebookID! + "/" + historyID
-    );
+    let res;
+    if (branchID) {
+      res = await fetch("/checkout/" + globalThis.NotebookID! + "/" + branchID);
+    } else {
+      res = await fetch("/checkout/" + globalThis.NotebookID! + "/" + commitID);
+    }
     try {
       const data = await res.json();
       if (data.status === "ok") {
@@ -43,9 +46,9 @@ const BackEndAPI = {
   async getCommitGraph() {
     const res = await fetch("/fe/commit_graph/" + globalThis.NotebookID!);
     try {
+      //TODO: check return status before parsing
       const data = await res.json();
-      console.log(data);
-      return parseAllCommits(data);
+      return preprocessCommitGraph(data);
     } catch (error) {
       throw error;
     }
@@ -53,11 +56,11 @@ const BackEndAPI = {
 
   async getCommitDetail(commitID: string) {
     const res = await fetch(
-      "/fe/commit/" + globalThis.NotebookID! + "/" + commitID
+      "/fe/commit/" + globalThis.NotebookID! + "/" + commitID,
     );
     try {
+      //TODO: check return status before parsing
       const data = await res.json();
-      console.log(data);
       return parseCommitDetail(data);
     } catch (error) {
       return console.error("Error fetching data:", error);
@@ -70,12 +73,16 @@ const BackEndAPI = {
     const res = await fetch(
       "/tag/" +
         globalThis.NotebookID! +
+        "/" +
+        newTag +
         "?commit_id=" +
-        commitID +
-        "&tag=" +
-        newTag
+        commitID,
+      //
+      // "&message=" +
+      // newTag,
     );
     try {
+      //TODO: check return status before parsing
       const data = await res.json();
       if (data.status === "ok") {
         console.log("set tag done");
@@ -96,9 +103,10 @@ const BackEndAPI = {
         "/" +
         newBranchname +
         "?commit_id=" +
-        commitID
+        commitID,
     );
     try {
+      //TODO: check return status before parsing
       const data = await res.json();
       if (data.status === "ok") {
         console.log("creating branch done");

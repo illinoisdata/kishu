@@ -34,7 +34,7 @@
 }
 
 /* newly successfully excecuted code cell */
-.code.success {
+.code.executed {
   border-color: green;
 }
 
