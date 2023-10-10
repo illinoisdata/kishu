@@ -46,11 +46,10 @@
   align-items: center; */
 
   border-radius: 0px;
-  background: #ece8f4;
-  border-color: aqua;
+  background-color: #dad7cd;
 
-  overflow-x: scroll;
-  overflow-y: scroll;
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 .center-page {
@@ -58,4 +57,10 @@
   justify-content: center;
   align-items: center;
   height: 100%;
+}
+
+.custom_gutter {
+  height: 0px;
+  width: 0px;
+  background: #f0f0f0;
 }
