@@ -521,7 +521,23 @@ class KishuForJupyter:
         entry = CommitEntry(kind=CommitEntryKind.manual)
         entry.execution_count = self._last_execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
-        self._commit_entry(entry)
+        head = KishuBranch.get_head(self._notebook_id)
+        if head.branch_name is None:    # head is in detached state
+            new_branch_name = f"branch_{str(uuid.uuid4)[:8]}"
+            self._commit_entry(entry)
+            KishuBranch.upsert_branch(
+                self._notebook_id,
+                new_branch_name,
+                entry.exec_id,
+            )
+            KishuBranch.update_head(    # update head
+                notebook_id=self._notebook_id,
+                branch_name=new_branch_name,
+                commit_id=entry.exec_id,
+                is_detach=False,
+            )
+        else:
+            self._commit_entry(entry)
         return BareReprStr(entry.exec_id)
 
     def _commit_entry(self, entry: CommitEntry) -> None:
