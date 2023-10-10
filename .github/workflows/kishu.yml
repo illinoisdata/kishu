@@ -37,6 +37,10 @@ jobs:
         cd kishu
         flake8 kishu/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 kishu/ tests/ --count --max-complexity=100 --max-line-length=127 --statistics
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     - name: Test Kishu with pytest
       run: |
         cd kishu
