@@ -1,5 +1,5 @@
 [![build status](https://github.com/illinoisdata/kishu/actions/workflows/kishu.yml/badge.svg)](htps://github.com/illinoisdata/kishu)
-[![code coverage](https://img.shields.io/codecov/c/gh/illinoisdata/kishu/zl20%2Fbadges?token=4896eb66-50ef-4024-a1dc-e15dccc58119)](htps://github.com/illinoisdata/kishu)
+[![codecov](https://codecov.io/gh/illinoisdata/kishu/graph/badge.svg?token=14WRVYQBZO)](https://codecov.io/gh/illinoisdata/kishu)
 [![commits last month](https://img.shields.io/github/commit-activity/m/illinoisdata/ElasticNotebook)](htps://github.com/illinoisdata/kishu)
 [![GitHub stars](https://img.shields.io/github/stars/illinoisdata/ElasticNotebook)](htps://github.com/illinoisdata/kishu)
 [![Python version](https://img.shields.io/pypi/pyversions/kishu)](https://pypi.org/project/kishu/)
