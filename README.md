@@ -29,25 +29,25 @@ pytest -vv
 **Adding Kishu to your notebook:** Kishu can be added to any notebook through running the following command:
 
 ```
-code 1
+kishu init {{notebook name}}
 ```
 
 **Cell execution tracking:** After adding Kishu to a notebook, it will begin tracking user cell executions and commit the session state to its database after each cell execution. Users can see their execution history with the following command:
 
 ```
-code 2
+kishu log
 ```
 
-**Checking out:** The following command is used to restore to/checkout a previous session state:
+**Checking out:** The following command is used to restore to/checkout a previous session state. The commit IDs of states can be found via the above `kishu log` command.
 
 ```
-code 3
+kishu checkout {{commit id}}
 ```
 
 **Manual commit:** In addition to automatically commiting session states, users can perform a manual commit with the following command:
 
 ```
-code 4
+kishu commit
 ```
 
 ## Trying Kishu
