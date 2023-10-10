@@ -43,13 +43,15 @@ export function HistoryGraph(props: HistoryGraphProps) {
         }
         return <></>;
       })}
-      {Array.from(props.pointRendererInfos.values()).map((info) => {
+      {Array.from(props.pointRendererInfos.values()).map((info,index) => {
         return (
           <circle
             cx={info.cx}
             cy={info.cy}
             r={COMMITRADIUS}
             fill={info.color}
+            // TODO: add onclick to svg circles
+            onClick={() => {}}
           />
         );
       })}

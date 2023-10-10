@@ -189,10 +189,12 @@ function HistoryTree() {
         pointRendererInfo={pointRenderInfos.get(commit.oid)!}
         onclick={() => {
           props!.setSelectedCommitID(commit.oid);
+          props!.setSelectedBranchID("");
         }}
         onContextMenu={(event: React.MouseEvent) => {
           event.preventDefault();
           props!.setSelectedCommitID(commit.oid);
+          props!.setSelectedBranchID("");
           setContextMenuPosition({ x: event.clientX, y: event.clientY });
         }}
       />

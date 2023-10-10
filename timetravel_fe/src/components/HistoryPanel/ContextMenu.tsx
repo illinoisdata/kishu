@@ -76,7 +76,7 @@ function ContextMenu({
     if (key === "tag") {
       setIsTagEditorOpen(true);
     } else if (key === "both") {
-      if (!props!.selectedCommit!.commit.branchIds) {
+      if (props!.selectedCommit!.commit.branchIds.length === 0) {
         setIsCheckoutWaitingModalOpen(true);
         setChckoutMode("checkout codes and data");
       } else {

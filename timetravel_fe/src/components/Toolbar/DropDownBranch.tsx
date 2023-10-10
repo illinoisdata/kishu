@@ -30,7 +30,8 @@ function DropdownBranch() {
     <Select
       showSearch
       style={{ width: 200 }}
-      placeholder={props!.selectedBranchID!}
+      // placeholder={props!.selectedBranchID!}
+      placeholder={"current branch: " + props!.selectedBranchID!}
       optionFilterProp="children"
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       filterOption={(input, option) => (option?.label ?? "").includes(input)}
@@ -43,6 +44,7 @@ function DropdownBranch() {
       dropdownStyle={{ backgroundColor: "#588157" }}
       onSelect={(value, { value: value1, label }) => {
         props?.setSelectedCommitID(props?.branchID2CommitMap.get(label));
+        props?.setSelectedBranchID(label);
       }}
     />
   );

@@ -147,6 +147,7 @@ export default function VariablePanel(props: VariablePanelProps) {
   const columns: ColumnsType<Variable> = [
     {
       title: "Name",
+      width: "30%",
       dataIndex: "variableName",
       key: "variableName",
       ...getColumnSearchProps("variableName"),
