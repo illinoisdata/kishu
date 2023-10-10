@@ -102,6 +102,10 @@ def test_record_history():
             "end_time_ms": 0,
             "exec_id": "0:1",
             "execution_count": 1,
+            'executed_cells': [
+                '',
+                'from kishu import load_kishu\nload_kishu()\n_kishu.set_test_mode()',
+            ],
             "kind": "jupyter",
             "message": "",
             "ahg_string": "",
@@ -113,6 +117,11 @@ def test_record_history():
             "code_block": "a = 1",
             "end_time_ms": 0,
             "exec_id": "0:2",
+            'executed_cells': [
+                '',
+                'from kishu import load_kishu\nload_kishu()\n_kishu.set_test_mode()',
+                'a = 1',
+            ],
             "execution_count": 2,
             "runtime_ms": 0,
             "start_time_ms": 0,
