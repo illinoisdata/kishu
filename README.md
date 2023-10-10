@@ -1,4 +1,4 @@
-[![build status](https://github.com/illinoisdata/kishu/blob/main/.github/workflows/kishu.yml/badge.svg)](htps://github.com/illinoisdata/kishu)
+[![build status](https://github.com/illinoisdata/kishu/actions/workflows/kishu.yml/badge.svg)](htps://github.com/illinoisdata/kishu)
 [![code coverage](https://img.shields.io/codecov/c/gh/illinoisdata/kishu/zl20%2Fbadges?token=4896eb66-50ef-4024-a1dc-e15dccc58119)](htps://github.com/illinoisdata/kishu)
 [![commits last month](https://img.shields.io/github/commit-activity/m/illinoisdata/ElasticNotebook)](htps://github.com/illinoisdata/kishu)
 [![GitHub stars](https://img.shields.io/github/stars/illinoisdata/ElasticNotebook)](htps://github.com/illinoisdata/kishu)
