@@ -4,6 +4,7 @@
 flake8
 mypy
 pytest
+pytest-cov
 
 # Test cases
 matplotlib
@@ -11,3 +12,4 @@ numpy
 scikit-learn
 seaborn
 textblob
+pandas
