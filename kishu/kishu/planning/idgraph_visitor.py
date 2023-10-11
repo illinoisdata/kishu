@@ -3,8 +3,6 @@ import pickle
 from kishu.planning.visitor import Visitor
 import kishu.planning.object_state as object_state
 
-# called idgraph_visitor.py
-
 
 def is_pickable(obj):
     try:
@@ -13,17 +11,30 @@ def is_pickable(obj):
 
         pickle.dumps(obj)
         return True
-    except (pickle.PicklingError, AttributeError, TypeError):
+    except Exception as e:
         return False
 
 
 class GraphNode:
+    """
+    A node in the idgraph. Each node conatins a obj_type, id_obj, check_value_only, and children
+    obj_type: The python type of the object for which the node is being built. Default value = type(None)
+    id_obj: The id of the object (derived from id(obj)). Default value = 0
+    check_value_only: A flag to decide what values to compare for a node:
+                        True: compare only value (children)
+                        False: compare both value and id
+    children: List of children for this particular node
+
+    Note: The check_value_only flag will be set to True only when creating node for objects in the tuple returned by invoking __reduce_ex() on an object.
+    This is because often the objects returned can be a collection object which is created dynamically even though its items might not be. This prevents us
+    from getting a False comparison for idgraphs of 2 objects with the same state.
+    """
 
     def __init__(self, obj_type=type(None), id_obj=0, check_value_only=False):
-        self.id_obj = id_obj
-        self.children = []
-        self.check_value_only = check_value_only
         self.obj_type = obj_type
+        self.id_obj = id_obj
+        self.check_value_only = check_value_only
+        self.children = []
 
     def __eq__(self, other):
         return compare_idgraph(self, other)
@@ -86,11 +97,14 @@ class idgraph(Visitor):
     def visit_dict(self, obj, visited, include_id, update_state):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         if include_id:
+            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
 
         for key, value in sorted(obj.items()):
-            node.children.append(key)
+            child = object_state.get_object_state(
+                key, visited, visitor=self, include_id=include_id)
+            node.children.append(child)
             child = object_state.get_object_state(
                 value, visited, visitor=self, include_id=include_id)
             node.children.append(child)
@@ -100,6 +114,7 @@ class idgraph(Visitor):
 
     def visit_byte(self, obj, visited, include_id, update_state):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        visited[id(obj)] = node
         node.children.append(obj)
         node.children.append("/EOC")
         return node
