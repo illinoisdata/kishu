@@ -40,9 +40,10 @@ jobs:
         cd kishu
         if [ "${{ matrix.python-version }}" == "3.8" ]; then pytest --cov=kishu/ --cov-report=xml; fi
     - name: Upload coverage reports to Codecov
+      if:  matrix.python-version == "3.8"
       uses: codecov/codecov-action@v3
       env:
-        if [ "${{ matrix.python-version }}" == "3.8" ]; then CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}; fi
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     - name: Lint with flake8
       run: |
         cd kishu
