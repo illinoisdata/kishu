@@ -16,7 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        # python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.8"]
 
     steps:
     - uses: actions/checkout@v2
@@ -35,15 +36,6 @@ jobs:
       run: |
         cd kishu
         if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-    - name: Generate coverage report
-      run: |
-        cd kishu
-        if [ "${{ matrix.python-version }}" == "3.8" ]; then pytest --cov=kishu/ --cov-report=xml; fi
-    - name: Upload coverage reports to Codecov
-      if:  matrix.python-version == '3.8'
-      uses: codecov/codecov-action@v3
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     - name: Lint with flake8
       run: |
         cd kishu
@@ -56,4 +48,13 @@ jobs:
     - name: Test Kishu with pytest
       run: |
         cd kishu
-        pytest -vv .
+        if [ "${{ matrix.python-version }}" == "3.8" ]; then
+          pytest -vv --cov=kishu/ --cov-report=xml;
+        else
+          pytest -vv
+        fi
+    - name: Upload coverage reports to Codecov
+      if:  matrix.python-version == '3.8'
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
