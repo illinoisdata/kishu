@@ -38,7 +38,7 @@ jobs:
         pip install pytest
         pip install pytest-cov
         cd kishu
-        pytest --cov=kishu/kishu/ --cov-report=xml
+        pytest --cov=kishu/ --cov-report=xml
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       env:
