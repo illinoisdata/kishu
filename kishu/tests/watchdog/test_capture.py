@@ -60,7 +60,7 @@ class TestStandardPythonCapture:
             truncated_base_id,
         )
         starting_depth = min(depth, truncate_at_depth - 1)
-        # assert len(state.get_frames()) == len(same_frames)
+        assert len(state.get_frames()) == len(same_frames)
         # assert len(state.get_frames()) == max(starting_depth - capture_depth, 0)
         # assert not any(same_frames)
 
@@ -87,6 +87,6 @@ class TestStandardPythonCapture:
             capture_twice_at_depth,
             truncated_base_id,
         )
-        # assert len(state.get_frames()) == len(same_frames)
-        # assert len(state.get_frames()) == depth
+        assert len(state.get_frames()) == len(same_frames)
+        assert len(state.get_frames()) == depth
         # assert sum(same_frames) == depth - (capture_twice_at_depth - 1)
