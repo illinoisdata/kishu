@@ -11,7 +11,6 @@ def test_idgraph_numpy():
     """
         Test if idgraph is accurately generated for numpy arrays
     """
-    vis1 = idgraph_visitor.idgraph()
     a = np.arange(6)
 
     idgraph1 = object_state.create_idgraph(a)
@@ -40,7 +39,6 @@ def test_idgraph_pandas_Series():
     """
         Test if idgraph is accurately generated for panda series
     """
-    vis1 = idgraph_visitor.idgraph()
     s1 = pd.Series([1, 2, 3, 4])
 
     idgraph1 = object_state.create_idgraph(s1)
@@ -71,7 +69,6 @@ def test_idgraph_pandas_df():
     """
         Test if idgraph is accurately generated for panda dataframes
     """
-    vis1 = idgraph_visitor.idgraph()
     df = sns.load_dataset('penguins')
 
     idgraph1 = object_state.create_idgraph(df)
@@ -109,7 +106,6 @@ def test_idgraph_matplotlib():
     """
         Test if idgraph is accurately generated for matplotlib objects
     """
-    vis1 = idgraph_visitor.idgraph()
     df = pd.DataFrame(
         np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
     a = plt.plot(df['a'], df['b'])
@@ -170,7 +166,6 @@ def test_idgraph_seaborn_displot():
     """
         Test if idgraph is accurately generated for seaborn displot objects (figure-level object)
     """
-    vis1 = idgraph_visitor.idgraph()
     df = sns.load_dataset('penguins')
     plot1 = sns.displot(data=df, x="flipper_length_mm",
                         y="bill_length_mm", kind="kde")
@@ -213,7 +208,6 @@ def test_idgraph_seaborn_scatterplot():
     """
         Test if idgraph is accurately generated for seaborn scatterplot objects (axes-level object)
     """
-    vis1 = idgraph_visitor.idgraph()
 
     df = sns.load_dataset('penguins')
     plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")

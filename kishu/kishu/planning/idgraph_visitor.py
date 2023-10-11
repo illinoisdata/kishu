@@ -11,7 +11,7 @@ def is_pickable(obj):
 
         pickle.dumps(obj)
         return True
-    except Exception as e:
+    except Exception:
         return False
 
 
@@ -25,8 +25,10 @@ class GraphNode:
                         False: compare both value and id
     children: List of children for this particular node
 
-    Note: The check_value_only flag will be set to True only when creating node for objects in the tuple returned by invoking __reduce_ex() on an object.
-    This is because often the objects returned can be a collection object which is created dynamically even though its items might not be. This prevents us
+    Note: The check_value_only flag will be set to True only when creating node for objects in the tuple
+    returned by invoking __reduce_ex() on an object.
+    This is because often the objects returned can be a collection object which is created dynamically 
+    even though its items might not be. This prevents us
     from getting a False comparison for idgraphs of 2 objects with the same state.
     """
 
