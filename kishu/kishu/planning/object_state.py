@@ -16,9 +16,9 @@ def get_object_state(obj, visited: dict, visitor: Visitor, update_state=None, in
             update_state - Used for updating xxhash object each time a recursive call is
               made (not implemented yet). Not used in case of idgraph
             include_id - Flag to indicate whether to include id along with values in the object state
-    Outputs: In case of idgraph visitor, the output is graph for the state of the object. Each node 
+    Outputs: In case of idgraph visitor, the output is graph for the state of the object. Each node
                 is a GraphNode. Return value is the root GraphNode of the graph
-             In case of xxhash, the output is hash object which is recursively updated as it 
+             In case of xxhash, the output is hash object which is recursively updated as it
                 traverses the object. Return value is the xxhash object
     """
     check, ret = visitor.check_visited(visited, id(obj), include_id)
