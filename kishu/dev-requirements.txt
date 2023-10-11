@@ -4,6 +4,7 @@ nbconvert
 nbformat
 numpy
 pytest
+pytest-cov
 pandas
 matplotlib
 seaborn
