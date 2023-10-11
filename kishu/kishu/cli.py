@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import typer
 
 from typing import Tuple
@@ -113,11 +114,21 @@ def checkout(
         help="Branch name or commit ID to checkout.",
         show_default=False,
     ),
+    skip_notebook: bool = typer.Option(
+        False,
+        "--skip-notebook",
+        "--skip_notebook",
+        help="Skip recovering notebook cells and outputs.",
+    )
 ) -> None:
     """
     Checkout a notebook to a commit.
     """
-    print(into_json(KishuCommand.checkout(notebook_id, branch_or_commit_id)))
+    print(into_json(KishuCommand.checkout(
+        notebook_id,
+        branch_or_commit_id,
+        skip_notebook=skip_notebook,
+    )))
 
 
 @kishu_app.command()
@@ -136,6 +147,7 @@ def branch(
         None,
         "-c",
         "--create-branch-name",
+        "--create_branch_name",
         help="Create branch with this name.",
         show_default=False,
     ),
@@ -143,6 +155,7 @@ def branch(
         (None, None),
         "-m",
         "--rename-branch",
+        "--rename_branch",
         help="Rename branch from old name to new name.",
         show_default=False,
     ),
@@ -161,6 +174,81 @@ def branch(
             # Old_name does not exist and/or new_name already exists
             typer.echo(f"Error: {str(error)}", err=True)
             raise typer.Exit()
+
+
+@kishu_app.command()
+def tag(
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
+    tag_name: str = typer.Argument(
+        ...,
+        help="Tag name.",
+        show_default=False,
+    ),
+    commit_id: str = typer.Argument(
+        None,
+        help="Commit ID to create the tag on. If not given, use the current commit ID.",
+        show_default=False,
+    ),
+    message: str = typer.Option(
+        "",
+        "-m",
+        help="Message to annotate the tag with.",
+    ),
+) -> None:
+    """
+    Create or edit tags.
+    """
+    print(into_json(KishuCommand.tag(notebook_id, tag_name, commit_id, message)))
+
+
+"""
+Kishu Experimental Commands.
+"""
+
+
+kishu_experimental_app = typer.Typer(add_completion=False)
+
+
+@kishu_experimental_app.command()
+def fegraph(
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
+) -> None:
+    """
+    Show the frontend commit graph.
+    """
+    print(into_json(KishuCommand.fe_commit_graph(notebook_id)))
+
+
+@kishu_experimental_app.command()
+def fecommit(
+    notebook_id: str = typer.Argument(
+        ...,
+        help="Notebook ID to interact with.",
+        show_default=False
+    ),
+    commit_id: str = typer.Argument(..., help="Commit ID to get detail.", show_default=False),
+    vardepth: int = typer.Option(
+        1,
+        "--vardepth",
+        help="Depth to resurce into variable attributes.",
+    ),
+) -> None:
+    """
+    Show the commit in frontend detail.
+    """
+    print(into_json(KishuCommand.fe_commit(notebook_id, commit_id, vardepth)))
+
+
+if os.environ.get("KISHU_ENABLE_EXPERIMENTAL", "false").lower() in ('true', '1', 't'):
+    kishu_app.add_typer(kishu_experimental_app, name="experimental")
 
 
 def main() -> None:

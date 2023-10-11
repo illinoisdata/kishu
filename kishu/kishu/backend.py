@@ -38,7 +38,12 @@ def status(notebook_id: str, commit_id: str):
 
 @app.get("/checkout/<notebook_id>/<branch_or_commit_id>")
 def checkout(notebook_id: str, branch_or_commit_id: str):
-    checkout_result = KishuCommand.checkout(notebook_id, branch_or_commit_id)
+    skip_notebook: bool = request.args.get('skip_notebook', default=False, type=is_true)
+    checkout_result = KishuCommand.checkout(
+        notebook_id,
+        branch_or_commit_id,
+        skip_notebook=skip_notebook,
+    )
     return into_json(checkout_result)
 
 
@@ -48,6 +53,14 @@ def branch(notebook_id: str, branch_name: str):
     do_commit: bool = request.args.get('do_commit', default=False, type=is_true)
     branch_result = KishuCommand.branch(notebook_id, branch_name, commit_id, do_commit=do_commit)
     return into_json(branch_result)
+
+
+@app.get("/tag/<notebook_id>/<tag_name>")
+def tag(notebook_id: str, tag_name: str):
+    commit_id: Optional[str] = request.args.get('commit_id', default=None, type=str)
+    message: str = request.args.get('message', default="", type=str)
+    tag_result = KishuCommand.tag(notebook_id, tag_name, commit_id, message)
+    return into_json(tag_result)
 
 
 @app.get("/fe/commit_graph/<notebook_id>")

@@ -207,6 +207,7 @@ class CommitEntry(UnitExecution):
 
     checkpoint_runtime_ms: Optional[int] = None
     checkpoint_vars: Optional[List[str]] = None
+    executed_cells: Optional[List[str]] = None
     raw_nb: Optional[str] = None
     formatted_cells: Optional[List[FormattedCell]] = None
     restore_plan: Optional[RestorePlan] = None
@@ -305,24 +306,26 @@ class JupyterConnection:
             )
 
         # Reply status is ok.
-        command_result = JupyterConnection.extract_command_result(reply)
-        if command_result is not None:
+        command_result = reply["content"].get("user_expressions", {}).get("command_result", {})
+        command_result_status = command_result.get("status", "")
+        if command_result_status == 'error':
+            ename = command_result["ename"]
+            evalue = command_result["evalue"]
+            return JupyterCommandResult(
+                status="error",
+                message=f"{ename}: {evalue}",
+            )
+        elif command_result_status == 'ok':
+            command_result_data = command_result.get("data", {}).get("text/plain", "")
             return JupyterCommandResult(
                 status="ok",
-                message=command_result,
+                message=command_result_data,
             )
         else:
             return JupyterCommandResult(
                 status="ok",
-                message=f"Successfully execute {command}.",
+                message=f"Executed {command} but no result.",
             )
-
-    @staticmethod
-    def extract_command_result(reply: Dict[str, Any]) -> None:
-        command_result = reply["content"].get("user_expressions", {}).get("command_result", {})
-        if command_result.get("status", "") != "ok":
-            return None
-        return command_result.get("data", {}).get("text/plain", None)
 
 
 class KishuForJupyter:
@@ -364,8 +367,8 @@ class KishuForJupyter:
         self._start_time_ms: Optional[int] = None
 
         self._cr_planner = CheckpointRestorePlanner(
-            {} if get_jupyter_kernel() is None
-            else get_jupyter_kernel().user_ns
+            {} if kishu_ipython() is None
+            else kishu_ipython().user_ns
         )
 
     def set_test_mode(self):
@@ -382,15 +385,15 @@ class KishuForJupyter:
         return KishuPath.checkpoint_path(self._notebook_id)
 
     def get_user_namespace_vars(self) -> Set[str]:
-        ip = get_jupyter_kernel()
+        ip = kishu_ipython()
         user_ns = {} if ip is None else ip.user_ns
         return set(varname for varname, _ in filter(no_ipython_var, user_ns.items()))
 
-    def checkout(self, branch_or_commit_id: str) -> None:
+    def checkout(self, branch_or_commit_id: str, skip_notebook: bool = False) -> BareReprStr:
         """
         Restores a variable state from commit_id.
         """
-        ip = get_jupyter_kernel()
+        ip = kishu_ipython()
         if ip is None:
             raise ValueError("Jupyter kernel is unexpectedly None.")
 
@@ -407,7 +410,7 @@ class KishuForJupyter:
             commit_id = retrieved_branches[0].commit_id
             is_detach = False
 
-        # Retrieve checkout plan
+        # Retrieve checkout plan.
         checkpoint_file = self.checkpoint_file()
         unit_exec_cell = UnitExecution.get_from_db(checkpoint_file, commit_id)
         if unit_exec_cell is None:
@@ -416,9 +419,15 @@ class KishuForJupyter:
         if commit_entry.restore_plan is None:
             raise ValueError("No restore plan found for commit_id = {}".format(commit_id))
 
-        # Restore notebook cells
-        if commit_entry.raw_nb:
+        # Restore notebook cells.
+        if not skip_notebook and commit_entry.raw_nb is not None:
             self._checkout_notebook(commit_entry.raw_nb)
+
+        # Restore list of executed cells.
+        if commit_entry.executed_cells is not None:
+            current_executed_cells = kishu_ipython_in()
+            if current_executed_cells is not None:
+                current_executed_cells[:] = commit_entry.executed_cells[:]
 
         # Restore user-namespace variables.
         user_ns = ip.user_ns   # will restore to global namespace
@@ -439,6 +448,9 @@ class KishuForJupyter:
             commit_id=commit_id,
             is_detach=is_detach,
         )
+        if is_detach:
+            return BareReprStr(f"Checkout {branch_or_commit_id} in detach mode.")
+        return BareReprStr(f"Checkout {branch_or_commit_id} ({commit_id}).")
 
     def pre_run_cell(self, info) -> None:
         """
@@ -526,6 +538,7 @@ class KishuForJupyter:
 
         # Force saving to observe all cells and extract notebook informations.
         self._save_notebook()
+        entry.executed_cells = kishu_ipython_in()
         entry.raw_nb, entry.formatted_cells = self._all_notebook_cells()
 
         # Plan for checkpointing and restoration.
@@ -553,7 +566,7 @@ class KishuForJupyter:
         TODO: Perform more intelligent checkpointing.
         """
         # Step 1: checkpoint
-        ip = get_jupyter_kernel()
+        ip = kishu_ipython()
         user_ns = {} if ip is None else ip.user_ns
         checkpoint_file = self.checkpoint_file()
         exec_id = cell_info.exec_id
@@ -688,7 +701,8 @@ def repr_if_not_none(obj: Any) -> Optional[str]:
 
 
 IPYTHON_VARS = set(['In', 'Out', 'get_ipython', 'exit', 'quit', 'open'])
-KISHU_VARS = set(['kishu', 'load_kishu'])
+KISHU_INSTRUMENT = '_kishu'
+KISHU_VARS = set(['kishu', 'load_kishu', KISHU_INSTRUMENT])
 
 
 def no_ipython_var(name_obj: Tuple[str, Any]) -> bool:
@@ -715,42 +729,35 @@ def get_epoch_time_ms() -> int:
     return round(time.time() * 1000)
 
 
-# Set when kishu_for_jupyter() is invoked within Jupyter. Interestingly, simply calling
-# get_ipython() does not always access the globally accessible function; thus, we are taking this
-# approach.
-_ipython_shell = None
+# Interestingly, simply calling get_ipython() does not always access the globally accessible
+# function; thus, we are taking this approach.
+_kishu_ipython = None
 
 
-def get_jupyter_kernel():
-    return _ipython_shell
+def kishu_ipython():
+    return _kishu_ipython
 
 
-# The singleton instance for execution history.
-_kishu_exec_history: Optional[KishuForJupyter] = None
-
-
-def get_kishu_instance():
-    return _kishu_exec_history
-
-
-KISHU_VAR_NAME = '_kishu'
+def kishu_ipython_in() -> Optional[List[str]]:
+    ip = kishu_ipython()
+    if ip is None:
+        return None
+    return ip.user_ns["In"]
 
 
 def load_kishu(notebook_id: Optional[str] = None, session_id: Optional[int] = None) -> None:
-    global _kishu_exec_history
-    global _ipython_shell
-    if _kishu_exec_history is not None:
+    global _kishu_ipython
+    if _kishu_ipython is not None:
         return
-    _ipython_shell = eval('get_ipython()')
-    ip = _ipython_shell
-    kishu = None
+    _kishu_ipython = eval('get_ipython()')
+    ip = kishu_ipython()
+
     kishu = KishuForJupyter(notebook_id)
-    _kishu_exec_history = kishu
     if session_id:
         kishu.set_session_id(session_id)
     ip.events.register('pre_run_cell', kishu.pre_run_cell)
     ip.events.register('post_run_cell', kishu.post_run_cell)
-    ip.user_ns[KISHU_VAR_NAME] = kishu
+    ip.user_ns[KISHU_INSTRUMENT] = kishu
 
     print("Kishu will now trace cell executions automatically.\n"
           "- You can inspect traced information using '_kishu'.\n"

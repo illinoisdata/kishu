@@ -3,7 +3,7 @@ import pytest
 
 from typing import Generator, List, Optional, Type
 
-from kishu.commands import CommitSummary, KishuCommand, SelectedCommit
+from kishu.commands import CommitSummary, KishuCommand, FECommit, FESelectedCommit
 from kishu.jupyterint import CommitEntryKind, CommitEntry, KishuForJupyter
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
@@ -68,12 +68,14 @@ class TestKishuCommand:
         log_result = KishuCommand.log(notebook_id, basic_execution_ids[-1])
         assert len(log_result.commit_graph) == 3
         assert log_result.commit_graph[0] == CommitSummary(
-            commit_id="0:3",
-            parent_id="0:2",
+            commit_id="0:1",
+            parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
-            code_block="y = x + 1",
+            code_block="x = 1",
             runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
+            branches=[],
+            tags=[],
         )
         assert log_result.commit_graph[1] == CommitSummary(
             commit_id="0:2",
@@ -82,14 +84,18 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
             code_block="y = 2",
             runtime_ms=log_result.commit_graph[1].runtime_ms,  # Not tested
+            branches=[],
+            tags=[],
         )
         assert log_result.commit_graph[2] == CommitSummary(
-            commit_id="0:1",
-            parent_id="",
+            commit_id="0:3",
+            parent_id="0:2",
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
-            code_block="x = 1",
+            code_block="y = x + 1",
             runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
+            branches=[],
+            tags=[],
         )
 
         log_result = KishuCommand.log(notebook_id, basic_execution_ids[0])
@@ -101,6 +107,8 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
             code_block="x = 1",
             runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
+            branches=[],
+            tags=[],
         )
 
     def test_log_all(self, notebook_id, basic_execution_ids):
@@ -113,6 +121,8 @@ class TestKishuCommand:
             timestamp=log_all_result.commit_graph[0].timestamp,  # Not tested
             code_block="x = 1",
             runtime_ms=log_all_result.commit_graph[0].runtime_ms,  # Not tested
+            branches=[],
+            tags=[],
         )
         assert log_all_result.commit_graph[1] == CommitSummary(
             commit_id="0:2",
@@ -121,6 +131,8 @@ class TestKishuCommand:
             timestamp=log_all_result.commit_graph[1].timestamp,  # Not tested
             code_block="y = 2",
             runtime_ms=log_all_result.commit_graph[1].runtime_ms,  # Not tested
+            branches=[],
+            tags=[],
         )
         assert log_all_result.commit_graph[2] == CommitSummary(
             commit_id="0:3",
@@ -129,6 +141,8 @@ class TestKishuCommand:
             timestamp=log_all_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_all_result.commit_graph[2].runtime_ms,  # Not tested
+            branches=[],
+            tags=[],
         )
 
     def test_status(self, notebook_id, basic_execution_ids):
@@ -162,6 +176,42 @@ class TestKishuCommand:
         branch_result = KishuCommand.branch(notebook_id, "historical", basic_execution_ids[1])
         assert branch_result.status == "ok"
 
+    def test_branch_log(self, notebook_id, basic_execution_ids):
+        _ = KishuCommand.branch(notebook_id, "at_head", None)
+        _ = KishuCommand.branch(notebook_id, "historical", basic_execution_ids[1])
+        log_result = KishuCommand.log(notebook_id, basic_execution_ids[-1])
+        assert len(log_result.commit_graph) == 3
+        assert log_result.commit_graph[0] == CommitSummary(
+            commit_id="0:1",
+            parent_id="",
+            message=log_result.commit_graph[0].message,  # Not tested
+            timestamp=log_result.commit_graph[0].timestamp,  # Not tested
+            code_block="x = 1",
+            runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
+            branches=[],
+            tags=[],
+        )
+        assert log_result.commit_graph[1] == CommitSummary(
+            commit_id="0:2",
+            parent_id="0:1",
+            message=log_result.commit_graph[1].message,  # Not tested
+            timestamp=log_result.commit_graph[1].timestamp,  # Not tested
+            code_block="y = 2",
+            runtime_ms=log_result.commit_graph[1].runtime_ms,  # Not tested
+            branches=["historical"],
+            tags=[],
+        )
+        assert log_result.commit_graph[2] == CommitSummary(
+            commit_id="0:3",
+            parent_id="0:2",
+            message=log_result.commit_graph[2].message,  # Not tested
+            timestamp=log_result.commit_graph[2].timestamp,  # Not tested
+            code_block="y = x + 1",
+            runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
+            branches=["at_head"],
+            tags=[],
+        )
+
     def test_rename_branch_basic(self, notebook_id, basic_execution_ids):
         branch_1 = "branch_1"
         KishuCommand.branch(notebook_id, branch_1, None)
@@ -187,17 +237,74 @@ class TestKishuCommand:
             notebook_id, branch_1, branch_1)
         assert rename_branch_result.status == "error"
 
+    def test_tag(self, notebook_id, basic_execution_ids):
+        tag_result = KishuCommand.tag(notebook_id, "at_head", None, "In current time")
+        assert tag_result.status == "ok"
+        assert tag_result.tag_name == "at_head"
+        assert tag_result.commit_id == basic_execution_ids[-1]
+        assert tag_result.message == "In current time"
+
+        tag_result = KishuCommand.tag(notebook_id, "historical", basic_execution_ids[1], "")
+        assert tag_result.status == "ok"
+        assert tag_result.tag_name == "historical"
+        assert tag_result.commit_id == basic_execution_ids[1]
+        assert tag_result.message == ""
+
+    def test_tag_log(self, notebook_id, basic_execution_ids):
+        _ = KishuCommand.tag(notebook_id, "at_head", None, "In current time")
+        _ = KishuCommand.tag(notebook_id, "historical", basic_execution_ids[1], "")
+        log_result = KishuCommand.log(notebook_id, basic_execution_ids[-1])
+        assert len(log_result.commit_graph) == 3
+        assert log_result.commit_graph[0] == CommitSummary(
+            commit_id="0:1",
+            parent_id="",
+            message=log_result.commit_graph[0].message,  # Not tested
+            timestamp=log_result.commit_graph[0].timestamp,  # Not tested
+            code_block="x = 1",
+            runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
+            branches=[],
+            tags=[],
+        )
+        assert log_result.commit_graph[1] == CommitSummary(
+            commit_id="0:2",
+            parent_id="0:1",
+            message=log_result.commit_graph[1].message,  # Not tested
+            timestamp=log_result.commit_graph[1].timestamp,  # Not tested
+            code_block="y = 2",
+            runtime_ms=log_result.commit_graph[1].runtime_ms,  # Not tested
+            branches=[],
+            tags=["historical"],
+        )
+        assert log_result.commit_graph[2] == CommitSummary(
+            commit_id="0:3",
+            parent_id="0:2",
+            message=log_result.commit_graph[2].message,  # Not tested
+            timestamp=log_result.commit_graph[2].timestamp,  # Not tested
+            code_block="y = x + 1",
+            runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
+            branches=[],
+            tags=["at_head"],
+        )
+
     def test_fe_commit_graph(self, notebook_id, basic_execution_ids):
         fe_commit_graph_result = KishuCommand.fe_commit_graph(notebook_id)
         assert len(fe_commit_graph_result.commits) == 3
 
     def test_fe_commit(self, notebook_id, basic_execution_ids):
         fe_commit_result = KishuCommand.fe_commit(notebook_id, basic_execution_ids[-1], vardepth=0)
-        assert fe_commit_result == SelectedCommit(
-            oid="0:3",
-            parent_oid="0:2",
-            timestamp=fe_commit_result.timestamp,  # Not tested
-            latest_exec_num="3",
+        assert fe_commit_result == FESelectedCommit(
+            commit=FECommit(
+                oid="0:3",
+                parent_oid="0:2",
+                timestamp=fe_commit_result.commit.timestamp,  # Not tested
+                branches=[],
+                tags=[],
+            ),
+            executed_cells=[  # TODO: Missing due to missing IPython kernel.
+                # "x = 1",
+                # "y = 2",
+                # "y = x + 1",
+            ],
             cells=fe_commit_result.cells,  # Not tested
             variables=[],
         )
