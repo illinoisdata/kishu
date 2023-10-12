@@ -92,6 +92,8 @@ def test_record_history():
         set_field_to(commit_entry, 'start_time_ms', 0)
         set_field_to(commit_entry, 'message', "")
         set_field_to(commit_entry, 'ahg_string', "")
+        set_field_to(commit_entry, 'code_version', 0)
+        set_field_to(commit_entry, 'var_version', 0)
         return commit_entry
 
     # TODO: This test is hacky; we ought to reach for list of commits through public methods.
@@ -109,6 +111,8 @@ def test_record_history():
             "kind": "jupyter",
             "message": "",
             "ahg_string": "",
+            "code_version": 0,
+            "var_version": 0,
             "timestamp_ms": 0,
         }
     assert replace_start_time(history_dict['0:2']) == {
@@ -128,6 +132,8 @@ def test_record_history():
             "kind": "jupyter",
             "message": "",
             "ahg_string": "",
+            "code_version": 0,
+            "var_version": 0,
             "timestamp_ms": 0,
         }
 

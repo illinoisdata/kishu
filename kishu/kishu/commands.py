@@ -100,8 +100,8 @@ class FECommit:
     timestamp: str
     branches: List[str]
     tags: List[str]
-    # code_version: str
-    # variable_version: str
+    code_version: int
+    var_version: int
 
 
 @dataclass
@@ -283,6 +283,8 @@ class KishuCommand:
                 timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
                 branches=[],  # To be set in _branch_commit.
                 tags=[],  # To be set in _tag_commit.
+                code_version=commit_entry.code_version,
+                var_version=commit_entry.var_version,
             ))
 
         # Retreives and joins branches.
@@ -433,6 +435,8 @@ class KishuCommand:
             timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
             branches=branch_names,
             tags=tag_names,
+            code_version=commit_entry.code_version,
+            var_version=commit_entry.var_version,
         )
         return FESelectedCommit(
             commit=commit_summary,

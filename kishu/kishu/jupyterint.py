@@ -41,6 +41,7 @@ Reference
 from __future__ import annotations
 
 import IPython
+import dill as pickle
 import enum
 import ipykernel
 import ipylab
@@ -214,6 +215,8 @@ class CommitEntry(UnitExecution):
     message: str = ""
     timestamp_ms: int = 0
     ahg_string: Optional[str] = None
+    code_version: int = 0
+    var_version: int = 0
 
     # Only available in jupyter commit entries
     execution_count: Optional[int] = None
@@ -540,11 +543,16 @@ class KishuForJupyter:
         self._save_notebook()
         entry.executed_cells = kishu_ipython_in()
         entry.raw_nb, entry.formatted_cells = self._all_notebook_cells()
+        if entry.formatted_cells is not None:
+            code_cells = []
+            for cell in entry.formatted_cells:
+                code_cells.append(cell.cell_type)
+                code_cells.append(cell.source)
+            entry.code_version = hash(tuple(code_cells))
 
         # Plan for checkpointing and restoration.
         checkpoint_start_sec = time.time()
-        restore = self._checkpoint(entry)
-        entry.restore_plan = restore
+        entry.restore_plan, entry.var_version = self._checkpoint(entry)
         entry.ahg_string = self._cr_planner.serialize_ahg()
         checkpoint_runtime_ms = round((time.time() - checkpoint_start_sec) * 1000)
         entry.checkpoint_runtime_ms = checkpoint_runtime_ms
@@ -559,7 +567,7 @@ class KishuForJupyter:
             return str(self._session_id) + ":" + str(self._last_execution_count)
         return str(uuid.uuid4())[:8]  # TODO: Extend to whole UUID.
 
-    def _checkpoint(self, cell_info: CommitEntry) -> RestorePlan:
+    def _checkpoint(self, cell_info: CommitEntry) -> Tuple[RestorePlan, int]:
         """
         Performs checkpointing and creates a matching restoration plan.
 
@@ -570,14 +578,22 @@ class KishuForJupyter:
         user_ns = {} if ip is None else ip.user_ns
         checkpoint_file = self.checkpoint_file()
         exec_id = cell_info.exec_id
-        var_names = [item[0] for item in filter(no_ipython_var, user_ns.items())]
-        cell_info.checkpoint_vars = var_names
-        checkpoint = StoreEverythingCheckpointPlan.create(user_ns, checkpoint_file, exec_id, var_names)
+        filter_user_ns = {item[0]: item[1] for item in user_ns.items() if no_ipython_var(item)}
+        cell_info.checkpoint_vars = list(filter_user_ns.keys())
+        checkpoint = StoreEverythingCheckpointPlan.create(
+            user_ns,
+            checkpoint_file,
+            exec_id,
+            cell_info.checkpoint_vars,
+        )
         checkpoint.run(user_ns)
 
         # Step 2: prepare a restoration plan using results from the optimizer.
         restore_plan = self._cr_planner.generate_restore_plan()
-        return restore_plan
+
+        # Extra: generate variable version. TODO: we should avoid the extra namespace serialization.
+        var_version = hash(pickle.dumps(filter_user_ns))
+        return restore_plan, var_version
 
     def _save_notebook(self) -> None:
         if self._notebook_path is None:

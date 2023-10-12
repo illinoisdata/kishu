@@ -160,6 +160,8 @@ class TestKishuCommand:
             message=status_result.commit_entry.message,  # Not tested,
             timestamp_ms=status_result.commit_entry.timestamp_ms,  # Not tested
             ahg_string=status_result.commit_entry.ahg_string,  # Not tested
+            code_version=status_result.commit_entry.code_version,  # Not tested
+            var_version=status_result.commit_entry.var_version,  # Not tested
             start_time_ms=status_result.commit_entry.start_time_ms,  # Not tested
             end_time_ms=status_result.commit_entry.end_time_ms,  # Not tested
             checkpoint_runtime_ms=status_result.commit_entry.checkpoint_runtime_ms,  # Not tested
@@ -299,6 +301,8 @@ class TestKishuCommand:
                 timestamp=fe_commit_result.commit.timestamp,  # Not tested
                 branches=[],
                 tags=[],
+                code_version=fe_commit_result.commit.code_version,  # Not tested
+                var_version=fe_commit_result.commit.var_version,  # Not tested
             ),
             executed_cells=[  # TODO: Missing due to missing IPython kernel.
                 # "x = 1",
