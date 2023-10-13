@@ -4,9 +4,16 @@ import datetime
 import json
 
 from dataclasses import asdict, dataclass, is_dataclass
+from dataclasses_json import dataclass_json
 from typing import Any, Dict, List, Optional, cast
 
-from kishu.jupyterint import CommitEntry, JupyterCommandResult, JupyterConnection
+from kishu.jupyterint import (
+    CommitEntry,
+    JupyterCommandResult,
+    JupyterConnection,
+    KishuForJupyter,
+    KishuSession,
+)
 from kishu.planning.plan import UnitExecution
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
@@ -39,6 +46,12 @@ KishuCommand
 """
 
 
+@dataclass_json
+@dataclass
+class ListResult:
+    sessions: List[KishuSession]
+
+
 @dataclass
 class CommitSummary:
     commit_id: str
@@ -51,6 +64,7 @@ class CommitSummary:
     tags: List[str]
 
 
+@dataclass_json
 @dataclass
 class LogResult:
     commit_graph: List[CommitSummary]
@@ -138,11 +152,22 @@ class FEInitializeResult:
 class KishuCommand:
 
     @staticmethod
+    def list(list_all: bool = False) -> ListResult:
+        sessions = KishuForJupyter.kishu_sessions()
+
+        # Filter out non-alive Kishu sessions if ask for.
+        if not list_all:
+            sessions = list(filter(lambda session: session.is_alive, sessions))
+
+        # Sort by notebook ID.
+        sessions = sorted(sessions, key=lambda session: session.notebook_id)
+        return ListResult(sessions=sessions)
+
+    @staticmethod
     def log(notebook_id: str, commit_id: Optional[str] = None) -> LogResult:
         if commit_id is None:
             head = KishuBranch.get_head(notebook_id)
             commit_id = head.commit_id
-            print(commit_id)
 
         if commit_id is None:
             return LogResult([])

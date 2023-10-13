@@ -1,21 +1,12 @@
 import dataclasses
 import pytest
 
-from typing import Generator, List, Optional, Type
+from typing import Generator, List, Optional
 
-from kishu.commands import CommitSummary, KishuCommand, FECommit, FESelectedCommit
+from kishu.commands import CommitSummary, FECommit, FESelectedCommit, KishuCommand, KishuSession
 from kishu.jupyterint import CommitEntryKind, CommitEntry, KishuForJupyter
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
-from kishu.storage.path import KishuPath
-
-
-@pytest.fixture()
-def kishu_resource(tmp_path) -> Generator[Type[KishuPath], None, None]:
-    original_root = KishuPath.ROOT
-    KishuPath.ROOT = tmp_path
-    yield KishuPath
-    KishuPath.ROOT = original_root
 
 
 @pytest.fixture()
@@ -24,7 +15,7 @@ def notebook_id() -> Generator[str, None, None]:
 
 
 @pytest.fixture()
-def kishu_jupyter(kishu_resource, notebook_id) -> Generator[KishuForJupyter, None, None]:
+def kishu_jupyter(tmp_kishu_path, notebook_id) -> Generator[KishuForJupyter, None, None]:
     kishu_jupyter = KishuForJupyter(notebook_id=notebook_id)
     kishu_jupyter.set_test_mode()
     yield kishu_jupyter
@@ -63,6 +54,20 @@ class JupyterResultMock:
 
 
 class TestKishuCommand:
+
+    def test_list(self, notebook_id, basic_execution_ids):
+        list_result = KishuCommand.list()
+        assert len(list_result.sessions) == 0
+
+        # TODO: Test with alive sessions.
+        list_result = KishuCommand.list(list_all=True)
+        assert len(list_result.sessions) == 1
+        assert list_result.sessions[0] == KishuSession(
+            notebook_id=notebook_id,
+            kernel_id=None,
+            notebook_path=None,
+            is_alive=False,
+        )
 
     def test_log(self, notebook_id, basic_execution_ids):
         log_result = KishuCommand.log(notebook_id, basic_execution_ids[-1])

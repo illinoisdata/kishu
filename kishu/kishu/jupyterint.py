@@ -49,6 +49,7 @@ import json
 import jupyter_client
 import jupyter_core.paths
 import nbformat
+import psutil
 import os
 import time
 import urllib.request
@@ -82,7 +83,13 @@ Functions to find enclosing notebook name, distilled From ipynbname.
 """
 
 
-def _list_maybe_running_servers() -> Generator[dict, None, None]:
+@dataclass
+class IPythonSession:
+    kernel_id: str
+    notebook_path: Path
+
+
+def _iter_maybe_running_servers() -> Generator[dict, None, None]:
     runtime_dir = Path(jupyter_core.paths.jupyter_runtime_dir())
     if runtime_dir.is_dir():
         config_files = chain(
@@ -91,7 +98,10 @@ def _list_maybe_running_servers() -> Generator[dict, None, None]:
         )
         for file_name in sorted(config_files, key=os.path.getmtime, reverse=True):
             try:
-                yield json.loads(file_name.read_bytes())
+                srv = json.loads(file_name.read_bytes())
+                if psutil.pid_exists(srv.get("pid", -1)):
+                    # pid_exists always returns False for negative PIDs.
+                    yield srv
             except json.JSONDecodeError:
                 pass
 
@@ -107,18 +117,25 @@ def _get_sessions(srv: dict):
         return []
 
 
-def _find_nb_path(kernel_id: str) -> Tuple[dict, PurePath]:
-    for srv in _list_maybe_running_servers():
+def _iter_maybe_sessions() -> Generator[Tuple[dict, dict], None, None]:
+    for srv in _iter_maybe_running_servers():
         for sess in _get_sessions(srv):
-            if sess["kernel"]["id"] == kernel_id:
-                return srv, PurePath(sess["notebook"]["path"])
-    raise LookupError("")
+            yield srv, sess
 
 
-def enclosing_notebook_path(kernel_id: str) -> Path:
-    srv, path = _find_nb_path(kernel_id)
-    if srv is not None and path is not None:
-        return Path(srv.get("root_dir") or srv["notebook_dir"]) / path
+def _iter_sessions() -> Generator[IPythonSession, None, None]:
+    for srv, sess in _iter_maybe_sessions():
+        relative_path = PurePath(sess["notebook"]["path"])
+        yield IPythonSession(
+            kernel_id=sess["kernel"]["id"],
+            notebook_path=Path(srv.get("root_dir") or srv["notebook_dir"]) / relative_path
+        )
+
+
+def notebook_path_from_kernel(kernel_id: str) -> Path:
+    for sess in _iter_sessions():
+        if sess.kernel_id == kernel_id:
+            return sess.notebook_path
     raise FileNotFoundError("Failed to identify notebook file path.")
 
 
@@ -169,6 +186,14 @@ class BareReprStr(str):
 """
 Notebook instrument.
 """
+
+
+@dataclass
+class KishuSession:
+    notebook_id: str
+    kernel_id: Optional[str]
+    notebook_path: Optional[str]
+    is_alive: bool
 
 
 class CommitEntryKind(str, enum.Enum):
@@ -357,7 +382,7 @@ class KishuForJupyter:
         self._notebook_path: Optional[Path] = None
         try:
             self._kernel_id = enclosing_kernel_id()
-            self._notebook_path = enclosing_notebook_path(self._kernel_id)
+            self._notebook_path = notebook_path_from_kernel(self._kernel_id)
             self.record_connection()
         except Exception as e:
             print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
@@ -526,6 +551,45 @@ class KishuForJupyter:
                 return JupyterConnectionInfo.from_json(json_str)  # type: ignore
         except (FileNotFoundError, json.decoder.JSONDecodeError):
             return None
+
+    @staticmethod
+    def kishu_sessions() -> List[KishuSession]:
+        # List alive IPython sessions.
+        alive_sessions = {session.kernel_id: session for session in _iter_sessions()}
+
+        # List all Kishu sessions.
+        sessions = []
+        for notebook_id in KishuPath.iter_notebook_ids():
+            cf = KishuForJupyter.retrieve_connection(notebook_id)
+
+            # Connection file not found.
+            if cf is None:
+                sessions.append(KishuSession(
+                    notebook_id=notebook_id,
+                    kernel_id=None,
+                    notebook_path=None,
+                    is_alive=False,
+                ))
+                continue
+
+            # No matching alive kernel ID.
+            if cf.kernel_id not in alive_sessions:
+                sessions.append(KishuSession(
+                    notebook_id=notebook_id,
+                    kernel_id=cf.kernel_id,
+                    notebook_path=cf.notebook_path,
+                    is_alive=False,
+                ))
+                continue
+
+            # Kernel ID is alive. Replace notebook path with the newest one.
+            sessions.append(KishuSession(
+                notebook_id=notebook_id,
+                kernel_id=cf.kernel_id,
+                notebook_path=str(alive_sessions[cf.kernel_id].notebook_path),
+                is_alive=True,
+            ))
+        return sessions
 
     def commit(self, message: Optional[str] = None) -> BareReprStr:
         entry = CommitEntry(kind=CommitEntryKind.manual)
@@ -800,7 +864,7 @@ def init_kishu(path: Optional[Path] = None) -> None:
     # Read enclosing notebook.
     if path is None:
         kernel_id = enclosing_kernel_id()
-        path = enclosing_notebook_path(kernel_id)
+        path = notebook_path_from_kernel(kernel_id)
     nb = None
     assert path is not None
     with open(path, 'r') as f:

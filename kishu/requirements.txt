@@ -10,6 +10,7 @@ jupyter_ui_poll
 nbconvert
 nbformat
 networkx
+psutil
 typing
 
 # User interfaces: cli, backend, jupyterlab_kishu
