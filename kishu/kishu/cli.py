@@ -39,6 +39,21 @@ Kishu Commands.
 
 
 @kishu_app.command()
+def list(
+    list_all: bool = typer.Option(
+        False,
+        "--all",
+        "-a",
+        help="List all Kishu sessions.",
+    ),
+) -> None:
+    """
+    List existing Kishu sessions.
+    """
+    print(into_json(KishuCommand.list(list_all=list_all)))
+
+
+@kishu_app.command()
 def log(
     notebook_id: str = typer.Argument(
         ...,
