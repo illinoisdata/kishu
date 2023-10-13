@@ -1,9 +1,14 @@
 import os
 import pathlib
 
+from typing import Generator
+
+
+ENV_KISHU_PATH_ROOT = "KISHU_PATH_ROOT"
+
 
 class KishuPath:
-    ROOT = pathlib.Path.home()
+    ROOT = os.environ.get(ENV_KISHU_PATH_ROOT, None) or str(pathlib.Path.home())
 
     @staticmethod
     def kishu_directory() -> str:
@@ -37,6 +42,14 @@ class KishuPath:
     @staticmethod
     def head_path(notebook_id: str) -> str:
         return os.path.join(KishuPath.notebook_directory(notebook_id), "head.json")
+
+    @staticmethod
+    def iter_notebook_ids() -> Generator[str, None, None]:
+        kishu_dir = KishuPath.kishu_directory()
+        for notebook_id in os.listdir(KishuPath.kishu_directory()):
+            if not os.path.isdir(os.path.join(kishu_dir, notebook_id)):
+                continue
+            yield notebook_id
 
     @staticmethod
     def _create_dir(dir: str) -> str:

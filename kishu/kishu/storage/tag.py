@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 
 from kishu.storage.checkpoint_io import TAG_TABLE
 from kishu.storage.path import KishuPath
@@ -52,9 +52,35 @@ class KishuTag:
         try:
             cur.execute(query, (commit_id,))
         except sqlite3.OperationalError:
-            # No such table means no branch
+            # No such table means no tag
             return []
         return [
             TagRow(tag_name=tag_name, commit_id=commit_id, message=message)
             for tag_name, commit_id, message in cur
         ]
+
+    @staticmethod
+    def tags_for_many_commits(notebook_id: str, commit_ids: List[str]) -> Dict[str, List[TagRow]]:
+        dbfile = KishuPath.checkpoint_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+        query = "select tag_name, commit_id, message from {} where commit_id in ({})".format(
+            TAG_TABLE,
+            ', '.join('?' * len(commit_ids))
+        )
+        try:
+            cur.execute(query, commit_ids)
+        except sqlite3.OperationalError:
+            # No such table means no tag
+            return {}
+        raw_tags = cur.fetchall()
+        tag_by_commit: Dict[str, List[TagRow]] = {}
+        for tag_name, commit_id, message in raw_tags:
+            if commit_id not in tag_by_commit:
+                tag_by_commit[commit_id] = []
+            tag_by_commit[commit_id].append(TagRow(
+                tag_name=tag_name,
+                commit_id=commit_id,
+                message=message,
+            ))
+        return tag_by_commit
