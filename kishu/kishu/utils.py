@@ -8,7 +8,7 @@ import urllib.request
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path, PurePath
-from typing import Generator, Tuple
+from typing import Generator, Tuple, Optional, Union
 
 
 @dataclass
@@ -19,11 +19,11 @@ class IPythonSession:
 
 class JupyterRuntimeEnv:
     @staticmethod
-    def notebook_path_from_kernel(kernel_id: str) -> Path:
+    def notebook_path_from_kernel(kernel_id: Optional[str]) -> Optional[Union[Path, str]]:
         if os.environ.get("notebook_path"):
             if os.environ.get("notebook_path") == "None":
                 return None
-            return os.environ.get("notebook_path")
+            return str(os.environ.get("notebook_path"))
         for sess in _iter_sessions():
             if sess.kernel_id == kernel_id:
                 return sess.notebook_path

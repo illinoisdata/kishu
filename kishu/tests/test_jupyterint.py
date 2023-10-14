@@ -44,7 +44,6 @@ def test_history_to_sqlite(tmp_path: Path):
 
 
 def test_checkout(tmp_kishu_path_os: Path, tmp_path):
-    cell_indices = []
     path_to_notebook = os.getcwd()
     notebook_name = "test_jupyter_checkout.ipynb"
     notebook_full_path = os.path.join(path_to_notebook, NB_DIR, notebook_name)
@@ -52,7 +51,7 @@ def test_checkout(tmp_kishu_path_os: Path, tmp_path):
     vals = ['a']
     with environment_variable("notebook_path", temp_path):
         notebook = NotebookRunner(temp_path)
-        output = notebook.execute(cell_indices, vals)
+        output = notebook.execute([], vals)
         assert output['a'] == 1
 
 

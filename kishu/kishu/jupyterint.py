@@ -56,7 +56,7 @@ from dataclasses_json import dataclass_json
 from datetime import datetime
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, cast, Union
 
 from kishu.exceptions import (
     JupyterConnectionError,
@@ -186,7 +186,7 @@ class CommitEntry(UnitExecution):
 @dataclass_json
 @dataclass
 class JupyterConnectionInfo:
-    kernel_id: str
+    kernel_id: Optional[str]
     notebook_path: str
 
 
@@ -209,6 +209,7 @@ class JupyterConnection:
 
         # Find connection file.
         try:
+            assert conn_info.kernel_id is not None
             cf = jupyter_client.find_connection_file(conn_info.kernel_id)
         except OSError:
             raise KernelNotAliveError()
@@ -776,7 +777,7 @@ def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[in
           "- Checkpoint file: {}/\n".format(kishu.checkpoint_file()))
 
 
-def update_metadata(nb: Any, nb_path: Path) -> None:
+def update_metadata(nb: Any, nb_path: Union[Path, str]) -> None:
     if "kishu" not in nb.metadata:
         notebook_name = datetime.now().strftime('%Y%m%dT%H%M%S')
         nb["metadata"]["kishu"] = {}
@@ -795,16 +796,15 @@ def init_kishu() -> None:
     2. KishuForJupyter
     """
     # Read enclosing notebook.
+    path: Optional[Union[Path, str]] = None
     kernel_id = None
     if os.environ.get("notebook_path"):
-        if os.environ.get("notebook_path") == "None":
-            path = None
-        else:
-            path = os.environ.get("notebook_path")
+        path = os.environ.get("notebook_path")
     else:
         kernel_id = utils.enclosing_kernel_id()
-        path = utils.JupyterRuntimeEnv.enclosing_notebook_path(kernel_id)
+        path = utils.JupyterRuntimeEnv.notebook_path_from_kernel(kernel_id)
     nb = None
+    assert path is not None
     with open(path, 'r') as f:
         nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
 
