@@ -54,17 +54,6 @@ def _iter_maybe_sessions() -> Generator[Tuple[dict, dict], None, None]:
 
 class JupyterRuntimeEnv:
     @staticmethod
-    def notebook_path_from_kernel(kernel_id: str) -> Path:
-        if os.environ.get("notebook_path"):
-            path_str = os.environ.get("notebook_path")
-            assert path_str is not None
-            return Path(path_str)
-        for sess in JupyterRuntimeEnv.iter_sessions():
-            if sess.kernel_id == kernel_id:
-                return sess.notebook_path
-        raise FileNotFoundError("Failed to identify notebook file path.")
-
-    @staticmethod
     def enclosing_kernel_id() -> str:
         # TODO needs to be called inside ipython kernel
         if os.environ.get("notebook_path"):  # means we are testing
@@ -85,3 +74,21 @@ class JupyterRuntimeEnv:
                 kernel_id=sess["kernel"]["id"],
                 notebook_path=Path(srv.get("root_dir") or srv["notebook_dir"]) / relative_path
             )
+
+    @staticmethod
+    def notebook_path_from_kernel(kernel_id: str) -> Path:
+        if os.environ.get("notebook_path"):
+            path_str = os.environ.get("notebook_path")
+            assert path_str is not None
+            return Path(path_str)
+        for sess in JupyterRuntimeEnv.iter_sessions():
+            if sess.kernel_id == kernel_id:
+                return sess.notebook_path
+        raise FileNotFoundError("Failed to identify notebook file path.")
+
+    @staticmethod
+    def kernel_id_from_notebook(notebook_path: Path) -> str:
+        for sess in JupyterRuntimeEnv.iter_sessions():
+            if sess.notebook_path.resolve() == notebook_path.resolve():
+                return sess.kernel_id
+        raise FileNotFoundError("Kernel for the notebook not found.")

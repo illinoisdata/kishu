@@ -54,6 +54,20 @@ def list(
 
 
 @kishu_app.command()
+def init(
+    notebook_path: str = typer.Argument(
+        ...,
+        help="Path to the notebook to initialize Kishu on.",
+        show_default=False
+    ),
+) -> None:
+    """
+    Initialize Kishu instrumentation in a notebook.
+    """
+    print(into_json(KishuCommand.init(notebook_path)))
+
+
+@kishu_app.command()
 def log(
     notebook_id: str = typer.Argument(
         ...,
