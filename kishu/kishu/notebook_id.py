@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pathlib
-
 from pathlib import Path
 from typing import Optional, Union
 
