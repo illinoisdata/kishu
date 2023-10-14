@@ -5,9 +5,10 @@ from typing import Generator, List, Optional
 
 from kishu.commands import CommitSummary, FECommit, FESelectedCommit, KishuCommand, KishuSession
 from kishu.jupyterint import CommitEntryKind, CommitEntry, KishuForJupyter
+from kishu.notebook_id import NotebookId
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
-
+from tests.helpers.utils_for_test import environment_variable
 
 @pytest.fixture()
 def notebook_id() -> Generator[str, None, None]:
@@ -16,9 +17,10 @@ def notebook_id() -> Generator[str, None, None]:
 
 @pytest.fixture()
 def kishu_jupyter(tmp_kishu_path, notebook_id) -> Generator[KishuForJupyter, None, None]:
-    kishu_jupyter = KishuForJupyter(notebook_id=notebook_id)
-    kishu_jupyter.set_test_mode()
-    yield kishu_jupyter
+    with environment_variable("notebook_path", "None"):
+        kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_key(notebook_id))
+        kishu_jupyter.set_test_mode()
+        yield kishu_jupyter
 
 
 @pytest.fixture()
@@ -65,7 +67,7 @@ class TestKishuCommand:
         assert list_result.sessions[0] == KishuSession(
             notebook_id=notebook_id,
             kernel_id=None,
-            notebook_path=None,
+            notebook_path="None",
             is_alive=False,
         )
 
