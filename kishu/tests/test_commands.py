@@ -10,6 +10,7 @@ from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
 from tests.helpers.utils_for_test import environment_variable
 
+
 @pytest.fixture()
 def notebook_id() -> Generator[str, None, None]:
     yield "notebook_123"
