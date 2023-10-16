@@ -49,9 +49,9 @@ jobs:
       run: |
         cd kishu
         if [ "${{ matrix.python-version }}" == "3.8" ]; then
-          pytest -vv --cov=kishu/ --cov-report=xml;
+          pytest -s --cov=kishu/ --cov-report=xml;
         else
-          pytest -vv
+          pytest -s
         fi
     - name: Upload coverage reports to Codecov
       if:  matrix.python-version == '3.8'
