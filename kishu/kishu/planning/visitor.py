@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 
-# Called visitor.py
-
 
 class Visitor(ABC):
     """

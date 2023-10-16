@@ -25,7 +25,7 @@ def get_object_state(obj, visited: dict, visitor: Visitor, update_state=None, in
     if check:
         return ret
 
-    if isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
+    if isinstance(obj, (int, float, bool, str, type(None), type(NotImplemented), type(Ellipsis))):
         return visitor.visit_primitive(obj)
 
     elif isinstance(obj, tuple):
