@@ -43,25 +43,20 @@ from __future__ import annotations
 import IPython
 import dill as pickle
 import enum
-import ipykernel
 import ipylab
 import json
 import jupyter_client
-import jupyter_core.paths
 import nbformat
-import psutil
 import os
 import time
-import urllib.request
 import uuid
 
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from datetime import datetime
-from itertools import chain
 from jupyter_ui_poll import run_ui_poll_loop
-from pathlib import Path, PurePath
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple, cast
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple, cast, Union
 
 from kishu.exceptions import (
     JupyterConnectionError,
@@ -76,77 +71,13 @@ from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint_io import init_checkpoint_database
 from kishu.storage.commit_graph import KishuCommitGraph
 from kishu.storage.path import KishuPath
+from kishu.notebook_id import NotebookId
+import kishu.utils as utils
 
 
 """
 Functions to find enclosing notebook name, distilled From ipynbname.
 """
-
-
-@dataclass
-class IPythonSession:
-    kernel_id: str
-    notebook_path: Path
-
-
-def _iter_maybe_running_servers() -> Generator[dict, None, None]:
-    runtime_dir = Path(jupyter_core.paths.jupyter_runtime_dir())
-    if runtime_dir.is_dir():
-        config_files = chain(
-            runtime_dir.glob("nbserver-*.json"),  # jupyter notebook (or lab 2)
-            runtime_dir.glob("jpserver-*.json"),  # jupyterlab 3
-        )
-        for file_name in sorted(config_files, key=os.path.getmtime, reverse=True):
-            try:
-                srv = json.loads(file_name.read_bytes())
-                if psutil.pid_exists(srv.get("pid", -1)):
-                    # pid_exists always returns False for negative PIDs.
-                    yield srv
-            except json.JSONDecodeError:
-                pass
-
-
-def _get_sessions(srv: dict):
-    try:
-        url = f"{srv['url']}api/sessions"
-        if srv['token']:
-            url += f"?token={srv['token']}"
-        with urllib.request.urlopen(url, timeout=1.0) as req:
-            return json.load(req)
-    except Exception:
-        return []
-
-
-def _iter_maybe_sessions() -> Generator[Tuple[dict, dict], None, None]:
-    for srv in _iter_maybe_running_servers():
-        for sess in _get_sessions(srv):
-            yield srv, sess
-
-
-def _iter_sessions() -> Generator[IPythonSession, None, None]:
-    for srv, sess in _iter_maybe_sessions():
-        relative_path = PurePath(sess["notebook"]["path"])
-        yield IPythonSession(
-            kernel_id=sess["kernel"]["id"],
-            notebook_path=Path(srv.get("root_dir") or srv["notebook_dir"]) / relative_path
-        )
-
-
-def notebook_path_from_kernel(kernel_id: str) -> Path:
-    for sess in _iter_sessions():
-        if sess.kernel_id == kernel_id:
-            return sess.notebook_path
-    raise FileNotFoundError("Failed to identify notebook file path.")
-
-
-def enclosing_kernel_id() -> str:
-    connection_file_path = ipykernel.get_connection_file()
-    connection_file = os.path.basename(connection_file_path)
-    if '-' not in connection_file:
-        # connection_file not in expected format.
-        # TODO: Find more stable way to extract kernel ID.
-        raise FileNotFoundError("Failed to identify IPython connection file")
-    return connection_file.split('-', 1)[1].split('.')[0]
 
 
 def enclosing_platform() -> str:
@@ -255,7 +186,7 @@ class CommitEntry(UnitExecution):
 @dataclass_json
 @dataclass
 class JupyterConnectionInfo:
-    kernel_id: str
+    kernel_id: Optional[str]
     notebook_path: str
 
 
@@ -266,18 +197,19 @@ class JupyterCommandResult:
 
 
 class JupyterConnection:
-    def __init__(self, notebook_id: str) -> None:
-        self.notebook_id = notebook_id
+    def __init__(self, notebook_key: str) -> None:
+        self.notebook_key = notebook_key
         self.km: Optional[jupyter_client.BlockingKernelClient] = None
 
     def __enter__(self) -> JupyterConnection:
         # Find connection information
-        conn_info = KishuForJupyter.retrieve_connection(self.notebook_id)
+        conn_info = KishuForJupyter.retrieve_connection(self.notebook_key)
         if conn_info is None:
             raise MissingConnectionInfoError()
 
         # Find connection file.
         try:
+            assert conn_info.kernel_id is not None
             cf = jupyter_client.find_connection_file(conn_info.kernel_id)
         except OSError:
             raise KernelNotAliveError()
@@ -308,9 +240,9 @@ class JupyterConnection:
             self.km = None
 
     @staticmethod
-    def execute_one_command(notebook_id: str, command: str) -> JupyterCommandResult:
+    def execute_one_command(notebook_key: str, command: str) -> JupyterCommandResult:
         try:
-            with JupyterConnection(notebook_id) as conn:
+            with JupyterConnection(notebook_key) as conn:
                 reply = conn.execute(command)
         except JupyterConnectionError as e:
             return JupyterCommandResult(
@@ -361,38 +293,31 @@ class KishuForJupyter:
     SAVE_CMD = "try { IPython.notebook.save_checkpoint(); } catch { }"
     NBFORMAT_VERSION = 4
 
-    def __init__(self, notebook_id: Optional[str] = None) -> None:
+    def __init__(self, notebook_id: NotebookId) -> None:
         """
         @param _history  The connector to log data.
         @param _running_cell  A temporary data created during a cell execution.
         @param _checkpoint_file  The file for storing all the data.
         """
-        if notebook_id is None:
-            self._notebook_id = datetime.now().strftime('%Y%m%dT%H%M%S')  # TODO: Use notebook name.
-        else:
-            self._notebook_id = notebook_id
+        self._notebook_id = notebook_id
         self._commit_id_mode = "uuid4"  # TODO: Load from environment/configuration
         init_checkpoint_database(self.checkpoint_file())
         self._history: ExecutionHistory = ExecutionHistory(self.checkpoint_file())
         self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
-            KishuPath.commit_graph_directory(self._notebook_id)
+            KishuPath.commit_graph_directory(self._notebook_id.key())
         )
-
-        self._kernel_id = ""
-        self._notebook_path: Optional[Path] = None
         try:
-            self._kernel_id = enclosing_kernel_id()
-            self._notebook_path = notebook_path_from_kernel(self._kernel_id)
             self.record_connection()
         except Exception as e:
             print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
-        if self._notebook_path:
+        if self._notebook_id.path() is None:
             print("WARNING: Enclosing notebook not found. Skipping notebook cell checkpoint and restoration.")
 
         self._platform = enclosing_platform()
         self._session_id = 0
         self._last_execution_count = 0
         self._start_time_ms: Optional[int] = None
+        self._test_mode = False
 
         self._cr_planner = CheckpointRestorePlanner(
             {} if kishu_ipython() is None
@@ -401,6 +326,7 @@ class KishuForJupyter:
 
     def set_test_mode(self):
         # Configure this object for testing.
+        self._test_mode = True
         self._commit_id_mode = "counter"
 
     def set_session_id(self, session_id):
@@ -410,7 +336,7 @@ class KishuForJupyter:
         return self._history
 
     def checkpoint_file(self) -> str:
-        return KishuPath.checkpoint_path(self._notebook_id)
+        return KishuPath.checkpoint_path(self._notebook_id.key())
 
     def get_user_namespace_vars(self) -> Set[str]:
         ip = kishu_ipython()
@@ -431,7 +357,7 @@ class KishuForJupyter:
         is_detach = True
 
         # Attempt to interpret target as a branch.
-        retrieved_branches = KishuBranch.get_branch(self._notebook_id, branch_or_commit_id)
+        retrieved_branches = KishuBranch.get_branch(self._notebook_id.key(), branch_or_commit_id)
         if len(retrieved_branches) == 1:
             assert retrieved_branches[0].branch_name == branch_or_commit_id
             branch_name = retrieved_branches[0].branch_name
@@ -471,7 +397,7 @@ class KishuForJupyter:
         # Update Kishu heads.
         self._graph.jump(commit_id)
         KishuBranch.update_head(
-            self._notebook_id,
+            self._notebook_id.key(),
             branch_name=branch_name,
             commit_id=commit_id,
             is_detach=is_detach,
@@ -537,16 +463,16 @@ class KishuForJupyter:
         self._commit_entry(entry)
 
     def record_connection(self) -> None:
-        with open(KishuPath.connection_path(self._notebook_id), 'w') as f:
+        with open(KishuPath.connection_path(self._notebook_id.key()), 'w') as f:
             f.write(JupyterConnectionInfo(  # type: ignore
-                kernel_id=self._kernel_id,
-                notebook_path=str(self._notebook_path),
+                kernel_id=self._notebook_id.kernel_id(),
+                notebook_path=str(self._notebook_id.path()),
             ).to_json())
 
     @staticmethod
-    def retrieve_connection(notebook_id: str) -> Optional[JupyterConnectionInfo]:
+    def retrieve_connection(notebook_key: str) -> Optional[JupyterConnectionInfo]:
         try:
-            with open(KishuPath.connection_path(notebook_id), 'r') as f:
+            with open(KishuPath.connection_path(notebook_key), 'r') as f:
                 json_str = f.read()
                 return JupyterConnectionInfo.from_json(json_str)  # type: ignore
         except (FileNotFoundError, json.decoder.JSONDecodeError):
@@ -555,7 +481,7 @@ class KishuForJupyter:
     @staticmethod
     def kishu_sessions() -> List[KishuSession]:
         # List alive IPython sessions.
-        alive_sessions = {session.kernel_id: session for session in _iter_sessions()}
+        alive_sessions = {session.kernel_id: session for session in utils._iter_sessions()}
 
         # List all Kishu sessions.
         sessions = []
@@ -660,11 +586,14 @@ class KishuForJupyter:
         return restore_plan, var_version
 
     def _save_notebook(self) -> None:
-        if self._notebook_path is None:
+        if self._test_mode:
+            return
+        nb_path = self._notebook_id.path()
+        if nb_path is None:
             return
 
         # Remember starting state.
-        start_mtime = os.path.getmtime(self._notebook_path)
+        start_mtime = os.path.getmtime(nb_path)
         current_mtime = start_mtime
 
         # Issue save command.
@@ -684,17 +613,18 @@ class KishuForJupyter:
         sleep_t = 0.2
         time.sleep(sleep_t)
         while start_mtime == current_mtime and sleep_t < 1.0:
-            current_mtime = os.path.getmtime(self._notebook_path)
+            current_mtime = os.path.getmtime(nb_path)
             sleep_t *= 1.2
             time.sleep(sleep_t)
         if sleep_t >= 1.0:
             print("WARNING: Notebook saving is taking too long. Kishu may not capture every cell.")
 
     def _all_notebook_cells(self) -> Tuple[Optional[str], List[FormattedCell]]:
-        if self._notebook_path is None:
+        nb_path = self._notebook_id.path()
+        if nb_path is None:
             return None, []
 
-        with open(self._notebook_path, 'r') as f:
+        with open(nb_path, 'r') as f:
             nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
 
         nb_cells = []
@@ -748,16 +678,17 @@ class KishuForJupyter:
         return None
 
     def _step_branch(self, commit_id: str) -> None:
-        head = KishuBranch.update_head(self._notebook_id, commit_id=commit_id)
+        head = KishuBranch.update_head(self._notebook_id.key(), commit_id=commit_id)
         if head.branch_name is not None:
-            KishuBranch.upsert_branch(self._notebook_id, head.branch_name, commit_id)
+            KishuBranch.upsert_branch(self._notebook_id.key(), head.branch_name, commit_id)
 
     def _checkout_notebook(self, raw_nb: str) -> None:
-        if self._notebook_path is None:
+        nb_path = self._notebook_id.path()
+        if nb_path is None:
             return
 
         # Read current notebook cells.
-        with open(self._notebook_path, 'r') as f:
+        with open(nb_path, 'r') as f:
             nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
 
         # Apply target cells.
@@ -765,7 +696,7 @@ class KishuForJupyter:
         nb.cells = target_nb.cells
 
         # Save change
-        nbformat.write(nb, self._notebook_path)
+        nbformat.write(nb, nb_path)
 
     def _checkout_namespace(self, user_ns: Dict[Any, Any], target_ns: Dict[Any, Any]) -> None:
         user_ns.update(target_ns)
@@ -782,7 +713,7 @@ def repr_if_not_none(obj: Any) -> Optional[str]:
 
 IPYTHON_VARS = set(['In', 'Out', 'get_ipython', 'exit', 'quit', 'open'])
 KISHU_INSTRUMENT = '_kishu'
-KISHU_VARS = set(['kishu', 'load_kishu', KISHU_INSTRUMENT])
+KISHU_VARS = set(['kishu', 'load_kishu', 'init_kishu', KISHU_INSTRUMENT])
 
 
 def no_ipython_var(name_obj: Tuple[str, Any]) -> bool:
@@ -825,13 +756,16 @@ def kishu_ipython_in() -> Optional[List[str]]:
     return ip.user_ns["In"]
 
 
-def load_kishu(notebook_id: Optional[str] = None, session_id: Optional[int] = None) -> None:
+def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[int] = None) -> None:
     global _kishu_ipython
     if _kishu_ipython is not None:
         return
     _kishu_ipython = eval('get_ipython()')
     ip = kishu_ipython()
 
+    if notebook_id is None:
+        notebook_key = datetime.now().strftime('%Y%m%dT%H%M%S')
+        notebook_id = NotebookId.from_key(notebook_key)
     kishu = KishuForJupyter(notebook_id)
     if session_id:
         kishu.set_session_id(session_id)
@@ -844,7 +778,7 @@ def load_kishu(notebook_id: Optional[str] = None, session_id: Optional[int] = No
           "- Checkpoint file: {}/\n".format(kishu.checkpoint_file()))
 
 
-def update_metadata(nb: Any, nb_path: Path) -> None:
+def update_metadata(nb: Any, nb_path: Union[Path, str]) -> None:
     if "kishu" not in nb.metadata:
         notebook_name = datetime.now().strftime('%Y%m%dT%H%M%S')
         nb["metadata"]["kishu"] = {}
@@ -856,15 +790,20 @@ def update_metadata(nb: Any, nb_path: Path) -> None:
     nbformat.write(nb, nb_path)
 
 
-def init_kishu(path: Optional[Path] = None) -> None:
+def init_kishu() -> None:
     """
-    If notebook not already initialized, initializes by adding notebook id to metadata
-    Increments session number to ensure unique commit ids.
+    1. Create notebook key
+    2. Find kernel id using enclosing_kernel_id()
+    2. KishuForJupyter
     """
     # Read enclosing notebook.
-    if path is None:
-        kernel_id = enclosing_kernel_id()
-        path = notebook_path_from_kernel(kernel_id)
+    path: Optional[Union[Path, str]] = None
+    kernel_id = None
+    if os.environ.get("notebook_path"):
+        path = os.environ.get("notebook_path")
+    else:
+        kernel_id = utils.enclosing_kernel_id()
+        path = utils.JupyterRuntimeEnv.notebook_path_from_kernel(kernel_id)
     nb = None
     assert path is not None
     with open(path, 'r') as f:
@@ -873,5 +812,10 @@ def init_kishu(path: Optional[Path] = None) -> None:
     # Update notebook metadata.
     update_metadata(nb, path)
 
+    # Construct Notebook Id
+    nb_id = None
+    nb_key = nb.metadata.kishu.notebook_id
+    nb_id = NotebookId(nb_key, path, kernel_id)
+
     # Attach Kishu instrumentation.
-    load_kishu(nb.metadata.kishu.notebook_id, nb.metadata.kishu.session_count)
+    load_kishu(nb_id, nb.metadata.kishu.session_count)
