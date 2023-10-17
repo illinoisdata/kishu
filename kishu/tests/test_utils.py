@@ -65,7 +65,7 @@ def test_iter_maybe_running_servers(mock_servers):
     with patch('kishu.utils.json.loads', return_value=mock_servers[0]), \
          patch('kishu.utils.psutil.pid_exists', return_value=True), \
          patch('kishu.utils.Path.glob', side_effect=glob_side_effect), \
-         patch("kishu.utils.jupyter_core.paths.jupyter_runtime_dir", return_value = Path("/")):
+         patch("kishu.utils.jupyter_core.paths.jupyter_runtime_dir", return_value=Path("/")):
         result = list(_iter_maybe_running_servers())
 
     assert result == mock_servers
