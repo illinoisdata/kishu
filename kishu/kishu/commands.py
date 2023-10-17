@@ -94,6 +94,11 @@ class BranchResult:
 
 
 @dataclass
+class DeleteBranchResult:
+    status: str
+
+
+@dataclass
 class RenameBranchResult:
     status: str
     branch_name: str
@@ -245,6 +250,21 @@ class KishuCommand:
             commit_id=commit_id,
             head=head,
         )
+
+    @staticmethod
+    def delete_branch(
+        notebook_id: str,
+        branch_name: str,
+    ) -> DeleteBranchResult:
+        try:
+            KishuBranch.delete_branch(notebook_id, branch_name)
+            return DeleteBranchResult(
+                status="ok",
+            )
+        except ValueError:
+            return DeleteBranchResult(
+                status="error",
+            )
 
     @staticmethod
     def rename_branch(

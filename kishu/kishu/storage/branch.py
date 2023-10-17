@@ -148,6 +148,23 @@ class KishuBranch:
         return branch_by_commit
 
     @staticmethod
+    def delete_branch(notebook_id: str, branch_name: str) -> None:
+        dbfile = KishuPath.checkpoint_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+
+        if not KishuBranch.contains_branch(cur, branch_name):
+            raise ValueError("The provided branch name does not exist.")
+
+        head = KishuBranch.get_head(notebook_id)
+        if branch_name == head.branch_name:
+            raise ValueError("Cannot delete the currently checked-out branch.")
+
+        query = f"delete from {BRANCH_TABLE} where branch_name = ?"
+        cur.execute(query, (branch_name,))
+        con.commit()
+
+    @staticmethod
     def rename_branch(notebook_id: str, old_name: str, new_name: str) -> None:
         dbfile = KishuPath.checkpoint_path(notebook_id)
         con = sqlite3.connect(dbfile)

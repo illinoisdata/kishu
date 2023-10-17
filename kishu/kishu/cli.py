@@ -166,6 +166,14 @@ def branch(
         help="Create branch with this name.",
         show_default=False,
     ),
+    delete_branch_name: str = typer.Option(
+        None,
+        "-d",
+        "--delete_branch_name",
+        "--delete_branch_name",
+        help="Delete branch with this name.",
+        show_default=False,
+    ),
     rename_branch: Tuple[str, str] = typer.Option(
         (None, None),
         "-m",
@@ -180,6 +188,13 @@ def branch(
     """
     if create_branch_name is not None:
         print(into_json(KishuCommand.branch(notebook_id, create_branch_name, commit_id)))
+    if delete_branch_name is not None:
+        try:
+            print(into_json(KishuCommand.delete_branch(
+                notebook_id, delete_branch_name)))
+        except Exception as error:
+            typer.echo(f"Error: {str(error)}", err=True)
+            raise typer.Exit()
     if rename_branch != (None, None):
         old_name, new_name = rename_branch
         try:
