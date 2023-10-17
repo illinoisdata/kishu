@@ -39,9 +39,7 @@ def _iter_maybe_running_servers() -> Generator[dict, None, None]:
         )
         for file_name in sorted(config_files, key=os.path.getmtime, reverse=True):
             try:
-                print(file_name)
                 srv = json.loads(file_name.read_bytes())
-                print(srv)
                 if psutil.pid_exists(srv.get("pid", -1)):
                     # pid_exists always returns False for negative PIDs.
                     yield srv
