@@ -343,6 +343,7 @@ class KishuForJupyter:
         else:
             self._notebook_id = notebook_id
         self._commit_id_mode = "uuid4"  # TODO: Load from environment/configuration
+        self._enable_auto_branch = True   # Enable auto branching in detach mode
         init_checkpoint_database(self.checkpoint_file())
         self._history: ExecutionHistory = ExecutionHistory(self.checkpoint_file())
         self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
@@ -521,23 +522,7 @@ class KishuForJupyter:
         entry = CommitEntry(kind=CommitEntryKind.manual)
         entry.execution_count = self._last_execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
-        head = KishuBranch.get_head(self._notebook_id)
-        if head.branch_name is None:    # head is in detached state
-            new_branch_name = f"branch_{str(uuid.uuid4)[:8]}"
-            self._commit_entry(entry)
-            KishuBranch.upsert_branch(
-                self._notebook_id,
-                new_branch_name,
-                entry.exec_id,
-            )
-            KishuBranch.update_head(    # update head
-                notebook_id=self._notebook_id,
-                branch_name=new_branch_name,
-                commit_id=entry.exec_id,
-                is_detach=False,
-            )
-        else:
-            self._commit_entry(entry)
+        self._commit_entry(entry)
         return BareReprStr(entry.exec_id)
 
     def _commit_entry(self, entry: CommitEntry) -> None:
@@ -676,9 +661,24 @@ class KishuForJupyter:
         return None
 
     def _step_branch(self, commit_id: str) -> None:
-        head = KishuBranch.update_head(self._notebook_id, commit_id=commit_id)
-        if head.branch_name is not None:
-            KishuBranch.upsert_branch(self._notebook_id, head.branch_name, commit_id)
+        head = KishuBranch.get_head(self._notebook_id)
+        if self._enable_auto_branch and head.branch_name is None:    # head is in detached state
+            new_branch_name = f"tmp_{str(uuid.uuid4)[:8]}"
+            KishuBranch.upsert_branch(
+                self._notebook_id,
+                new_branch_name,
+                commit_id,
+            )
+            KishuBranch.update_head(    # update head
+                notebook_id=self._notebook_id,
+                branch_name=new_branch_name,
+                commit_id=commit_id,
+                is_detach=False,
+            )
+        else:
+            head = KishuBranch.update_head(self._notebook_id, commit_id=commit_id)
+            if head.branch_name is not None:
+                KishuBranch.upsert_branch(self._notebook_id, head.branch_name, commit_id)
 
     def _checkout_notebook(self, raw_nb: str) -> None:
         if self._notebook_path is None:
