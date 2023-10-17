@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import seaborn as sns
-# import xxhash
+import xxhash
 
 from kishu.planning.idgraph import get_object_hash, get_object_state
 
@@ -14,37 +14,50 @@ from kishu.planning.idgraph import get_object_hash, get_object_state
 #     return func(*args, **kwargs)
 
 
-def benchmark_idgraph_ret_comp_id(obj):
-    # print("Called")
+# def benchmark_idgraph_ret_comp_id(obj):
+#     # print("Called")
+#     idgraph1 = get_object_state(obj, {})
+#     idgraph2 = get_object_state(obj, {})
+#     return idgraph1 == idgraph2, idgraph1
+
+# def benchmark_hash_ret_comp_hash(obj):
+#     hash1 = get_object_hash(obj)
+#     hash2 = get_object_hash(obj)
+#     return hash1.digest() == hash2.digest(), hash1
+
+
+def benchmark_idgraph_creation(obj):
     idgraph1 = get_object_state(obj, {})
-    idgraph2 = get_object_state(obj, {})
-    return idgraph1 == idgraph2, idgraph1
+    return idgraph1
 
 
-def benchmark_idgraph_ret_comp(obj, idgraph1):
-    idgraph2 = get_object_state(obj, {})
+def benchmark_idgraph_comparison(idgraph1, idgraph2):
     return idgraph1 == idgraph2
 
 
-def benchmark_hash_ret_comp_hash(obj):
+def benchmark_hash_creation(obj):
     hash1 = get_object_hash(obj)
-    hash2 = get_object_hash(obj)
-    return hash1.digest() == hash2.digest(), hash1
+    return hash1
 
 
-def test_idgraph_numpy(benchmark):
+def benchmark_hash_comparison(hash1: xxhash, hash2: xxhash):
+    return hash1.digest() == hash2.digest()
+
+
+def test_idgraph_numpy():
     """
         Test if idgraph is accurately generated for numpy arrays
     """
     a = np.arange(6)
 
-    # idgraph1 = get_object_state(a, {})
-    # idgraph2 = get_object_state(a, {})
+    idgraph1 = get_object_state(a, {})
+    idgraph2 = get_object_state(a, {})
 
-    init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, a)
+    # init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, a)
 
     # Assert that the id graph does not change when the object remains unchanged
-    assert init_comparison
+    # assert init_comparison
+    assert idgraph1 == idgraph2
 
     # Assert that the obj id is as expected
     assert idgraph1.id_obj == id(a)
@@ -62,18 +75,36 @@ def test_idgraph_numpy(benchmark):
     assert idgraph1 == idgraph4
 
 
-def test_hash_numpy(benchmark):
+def test_idgraph_creation_numpy(benchmark):
+    a = np.arange(6)
+
+    benchmark(benchmark_idgraph_creation, a)
+    assert True
+
+
+def test_idgraph_comparison_numpy(benchmark):
+    a = np.arange(6)
+
+    idgraph1 = get_object_state(a, {})
+    idgraph2 = get_object_state(a, {})
+
+    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    assert res
+
+
+def test_hash_numpy():
     """
         Test if idgraph is accurately generated for numpy arrays
     """
     a = np.arange(6)
 
-    # hash1 = get_object_hash(a)
-    # hash2 = get_object_hash(a)
-    init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, a)
+    hash1 = get_object_hash(a)
+    hash2 = get_object_hash(a)
+    # init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, a)
 
     # Assert that the hash does not change when the object remains unchanged
-    assert init_comparison
+    # assert init_comparison
+    assert hash1.digest() == hash2.digest()
 
     a[3] = 10
     hash3 = get_object_hash(a)
@@ -88,21 +119,39 @@ def test_hash_numpy(benchmark):
     assert hash1.digest() == hash4.digest()
 
 
-def test_idgraph_pandas_Series(benchmark):
+def test_hash_creation_numpy(benchmark):
+    a = np.arange(6)
+
+    benchmark(benchmark_hash_creation, a)
+    assert True
+
+
+def test_hash_comparison_numpy(benchmark):
+    a = np.arange(6)
+
+    hash1 = get_object_hash(a)
+    hash2 = get_object_hash(a)
+
+    res = benchmark(benchmark_hash_comparison, hash1, hash2)
+    assert res
+
+
+def test_idgraph_pandas_Series():
     """
         Test if idgraph is accurately generated for panda series
     """
     s1 = pd.Series([1, 2, 3, 4])
 
-    # idgraph1 = get_object_state(s1, {})
-    # idgraph2 = get_object_state(s1, {})
-    init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, s1)
+    idgraph1 = get_object_state(s1, {})
+    idgraph2 = get_object_state(s1, {})
+    # init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, s1)
 
     # Assert that the obj id is as expected
     assert idgraph1.id_obj == id(s1)
 
     # Assert that the id graph does not change when the object remains unchanged
-    assert init_comparison
+    # assert init_comparison
+    assert idgraph1 == idgraph2
 
     s1[2] = 0
 
@@ -119,18 +168,36 @@ def test_idgraph_pandas_Series(benchmark):
     assert idgraph1 == idgraph4
 
 
-def test_hash_pandas_Series(benchmark):
+def test_idgraph_creation_pandas_Series(benchmark):
+    s1 = pd.Series([1, 2, 3, 4])
+
+    benchmark(benchmark_idgraph_creation, s1)
+    assert True
+
+
+def test_idgraph_comparison_pandas_Series(benchmark):
+    s1 = pd.Series([1, 2, 3, 4])
+
+    idgraph1 = get_object_state(s1, {})
+    idgraph2 = get_object_state(s1, {})
+
+    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    assert res
+
+
+def test_hash_pandas_Series():
     """
         Test if idgraph is accurately generated for panda series
     """
     s1 = pd.Series([1, 2, 3, 4])
 
-    # hash1 = get_object_hash(s1)
-    # hash2 = get_object_hash(s1)
-    init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, s1)
+    hash1 = get_object_hash(s1)
+    hash2 = get_object_hash(s1)
+    # init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, s1)
 
     # Assert that the hash does not change when the object remains unchanged
-    assert init_comparison
+    # assert init_comparison
+    assert hash1.digest() == hash2.digest()
 
     s1[2] = 0
 
@@ -147,21 +214,39 @@ def test_hash_pandas_Series(benchmark):
     assert hash1.digest() == hash4.digest()
 
 
-def test_idgraph_pandas_df(benchmark):
+def test_hash_creation_pandas_Series(benchmark):
+    s1 = pd.Series([1, 2, 3, 4])
+
+    benchmark(benchmark_hash_creation, s1)
+    assert True
+
+
+def test_hash_comparison_pandas_Series(benchmark):
+    s1 = pd.Series([1, 2, 3, 4])
+
+    hash1 = get_object_hash(s1)
+    hash2 = get_object_hash(s1)
+
+    res = benchmark(benchmark_hash_comparison, hash1, hash2)
+    assert res
+
+
+def test_idgraph_pandas_df():
     """
         Test if idgraph is accurately generated for panda dataframes
     """
     df = sns.load_dataset('penguins')
 
-    # idgraph1 = get_object_state(df, {})
-    # idgraph2 = get_object_state(df, {})
-    init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, df)
+    idgraph1 = get_object_state(df, {})
+    idgraph2 = get_object_state(df, {})
+    # init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, df)
 
     # Assert that the obj id is as expected
     assert idgraph1.id_obj == id(df)
 
     # Assert that the id graph does not change when the object remains unchanged
-    assert init_comparison
+    # assert init_comparison
+    assert idgraph1 == idgraph2
 
     df.at[0, 'species'] = "Changed"
     idgraph3 = get_object_state(df, {})
@@ -185,18 +270,36 @@ def test_idgraph_pandas_df(benchmark):
     assert idgraph1 != idgraph5
 
 
-def test_hash_pandas_df(benchmark):
+def test_idgraph_creation_pandas_df(benchmark):
+    df = sns.load_dataset('penguins')
+
+    benchmark(benchmark_idgraph_creation, df)
+    assert True
+
+
+def test_idgraph_comparison_pandas_df(benchmark):
+    df = sns.load_dataset('penguins')
+
+    idgraph1 = get_object_state(df, {})
+    idgraph2 = get_object_state(df, {})
+
+    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    assert res
+
+
+def test_hash_pandas_df():
     """
         Test if idgraph is accurately generated for panda dataframes
     """
     df = sns.load_dataset('penguins')
 
-    # hash1 = get_object_hash(df)
-    # hash2 = get_object_hash(df)
-    init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, df)
+    hash1 = get_object_hash(df)
+    hash2 = get_object_hash(df)
+    # init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, df)
 
     # Assert that the id graph does not change when the object remains unchanged
-    assert init_comparison
+    # assert init_comparison
+    assert hash1.digest() == hash2.digest()
 
     df.at[0, 'species'] = "Changed"
     hash3 = get_object_hash(df)
@@ -220,7 +323,24 @@ def test_hash_pandas_df(benchmark):
     assert hash1.digest() != hash5.digest()
 
 
-def test_idgraph_matplotlib(benchmark):
+def test_hash_creation_pandas_df(benchmark):
+    df = sns.load_dataset('penguins')
+
+    benchmark(benchmark_hash_creation, df)
+    assert True
+
+
+def test_hash_comparison_pandas_df(benchmark):
+    df = sns.load_dataset('penguins')
+
+    hash1 = get_object_hash(df)
+    hash2 = get_object_hash(df)
+
+    res = benchmark(benchmark_hash_comparison, hash1, hash2)
+    assert res
+
+
+def test_idgraph_matplotlib():
     """
         Test if idgraph is accurately generated for matplotlib objects
     """
@@ -230,9 +350,9 @@ def test_idgraph_matplotlib(benchmark):
     a = plt.plot(df['a'], df['b'])
     plt.xlabel("XLABEL_1")
 
-    # idgraph1 = get_object_state(a, {})
-    # idgraph2 = get_object_state(a, {})
-    init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, a)
+    idgraph1 = get_object_state(a, {})
+    idgraph2 = get_object_state(a, {})
+    # init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, a)
 
     # Assert that the obj id is as expected
     assert idgraph1.id_obj == id(a) and idgraph1.children[0].id_obj == id(a[0])
@@ -242,9 +362,9 @@ def test_idgraph_matplotlib(benchmark):
     pick2 = pickle.dumps(a[0])
 
     if pick1 != pick2:
-        assert not init_comparison
+        assert idgraph1 != idgraph2
     else:
-        assert init_comparison
+        assert idgraph1 == idgraph2
 
     plt.xlabel("XLABEL_2")
     idgraph3 = get_object_state(a, {})
@@ -282,7 +402,42 @@ def test_idgraph_matplotlib(benchmark):
     plt.close('all')
 
 
-def test_hash_matplotlib(benchmark):
+def test_idgraph_ceation_matplotlib(benchmark):
+    plt.close('all')
+    df = pd.DataFrame(
+        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+    a = plt.plot(df['a'], df['b'])
+    plt.xlabel("XLABEL_1")
+
+    benchmark(benchmark_idgraph_creation, a)
+    assert True
+    plt.close('all')
+
+
+def test_idgraph_comparison_matplotlib(benchmark):
+    plt.close('all')
+    df = pd.DataFrame(
+        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+    a = plt.plot(df['a'], df['b'])
+    plt.xlabel("XLABEL_1")
+
+    idgraph1 = get_object_state(a, {})
+    idgraph2 = get_object_state(a, {})
+
+    pick1 = pickle.dumps(a[0])
+    pick2 = pickle.dumps(a[0])
+
+    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+
+    if pick1 != pick2:
+        assert not res
+    else:
+        assert res
+
+    plt.close('all')
+
+
+def test_hash_matplotlib():
     """
         Test if idgraph is accurately generated for matplotlib objects
     """
@@ -292,18 +447,18 @@ def test_hash_matplotlib(benchmark):
     a = plt.plot(df['a'], df['b'])
     plt.xlabel("XLABEL_1")
 
-    # hash1 = get_object_hash(a)
-    # hash2 = get_object_hash(a)
-    init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, a)
+    hash1 = get_object_hash(a)
+    hash2 = get_object_hash(a)
+    # init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, a)
 
     # Assert that the id graph does not change when the object remains unchanged if pickle binaries are the same
     pick1 = pickle.dumps(a[0])
     pick2 = pickle.dumps(a[0])
 
     if pick1 != pick2:
-        assert not init_comparison
+        assert hash1.digest() != hash2.digest()
     else:
-        assert init_comparison
+        assert hash1.digest() == hash2.digest()
 
     plt.xlabel("XLABEL_2")
     hash3 = get_object_hash(a)
@@ -341,7 +496,41 @@ def test_hash_matplotlib(benchmark):
     plt.close('all')
 
 
-def test_idgraph_seaborn_displot(benchmark):
+def test_hash_creation_matplotlib(benchmark):
+    plt.close('all')
+    df = pd.DataFrame(
+        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+    a = plt.plot(df['a'], df['b'])
+    plt.xlabel("XLABEL_1")
+
+    benchmark(benchmark_hash_creation, a)
+    assert True
+    plt.close('all')
+
+
+def test_hash_comparison_matplotlib(benchmark):
+    plt.close('all')
+    df = pd.DataFrame(
+        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+    a = plt.plot(df['a'], df['b'])
+    plt.xlabel("XLABEL_1")
+
+    hash1 = get_object_hash(a)
+    hash2 = get_object_hash(a)
+
+    pick1 = pickle.dumps(a[0])
+    pick2 = pickle.dumps(a[0])
+
+    res = benchmark(benchmark_hash_comparison, hash1, hash2)
+    if pick1 != pick2:
+        assert not res
+    else:
+        assert res
+
+    plt.close('all')
+
+
+def test_idgraph_seaborn_displot():
     """
         Test if idgraph is accurately generated for seaborn displot objects (figure-level object)
     """
@@ -351,9 +540,9 @@ def test_idgraph_seaborn_displot(benchmark):
                         y="bill_length_mm", kind="hist")
     plot1.set(xlabel="flipper_length_mm")
 
-    # idgraph1 = get_object_state(plot1, {})
-    # idgraph2 = get_object_state(plot1, {})
-    init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, plot1)
+    idgraph1 = get_object_state(plot1, {})
+    idgraph2 = get_object_state(plot1, {})
+    # init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, plot1)
 
     # Assert that the obj id is as expected
     assert idgraph1.id_obj == id(plot1)
@@ -364,9 +553,9 @@ def test_idgraph_seaborn_displot(benchmark):
     # Assert that the id graph does not change when the object remains unchanged if pickle binaries are same
 
     if pick1 != pick2:
-        assert not init_comparison
+        assert idgraph1 != idgraph2
     else:
-        assert init_comparison
+        assert idgraph1 == idgraph2
 
     plot1.set(xlabel="NEW LABEL")
     idgraph3 = get_object_state(plot1, {})
@@ -387,7 +576,41 @@ def test_idgraph_seaborn_displot(benchmark):
     plt.close('all')
 
 
-def test_hash_seaborn_displot(benchmark):
+def test_idgraph_creation_seaborn_displot(benchmark):
+    plt.close('all')
+    df = sns.load_dataset('penguins')
+    plot1 = sns.displot(data=df, x="flipper_length_mm",
+                        y="bill_length_mm", kind="hist")
+    plot1.set(xlabel="flipper_length_mm")
+
+    benchmark(benchmark_idgraph_creation, plot1)
+    assert True
+    plt.close('all')
+
+
+def test_idgraph_comparison_seaborn_displot(benchmark):
+    plt.close('all')
+    df = sns.load_dataset('penguins')
+    plot1 = sns.displot(data=df, x="flipper_length_mm",
+                        y="bill_length_mm", kind="hist")
+    plot1.set(xlabel="flipper_length_mm")
+
+    idgraph1 = get_object_state(plot1, {})
+    idgraph2 = get_object_state(plot1, {})
+
+    pick1 = pickle.dumps(plot1)
+    pick2 = pickle.dumps(plot1)
+
+    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    if pick1 != pick2:
+        assert not res
+    else:
+        assert res
+
+    plt.close('all')
+
+
+def test_hash_seaborn_displot():
     """
         Test if idgraph is accurately generated for seaborn displot objects (figure-level object)
     """
@@ -397,18 +620,18 @@ def test_hash_seaborn_displot(benchmark):
                         y="bill_length_mm", kind="kde")
     plot1.set(xlabel="flipper_length_mm")
 
-    # hash1 = get_object_hash(plot1)
-    # hash2 = get_object_hash(plot1)
-    init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, plot1)
+    hash1 = get_object_hash(plot1)
+    hash2 = get_object_hash(plot1)
+    # init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, plot1)
 
     pick1 = pickle.dumps(plot1)
     pick2 = pickle.dumps(plot1)
 
     # Assert that the id graph does not change when the object remains unchanged if pickle binaries are same
     if pick1 != pick2:
-        assert not init_comparison
+        assert hash1.digest() != hash2.digest()
     else:
-        assert init_comparison
+        assert hash1.digest() == hash2.digest()
 
     plot1.set(xlabel="NEW LABEL")
     hash3 = get_object_hash(plot1)
@@ -429,7 +652,40 @@ def test_hash_seaborn_displot(benchmark):
     plt.close('all')
 
 
-def test_idgraph_seaborn_scatterplot(benchmark):
+def test_hash_creation_seaborn_displot(benchmark):
+    plt.close('all')
+    df = sns.load_dataset('penguins')
+    plot1 = sns.displot(data=df, x="flipper_length_mm",
+                        y="bill_length_mm", kind="kde")
+    plot1.set(xlabel="flipper_length_mm")
+
+    benchmark(benchmark_hash_creation, plot1)
+    assert True
+    plt.close('all')
+
+
+def test_hash_comparison_seaborn_displot(benchmark):
+    plt.close('all')
+    df = sns.load_dataset('penguins')
+    plot1 = sns.displot(data=df, x="flipper_length_mm",
+                        y="bill_length_mm", kind="kde")
+    plot1.set(xlabel="flipper_length_mm")
+
+    hash1 = get_object_hash(plot1)
+    hash2 = get_object_hash(plot1)
+
+    pick1 = pickle.dumps(plot1)
+    pick2 = pickle.dumps(plot1)
+
+    res = benchmark(benchmark_hash_comparison, hash1, hash2)
+    if pick1 != pick2:
+        assert not res
+    else:
+        assert res
+    plt.close('all')
+
+
+def test_idgraph_seaborn_scatterplot():
     """
         Test if idgraph is accurately generated for seaborn scatterplot objects (axes-level object)
     """
@@ -441,9 +697,9 @@ def test_idgraph_seaborn_scatterplot(benchmark):
     plot1.set_xlabel('flipper_length_mm')
     plot1.set_facecolor('white')
 
-    # idgraph1 = get_object_state(plot1, {})
-    # idgraph2 = get_object_state(plot1, {})
-    init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, plot1)
+    idgraph1 = get_object_state(plot1, {})
+    idgraph2 = get_object_state(plot1, {})
+    # init_comparison, idgraph1 = benchmark(benchmark_idgraph_ret_comp_id, plot1)
 
     # Assert that the obj id is as expected
     assert idgraph1.id_obj == id(plot1)
@@ -453,9 +709,9 @@ def test_idgraph_seaborn_scatterplot(benchmark):
 
     # Assert that the id graph does not change when the object remains unchanged if pickle binaries are same
     if pick1 != pick2:
-        assert not init_comparison
+        assert idgraph1 != idgraph2
     else:
-        assert init_comparison
+        assert idgraph1 == idgraph2
 
     plot1.set_xlabel('Flipper Length')
     idgraph3 = get_object_state(plot1, {})
@@ -482,7 +738,42 @@ def test_idgraph_seaborn_scatterplot(benchmark):
     plt.close('all')
 
 
-def test_hash_seaborn_scatterplot(benchmark):
+def test_idgraph_creation_seaborn_scatterplot(benchmark):
+    plt.close('all')
+
+    df = sns.load_dataset('penguins')
+    plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
+    plot1.set_xlabel('flipper_length_mm')
+    plot1.set_facecolor('white')
+
+    benchmark(benchmark_idgraph_creation, plot1)
+    assert True
+    plt.close('all')
+
+
+def test_idgraph_comparison_seaborn_scatterplot(benchmark):
+    plt.close('all')
+
+    df = sns.load_dataset('penguins')
+    plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
+    plot1.set_xlabel('flipper_length_mm')
+    plot1.set_facecolor('white')
+
+    idgraph1 = get_object_state(plot1, {})
+    idgraph2 = get_object_state(plot1, {})
+
+    pick1 = pickle.dumps(plot1)
+    pick2 = pickle.dumps(plot1)
+
+    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    if pick1 != pick2:
+        assert not res
+    else:
+        assert res
+    plt.close('all')
+
+
+def test_hash_seaborn_scatterplot():
     """
         Test if idgraph is accurately generated for seaborn scatterplot objects (axes-level object)
     """
@@ -492,18 +783,18 @@ def test_hash_seaborn_scatterplot(benchmark):
     plot1.set_xlabel('flipper_length_mm')
     plot1.set_facecolor('white')
 
-    # hash1 = get_object_hash(plot1)
-    # hash2 = get_object_hash(plot1)
-    init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, plot1)
+    hash1 = get_object_hash(plot1)
+    hash2 = get_object_hash(plot1)
+    # init_comparison, hash1 = benchmark(benchmark_hash_ret_comp_hash, plot1)
 
     pick1 = pickle.dumps(plot1)
     pick2 = pickle.dumps(plot1)
 
     # Assert that the id graph does not change when the object remains unchanged if pickle binaries are same
     if pick1 != pick2:
-        assert not init_comparison
+        assert hash1.digest() != hash2.digest()
     else:
-        assert init_comparison
+        assert hash1.digest() == hash2.digest()
 
     plot1.set_xlabel('Flipper Length')
     hash3 = get_object_hash(plot1)
@@ -527,4 +818,37 @@ def test_hash_seaborn_scatterplot(benchmark):
     assert hash1.digest() != hash5.digest()
 
     # Close all figures
+    plt.close('all')
+
+
+def test_hash_creation_seaborn_scatterplot(benchmark):
+    plt.close('all')
+    df = sns.load_dataset('penguins')
+    plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
+    plot1.set_xlabel('flipper_length_mm')
+    plot1.set_facecolor('white')
+
+    benchmark(benchmark_hash_creation, plot1)
+    assert True
+    plt.close('all')
+
+
+def test_hash_comparison_seaborn_scatterplot(benchmark):
+    plt.close('all')
+    df = sns.load_dataset('penguins')
+    plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
+    plot1.set_xlabel('flipper_length_mm')
+    plot1.set_facecolor('white')
+
+    hash1 = get_object_hash(plot1)
+    hash2 = get_object_hash(plot1)
+
+    pick1 = pickle.dumps(plot1)
+    pick2 = pickle.dumps(plot1)
+
+    res = benchmark(benchmark_hash_comparison, hash1, hash2)
+    if pick1 != pick2:
+        assert not res
+    else:
+        assert res
     plt.close('all')
