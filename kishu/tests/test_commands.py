@@ -244,6 +244,16 @@ class TestKishuCommand:
             notebook_id, branch_1, branch_1)
         assert rename_branch_result.status == "error"
 
+    def test_auto_detach_commit_branch(self, kishu_jupyter):
+        KishuBranch.update_head(kishu_jupyter._notebook_id, branch_name=None, commit_id="0:1", is_detach=True)
+        commit = CommitEntry(kind=CommitEntryKind.manual, execution_count=1, code_block="x = 1")
+        commit_id = kishu_jupyter.commit(commit)
+
+        head = KishuBranch.get_head(kishu_jupyter._notebook_id)
+        assert head.branch_name is not None
+        assert head.branch_name.startswith("tmp_")
+        assert head.commit_id == commit_id
+
     def test_tag(self, notebook_id, basic_execution_ids):
         tag_result = KishuCommand.tag(notebook_id, "at_head", None, "In current time")
         assert tag_result.status == "ok"
