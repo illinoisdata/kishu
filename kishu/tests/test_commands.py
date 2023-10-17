@@ -99,7 +99,7 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
-            branches=[],
+            branches=["tmp_<functio"],
             tags=[],
         )
 
@@ -146,7 +146,7 @@ class TestKishuCommand:
             timestamp=log_all_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_all_result.commit_graph[2].runtime_ms,  # Not tested
-            branches=[],
+            branches=["tmp_<functio"],
             tags=[],
         )
 
@@ -215,7 +215,7 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
-            branches=["at_head"],
+            branches=["tmp_<functio", "at_head"],
             tags=[],
         )
 
@@ -299,7 +299,7 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
-            branches=[],
+            branches=["tmp_<functio"],
             tags=["at_head"],
         )
 
@@ -314,7 +314,7 @@ class TestKishuCommand:
                 oid="0:3",
                 parent_oid="0:2",
                 timestamp=fe_commit_result.commit.timestamp,  # Not tested
-                branches=[],
+                branches=["tmp_<functio"],
                 tags=[],
                 code_version=fe_commit_result.commit.code_version,  # Not tested
                 var_version=fe_commit_result.commit.var_version,  # Not tested
