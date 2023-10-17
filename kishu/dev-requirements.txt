@@ -1,18 +1,19 @@
-ipylab
-ipynbname
-nbconvert
-nbformat
-numpy
-pytest
-pandas
-matplotlib
-seaborn
-scipy
-scikit-learn
-textblob
-mypy
-networkx
+# Packages for development (e.g., checks, tests) in addition to those in requirements.txt
+
+# Development tools
 flake8
-xxhash
+mypy
+pytest
+pytest-cov
 pytest-benchmark
+
+# Test cases
+matplotlib
+numpy
+scikit-learn
+seaborn
+textblob
+pandas
+xxhash
+
 
