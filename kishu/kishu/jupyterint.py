@@ -40,9 +40,9 @@ Reference
 """
 from __future__ import annotations
 
-import IPython
 import dill as pickle
 import enum
+import IPython
 import ipylab
 import json
 import jupyter_client
@@ -56,7 +56,7 @@ from dataclasses_json import dataclass_json
 from datetime import datetime
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, cast, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from kishu.exceptions import (
     JupyterConnectionError,
@@ -65,14 +65,14 @@ from kishu.exceptions import (
     NoChannelError,
     StartChannelError,
 )
+from kishu.notebook_id import NotebookId
 from kishu.planning.plan import ExecutionHistory, RestorePlan, StoreEverythingCheckpointPlan, UnitExecution
 from kishu.planning.planner import CheckpointRestorePlanner
+from kishu.runtime import JupyterRuntimeEnv
 from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint_io import init_checkpoint_database
 from kishu.storage.commit_graph import KishuCommitGraph
 from kishu.storage.path import KishuPath
-from kishu.notebook_id import NotebookId
-import kishu.utils as utils
 
 
 """
@@ -481,7 +481,7 @@ class KishuForJupyter:
     @staticmethod
     def kishu_sessions() -> List[KishuSession]:
         # List alive IPython sessions.
-        alive_sessions = {session.kernel_id: session for session in utils._iter_sessions()}
+        alive_sessions = {session.kernel_id: session for session in JupyterRuntimeEnv._iter_sessions()}
 
         # List all Kishu sessions.
         sessions = []
@@ -586,6 +586,7 @@ class KishuForJupyter:
         return restore_plan, var_version
 
     def _save_notebook(self) -> None:
+        # TODO re-enable notebook saving during tests when possible/supported
         if self._test_mode:
             return
         nb_path = self._notebook_id.path()
@@ -765,7 +766,7 @@ def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[in
 
     if notebook_id is None:
         notebook_key = datetime.now().strftime('%Y%m%dT%H%M%S')
-        notebook_id = NotebookId.from_key(notebook_key)
+        notebook_id = NotebookId.from_enclosing_with_key(notebook_key)
     kishu = KishuForJupyter(notebook_id)
     if session_id:
         kishu.set_session_id(session_id)
@@ -778,7 +779,7 @@ def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[in
           "- Checkpoint file: {}/\n".format(kishu.checkpoint_file()))
 
 
-def update_metadata(nb: Any, nb_path: Union[Path, str]) -> None:
+def update_metadata(nb: Any, nb_path: Path) -> None:
     if "kishu" not in nb.metadata:
         notebook_name = datetime.now().strftime('%Y%m%dT%H%M%S')
         nb["metadata"]["kishu"] = {}
@@ -796,26 +797,18 @@ def init_kishu() -> None:
     2. Find kernel id using enclosing_kernel_id()
     2. KishuForJupyter
     """
-    # Read enclosing notebook.
-    path: Optional[Union[Path, str]] = None
-    kernel_id = None
-    if os.environ.get("notebook_path"):
-        path = os.environ.get("notebook_path")
-    else:
-        kernel_id = utils.enclosing_kernel_id()
-        path = utils.JupyterRuntimeEnv.notebook_path_from_kernel(kernel_id)
-    nb = None
-    assert path is not None
-    with open(path, 'r') as f:
+    # Create notebook id object storing path and kernel_id
+    nb_id = NotebookId.from_enclosing_with_key("")
+
+    # Open notebook file
+    with open(nb_id.path(), 'r') as f:
         nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
 
     # Update notebook metadata.
-    update_metadata(nb, path)
+    update_metadata(nb, nb_id.path())
 
     # Construct Notebook Id
-    nb_id = None
-    nb_key = nb.metadata.kishu.notebook_id
-    nb_id = NotebookId(nb_key, path, kernel_id)
+    nb_id.set_key(nb.metadata.kishu.notebook_id)
 
     # Attach Kishu instrumentation.
     load_kishu(nb_id, nb.metadata.kishu.session_count)
