@@ -33,6 +33,7 @@ def _iter_maybe_running_servers() -> Generator[dict, None, None]:
             except json.JSONDecodeError:
                 pass
 
+
 def _get_sessions(srv: dict):
     try:
         url = f"{srv['url']}api/sessions"
