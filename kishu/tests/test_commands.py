@@ -1,10 +1,12 @@
 import dataclasses
+import os
 import pytest
 
 from typing import Generator, List, Optional
 
 from kishu.commands import CommitSummary, FECommit, FESelectedCommit, KishuCommand, KishuSession
 from kishu.jupyterint import CommitEntryKind, CommitEntry, KishuForJupyter
+from kishu.notebook_id import NotebookId
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
 
@@ -15,8 +17,8 @@ def notebook_id() -> Generator[str, None, None]:
 
 
 @pytest.fixture()
-def kishu_jupyter(tmp_kishu_path, notebook_id) -> Generator[KishuForJupyter, None, None]:
-    kishu_jupyter = KishuForJupyter(notebook_id=notebook_id)
+def kishu_jupyter(tmp_kishu_path, notebook_id, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
+    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_id))
     kishu_jupyter.set_test_mode()
     yield kishu_jupyter
 
@@ -54,8 +56,7 @@ class JupyterResultMock:
 
 
 class TestKishuCommand:
-
-    def test_list(self, notebook_id, basic_execution_ids):
+    def test_list(self, set_notebook_path_env, notebook_id, basic_execution_ids):
         list_result = KishuCommand.list()
         assert len(list_result.sessions) == 0
 
@@ -64,8 +65,8 @@ class TestKishuCommand:
         assert len(list_result.sessions) == 1
         assert list_result.sessions[0] == KishuSession(
             notebook_id=notebook_id,
-            kernel_id=None,
-            notebook_path=None,
+            kernel_id="dummy_kernel_id",
+            notebook_path=os.environ.get("notebook_path"),
             is_alive=False,
         )
 
