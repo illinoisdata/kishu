@@ -56,7 +56,6 @@ class JupyterResultMock:
 
 
 class TestKishuCommand:
-    # @pytest.mark.parametrize("set_notebook_path_env", ["simple.ipynb"], indirect=True)
     def test_list(self, set_notebook_path_env, notebook_id, basic_execution_ids):
         list_result = KishuCommand.list()
         assert len(list_result.sessions) == 0
@@ -71,7 +70,6 @@ class TestKishuCommand:
             is_alive=False,
         )
 
-    # @pytest.mark.parametrize("set_notebook_path_env", ["simple.ipynb"], indirect=True)
     def test_log(self, notebook_id, basic_execution_ids):
         log_result = KishuCommand.log(notebook_id, basic_execution_ids[-1])
         assert len(log_result.commit_graph) == 3
@@ -119,7 +117,6 @@ class TestKishuCommand:
             tags=[],
         )
 
-    # @pytest.mark.parametrize("set_notebook_path_env", ["simple.ipynb"], indirect=True)
     def test_log_all(self, notebook_id, basic_execution_ids):
         log_all_result = KishuCommand.log_all(notebook_id)
         assert len(log_all_result.commit_graph) == 3

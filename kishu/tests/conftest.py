@@ -36,6 +36,7 @@ def backend_client():
     return kishu_app.test_client()
 
 
+# Dummy server with dummy data
 MOCK_SERVER = {
         'url': 'http://localhost:8888/',
         'token': 'token_value',
@@ -44,18 +45,22 @@ MOCK_SERVER = {
         'notebook_dir': '/notebooks/'
     }
 
+# Dummy session with dummy data
 MOCK_SESSION = {
         'notebook': {'path': 'notebook1.ipynb'},
         'kernel': {'id': 'kernel_id_1'}
     }
 
 
+# Ensures Path.glob() returns the notebook path we want to return
 def glob_side_effect(pattern):
     if "nbserver" in pattern:
         return [Path("tests/notebooks/simple.ipynb")]
     return []
 
 
+# Mocks relevant external dependancies to produce the effect of reading data from servers and sessions
+# used to test runtime.py
 @pytest.fixture
 def mock_servers():
     with patch('kishu.runtime.Path.read_bytes', return_value=json.dumps(MOCK_SERVER).encode()), \
@@ -74,11 +79,9 @@ def create_temporary_copy(path: str, filename: str, temp_dir: str):
     return temp_path
 
 
+# Sets notebook_path environment variable to be the path to a temporary copy of a notebook
 @pytest.fixture
 def set_notebook_path_env(tmp_path, request):
-    """
-    Sets notebook_path environment variable to be the path to a temporary copy of a notebook
-    """
     notebook_name = getattr(request, "param", "simple.ipynb")
     path_to_notebook = os.getcwd()
     notebook_full_path = os.path.join(path_to_notebook, NB_DIR, notebook_name)

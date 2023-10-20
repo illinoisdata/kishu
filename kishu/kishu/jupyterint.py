@@ -310,8 +310,6 @@ class KishuForJupyter:
             self.record_connection()
         except Exception as e:
             print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
-        if self._notebook_id.path() is None:
-            print("WARNING: Enclosing notebook not found. Skipping notebook cell checkpoint and restoration.")
 
         self._platform = enclosing_platform()
         self._session_id = 0
@@ -590,8 +588,6 @@ class KishuForJupyter:
         if self._test_mode:
             return
         nb_path = self._notebook_id.path()
-        if nb_path is None:
-            return
 
         # Remember starting state.
         start_mtime = os.path.getmtime(nb_path)
@@ -622,8 +618,6 @@ class KishuForJupyter:
 
     def _all_notebook_cells(self) -> Tuple[Optional[str], List[FormattedCell]]:
         nb_path = self._notebook_id.path()
-        if nb_path is None:
-            return None, []
 
         with open(nb_path, 'r') as f:
             nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
@@ -685,8 +679,6 @@ class KishuForJupyter:
 
     def _checkout_notebook(self, raw_nb: str) -> None:
         nb_path = self._notebook_id.path()
-        if nb_path is None:
-            return
 
         # Read current notebook cells.
         with open(nb_path, 'r') as f:
