@@ -186,7 +186,7 @@ class CommitEntry(UnitExecution):
 @dataclass_json
 @dataclass
 class JupyterConnectionInfo:
-    kernel_id: Optional[str]
+    kernel_id: str
     notebook_path: str
 
 
