@@ -1,4 +1,5 @@
 # Packages required to import kishu.
+# README: Keep in sync with pyproject.toml
 
 # Core
 dataclasses
