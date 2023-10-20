@@ -29,13 +29,7 @@ def test_notebook_path_from_kernel(mock_servers):
 
 
 def test_session_with_root_dir(mock_servers):
-    sessions = list(JupyterRuntimeEnv._iter_sessions())
-    expected_session = IPythonSession(kernel_id='kernel_id_1', notebook_path=Path('/root/notebook1.ipynb'))
-    assert sessions == [expected_session]
-
-
-def test_session_with_only_notebook_dir(mock_servers):
-    sessions = list(JupyterRuntimeEnv._iter_sessions())
+    sessions = list(JupyterRuntimeEnv.iter_sessions())
     expected_session = IPythonSession(kernel_id='kernel_id_1', notebook_path=Path('/root/notebook1.ipynb'))
     assert sessions == [expected_session]
 

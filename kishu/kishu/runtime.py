@@ -59,7 +59,7 @@ class JupyterRuntimeEnv:
             path_str = os.environ.get("notebook_path")
             assert path_str is not None
             return Path(path_str)
-        for sess in JupyterRuntimeEnv._iter_sessions():
+        for sess in JupyterRuntimeEnv.iter_sessions():
             if sess.kernel_id == kernel_id:
                 return sess.notebook_path
         raise FileNotFoundError("Failed to identify notebook file path.")
@@ -78,7 +78,7 @@ class JupyterRuntimeEnv:
         return connection_file.split('-', 1)[1].split('.')[0]
 
     @staticmethod
-    def _iter_sessions() -> Generator[IPythonSession, None, None]:
+    def iter_sessions() -> Generator[IPythonSession, None, None]:
         for srv, sess in _iter_maybe_sessions():
             relative_path = PurePath(sess["notebook"]["path"])
             yield IPythonSession(

@@ -481,7 +481,7 @@ class KishuForJupyter:
     @staticmethod
     def kishu_sessions() -> List[KishuSession]:
         # List alive IPython sessions.
-        alive_sessions = {session.kernel_id: session for session in JupyterRuntimeEnv._iter_sessions()}
+        alive_sessions = {session.kernel_id: session for session in JupyterRuntimeEnv.iter_sessions()}
 
         # List all Kishu sessions.
         sessions = []

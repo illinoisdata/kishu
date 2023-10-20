@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from kishu.runtime import JupyterRuntimeEnv
 
@@ -27,7 +26,7 @@ class NotebookId:
     def path(self) -> Path:
         return self._path
 
-    def kernel_id(self) -> Optional[str]:
+    def kernel_id(self) -> str:
         return self._kernel_id
 
     def set_key(self, new_key: str) -> None:
