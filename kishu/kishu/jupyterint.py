@@ -197,20 +197,22 @@ class JupyterCommandResult:
 
 
 class JupyterConnection:
-    def __init__(self, notebook_key: str) -> None:
-        self.notebook_key = notebook_key
+    def __init__(self, kernel_id: str) -> None:
+        self.kernel_id = kernel_id
         self.km: Optional[jupyter_client.BlockingKernelClient] = None
 
-    def __enter__(self) -> JupyterConnection:
+    @staticmethod
+    def from_notebook_key(notebook_key: str) -> JupyterConnection:
         # Find connection information
-        conn_info = KishuForJupyter.retrieve_connection(self.notebook_key)
+        conn_info = KishuForJupyter.retrieve_connection(notebook_key)
         if conn_info is None:
             raise MissingConnectionInfoError()
+        return JupyterConnection(conn_info.kernel_id)
 
+    def __enter__(self) -> JupyterConnection:
         # Find connection file.
         try:
-            assert conn_info.kernel_id is not None
-            cf = jupyter_client.find_connection_file(conn_info.kernel_id)
+            cf = jupyter_client.find_connection_file(self.kernel_id)
         except OSError:
             raise KernelNotAliveError()
 
@@ -225,11 +227,11 @@ class JupyterConnection:
 
         return self
 
-    def execute(self, command: str) -> Dict[str, Any]:
+    def execute(self, command: str, pre_command: str = "") -> Dict[str, Any]:
         if self.km is None:
             raise NoChannelError()
         return self.km.execute_interactive(
-            "",
+            pre_command,  # Not capture output.
             user_expressions={"command_result": command},  # To get output from command.
             silent=True,  # Do not increment cell count and trigger pre/post_run_cell hooks.
         )
@@ -239,11 +241,10 @@ class JupyterConnection:
             self.km.stop_channels()
             self.km = None
 
-    @staticmethod
-    def execute_one_command(notebook_key: str, command: str) -> JupyterCommandResult:
+    def execute_one_command(self, command: str, pre_command: str = "") -> JupyterCommandResult:
         try:
-            with JupyterConnection(notebook_key) as conn:
-                reply = conn.execute(command)
+            with self as conn:
+                reply = conn.execute(command, pre_command=pre_command)
         except JupyterConnectionError as e:
             return JupyterCommandResult(
                 status="error",
@@ -329,6 +330,24 @@ class KishuForJupyter:
 
     def set_session_id(self, session_id):
         self._session_id = session_id
+
+    def __str__(self):
+        return (
+            "KishuForJupyter("
+            f"id: {self._notebook_id.key()}, "
+            f"path: {self._notebook_id.path()})"
+        )
+
+    def __repr__(self):
+        return (
+            "KishuForJupyter("
+            f"notebook_id: {self._notebook_id.key()}, "
+            f"kernel_id: {self._notebook_id.kernel_id()}, "
+            f"notebook_path: {self._notebook_id.path()}, "
+            f"session_id: {self._session_id}, "
+            f"platform: {self._platform}, "
+            f"commit_id_mode: {self._commit_id_mode})"
+        )
 
     def log(self) -> ExecutionHistory:
         return self._history
@@ -765,10 +784,6 @@ def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[in
     ip.events.register('pre_run_cell', kishu.pre_run_cell)
     ip.events.register('post_run_cell', kishu.post_run_cell)
     ip.user_ns[KISHU_INSTRUMENT] = kishu
-
-    print("Kishu will now trace cell executions automatically.\n"
-          "- You can inspect traced information using '_kishu'.\n"
-          "- Checkpoint file: {}/\n".format(kishu.checkpoint_file()))
 
 
 def update_metadata(nb: Any, nb_path: Path) -> None:

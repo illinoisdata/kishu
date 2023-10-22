@@ -34,6 +34,11 @@ def test_session_with_root_dir(mock_servers):
     assert sessions == [expected_session]
 
 
+def test_kernel_id_from_notebook(mock_servers):
+    kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(Path("/root/notebook1.ipynb"))
+    assert kernel_id == "kernel_id_1"
+
+
 def test_iter_maybe_running_servers_bad_json():
     with patch('kishu.runtime.json.loads', side_effect=json.JSONDecodeError("", "", 0)):
         result = list(_iter_maybe_running_servers())

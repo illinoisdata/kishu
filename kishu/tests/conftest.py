@@ -3,13 +3,18 @@ import os
 import pytest
 import shutil
 
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Generator, Type
 from unittest.mock import patch
 
 from kishu.backend import app as kishu_app
 from kishu.storage.path import ENV_KISHU_PATH_ROOT, KishuPath
 from tests.helpers.nbexec import NB_DIR
+
+
+"""
+Kishu Resources
+"""
 
 
 # Use this fixture to mount Kishu in a temporary directory in the same process.
@@ -36,20 +41,46 @@ def backend_client():
     return kishu_app.test_client()
 
 
-# Dummy server with dummy data
-MOCK_SERVER = {
-        'url': 'http://localhost:8888/',
-        'token': 'token_value',
-        'pid': 12345,
-        'root_dir': '/root/',
-        'notebook_dir': '/notebooks/'
-    }
+"""
+Test Resources: notebooks, test cases, data
+"""
 
-# Dummy session with dummy data
+
+@pytest.fixture()
+def kishu_test_dir() -> Path:
+    return Path(__file__).resolve().parents[0]
+
+
+KISHU_TEST_NOTEBOOKS_DIR = "notebooks"
+
+
+@pytest.fixture()
+def nb_simple_path(tmp_path: Path, kishu_test_dir: Path) -> Path:
+    real_nb_path = kishu_test_dir / PurePath(KISHU_TEST_NOTEBOOKS_DIR, "simple.ipynb")
+    tmp_nb_path = tmp_path / PurePath("simple.ipynb")
+    shutil.copy(real_nb_path, tmp_nb_path)
+    return tmp_nb_path
+
+
+"""
+Jupyter runtime mocks
+"""
+
+
+# Mock Jupyter server info.
+MOCK_SERVER = {
+    'url': 'http://localhost:8888/',
+    'token': 'token_value',
+    'pid': 12345,
+    'root_dir': '/root/',
+    'notebook_dir': '/notebooks/'
+}
+
+# Mock Jupyter session info.
 MOCK_SESSION = {
-        'notebook': {'path': 'notebook1.ipynb'},
-        'kernel': {'id': 'kernel_id_1'}
-    }
+    'notebook': {'path': 'notebook1.ipynb'},
+    'kernel': {'id': 'kernel_id_1'}
+}
 
 
 # Ensures Path.glob() returns the notebook path we want to return

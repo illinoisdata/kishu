@@ -5,6 +5,7 @@ import json
 
 from dataclasses import asdict, dataclass, is_dataclass
 from dataclasses_json import dataclass_json
+from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 from kishu.jupyterint import (
@@ -15,6 +16,7 @@ from kishu.jupyterint import (
     KishuSession,
 )
 from kishu.planning.plan import UnitExecution
+from kishu.runtime import JupyterRuntimeEnv
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
@@ -50,6 +52,20 @@ KishuCommand
 @dataclass
 class ListResult:
     sessions: List[KishuSession]
+
+
+@dataclass_json
+@dataclass
+class InitResult:
+    status: str
+    message: str
+
+    @staticmethod
+    def wrap(result: JupyterCommandResult) -> InitResult:
+        return InitResult(
+            status=result.status,
+            message=result.message,
+        )
 
 
 @dataclass
@@ -164,6 +180,20 @@ class KishuCommand:
         return ListResult(sessions=sessions)
 
     @staticmethod
+    def init(notebook_path: str) -> InitResult:
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(Path(notebook_path))
+        except FileNotFoundError as e:
+            return InitResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+            )
+        return InitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+            pre_command="from kishu import init_kishu; init_kishu()",
+            command="str(_kishu)",
+        ))
+
+    @staticmethod
     def log(notebook_id: str, commit_id: Optional[str] = None) -> LogResult:
         if commit_id is None:
             head = KishuBranch.get_head(notebook_id)
@@ -196,8 +226,9 @@ class KishuCommand:
 
     @staticmethod
     def commit(notebook_id: str, message: Optional[str] = None) -> CommitResult:
-        command = "_kishu.commit()" if message is None else f"_kishu.commit(message=\"{message}\")"
-        return JupyterConnection.execute_one_command(notebook_id, command)
+        return JupyterConnection.from_notebook_key(notebook_id).execute_one_command(
+            "_kishu.commit()" if message is None else f"_kishu.commit(message=\"{message}\")",
+        )
 
     @staticmethod
     def checkout(
@@ -205,8 +236,7 @@ class KishuCommand:
         branch_or_commit_id: str,
         skip_notebook: bool = False,
     ) -> CheckoutResult:
-        return JupyterConnection.execute_one_command(
-            notebook_id,
+        return JupyterConnection.from_notebook_key(notebook_id).execute_one_command(
             f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
         )
 
