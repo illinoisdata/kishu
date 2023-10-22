@@ -79,7 +79,7 @@ MOCK_SERVER = {
 # Mock Jupyter session info.
 MOCK_SESSION = {
     'notebook': {'path': 'notebook1.ipynb'},
-    'kernel': {'id': 'kernel_id_1'}
+    'kernel': {'id': 'test_kernel_id'}
 }
 
 
@@ -110,7 +110,7 @@ def create_temporary_copy(path: str, filename: str, temp_dir: str):
     return temp_path
 
 
-# Sets notebook_path environment variable to be the path to a temporary copy of a notebook
+# Sets TEST_NOTEBOOK_PATH environment variable to be the path to a temporary copy of a notebook
 @pytest.fixture
 def set_notebook_path_env(tmp_path, request):
     notebook_name = getattr(request, "param", "simple.ipynb")
@@ -118,8 +118,8 @@ def set_notebook_path_env(tmp_path, request):
     notebook_full_path = os.path.join(path_to_notebook, NB_DIR, notebook_name)
     temp_path = create_temporary_copy(notebook_full_path, notebook_name, tmp_path)
 
-    os.environ['notebook_path'] = temp_path
+    os.environ["TEST_NOTEBOOK_PATH"] = temp_path
 
     yield temp_path
 
-    del os.environ['notebook_path']
+    del os.environ["TEST_NOTEBOOK_PATH"]

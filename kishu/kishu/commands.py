@@ -176,7 +176,7 @@ class KishuCommand:
             sessions = list(filter(lambda session: session.is_alive, sessions))
 
         # Sort by notebook ID.
-        sessions = sorted(sessions, key=lambda session: session.notebook_id)
+        sessions = sorted(sessions, key=lambda session: session.notebook_key)
         return ListResult(sessions=sessions)
 
     @staticmethod
