@@ -52,10 +52,8 @@ import time
 import uuid
 
 from dataclasses import dataclass
-from dataclasses_json import dataclass_json
 from datetime import datetime
 from jupyter_ui_poll import run_ui_poll_loop
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from kishu.exceptions import (
@@ -121,7 +119,7 @@ Notebook instrument.
 
 @dataclass
 class KishuSession:
-    notebook_id: str
+    notebook_key: str
     kernel_id: Optional[str]
     notebook_path: Optional[str]
     is_alive: bool
@@ -183,13 +181,6 @@ class CommitEntry(UnitExecution):
     end_time_ms: Optional[int] = None
 
 
-@dataclass_json
-@dataclass
-class JupyterConnectionInfo:
-    kernel_id: str
-    notebook_path: str
-
-
 @dataclass
 class JupyterCommandResult:
     status: str
@@ -204,7 +195,7 @@ class JupyterConnection:
     @staticmethod
     def from_notebook_key(notebook_key: str) -> JupyterConnection:
         # Find connection information
-        conn_info = KishuForJupyter.retrieve_connection(notebook_key)
+        conn_info = NotebookId.try_retrieve_connection(notebook_key)
         if conn_info is None:
             raise MissingConnectionInfoError()
         return JupyterConnection(conn_info.kernel_id)
@@ -292,7 +283,6 @@ class JupyterConnection:
 class KishuForJupyter:
     CURRENT_CELL_ID = 'current'
     SAVE_CMD = "try { IPython.notebook.save_checkpoint(); } catch { }"
-    NBFORMAT_VERSION = 4
 
     def __init__(self, notebook_id: NotebookId) -> None:
         """
@@ -308,7 +298,7 @@ class KishuForJupyter:
             KishuPath.commit_graph_directory(self._notebook_id.key())
         )
         try:
-            self.record_connection()
+            self._notebook_id.record_connection()
         except Exception as e:
             print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
 
@@ -479,22 +469,6 @@ class KishuForJupyter:
 
         self._commit_entry(entry)
 
-    def record_connection(self) -> None:
-        with open(KishuPath.connection_path(self._notebook_id.key()), 'w') as f:
-            f.write(JupyterConnectionInfo(  # type: ignore
-                kernel_id=self._notebook_id.kernel_id(),
-                notebook_path=str(self._notebook_id.path()),
-            ).to_json())
-
-    @staticmethod
-    def retrieve_connection(notebook_key: str) -> Optional[JupyterConnectionInfo]:
-        try:
-            with open(KishuPath.connection_path(notebook_key), 'r') as f:
-                json_str = f.read()
-                return JupyterConnectionInfo.from_json(json_str)  # type: ignore
-        except (FileNotFoundError, json.decoder.JSONDecodeError):
-            return None
-
     @staticmethod
     def kishu_sessions() -> List[KishuSession]:
         # List alive IPython sessions.
@@ -502,13 +476,13 @@ class KishuForJupyter:
 
         # List all Kishu sessions.
         sessions = []
-        for notebook_id in KishuPath.iter_notebook_ids():
-            cf = KishuForJupyter.retrieve_connection(notebook_id)
+        for notebook_key in KishuPath.iter_notebook_keys():
+            cf = NotebookId.try_retrieve_connection(notebook_key)
 
             # Connection file not found.
             if cf is None:
                 sessions.append(KishuSession(
-                    notebook_id=notebook_id,
+                    notebook_key=notebook_key,
                     kernel_id=None,
                     notebook_path=None,
                     is_alive=False,
@@ -518,7 +492,7 @@ class KishuForJupyter:
             # No matching alive kernel ID.
             if cf.kernel_id not in alive_sessions:
                 sessions.append(KishuSession(
-                    notebook_id=notebook_id,
+                    notebook_key=notebook_key,
                     kernel_id=cf.kernel_id,
                     notebook_path=cf.notebook_path,
                     is_alive=False,
@@ -527,7 +501,7 @@ class KishuForJupyter:
 
             # Kernel ID is alive. Replace notebook path with the newest one.
             sessions.append(KishuSession(
-                notebook_id=notebook_id,
+                notebook_key=notebook_key,
                 kernel_id=cf.kernel_id,
                 notebook_path=str(alive_sessions[cf.kernel_id].notebook_path),
                 is_alive=True,
@@ -636,11 +610,7 @@ class KishuForJupyter:
             print("WARNING: Notebook saving is taking too long. Kishu may not capture every cell.")
 
     def _all_notebook_cells(self) -> Tuple[Optional[str], List[FormattedCell]]:
-        nb_path = self._notebook_id.path()
-
-        with open(nb_path, 'r') as f:
-            nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
-
+        nb = JupyterRuntimeEnv.read_notebook(self._notebook_id.path())
         nb_cells = []
         for cell in nb.cells:
             if cell.cell_type == "code":
@@ -700,11 +670,10 @@ class KishuForJupyter:
         nb_path = self._notebook_id.path()
 
         # Read current notebook cells.
-        with open(nb_path, 'r') as f:
-            nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
+        nb = JupyterRuntimeEnv.read_notebook(self._notebook_id.path())
 
         # Apply target cells.
-        target_nb = nbformat.reads(raw_nb, KishuForJupyter.NBFORMAT_VERSION)
+        target_nb = nbformat.reads(raw_nb, JupyterRuntimeEnv.NBFORMAT_VERSION)
         nb.cells = target_nb.cells
 
         # Save change
@@ -786,18 +755,6 @@ def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[in
     ip.user_ns[KISHU_INSTRUMENT] = kishu
 
 
-def update_metadata(nb: Any, nb_path: Path) -> None:
-    if "kishu" not in nb.metadata:
-        notebook_name = datetime.now().strftime('%Y%m%dT%H%M%S')
-        nb["metadata"]["kishu"] = {}
-        nb["metadata"]["kishu"]["notebook_id"] = notebook_name
-    if "session_count" in nb.metadata.kishu:
-        nb["metadata"]["kishu"]["session_count"] = nb["metadata"]["kishu"]["session_count"] + 1
-    else:
-        nb["metadata"]["kishu"]["session_count"] = 1
-    nbformat.write(nb, nb_path)
-
-
 def init_kishu() -> None:
     """
     1. Create notebook key
@@ -808,14 +765,15 @@ def init_kishu() -> None:
     nb_id = NotebookId.from_enclosing_with_key("")
 
     # Open notebook file
-    with open(nb_id.path(), 'r') as f:
-        nb = nbformat.read(f, KishuForJupyter.NBFORMAT_VERSION)
+    nb = JupyterRuntimeEnv.read_notebook(nb_id.path())
 
     # Update notebook metadata.
-    update_metadata(nb, nb_id.path())
+    NotebookId.write_kishu_metadata(nb)
+    nbformat.write(nb, nb_id.path())
 
-    # Construct Notebook Id
-    nb_id.set_key(nb.metadata.kishu.notebook_id)
+    # Construct Notebook Id.
+    new_key = nb.metadata.kishu.notebook_id
+    nb_id = NotebookId(key=new_key, path=nb_id.path(), kernel_id=nb_id.kernel_id())
 
     # Attach Kishu instrumentation.
     load_kishu(nb_id, nb.metadata.kishu.session_count)

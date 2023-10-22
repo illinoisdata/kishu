@@ -1,6 +1,7 @@
 import ipykernel
 import json
 import jupyter_core.paths
+import nbformat
 import os
 import psutil
 import urllib.request
@@ -53,11 +54,13 @@ def _iter_maybe_sessions() -> Generator[Tuple[dict, dict], None, None]:
 
 
 class JupyterRuntimeEnv:
+    NBFORMAT_VERSION = 4
+
     @staticmethod
     def enclosing_kernel_id() -> str:
         # TODO needs to be called inside ipython kernel
-        if os.environ.get("notebook_path"):  # means we are testing
-            return "dummy_kernel_id"
+        if os.environ.get("TEST_NOTEBOOK_PATH"):  # means we are testing
+            return "test_kernel_id"
         connection_file_path = ipykernel.get_connection_file()
         connection_file = os.path.basename(connection_file_path)
         if '-' not in connection_file:
@@ -77,8 +80,8 @@ class JupyterRuntimeEnv:
 
     @staticmethod
     def notebook_path_from_kernel(kernel_id: str) -> Path:
-        if os.environ.get("notebook_path"):
-            path_str = os.environ.get("notebook_path")
+        if os.environ.get("TEST_NOTEBOOK_PATH"):
+            path_str = os.environ.get("TEST_NOTEBOOK_PATH")
             assert path_str is not None
             return Path(path_str)
         for sess in JupyterRuntimeEnv.iter_sessions():
@@ -92,3 +95,8 @@ class JupyterRuntimeEnv:
             if sess.notebook_path.resolve() == notebook_path.resolve():
                 return sess.kernel_id
         raise FileNotFoundError("Kernel for the notebook not found.")
+
+    @staticmethod
+    def read_notebook(notebook_path: Path) -> nbformat.NotebookNode:
+        with open(notebook_path, 'r') as f:
+            return nbformat.read(f, JupyterRuntimeEnv.NBFORMAT_VERSION)

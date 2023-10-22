@@ -18,25 +18,25 @@ def test_server_with_sessions(mock_servers):
 
 
 def test_enclosing_kernel_id(mock_servers):
-    with patch('kishu.runtime.ipykernel.get_connection_file', return_value="kernel-kernel_id_1.json"):
+    with patch('kishu.runtime.ipykernel.get_connection_file', return_value="kernel-test_kernel_id.json"):
         result = JupyterRuntimeEnv.enclosing_kernel_id()
-    assert result == "kernel_id_1"
+    assert result == "test_kernel_id"
 
 
 def test_notebook_path_from_kernel(mock_servers):
-    result = JupyterRuntimeEnv.notebook_path_from_kernel("kernel_id_1")
+    result = JupyterRuntimeEnv.notebook_path_from_kernel("test_kernel_id")
     assert result == Path("/root/notebook1.ipynb")
 
 
 def test_session_with_root_dir(mock_servers):
     sessions = list(JupyterRuntimeEnv.iter_sessions())
-    expected_session = IPythonSession(kernel_id='kernel_id_1', notebook_path=Path('/root/notebook1.ipynb'))
+    expected_session = IPythonSession(kernel_id='test_kernel_id', notebook_path=Path('/root/notebook1.ipynb'))
     assert sessions == [expected_session]
 
 
 def test_kernel_id_from_notebook(mock_servers):
     kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(Path("/root/notebook1.ipynb"))
-    assert kernel_id == "kernel_id_1"
+    assert kernel_id == "test_kernel_id"
 
 
 def test_iter_maybe_running_servers_bad_json():
