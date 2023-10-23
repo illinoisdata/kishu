@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm", "numpy"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# package-dir = { "" = "kishu" }
+packages = ["kishu"]
+
+[project]
+name = "kishu"
+authors = [
+    {name = "Yongjoo Park", email = "yongjoo@g.illinois.edu"},
+    {name = "Supawit Chockchowwat", email = "supawit2@illinois.edu"},
+    {name = "Zhaoheng Li", email = "zl20@illinois.edu"},
+]
+description = "Intelligent Python Checkpointing"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = [
+    "kishu", "elastic", "dart",
+    "python", "jupyter", "notebook", "server", "lab", 
+    "cli", "web", "gui", "extension",
+]
+license = {file = "LICENSE"}
+classifiers = [
+    "Framework :: Jupyter",
+    "Framework :: Jupyter :: JupyterLab",
+    "Framework :: Jupyter :: JupyterLab :: 4",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+version = "0.1.0"  # README: Keep in sync with kishu/__init__.py
+dependencies = [  # README: Keep in sync with requirements.txt
+    # Core
+    "dataclasses",
+    "dataclasses_json",
+    "dill",
+    "ipykernel",
+    "ipylab",
+    "jupyter_ui_poll",
+    "nbconvert",
+    "nbformat",
+    "networkx",
+    "psutil",
+    "typing",
+
+    # User interfaces: cli, backend, jupyterlab_kishu
+    "flask",
+    "typer",
+
+    # Planning
+    "numpy",
+    "pandas",
+    "shortuuid",
+    "xxhash",
+
+    # Watchdog
+    "loguru",
+]
+
+[project.optional-dependencies]
+dev = [  # README: Keep in sync with dev-requirements.txt
+    # Development tools
+    "flake8",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+
+    # Test cases
+    "matplotlib",
+    "numpy",
+    "scikit-learn",
+    "seaborn",
+    "textblob",
+    "pandas",
+]
+
+
+[project.scripts]
+kishu = "kishu.cli:main"
+
+[project.urls]
+repository = "https://github.com/illinoisdata/kishu"
