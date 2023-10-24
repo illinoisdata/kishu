@@ -759,7 +759,7 @@ def init_kishu() -> None:
     """
     1. Create notebook key
     2. Find kernel id using enclosing_kernel_id()
-    2. KishuForJupyter
+    3. KishuForJupyter
     """
     # Create notebook id object storing path and kernel_id
     nb_id = NotebookId.from_enclosing_with_key("")
