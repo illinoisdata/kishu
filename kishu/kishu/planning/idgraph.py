@@ -48,8 +48,8 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
     elif isinstance(obj, list):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        visited[id(obj)] = node
         if include_id:
-            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
 
@@ -63,8 +63,8 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
     elif isinstance(obj, set):
         node = GraphNode(obj_type=type(obj), id_obj=id(obj),
                          check_value_only=True)
+        visited[id(obj)] = node
         if include_id:
-            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
         for item in sorted(obj):
@@ -76,8 +76,8 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
     elif isinstance(obj, dict):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        visited[id(obj)] = node
         if include_id:
-            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
 
@@ -91,20 +91,22 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
     elif isinstance(obj, (bytes, bytearray)):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        visited[id(obj)] = node
         node.children.append(obj)
         node.children.append("/EOC")
         return node
 
     elif isinstance(obj, type):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        visited[id(obj)] = node
         node.children.append(str(obj))
         node.children.append("/EOC")
         return node
 
     elif callable(obj):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        visited[id(obj)] = node
         if include_id:
-            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
         # This will break if obj is not pickleable. Commenting out for now.
