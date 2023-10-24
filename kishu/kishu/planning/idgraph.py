@@ -180,8 +180,8 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
     else:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        visited[id(obj)] = node
         if include_id:
-            visited[id(obj)] = node
             node.id_obj = id(obj)
             node.check_value_only = False
         node.children.append(pickle.dumps(obj))
@@ -209,8 +209,8 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
 
     elif isinstance(obj, list):
         hashed.update(str(type(obj)))
+        visited.add(id(obj))
         if include_id:
-            visited.add(id(obj))
             hashed.update(str(id(obj)))
 
         for item in obj:
@@ -220,8 +220,8 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
 
     elif isinstance(obj, set):
         hashed.update(str(type(obj)))
+        visited.add(id(obj))
         if include_id:
-            visited.add(id(obj))
             hashed.update(str(id(obj)))
 
         for item in sorted(obj):
@@ -231,8 +231,8 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
 
     elif isinstance(obj, dict):
         hashed.update(str(type(obj)))
+        visited.add(id(obj))
         if include_id:
-            visited.add(id(obj))
             hashed.update(str(id(obj)))
 
         for key, value in sorted(obj.items()):
