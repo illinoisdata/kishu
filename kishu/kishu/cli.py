@@ -13,7 +13,6 @@ from kishu.notebook_id import NotebookId
 kishu_app = typer.Typer(add_completion=False)
 
 
-@kishu_app.command()
 def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"{__app_name__} v{__version__}")
