@@ -22,6 +22,9 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
+    "jupyter_server",
+    "tornado",
+    "kishu",
 ]
 dynamic = ["version", "description", "authors", "urls", "keywords"]
 
