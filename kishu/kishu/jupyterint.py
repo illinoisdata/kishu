@@ -663,13 +663,13 @@ class KishuForJupyter:
         return None
 
     def _step_branch(self, commit_id: str) -> None:
-        head = KishuBranch.update_head(self._notebook_id, commit_id=commit_id)
+        head = KishuBranch.update_head(str(self._notebook_id), commit_id=commit_id)
         if self._enable_auto_branch and head.branch_name is None:
             new_branch_name = f"auto_{commit_id}"
-            KishuBranch.upsert_branch(self._notebook_id, new_branch_name, commit_id)
-            KishuBranch.update_head(self._notebook_id, new_branch_name, commit_id)
+            KishuBranch.upsert_branch(str(self._notebook_id), new_branch_name, commit_id)
+            KishuBranch.update_head(str(self._notebook_id), new_branch_name, commit_id)
         elif head.branch_name is not None:
-            KishuBranch.upsert_branch(self._notebook_id, head.branch_name, commit_id)
+            KishuBranch.upsert_branch(str(self._notebook_id), head.branch_name, commit_id)
 
     def _checkout_notebook(self, raw_nb: str) -> None:
         nb_path = self._notebook_id.path()
