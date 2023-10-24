@@ -100,7 +100,7 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
-            branches=[],
+            branches=["auto_0:1"],
             tags=[],
         )
 
@@ -147,7 +147,7 @@ class TestKishuCommand:
             timestamp=log_all_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_all_result.commit_graph[2].runtime_ms,  # Not tested
-            branches=[],
+            branches=["auto_0:1"],
             tags=[],
         )
 
@@ -216,7 +216,7 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
-            branches=["at_head"],
+            branches=["auto_0:1", "at_head"],
             tags=[],
         )
 
@@ -244,6 +244,16 @@ class TestKishuCommand:
         rename_branch_result = KishuCommand.rename_branch(
             notebook_key, branch_1, branch_1)
         assert rename_branch_result.status == "error"
+
+    def test_auto_detach_commit_branch(self, kishu_jupyter):
+        KishuBranch.update_head(kishu_jupyter._notebook_id.key(), branch_name=None, commit_id="0:1", is_detach=True)
+        commit = CommitEntry(kind=CommitEntryKind.manual, execution_count=1, code_block="x = 1")
+        commit_id = kishu_jupyter.commit(commit)
+
+        head = KishuBranch.get_head(kishu_jupyter._notebook_id.key())
+        assert head.branch_name is not None
+        assert head.branch_name.startswith("auto_")
+        assert head.commit_id == commit_id
 
     def test_tag(self, notebook_key, basic_execution_ids):
         tag_result = KishuCommand.tag(notebook_key, "at_head", None, "In current time")
@@ -290,7 +300,7 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
             runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
-            branches=[],
+            branches=["auto_0:1"],
             tags=["at_head"],
         )
 
@@ -305,7 +315,7 @@ class TestKishuCommand:
                 oid="0:3",
                 parent_oid="0:2",
                 timestamp=fe_commit_result.commit.timestamp,  # Not tested
-                branches=[],
+                branches=["auto_0:1"],
                 tags=[],
                 code_version=fe_commit_result.commit.code_version,  # Not tested
                 var_version=fe_commit_result.commit.var_version,  # Not tested

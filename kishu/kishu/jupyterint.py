@@ -292,6 +292,7 @@ class KishuForJupyter:
         """
         self._notebook_id = notebook_id
         self._commit_id_mode = "uuid4"  # TODO: Load from environment/configuration
+        self._enable_auto_branch = True
         init_checkpoint_database(self.checkpoint_file())
         self._history: ExecutionHistory = ExecutionHistory(self.checkpoint_file())
         self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
@@ -663,7 +664,11 @@ class KishuForJupyter:
 
     def _step_branch(self, commit_id: str) -> None:
         head = KishuBranch.update_head(self._notebook_id.key(), commit_id=commit_id)
-        if head.branch_name is not None:
+        if self._enable_auto_branch and head.branch_name is None:
+            new_branch_name = f"auto_{commit_id}"
+            KishuBranch.upsert_branch(self._notebook_id.key(), new_branch_name, commit_id)
+            KishuBranch.update_head(self._notebook_id.key(), new_branch_name, commit_id)
+        elif head.branch_name is not None:
             KishuBranch.upsert_branch(self._notebook_id.key(), head.branch_name, commit_id)
 
     def _checkout_notebook(self, raw_nb: str) -> None:
