@@ -33,7 +33,7 @@ class GraphNode:
     from getting a False comparison for idgraphs of 2 objects with the same state.
     """
 
-    def __init__(self, obj_type=type(None), id_obj=0, check_value_only=False):
+    def __init__(self, obj_type: type = type(None), id_obj: int = 0, check_value_only: bool = False):
         self.obj_type = obj_type
         self.id_obj = id_obj
         self.check_value_only = check_value_only
@@ -44,7 +44,7 @@ class GraphNode:
 
 
 class idgraph(Visitor):
-    def check_visited(self, visited: dict, obj_id, include_id) -> Tuple[bool, Union[GraphNode, int]]:
+    def check_visited(self, visited: dict, obj_id: int, include_id: bool) -> Tuple[bool, Union[GraphNode, int]]:
         if obj_id in visited.keys():
             return True, visited[obj_id]
         else:
