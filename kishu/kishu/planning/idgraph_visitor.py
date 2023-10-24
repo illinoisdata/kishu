@@ -56,8 +56,10 @@ class idgraph(Visitor):
         node.children.append("/EOC")
         return node
 
-    def visit_tuple(self, obj, visited, include_id, update_state) -> GraphNode:
+    def visit_tuple(self, obj, visited: dict, include_id: bool, update_state: None) -> GraphNode:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        # Not adding tuple objects to visited dict due to failing test case,
+        # possibly due to tuple interning by Python
         for item in obj:
             child = object_state.get_object_state(
                 item, visited, visitor=self, include_id=include_id)
@@ -67,7 +69,7 @@ class idgraph(Visitor):
         node.children.append("/EOC")
         return node
 
-    def visit_list(self, obj, visited, include_id, update_state) -> GraphNode:
+    def visit_list(self, obj, visited: dict, include_id: bool, update_state: None) -> GraphNode:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         if include_id:
@@ -82,7 +84,7 @@ class idgraph(Visitor):
         node.children.append("/EOC")
         return node
 
-    def visit_set(self, obj, visited, include_id, update_state) -> GraphNode:
+    def visit_set(self, obj, visited: dict, include_id: bool, update_state: None) -> GraphNode:
         node = GraphNode(obj_type=type(obj), id_obj=id(obj),
                          check_value_only=True)
         visited[id(obj)] = node
@@ -97,7 +99,7 @@ class idgraph(Visitor):
         node.children.append("/EOC")
         return node
 
-    def visit_dict(self, obj, visited, include_id, update_state) -> GraphNode:
+    def visit_dict(self, obj, visited: dict, include_id: bool, update_state: None) -> GraphNode:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         if include_id:
@@ -116,21 +118,21 @@ class idgraph(Visitor):
         node.children.append("/EOC")
         return node
 
-    def visit_byte(self, obj, visited, include_id, update_state) -> GraphNode:
+    def visit_byte(self, obj, visited: dict, include_id: bool, update_state: None) -> GraphNode:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         node.children.append(obj)
         node.children.append("/EOC")
         return node
 
-    def visit_type(self, obj, visited, include_id, update_state) -> GraphNode:
+    def visit_type(self, obj, visited: dict, include_id: bool, update_state: None) -> GraphNode:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         node.children.append(str(obj))
         node.children.append("/EOC")
         return node
 
-    def visit_callable(self, obj, visited, include_id, update_state) -> GraphNode:
+    def visit_callable(self, obj, visited: dict, include_id: bool, update_state: None) -> GraphNode:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         if include_id:
@@ -140,7 +142,7 @@ class idgraph(Visitor):
         node.children.append("/EOC")
         return node
 
-    def visit_custom_obj(self, obj, visited, include_id, update_state) -> GraphNode:
+    def visit_custom_obj(self, obj, visited: dict, include_id: bool, update_state: None) -> GraphNode:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         if is_pickable(obj):
@@ -160,7 +162,7 @@ class idgraph(Visitor):
             node.children.append("/EOC")
         return node
 
-    def visit_other(self, obj, visited, include_id, update_state) -> GraphNode:
+    def visit_other(self, obj, visited: dict, include_id: bool, update_state: None) -> GraphNode:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         if include_id:
