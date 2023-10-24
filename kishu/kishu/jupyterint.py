@@ -751,7 +751,7 @@ class KishuForJupyter:
     def _step_branch(self, commit_id: str) -> None:
         head = KishuBranch.update_head(self._notebook_id, commit_id=commit_id)
         if self._enable_auto_branch and head.branch_name is None:
-            new_branch_name = f"tmp_{str(uuid.uuid4)[:8]}"
+            new_branch_name = f"auto_{commit_id}"
             KishuBranch.upsert_branch(self._notebook_id, new_branch_name, commit_id)
             KishuBranch.update_head(self._notebook_id, new_branch_name, commit_id)
         elif head.branch_name is not None:
