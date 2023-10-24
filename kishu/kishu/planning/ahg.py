@@ -45,7 +45,7 @@ class VariableSnapshot:
     deleted: bool
     size: float = 0.0
     input_ces: List[CellExecution] = field(default_factory=lambda: [])
-    output_ce: CellExecution = CellExecution(0, "", 0.0, 0.0, [], [])
+    output_ce: CellExecution = field(default_factory=lambda: CellExecution(0, "", 0.0, 0.0, [], []))
 
 
 class AHG:

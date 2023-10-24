@@ -7,12 +7,12 @@ from typing import Tuple
 
 from kishu import __app_name__, __version__
 from kishu.commands import KishuCommand, into_json
+from kishu.notebook_id import NotebookId
 
 
 kishu_app = typer.Typer(add_completion=False)
 
 
-@kishu_app.command()
 def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"{__app_name__} v{__version__}")
@@ -54,9 +54,24 @@ def list(
 
 
 @kishu_app.command()
-def log(
-    notebook_id: str = typer.Argument(
+def init(
+    notebook_path: str = typer.Argument(
         ...,
+        help="Path to the notebook to initialize Kishu on.",
+        show_default=False
+    ),
+) -> None:
+    """
+    Initialize Kishu instrumentation in a notebook.
+    """
+    print(into_json(KishuCommand.init(notebook_path)))
+
+
+@kishu_app.command()
+def log(
+    notebook_key: str = typer.Argument(
+        ...,
+        parser=NotebookId.parse_key_from_path_or_key,
         help="Notebook ID to interact with.",
         show_default=False
     ),
@@ -76,15 +91,16 @@ def log(
     Show a history view of commit graph.
     """
     if log_all:
-        print(into_json(KishuCommand.log_all(notebook_id)))
+        print(into_json(KishuCommand.log_all(notebook_key)))
     else:
-        print(into_json(KishuCommand.log(notebook_id, commit_id)))
+        print(into_json(KishuCommand.log(notebook_key, commit_id)))
 
 
 @kishu_app.command()
 def status(
-    notebook_id: str = typer.Argument(
+    notebook_key: str = typer.Argument(
         ...,
+        parser=NotebookId.parse_key_from_path_or_key,
         help="Notebook ID to interact with.",
         show_default=False
     ),
@@ -93,13 +109,14 @@ def status(
     """
     Show a commit in detail.
     """
-    print(into_json(KishuCommand.status(notebook_id, commit_id)))
+    print(into_json(KishuCommand.status(notebook_key, commit_id)))
 
 
 @kishu_app.command()
 def commit(
-    notebook_id: str = typer.Argument(
+    notebook_key: str = typer.Argument(
         ...,
+        parser=NotebookId.parse_key_from_path_or_key,
         help="Notebook ID to interact with.",
         show_default=False
     ),
@@ -114,13 +131,14 @@ def commit(
     """
     Checkout a notebook to a commit.
     """
-    print(into_json(KishuCommand.commit(notebook_id, message=message)))
+    print(into_json(KishuCommand.commit(notebook_key, message=message)))
 
 
 @kishu_app.command()
 def checkout(
-    notebook_id: str = typer.Argument(
+    notebook_key: str = typer.Argument(
         ...,
+        parser=NotebookId.parse_key_from_path_or_key,
         help="Notebook ID to interact with.",
         show_default=False
     ),
@@ -140,7 +158,7 @@ def checkout(
     Checkout a notebook to a commit.
     """
     print(into_json(KishuCommand.checkout(
-        notebook_id,
+        notebook_key,
         branch_or_commit_id,
         skip_notebook=skip_notebook,
     )))
@@ -148,8 +166,9 @@ def checkout(
 
 @kishu_app.command()
 def branch(
-    notebook_id: str = typer.Argument(
+    notebook_key: str = typer.Argument(
         ...,
+        parser=NotebookId.parse_key_from_path_or_key,
         help="Notebook ID to interact with.",
         show_default=False
     ),
@@ -179,12 +198,12 @@ def branch(
     Create, rename, or delete branches.
     """
     if create_branch_name is not None:
-        print(into_json(KishuCommand.branch(notebook_id, create_branch_name, commit_id)))
+        print(into_json(KishuCommand.branch(notebook_key, create_branch_name, commit_id)))
     if rename_branch != (None, None):
         old_name, new_name = rename_branch
         try:
             print(into_json(KishuCommand.rename_branch(
-                notebook_id, old_name, new_name)))
+                notebook_key, old_name, new_name)))
         except Exception as error:
             # Old_name does not exist and/or new_name already exists
             typer.echo(f"Error: {str(error)}", err=True)
@@ -193,8 +212,9 @@ def branch(
 
 @kishu_app.command()
 def tag(
-    notebook_id: str = typer.Argument(
+    notebook_key: str = typer.Argument(
         ...,
+        parser=NotebookId.parse_key_from_path_or_key,
         help="Notebook ID to interact with.",
         show_default=False
     ),
@@ -217,7 +237,7 @@ def tag(
     """
     Create or edit tags.
     """
-    print(into_json(KishuCommand.tag(notebook_id, tag_name, commit_id, message)))
+    print(into_json(KishuCommand.tag(notebook_key, tag_name, commit_id, message)))
 
 
 """
@@ -230,8 +250,9 @@ kishu_experimental_app = typer.Typer(add_completion=False)
 
 @kishu_experimental_app.command()
 def fegraph(
-    notebook_id: str = typer.Argument(
+    notebook_key: str = typer.Argument(
         ...,
+        parser=NotebookId.parse_key_from_path_or_key,
         help="Notebook ID to interact with.",
         show_default=False
     ),
@@ -239,13 +260,14 @@ def fegraph(
     """
     Show the frontend commit graph.
     """
-    print(into_json(KishuCommand.fe_commit_graph(notebook_id)))
+    print(into_json(KishuCommand.fe_commit_graph(notebook_key)))
 
 
 @kishu_experimental_app.command()
 def fecommit(
-    notebook_id: str = typer.Argument(
+    notebook_key: str = typer.Argument(
         ...,
+        parser=NotebookId.parse_key_from_path_or_key,
         help="Notebook ID to interact with.",
         show_default=False
     ),
@@ -259,7 +281,7 @@ def fecommit(
     """
     Show the commit in frontend detail.
     """
-    print(into_json(KishuCommand.fe_commit(notebook_id, commit_id, vardepth)))
+    print(into_json(KishuCommand.fe_commit(notebook_key, commit_id, vardepth)))
 
 
 if os.environ.get("KISHU_ENABLE_EXPERIMENTAL", "false").lower() in ('true', '1', 't'):

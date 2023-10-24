@@ -1,4 +1,5 @@
 # Packages for development (e.g., checks, tests) in addition to those in requirements.txt
+# README: Keep in sync with pyproject.toml
 
 # Development tools
 flake8

@@ -1,9 +1,7 @@
 import dill
 import json
 import nbformat
-import os
 import pytest
-import shutil
 
 from pathlib import Path
 from typing import Any
@@ -12,13 +10,7 @@ from kishu.jupyterint import CommitEntry
 from kishu.planning.plan import ExecutionHistory
 from kishu.storage.checkpoint_io import init_checkpoint_database
 
-from tests.helpers.nbexec import NB_DIR, NotebookRunner
-
-
-def create_temporary_copy(path: str, filename: str, temp_dir: str):
-    temp_path = os.path.join(temp_dir, filename)
-    shutil.copy2(path, temp_path)
-    return temp_path
+from tests.helpers.nbexec import NotebookRunner
 
 
 def test_history_to_sqlite(tmp_path: Path):
@@ -42,34 +34,31 @@ def test_history_to_sqlite(tmp_path: Path):
     assert retrieved_item == commit_entry
 
 
-def test_checkout(tmp_kishu_path_os: Path):
-    path_to_notebook = os.getcwd()
-    notebook_name = "test_jupyter_checkout.ipynb"
+# Modify the test_checkout to use the new fixture.
+@pytest.mark.parametrize("set_notebook_path_env", ["test_jupyter_checkout.ipynb"], indirect=True)
+def test_checkout(tmp_kishu_path_os: Path, set_notebook_path_env):
+    notebook = NotebookRunner(set_notebook_path_env)
     vals = ['a']
-    notebook = NotebookRunner(os.path.join(path_to_notebook, NB_DIR, notebook_name))
     output = notebook.execute([], vals)
     assert output['a'] == 1
 
 
-def test_reattatchment(tmp_kishu_path_os: Path, tmp_path):
-    path_to_notebook = os.getcwd()
-    notebook_name = "test_init_kishu.ipynb"
-    notebook_full_path = os.path.join(path_to_notebook, NB_DIR, notebook_name)
-    temp_path = create_temporary_copy(notebook_full_path, notebook_name, tmp_path)
+@pytest.mark.parametrize("set_notebook_path_env", ["test_init_kishu.ipynb"], indirect=True)
+def test_reattatchment(tmp_kishu_path_os: Path, set_notebook_path_env):
+    notebook = NotebookRunner(set_notebook_path_env)
     vals = ['a']
-    notebook = NotebookRunner(temp_path)
     output = notebook.execute([], vals)
     assert output['a'] == 1
-    with open(temp_path, "r") as temp_file:
+
+    with open(set_notebook_path_env, "r") as temp_file:
         nb = nbformat.read(temp_file, 4)
         assert nb.metadata.kishu.session_count == 2
 
 
-def test_record_history(tmp_kishu_path_os: Path):
-    path_to_notebook = os.getcwd()
-    notebook_name = "test_jupyter_load_module.ipynb"
+@pytest.mark.parametrize("set_notebook_path_env", ["test_jupyter_load_module.ipynb"], indirect=True)
+def test_record_history(tmp_kishu_path_os: Path, set_notebook_path_env):
+    notebook = NotebookRunner(set_notebook_path_env)
     exprs = {"history": "repr(_kishu.log())"}
-    notebook = NotebookRunner(os.path.join(path_to_notebook, NB_DIR, notebook_name))
     output = notebook.execute([], [], exprs)
 
     # The first two cells are something we use for testing. Additional cells appear in the history
@@ -88,38 +77,42 @@ def test_record_history(tmp_kishu_path_os: Path):
         set_field_to(commit_entry, 'start_time_ms', 0)
         set_field_to(commit_entry, 'message', "")
         set_field_to(commit_entry, 'ahg_string', "")
+        set_field_to(commit_entry, 'formatted_cells', [])
+        set_field_to(commit_entry, 'raw_nb', "")
         set_field_to(commit_entry, 'code_version', 0)
         set_field_to(commit_entry, 'var_version', 0)
         return commit_entry
 
     # TODO: This test is hacky; we ought to reach for list of commits through public methods.
     history_dict = json.loads(output['history'])
-    assert replace_start_time(history_dict['0:1']) == {
+    assert replace_start_time(history_dict['1:1']) == {
             "checkpoint_runtime_ms": 0,
-            "code_block": "from kishu import load_kishu\nload_kishu()\n_kishu.set_test_mode()",
+            "code_block": "from kishu import init_kishu\ninit_kishu()\n_kishu.set_test_mode()",
             "end_time_ms": 0,
-            "exec_id": "0:1",
+            "exec_id": "1:1",
             "execution_count": 1,
             'executed_cells': [
                 '',
-                'from kishu import load_kishu\nload_kishu()\n_kishu.set_test_mode()',
+                'from kishu import init_kishu\ninit_kishu()\n_kishu.set_test_mode()',
             ],
             "kind": "jupyter",
+            "formatted_cells": [],
+            "raw_nb": "",
             "message": "",
             "ahg_string": "",
             "code_version": 0,
             "var_version": 0,
             "timestamp_ms": 0,
         }
-    assert replace_start_time(history_dict['0:2']) == {
+    assert replace_start_time(history_dict['1:2']) == {
             "checkpoint_runtime_ms": 0,
             "checkpoint_vars": ["a"],
             "code_block": "a = 1",
             "end_time_ms": 0,
-            "exec_id": "0:2",
+            "exec_id": "1:2",
             'executed_cells': [
                 '',
-                'from kishu import load_kishu\nload_kishu()\n_kishu.set_test_mode()',
+                'from kishu import init_kishu\ninit_kishu()\n_kishu.set_test_mode()',
                 'a = 1',
             ],
             "execution_count": 2,
@@ -128,13 +121,17 @@ def test_record_history(tmp_kishu_path_os: Path):
             "kind": "jupyter",
             "message": "",
             "ahg_string": "",
+            "formatted_cells": [],
+            "raw_nb": "",
             "code_version": 0,
             "var_version": 0,
             "timestamp_ms": 0,
         }
 
 
-@pytest.mark.parametrize(("notebook_name", "cell_num_to_restore"), [
+@pytest.mark.parametrize(
+    ("set_notebook_path_env", "cell_num_to_restore"),
+    [
         ('simple.ipynb', 2),
         ('simple.ipynb', 3),
         ('numpy.ipynb', 2),
@@ -142,19 +139,16 @@ def test_record_history(tmp_kishu_path_os: Path):
         ('numpy.ipynb', 4),
         pytest.param('ml-ex1.ipynb', 10, marks=pytest.mark.skip(reason="Too expensive to run")),
         pytest.param('04_training_linear_models.ipynb', 10, marks=pytest.mark.skip(reason="Too expensive to run")),
-        pytest.param('sklearn_tweet_classification.ipynb', 10, marks=pytest.mark.skip(reason="Too expensive to run"))]
-    )
-def test_full_checkout(tmp_kishu_path_os: Path, notebook_name: str, cell_num_to_restore: int):
+        pytest.param('sklearn_tweet_classification.ipynb', 10, marks=pytest.mark.skip(reason="Too expensive to run"))
+    ],
+    indirect=["set_notebook_path_env"]
+)
+def test_full_checkout(tmp_kishu_path_os: Path, set_notebook_path_env, cell_num_to_restore: int):
     """
-        Tests checkout correctness by comparing namespace contents at cell_num_to_restore in the middle of a notebook,
-        and namespace contents after checking out cell_num_to_restore completely executing the notebook.
-
-        @param notebook_name: input notebook name.
-        @param cell_num_to_restore: the cell execution number to restore to.
+    Tests checkout correctness by comparing namespace contents at cell_num_to_restore in the middle of a notebook,
+    and namespace contents after checking out cell_num_to_restore completely executing the notebook.
     """
-    # Open notebook.
-    path_to_notebook = os.getcwd()
-    notebook = NotebookRunner(os.path.join(path_to_notebook, NB_DIR, notebook_name))
+    notebook = NotebookRunner(set_notebook_path_env)
 
     # Get notebook namespace contents at cell execution X and contents after checking out cell execution X.
     namespace_before_checkout, namespace_after_checkout = notebook.execute_full_checkout_test(cell_num_to_restore)
