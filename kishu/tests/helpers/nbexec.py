@@ -27,7 +27,7 @@ from typing import Dict, List, Tuple
 
 from kishu.jupyterint import IPYTHON_VARS, KISHU_VARS
 
-NB_DIR: str = os.path.join("notebooks")
+NB_DIR: str = os.path.join("tests", "notebooks")
 
 
 
