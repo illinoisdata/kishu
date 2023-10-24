@@ -27,7 +27,8 @@ from typing import Dict, List, Tuple
 
 from kishu.jupyterint import IPYTHON_VARS, KISHU_VARS
 
-NB_DIR: str = "tests/notebooks"
+NB_DIR: str = os.path.join("notebooks")
+
 
 
 # Breaks test_full_checkout in test_jupyterint when using init_kishu

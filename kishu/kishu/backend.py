@@ -1,6 +1,7 @@
 import json
 
 from flask import Flask, request
+from flask_cors import CORS
 from typing import Optional
 
 from kishu.commands import KishuCommand, into_json
@@ -11,6 +12,7 @@ def is_true(s: str) -> bool:
 
 
 app = Flask("kishu_server")
+CORS(app)
 
 
 @app.get("/health")
@@ -82,3 +84,8 @@ def fe_commit(notebook_id: str, commit_id: str):
     vardepth = request.args.get('vardepth', default=1, type=int)
     fe_commit_result = KishuCommand.fe_commit(notebook_id, commit_id, vardepth)
     return into_json(fe_commit_result)
+
+@app.get("/fe/commit_diff/<notebook_id>/<commit_id>")
+def fe_commit_diff(notebook_id: str, commit_id: str):
+    fe_commit_diff_result = KishuCommand.fe_commit_diff(notebook_id, commit_id)
+    return into_json(fe_commit_diff_result)
