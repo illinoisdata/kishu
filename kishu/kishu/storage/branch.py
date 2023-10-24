@@ -7,6 +7,10 @@ from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from typing import Dict, List, Optional
 
+from kishu.exceptions import (
+    BranchNotFoundError,
+    BranchConflictError,
+)
 from kishu.storage.checkpoint_io import BRANCH_TABLE
 from kishu.storage.path import KishuPath
 
@@ -155,15 +159,31 @@ class KishuBranch:
         return branch_by_commit
 
     @staticmethod
+    def delete_branch(notebook_id: str, branch_name: str) -> None:
+        dbfile = KishuPath.checkpoint_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+
+        head = KishuBranch.get_head(notebook_id)
+        if branch_name == head.branch_name:
+            raise BranchConflictError("Cannot delete the currently checked-out branch.")
+        if not KishuBranch.contains_branch(cur, branch_name):
+            raise BranchNotFoundError(branch_name)
+
+        query = f"delete from {BRANCH_TABLE} where branch_name = ?"
+        cur.execute(query, (branch_name,))
+        con.commit()
+
+    @staticmethod
     def rename_branch(notebook_id: str, old_name: str, new_name: str) -> None:
         dbfile = KishuPath.checkpoint_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
 
         if not KishuBranch.contains_branch(cur, old_name):
-            raise ValueError("The provided old branch name does not exist.")
+            raise BranchNotFoundError(old_name)
         if KishuBranch.contains_branch(cur, new_name):
-            raise ValueError("The provided new branch name already exists.")
+            raise BranchConflictError("The provided new branch name already exists.")
 
         query = f"update {BRANCH_TABLE} set branch_name = ? where branch_name = ?"
         cur.execute(query, (new_name, old_name))

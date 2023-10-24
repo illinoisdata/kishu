@@ -8,6 +8,10 @@ from dataclasses_json import dataclass_json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
+from kishu.exceptions import (
+    BranchNotFoundError,
+    BranchConflictError,
+)
 from kishu.jupyterint import (
     CommitEntry,
     JupyterCommandResult,
@@ -124,9 +128,16 @@ class BranchResult:
 
 
 @dataclass
+class DeleteBranchResult:
+    status: str
+    message: str
+
+
+@dataclass
 class RenameBranchResult:
     status: str
     branch_name: str
+    message: str
 
 
 @dataclass
@@ -308,6 +319,28 @@ class KishuCommand:
         )
 
     @staticmethod
+    def delete_branch(
+        notebook_id: str,
+        branch_name: str,
+    ) -> DeleteBranchResult:
+        try:
+            KishuBranch.delete_branch(notebook_id, branch_name)
+            return DeleteBranchResult(
+                status="ok",
+                message="ok status confirmed",
+            )
+        except BranchConflictError as e:
+            return DeleteBranchResult(
+                status="error",
+                message=str(e),
+            )
+        except BranchNotFoundError as e:
+            return DeleteBranchResult(
+                status="error",
+                message=str(e),
+            )
+
+    @staticmethod
     def rename_branch(
         notebook_id: str,
         old_name: str,
@@ -318,11 +351,19 @@ class KishuCommand:
             return RenameBranchResult(
                 status="ok",
                 branch_name=new_name,
+                message="ok status confirmed",
             )
-        except ValueError:
+        except BranchNotFoundError as e:
             return RenameBranchResult(
                 status="error",
                 branch_name="",
+                message=str(e),
+            )
+        except BranchConflictError as e:
+            return RenameBranchResult(
+                status="error",
+                branch_name="",
+                message=str(e),
             )
 
     @staticmethod

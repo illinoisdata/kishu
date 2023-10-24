@@ -24,6 +24,21 @@ class NotNotebookPathOrKey(Exception):
 
 
 """
+Raised by branch
+"""
+
+
+class BranchNotFoundError(Exception):
+    def __init__(self, branch_name):
+        super().__init__(f"The provided branch '{branch_name}' does not exist.")
+
+
+class BranchConflictError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+"""
 Raised by jupyterint
 """
 
