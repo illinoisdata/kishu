@@ -8,8 +8,12 @@ from typing import List, Optional
 @dataclass
 class DiffHunk:
     option: str  # origin_only, destination_only, both
-    content: str # if option is both, but contents of origin and destination is similar but not same, then it will show the content of the origin
-    sub_diff_hunks: Optional[List[DiffHunk]] # if two similar cells are matched, then sub_diff_hunks will be the line-level Diff-hunk list inside the matched cell
+    content: str  # if option is both, but contents of origin and destination is similar but not same, then it will
+    # show the content of the origin
+    sub_diff_hunks: Optional[List[
+        DiffHunk]]  # if two similar cells are matched, then sub_diff_hunks will be the line-level Diff-hunk list
+    # inside the matched cell
+
 
 @dataclass
 class DiffAlgorithmResult:
@@ -107,6 +111,7 @@ class DiffAlgorithms:
 
                 else:
                     frontier[k] = Frontier(x, history, same_idxs, matched_num)
+        return DiffAlgorithmResult([], [], [], 0)
 
     @staticmethod
     def edr_diff(origin: List[str], destination: List[str], threshold=0.5) -> DiffAlgorithmResult:
@@ -137,7 +142,7 @@ class DiffAlgorithms:
 
         for i in range(1, m + 1):
             for j in range(1, n + 1):
-                if(i == 2 and j == 3):
+                if (i == 2 and j == 3):
                     print("debug")
                 myre = DiffAlgorithms.myre_diff(origin[i - 1].split("\n"), destination[j - 1].split("\n"))
                 if myre.similarity < threshold:
@@ -186,12 +191,12 @@ class DiffAlgorithms:
                 for k in range(j, to):
                     diff_hunks.append(DiffHunk("Destination_only", destination[k], sub_diff_hunks=None))
                 line_level_myre = DiffAlgorithms.myre_diff(origin[i].split("\n"), destination[to].split("\n"))
-                if(abs(line_level_myre.similarity - 1) < 1e-9):
+                if (abs(line_level_myre.similarity - 1) < 1e-9):
                     line_diff_hunks = None
                 else:
                     line_diff_hunks = line_level_myre.diff_hunks
                 diff_hunks.append(DiffHunk("Both", origin[i], sub_diff_hunks=line_diff_hunks))
-                #if line level diff only contains both, then we should not add this diff hunk, meaning they are the same
+                # if line level diff only contains both, then we should not add this diff hunk, meaning they are the same
                 j = to + 1
         for k in range(j, n):
             diff_hunks.append(DiffHunk("Destination_only", destination[k], sub_diff_hunks=None))
