@@ -1,4 +1,5 @@
 # Packages for development (e.g., checks, tests) in addition to those in requirements.txt
+# README: Keep in sync with pyproject.toml
 
 # Development tools
 flake8
@@ -6,6 +7,7 @@ mypy
 pytest
 pytest-cov
 pytest-benchmark
+
 
 # Test cases
 matplotlib
@@ -15,3 +17,4 @@ seaborn
 textblob
 pandas
 xxhash
+
