@@ -1,14 +1,18 @@
+import dataclasses
 import json
 import os
 import pytest
 import shutil
 
 from pathlib import Path, PurePath
-from typing import Generator, Type
+from typing import Generator, List, Optional, Type
 from unittest.mock import patch
 
 from kishu.backend import app as kishu_app
+from kishu.jupyterint import KishuForJupyter
+from kishu.notebook_id import NotebookId
 from kishu.storage.path import ENV_KISHU_PATH_ROOT, KishuPath
+
 from tests.helpers.nbexec import NB_DIR
 
 
@@ -123,3 +127,52 @@ def set_notebook_path_env(tmp_path, request):
     yield temp_path
 
     del os.environ["TEST_NOTEBOOK_PATH"]
+
+
+"""
+KishuForJupyter Fixtures
+"""
+
+
+@dataclasses.dataclass
+class JupyterInfoMock:
+    raw_cell: Optional[str] = None
+
+
+@dataclasses.dataclass
+class JupyterResultMock:
+    info: JupyterInfoMock = dataclasses.field(default_factory=JupyterInfoMock)
+    execution_count: Optional[int] = None
+    error_before_exec: Optional[str] = None
+    error_in_exec: Optional[str] = None
+    result: Optional[str] = None
+
+
+@pytest.fixture()
+def notebook_key() -> Generator[str, None, None]:
+    yield "notebook_123"
+
+
+@pytest.fixture()
+def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
+    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
+    kishu_jupyter.set_test_mode()
+    yield kishu_jupyter
+
+
+@pytest.fixture()
+def basic_execution_ids(kishu_jupyter) -> Generator[List[str], None, None]:
+    execution_count = 1
+    info = JupyterInfoMock(raw_cell="x = 1")
+    kishu_jupyter.pre_run_cell(info)
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+    execution_count = 2
+    info = JupyterInfoMock(raw_cell="y = 2")
+    kishu_jupyter.pre_run_cell(info)
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+    execution_count = 3
+    info = JupyterInfoMock(raw_cell="y = x + 1")
+    kishu_jupyter.pre_run_cell(info)
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+
+    yield ["0:1", "0:2", "0:3"]  # List of commit IDs

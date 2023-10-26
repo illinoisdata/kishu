@@ -374,9 +374,8 @@ class KishuForJupyter:
 
         # Retrieve checkout plan.
         checkpoint_file = self.checkpoint_file()
+        commit_id = KishuForJupyter.disambiguate_commit(self._notebook_id.key(), commit_id)
         unit_exec_cell = UnitExecution.get_from_db(checkpoint_file, commit_id)
-        if unit_exec_cell is None:
-            raise ValueError("No commit entry found for commit_id = {}".format(commit_id))
         commit_entry = cast(CommitEntry, unit_exec_cell)
         if commit_entry.restore_plan is None:
             raise ValueError("No restore plan found for commit_id = {}".format(commit_id))
@@ -411,7 +410,7 @@ class KishuForJupyter:
             is_detach=is_detach,
         )
         if is_detach:
-            return BareReprStr(f"Checkout {branch_or_commit_id} in detach mode.")
+            return BareReprStr(f"Checkout {commit_id} in detach mode.")
         return BareReprStr(f"Checkout {branch_or_commit_id} ({commit_id}).")
 
     def pre_run_cell(self, info) -> None:
@@ -509,6 +508,18 @@ class KishuForJupyter:
             ))
         return sessions
 
+    @staticmethod
+    def disambiguate_commit(notebook_key: str, commit_id: str) -> str:
+        checkpoint_file = KishuPath.checkpoint_path(notebook_key)
+        possible_commit_ids = UnitExecution.keys_from_db_like(checkpoint_file, commit_id)
+        if len(possible_commit_ids) == 0:
+            raise ValueError(f"No commit with ID {repr(commit_id)}")
+        if commit_id in possible_commit_ids:
+            return commit_id
+        if len(possible_commit_ids) > 1:
+            raise ValueError(f"Ambiguous commit ID {repr(commit_id)}, having many choices {possible_commit_ids}.")
+        return possible_commit_ids[0]
+
     def commit(self, message: Optional[str] = None) -> BareReprStr:
         entry = CommitEntry(kind=CommitEntryKind.manual)
         entry.execution_count = self._last_execution_count
@@ -547,7 +558,7 @@ class KishuForJupyter:
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":
             return str(self._session_id) + ":" + str(self._last_execution_count)
-        return str(uuid.uuid4())[:8]  # TODO: Extend to whole UUID.
+        return str(uuid.uuid4())
 
     def _checkpoint(self, cell_info: CommitEntry) -> Tuple[RestorePlan, int]:
         """
