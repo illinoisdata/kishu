@@ -79,13 +79,15 @@ class KishuBranch:
         query = f"select branch_name, commit_id from {BRANCH_TABLE}"
         try:
             cur.execute(query)
+            return [
+                BranchRow(branch_name=branch_name, commit_id=commit_id)
+                for branch_name, commit_id in cur
+            ]
         except sqlite3.OperationalError:
             # No such table means no branch
             return []
-        return [
-            BranchRow(branch_name=branch_name, commit_id=commit_id)
-            for branch_name, commit_id in cur
-        ]
+        finally:
+            con.close()
 
     @staticmethod
     def get_branch(notebook_id: str, branch_name: str) -> List[BranchRow]:
@@ -95,13 +97,15 @@ class KishuBranch:
         query = f"select branch_name, commit_id from {BRANCH_TABLE} where branch_name = ?"
         try:
             cur.execute(query, (branch_name,))
+            return [
+                BranchRow(branch_name=branch_name, commit_id=commit_id)
+                for branch_name, commit_id in cur
+            ]
         except sqlite3.OperationalError:
             # No such table means no branch
             return []
-        return [
-            BranchRow(branch_name=branch_name, commit_id=commit_id)
-            for branch_name, commit_id in cur
-        ]
+        finally:
+            con.close()
 
     @staticmethod
     def branches_for_commit(notebook_id: str, commit_id: str) -> List[BranchRow]:
@@ -111,13 +115,15 @@ class KishuBranch:
         query = f"select branch_name, commit_id from {BRANCH_TABLE} where commit_id = ?"
         try:
             cur.execute(query, (commit_id,))
+            return [
+                BranchRow(branch_name=branch_name, commit_id=commit_id)
+                for branch_name, commit_id in cur
+            ]
         except sqlite3.OperationalError:
             # No such table means no branch
             return []
-        return [
-            BranchRow(branch_name=branch_name, commit_id=commit_id)
-            for branch_name, commit_id in cur
-        ]
+        finally:
+            con.close()
 
     @staticmethod
     def branches_for_many_commits(
@@ -145,6 +151,7 @@ class KishuBranch:
                 branch_name=branch_name,
                 commit_id=commit_id,
             ))
+        con.close()
         return branch_by_commit
 
     @staticmethod
