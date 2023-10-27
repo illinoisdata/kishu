@@ -293,6 +293,7 @@ class KishuForJupyter:
         self._notebook_id = notebook_id
         self._commit_id_mode = "uuid4"  # TODO: Load from environment/configuration
         self._enable_auto_branch = True
+        self._enable_auto_commit_when_skip_notebook = True
         init_checkpoint_database(self.checkpoint_file())
         self._history: ExecutionHistory = ExecutionHistory(self.checkpoint_file())
         self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
@@ -409,6 +410,12 @@ class KishuForJupyter:
             commit_id=commit_id,
             is_detach=is_detach,
         )
+
+        # Create new commit when skip restoring notebook.
+        if self._enable_auto_commit_when_skip_notebook and skip_notebook:
+            new_commit = self.commit(f"Auto-commit after checking out {commit_id} only variables.")
+            return BareReprStr(f"Checkout {commit_id} only variables and commit {new_commit}.")
+
         if is_detach:
             return BareReprStr(f"Checkout {commit_id} in detach mode.")
         return BareReprStr(f"Checkout {branch_or_commit_id} ({commit_id}).")
