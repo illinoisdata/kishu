@@ -13,6 +13,7 @@ from kishu.storage.checkpoint_io import (
     get_log,
     get_log_item,
     get_log_items,
+    keys_like,
     store_checkpoint,
     store_log_item,
 )
@@ -49,6 +50,10 @@ class UnitExecution:
         if len(data) == 0:
             return None
         return dill.loads(data)
+
+    @staticmethod
+    def keys_from_db_like(checkpoint_file: str, commit_id_like: str) -> List[str]:
+        return keys_like(checkpoint_file, commit_id_like)
 
     @staticmethod
     def get_commits(checkpoint_file: str, commit_ids: List[str]) -> Dict[str, UnitExecution]:

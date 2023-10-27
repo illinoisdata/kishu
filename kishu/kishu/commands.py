@@ -202,6 +202,7 @@ class KishuCommand:
         if commit_id is None:
             return LogResult([])
 
+        commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
         return LogResult(KishuCommand._decorate_graph(notebook_id, graph))
@@ -214,6 +215,7 @@ class KishuCommand:
 
     @staticmethod
     def status(notebook_id: str, commit_id: str) -> StatusResult:
+        commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         commit_node_info = next(
             KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
@@ -258,11 +260,12 @@ class KishuCommand:
             head = KishuBranch.update_head(notebook_id, is_detach=True)
             print(f"detaching {head}")
 
-        # Fail to determine commit ID, possibly because a commit does not exist.
+        # Fail to determine commit ID, possibly because no commit does not exist.
         if commit_id is None:
             return BranchResult(status="no_commit")
 
         # Now add this branch.
+        commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         KishuBranch.upsert_branch(notebook_id, branch_name, commit_id)
 
         # Create new commit for this branch action.
@@ -312,6 +315,7 @@ class KishuCommand:
             return TagResult(status="no_commit")
 
         # Now add this tag.
+        commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         tag = TagRow(tag_name=tag_name, commit_id=commit_id, message=message)
         KishuTag.upsert_tag(notebook_id, tag)
         return TagResult(
@@ -362,6 +366,7 @@ class KishuCommand:
 
     @staticmethod
     def fe_commit(notebook_id: str, commit_id: str, vardepth: int) -> FESelectedCommit:
+        commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         commit_node_info = next(
             KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)

@@ -75,9 +75,19 @@ def get_log_item(dbfile: str, commit_id: str) -> bytes:
     cur.execute(
         "select data from {} where commit_id = ?".format(HISTORY_LOG_TABLE),
         (commit_id, )
-        )
+    )
     res: tuple = cur.fetchone()
     return res[0] if res else bytes()
+
+
+def keys_like(dbfile: str, commit_id_like: str) -> List[str]:
+    con = sqlite3.connect(dbfile)
+    cur = con.cursor()
+    cur.execute(
+        "select commit_id from {} where commit_id LIKE ?".format(HISTORY_LOG_TABLE),
+        (commit_id_like + "%", )
+    )
+    return [commit_id for (commit_id,) in cur.fetchall()]
 
 
 def get_log_items(dbfile: str, commit_ids: List[str]) -> Dict[str, bytes]:
