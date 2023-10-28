@@ -1,4 +1,11 @@
 import os
+import pytest
+import time
+
+from typing import Generator, List, Optional
+
+from tests.helpers.nbexec import KISHU_INIT_STR, NB_DIR
+from tests.helpers.serverexec import JupyterServerRunner
 
 from kishu.commands import CommitSummary, FECommit, FESelectedCommit, KishuCommand, KishuSession
 from kishu.jupyterint import CommitEntryKind, CommitEntry
@@ -303,3 +310,33 @@ class TestKishuCommand:
             cells=fe_commit_result.cells,  # Not tested
             variables=[],
         )
+
+    @pytest.mark.parametrize("notebook_names",
+                             [[],
+                              ["simple.ipynb"],
+                              ["simple.ipynb", "numpy.ipynb"]])
+    def test_list_alive_sessions(self, notebook_names: List[str]):
+        with JupyterServerRunner() as server:
+            # Start sessions and run kishu init cell in each of these sessions.
+            for notebook_name in notebook_names:
+                with server.start_session(NB_DIR, notebook_name) as notebook_session:
+                    notebook_session.run_code(KISHU_INIT_STR)
+
+            time.sleep(0.5)
+
+            # Kishu should be able to see these sessions.
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == len(notebook_names)
+
+            # The notebook names reported by Kishu list should match those at the server side.
+            kishu_list_notebook_names = [session.notebook_path.split("/")[-1] for session in list_result.sessions]
+            assert set(notebook_names) == set(kishu_list_notebook_names)
+
+    def test_list_alive_session_no_init(self, notebook_name="simple.ipynb"):
+        with JupyterServerRunner() as server:
+            # Start the session.
+            server.start_session(NB_DIR, notebook_name)
+
+            # Kishu should not be able to see this session as "kishu init" was not executed.
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 0
