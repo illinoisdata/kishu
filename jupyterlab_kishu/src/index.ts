@@ -6,6 +6,9 @@ import {
   ICommandPalette,
   InputDialog,
 } from '@jupyterlab/apputils';
+import {
+  INotebookTracker,
+} from '@jupyterlab/notebook';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ITranslator } from '@jupyterlab/translation';
 
@@ -65,6 +68,7 @@ function installCommands(
   app: JupyterFrontEnd,
   palette: ICommandPalette,
   translator: ITranslator,
+  tracker: INotebookTracker,
 ) {
   const { commands } = app;
   const trans = translator.load('jupyterlab');
@@ -76,23 +80,22 @@ function installCommands(
   commands.addCommand(CommandIDs.checkout, {
     label: trans.__('Kishu: Checkout...'),
     execute: async (_args) => {
-      // TODO: Detect currently viewed notebook path.
-      const notebook_id = (
-        await InputDialog.getText({
-          placeholder: '<notebook_id>',
-          title: trans.__('Checkout...'),
-          okLabel: trans.__('Next')
-        })
-      ).value ?? undefined;
-      if (!notebook_id) {
-        window.alert(trans.__(`Kishu checkout requires notebook ID.`));
+      // Detect currently viewed notebook.
+      const widget = tracker.currentWidget;
+      if (!widget) {
+        window.alert(trans.__(`No currently viewed notebook detected to checkout (missing widget).`));
+        return;
+      }
+      const notebook_path = widget.context.localPath;
+      if (!notebook_path) {
+        window.alert(trans.__(`No currently viewed notebook detected to checkout.`));
         return;
       }
 
       // List all commits.
       const log_all_result = await requestAPI<LogAllResult>('log_all', {
         method: 'POST',
-        body: JSON.stringify({notebook_id: notebook_id}),
+        body: JSON.stringify({notebook_path: notebook_path}),
       });
 
       // Ask for the target commit ID.
@@ -129,7 +132,7 @@ function installCommands(
       // Make checkout request
       const checkout_result = await requestAPI<CheckoutResult>('checkout', {
         method: 'POST',
-        body: JSON.stringify({notebook_id: notebook_id, commit_id: commit_id}),
+        body: JSON.stringify({notebook_path: notebook_path, commit_id: commit_id}),
       });
 
       // Report.
@@ -153,12 +156,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
   description: 'Jupyter extension to interact with Kishu',
   autoStart: true,
-  requires: [ICommandPalette, ITranslator, ISettingRegistry],
+  requires: [ICommandPalette, ITranslator, ISettingRegistry, INotebookTracker],
   activate: (
     app: JupyterFrontEnd,
     palette: ICommandPalette,
     translator: ITranslator,
     settings: ISettingRegistry,
+    tracker: INotebookTracker,
   ) => {
     Promise.all([app.restored, settings.load(PLUGIN_ID)])
       .then(([, setting]) => {
@@ -167,7 +171,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         setting.changed.connect(loadSetting);
 
         // Install commands.
-        installCommands(app, palette, translator);
+        installCommands(app, palette, translator, tracker);
       })
       .catch(reason => {
         console.error(
