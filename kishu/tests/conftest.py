@@ -112,7 +112,7 @@ def create_temporary_copy(path: str, filename: str, temp_dir: str):
 
 # Sets TEST_NOTEBOOK_PATH environment variable to be the path to a temporary copy of a notebook
 @pytest.fixture
-def set_notebook_path_env(tmp_path, request):
+def set_temp_notebook_path_env(tmp_path, request):
     notebook_name = getattr(request, "param", "simple.ipynb")
     path_to_notebook = os.getcwd()
     notebook_full_path = os.path.join(path_to_notebook, NB_DIR, notebook_name)
@@ -121,5 +121,19 @@ def set_notebook_path_env(tmp_path, request):
     os.environ["TEST_NOTEBOOK_PATH"] = temp_path
 
     yield temp_path
+
+    del os.environ["TEST_NOTEBOOK_PATH"]
+
+
+# Sets TEST_NOTEBOOK_PATH environment variable to be the path to a real notebook
+@pytest.fixture
+def set_real_notebook_path_env(request):
+    notebook_name = getattr(request, "param", "simple.ipynb")
+    path_to_notebook = os.getcwd()
+    notebook_full_path = os.path.join(path_to_notebook, NB_DIR, notebook_name)
+
+    os.environ["TEST_NOTEBOOK_PATH"] = notebook_full_path
+
+    yield notebook_full_path
 
     del os.environ["TEST_NOTEBOOK_PATH"]

@@ -194,6 +194,20 @@ class KishuCommand:
         ))
 
     @staticmethod
+    def detach(notebook_path: str) -> InitResult:
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(Path(notebook_path))
+        except FileNotFoundError as e:
+            return InitResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+            )
+        return InitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+            pre_command=f"from kishu import detach_kishu; detach_kishu(\"{notebook_path}\")",
+            command=f"\"Successfully detatched notebook at {notebook_path}\"",
+        ))
+
+    @staticmethod
     def log(notebook_id: str, commit_id: Optional[str] = None) -> LogResult:
         if commit_id is None:
             head = KishuBranch.get_head(notebook_id)

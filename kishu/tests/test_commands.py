@@ -17,7 +17,7 @@ def notebook_key() -> Generator[str, None, None]:
 
 
 @pytest.fixture()
-def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
+def kishu_jupyter(tmp_kishu_path, notebook_key, set_temp_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
     kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
     kishu_jupyter.set_test_mode()
     yield kishu_jupyter
@@ -56,7 +56,7 @@ class JupyterResultMock:
 
 
 class TestKishuCommand:
-    def test_list(self, set_notebook_path_env, notebook_key, basic_execution_ids):
+    def test_list(self, set_temp_notebook_path_env, notebook_key, basic_execution_ids):
         list_result = KishuCommand.list()
         assert len(list_result.sessions) == 0
 

@@ -35,29 +35,29 @@ def test_history_to_sqlite(tmp_path: Path):
 
 
 # Modify the test_checkout to use the new fixture.
-@pytest.mark.parametrize("set_notebook_path_env", ["test_jupyter_checkout.ipynb"], indirect=True)
-def test_checkout(tmp_kishu_path_os: Path, set_notebook_path_env):
-    notebook = NotebookRunner(set_notebook_path_env)
+@pytest.mark.parametrize("set_temp_notebook_path_env", ["test_jupyter_checkout.ipynb"], indirect=True)
+def test_checkout(tmp_kishu_path_os: Path, set_temp_notebook_path_env):
+    notebook = NotebookRunner(set_temp_notebook_path_env)
     vals = ['a']
     output = notebook.execute([], vals)
     assert output['a'] == 1
 
 
-@pytest.mark.parametrize("set_notebook_path_env", ["test_init_kishu.ipynb"], indirect=True)
-def test_reattatchment(tmp_kishu_path_os: Path, set_notebook_path_env):
-    notebook = NotebookRunner(set_notebook_path_env)
+@pytest.mark.parametrize("set_temp_notebook_path_env", ["test_init_kishu.ipynb"], indirect=True)
+def test_reattatchment(tmp_kishu_path_os: Path, set_temp_notebook_path_env):
+    notebook = NotebookRunner(set_temp_notebook_path_env)
     vals = ['a']
     output = notebook.execute([], vals)
     assert output['a'] == 1
 
-    with open(set_notebook_path_env, "r") as temp_file:
+    with open(set_temp_notebook_path_env, "r") as temp_file:
         nb = nbformat.read(temp_file, 4)
         assert nb.metadata.kishu.session_count == 2
 
 
-@pytest.mark.parametrize("set_notebook_path_env", ["test_jupyter_load_module.ipynb"], indirect=True)
-def test_record_history(tmp_kishu_path_os: Path, set_notebook_path_env):
-    notebook = NotebookRunner(set_notebook_path_env)
+@pytest.mark.parametrize("set_temp_notebook_path_env", ["test_jupyter_load_module.ipynb"], indirect=True)
+def test_record_history(tmp_kishu_path_os: Path, set_temp_notebook_path_env):
+    notebook = NotebookRunner(set_temp_notebook_path_env)
     exprs = {"history": "repr(_kishu.log())"}
     output = notebook.execute([], [], exprs)
 
@@ -130,7 +130,7 @@ def test_record_history(tmp_kishu_path_os: Path, set_notebook_path_env):
 
 
 @pytest.mark.parametrize(
-    ("set_notebook_path_env", "cell_num_to_restore"),
+    ("set_temp_notebook_path_env", "cell_num_to_restore"),
     [
         ('simple.ipynb', 2),
         ('simple.ipynb', 3),
@@ -141,14 +141,14 @@ def test_record_history(tmp_kishu_path_os: Path, set_notebook_path_env):
         pytest.param('04_training_linear_models.ipynb', 10, marks=pytest.mark.skip(reason="Too expensive to run")),
         pytest.param('sklearn_tweet_classification.ipynb', 10, marks=pytest.mark.skip(reason="Too expensive to run"))
     ],
-    indirect=["set_notebook_path_env"]
+    indirect=["set_temp_notebook_path_env"]
 )
-def test_full_checkout(tmp_kishu_path_os: Path, set_notebook_path_env, cell_num_to_restore: int):
+def test_full_checkout(tmp_kishu_path_os: Path, set_temp_notebook_path_env, cell_num_to_restore: int):
     """
     Tests checkout correctness by comparing namespace contents at cell_num_to_restore in the middle of a notebook,
     and namespace contents after checking out cell_num_to_restore completely executing the notebook.
     """
-    notebook = NotebookRunner(set_notebook_path_env)
+    notebook = NotebookRunner(set_temp_notebook_path_env)
 
     # Get notebook namespace contents at cell execution X and contents after checking out cell execution X.
     namespace_before_checkout, namespace_after_checkout = notebook.execute_full_checkout_test(cell_num_to_restore)
@@ -158,3 +158,12 @@ def test_full_checkout(tmp_kishu_path_os: Path, set_notebook_path_env, cell_num_
     for key in namespace_before_checkout.keys():
         # As certain classes don't have equality (__eq__) implemented, we compare serialized bytestrings.
         assert dill.dumps(namespace_before_checkout[key]) == dill.dumps(namespace_after_checkout[key])
+
+
+@pytest.mark.parametrize("set_real_notebook_path_env", ["test_detach_kishu.ipynb"], indirect=True)
+def test_detachment(tmp_kishu_path_os: Path, set_real_notebook_path_env):
+    notebook = NotebookRunner(set_real_notebook_path_env)
+    notebook.execute([], [])
+    with open(set_real_notebook_path_env, "r") as nb_file:
+        nb = nbformat.read(nb_file, 4)
+        assert "kishu" not in nb.metadata
