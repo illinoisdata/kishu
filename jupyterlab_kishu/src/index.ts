@@ -5,6 +5,7 @@ import {
 import {
   ICommandPalette,
   InputDialog,
+  Notification,
 } from '@jupyterlab/apputils';
 import {
   INotebookTracker,
@@ -28,21 +29,25 @@ namespace KishuSetting {
 }
 
 interface CommitSummary {
-    commit_id: string;
-    parent_id: string;
-    message: string;
-    timestamp: string;
-    code_block?: string;
-    runtime_ms?: number;
-  }
+  commit_id: string;
+  parent_id: string;
+  message: string;
+  timestamp: string;
+  code_block?: string;
+  runtime_ms?: number;
+}
 
 interface LogAllResult {
-    commit_graph: CommitSummary[];
+  commit_graph: CommitSummary[];
 }
 
 interface CheckoutResult {
-    status: string;
-    message: string;
+  status: string;
+  message: string;
+}
+
+function notifyError(message: string) {
+  Notification.error(message, { autoClose: 3000 });
 }
 
 function commitSummaryToString(commit: CommitSummary): string {
@@ -83,12 +88,12 @@ function installCommands(
       // Detect currently viewed notebook.
       const widget = tracker.currentWidget;
       if (!widget) {
-        window.alert(trans.__(`No currently viewed notebook detected to checkout (missing widget).`));
+        notifyError(trans.__(`No currently viewed notebook detected to checkout (missing widget).`));
         return;
       }
       const notebook_path = widget.context.localPath;
       if (!notebook_path) {
-        window.alert(trans.__(`No currently viewed notebook detected to checkout.`));
+        notifyError(trans.__(`No currently viewed notebook detected to checkout.`));
         return;
       }
 
@@ -99,10 +104,10 @@ function installCommands(
       });
 
       // Ask for the target commit ID.
-      let commit_id = undefined;
+      let maybe_commit_id = undefined;
       if (!log_all_result || log_all_result.commit_graph.length == 0) {
         // Failed to list, asking in text dialog directly.
-        commit_id = (
+        maybe_commit_id = (
           await InputDialog.getText({
             placeholder: '<commit_id>',
             title: trans.__('Checkout to...'),
@@ -121,26 +126,45 @@ function installCommands(
           })
         ).value ?? undefined;
         if (selected_commit_str !== undefined) {
-          commit_id = extractHashFromString(selected_commit_str);
+          maybe_commit_id = extractHashFromString(selected_commit_str);
         }
       }
-      if (!commit_id) {
-        window.alert(trans.__(`Kishu checkout requires commit ID.`));
+      if (!maybe_commit_id) {
+        notifyError(trans.__(`Kishu checkout requires commit ID.`));
         return;
       }
+      const commit_id: string = maybe_commit_id;
 
       // Make checkout request
-      const checkout_result = await requestAPI<CheckoutResult>('checkout', {
+      const checkout_promise = requestAPI<CheckoutResult>('checkout', {
         method: 'POST',
         body: JSON.stringify({notebook_path: notebook_path, commit_id: commit_id}),
       });
 
-      // Report.
-      if (checkout_result.status != 'ok') {
-        window.alert(trans.__(`Kishu checkout failed: "${checkout_result.message}"`));
-      } else {
-        window.alert(trans.__(`Kishu checkout to ${commit_id} succeeded.\nPlease refresh this page.`));
-      }
+      // Reports.
+      const notify_manager = Notification.manager;
+      const notify_id = notify_manager.notify(
+        trans.__(`Checking out ${commit_id}...`),
+        'in-progress',
+        { autoClose: false },
+      );
+      checkout_promise.then((checkout_result,) => {
+        if (checkout_result.status != "ok") {
+          notify_manager.update({
+            id: notify_id,
+            message: trans.__(`Kishu checkout failed: "${checkout_result.message}"`),
+            type: 'error',
+            autoClose: 3000,
+          });
+        } else {
+          notify_manager.update({
+            id: notify_id,
+            message: trans.__(`Kishu checkout to ${commit_id} succeeded.\nPlease refresh this page.`),
+            type: 'success',
+            autoClose: 3000,
+          });
+        }
+      });
     }
   });
   palette.addItem({
