@@ -19,7 +19,12 @@ const PLUGIN_ID = 'jupyterlab_kishu:plugin';
 
 namespace CommandIDs {
   /**
-   * Checkout a commit on the currently viewed file.
+   * Initialize Kishu on the currently viewed notebook.
+   */
+  export const init = 'kishu:init';
+
+  /**
+   * Checkout a commit on the currently viewed notebook.
    */
   export const checkout = 'kishu:checkout';
 }
@@ -37,6 +42,11 @@ interface CommitSummary {
   runtime_ms?: number;
 }
 
+interface InitResult {
+  status: string;
+  message: string;
+}
+
 interface LogAllResult {
   commit_graph: CommitSummary[];
 }
@@ -48,6 +58,15 @@ interface CheckoutResult {
 
 function notifyError(message: string) {
   Notification.error(message, { autoClose: 3000 });
+}
+
+function currentNotebookPath(tracker: INotebookTracker): string | undefined {
+  const widget = tracker.currentWidget;
+  if (!widget) {
+    console.log(`Missing tracker widget to detect currently viewed notebook.`);
+    return undefined;
+  }
+  return widget.context.localPath;
 }
 
 function commitSummaryToString(commit: CommitSummary): string {
@@ -79,6 +98,57 @@ function installCommands(
   const trans = translator.load('jupyterlab');
 
   /**
+   * Init
+   */
+
+  commands.addCommand(CommandIDs.init, {
+    label: trans.__('Kishu: Initialize/Re-attach'),
+    execute: async (_args) => {
+      // Detect currently viewed notebook.
+      const notebook_path = currentNotebookPath(tracker);
+      if (!notebook_path) {
+        notifyError(trans.__(`No currently viewed notebook detected to initialize/attach.`));
+        return;
+      }
+
+      // Make init request
+      const init_promise = requestAPI<InitResult>('init', {
+        method: 'POST',
+        body: JSON.stringify({notebook_path: notebook_path}),
+      });
+
+      // Report.
+      const notify_manager = Notification.manager;
+      const notify_id = notify_manager.notify(
+        trans.__(`Initializing Kishu on ${notebook_path}...`),
+        'in-progress',
+        { autoClose: false },
+      );
+      init_promise.then((init_result,) => {
+        if (init_result.status != "ok") {
+          notify_manager.update({
+            id: notify_id,
+            message: trans.__(`Kishu init failed.\n"${init_result.message}"`),
+            type: 'error',
+            autoClose: 3000,
+          });
+        } else {
+          notify_manager.update({
+            id: notify_id,
+            message: trans.__(`Kishu init succeeded!\n"${init_result.message}"`),
+            type: 'success',
+            autoClose: 3000,
+          });
+        }
+      });
+    }
+  });
+  palette.addItem({
+    command: CommandIDs.init,
+    category: 'Kishu',
+  });
+
+  /**
    * Checkout
    */
 
@@ -86,12 +156,7 @@ function installCommands(
     label: trans.__('Kishu: Checkout...'),
     execute: async (_args) => {
       // Detect currently viewed notebook.
-      const widget = tracker.currentWidget;
-      if (!widget) {
-        notifyError(trans.__(`No currently viewed notebook detected to checkout (missing widget).`));
-        return;
-      }
-      const notebook_path = widget.context.localPath;
+      const notebook_path = currentNotebookPath(tracker);
       if (!notebook_path) {
         notifyError(trans.__(`No currently viewed notebook detected to checkout.`));
         return;
@@ -152,14 +217,14 @@ function installCommands(
         if (checkout_result.status != "ok") {
           notify_manager.update({
             id: notify_id,
-            message: trans.__(`Kishu checkout failed: "${checkout_result.message}"`),
+            message: trans.__(`Kishu checkout failed.\n"${checkout_result.message}"`),
             type: 'error',
             autoClose: 3000,
           });
         } else {
           notify_manager.update({
             id: notify_id,
-            message: trans.__(`Kishu checkout to ${commit_id} succeeded.\nPlease refresh this page.`),
+            message: trans.__(`Kishu checkout to ${commit_id} succeeded!\nPlease refresh this page.`),
             type: 'success',
             autoClose: 3000,
           });
