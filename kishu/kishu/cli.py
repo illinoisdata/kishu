@@ -68,6 +68,20 @@ def init(
 
 
 @kishu_app.command()
+def detach(
+    notebook_path: str = typer.Argument(
+        ...,
+        help="Path to the notebook to detach Kishu from.",
+        show_default=False
+    ),
+) -> None:
+    """
+    Detach Kishu instrumentation from notebook
+    """
+    print(into_json(KishuCommand.detach(notebook_path)))
+
+
+@kishu_app.command()
 def log(
     notebook_key: str = typer.Argument(
         ...,

@@ -116,7 +116,7 @@ def create_temporary_copy(path: str, filename: str, temp_dir: str):
 
 # Sets TEST_NOTEBOOK_PATH environment variable to be the path to a temporary copy of a notebook
 @pytest.fixture
-def set_notebook_path_env(tmp_path, request):
+def set_temp_notebook_path_env(tmp_path, request):
     notebook_name = getattr(request, "param", "simple.ipynb")
     path_to_notebook = os.getcwd()
     notebook_full_path = os.path.join(path_to_notebook, NB_DIR, notebook_name)
@@ -125,6 +125,20 @@ def set_notebook_path_env(tmp_path, request):
     os.environ["TEST_NOTEBOOK_PATH"] = temp_path
 
     yield temp_path
+
+    del os.environ["TEST_NOTEBOOK_PATH"]
+
+
+# Sets TEST_NOTEBOOK_PATH environment variable to be the path to a notebook
+@pytest.fixture
+def set_real_notebook_path_env(request):
+    notebook_name = getattr(request, "param", "simple.ipynb")
+    path_to_notebook = os.getcwd()
+    notebook_full_path = os.path.join(path_to_notebook, NB_DIR, notebook_name)
+
+    os.environ["TEST_NOTEBOOK_PATH"] = notebook_full_path
+
+    yield notebook_full_path
 
     del os.environ["TEST_NOTEBOOK_PATH"]
 
@@ -154,7 +168,7 @@ def notebook_key() -> Generator[str, None, None]:
 
 
 @pytest.fixture()
-def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
+def kishu_jupyter(tmp_kishu_path, notebook_key, set_temp_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
     kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
     kishu_jupyter.set_test_mode()
     yield kishu_jupyter
