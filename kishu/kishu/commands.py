@@ -177,6 +177,7 @@ class FESelectedCommitVariable:
     type: str
     children: List[FESelectedCommitVariable]
     size: Optional[str]
+    html: Optional[str]
 
 
 @dataclass
@@ -640,12 +641,19 @@ class KishuCommand:
 
     @staticmethod
     def _make_selected_variable(key: str, value: Any, vardepth: int = 1) -> FESelectedCommitVariable:
+        html = None
+        try:
+            # TODO: Support load html incrementally when the html is too large
+            html = value.to_html()
+        except:
+            html = None
         return FESelectedCommitVariable(
             variable_name=key,
             state=str(value),
             type=str(type(value).__name__),
             children=KishuCommand._recurse_variable(value, vardepth=vardepth),
             size=KishuCommand._size_or_none(value),
+            html=html,
         )
 
     @staticmethod
