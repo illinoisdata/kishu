@@ -5,65 +5,76 @@
  * @FilePath: /src/components/Toolbar/ExecutedCodePanel.tsx
  * @Description: toolBar includes rollback buttons, and the menu to choose rollback type.
  */
-import React, { SyntheticEvent, useContext, useState } from "react";
+import React, {useContext} from "react";
 import "./toolbar.css";
 import "../utility.css";
-import { DownOutlined, SearchOutlined } from "@ant-design/icons";
-import type { MenuProps } from "antd";
-import { Button, Space, message, Dropdown, Input, ConfigProvider } from "antd";
-import { log } from "console";
-import { BackEndAPI } from "../../util/API";
+import {SearchOutlined} from "@ant-design/icons";
+import {Button, Input, ConfigProvider, Checkbox} from "antd";
 import DropdownBranch from "./DropDownBranch";
-import Search from "antd/es/input/Search";
-import { AppContext } from "../../App";
-
-// export interface Props {
-//   currentBranchID: string;
-//   branchIDs: Set<String>;
-//   setSelectedBranchID: any;
-//   setSelectedCommitID: any;
-// }
-
-enum RollBackType {
-  "BOTH" = 1,
-  "CODES" = 2,
-  "VARIABLES" = 3,
-}
+import {AppContext} from "../../App";
+import {CheckboxChangeEvent} from "antd/es/checkbox";
 
 function Toolbar() {
-  const props = useContext(AppContext);
-  return (
-    <>
-      <ConfigProvider
-        theme={{
-          token: {
-            colorBgContainer: "#588157",
-            colorTextPlaceholder: "white",
-            colorTextBase: "white",
-          },
-          components: {
-            Button: {
-              colorPrimary: "#344E41",
-              colorText: "white",
-            },
-          },
-        }}
-      >
-        {" "}
-        <div className="toolBar">
-          <div>
-            <DropdownBranch />
-          </div>
-          <Search
-            placeholder="input search text"
-            enterButton
-            style={{ backgroundColor: "#D5BDAF" }}
-          />
-          {/* onSearch={} */}
-        </div>
-      </ConfigProvider>
-    </>
-  );
+    const props = useContext(AppContext);
+
+    const onDiffModeChange = (e: CheckboxChangeEvent) => {
+        props?.setInDiffMode(e.target.checked);
+    };
+
+    return (
+        <>
+            <ConfigProvider
+                theme={{
+                    "components": {
+                        "Button": {
+                            "colorPrimary": "rgb(219,222,225)",
+                            "primaryColor": "rgb(87,89,90)"
+                        },
+                        "Input": {
+                            "colorBgContainer": "rgb(219,222,225)",
+                            "colorText": "rgb(87,89,90)",
+                            "colorBgContainerDisabled": "rgb(219,222,225)",
+                            "colorTextDisabled": "rgb(87,89,90)",
+                            "colorTextPlaceholder": "rgb(87,89,90)"
+                        },
+                        "Select": {
+                            "colorBgContainer": "rgb(219,222,225)",
+                            "colorText": "rgb(87,89,90)",
+                            "colorTextPlaceholder": "rgb(87,89,90)",
+                            "optionSelectedBg": "rgb(197,202,207)"
+                        },
+                    }
+                }}
+            >
+                {" "}
+                <div className="toolBar">
+                    <Input
+                        placeholder={"Notebook Name: " + globalThis.NotebookID}
+                        disabled={true}
+                        style={{width: "20%"}}
+                    />
+                    <div className="searchBar">
+                        <Input
+                            placeholder="input search text"
+                            // disabled={true}
+
+                        />
+                        <Button
+                            type="primary" shape={"round"} icon={<SearchOutlined/>}
+                        />
+                    </div>
+
+                    <Checkbox onChange={onDiffModeChange}>DiffMode</Checkbox>
+
+                    <div>
+                        <DropdownBranch/>
+                    </div>
+
+                    {/* onSearch={} */}
+                </div>
+            </ConfigProvider>
+        </>
+    );
 }
 
 export default Toolbar;

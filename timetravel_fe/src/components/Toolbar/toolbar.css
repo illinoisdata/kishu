@@ -1,7 +1,12 @@
 .toolBar {
-  width: "100%";
-  background-color: #457b9d;
-  padding: "10px";
-  display: flex;
-  justify-content: space-between;
+    width: 100%;
+    background-color: #c5cacf;
+    /*padding: 10px;*/
+    display: flex;
+    justify-content: space-between;
+}
+
+.searchBar {
+    width: 40%;
+    display: flex;
 }

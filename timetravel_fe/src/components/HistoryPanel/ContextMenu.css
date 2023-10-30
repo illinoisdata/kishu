@@ -1,19 +1,19 @@
 /* ContextMenu.css */
 .context-menu {
-  position: fixed;
-  background-color: #fff;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  padding: 8px;
-  z-index: 9999;
+    position: fixed;
+    background-color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    z-index: 9999;
 }
 
 .menu-item {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 6px 12px;
 }
 
 .icon {
-  margin-right: 8px;
+    margin-right: 8px;
 }

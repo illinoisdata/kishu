@@ -1,4 +1,4 @@
 /* to start a new line when encountering '\n' */
 .newline {
-  white-space: pre-wrap;
+    white-space: pre-wrap;
 }

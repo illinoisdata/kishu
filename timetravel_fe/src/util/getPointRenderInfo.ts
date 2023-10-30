@@ -3,7 +3,7 @@
 import {PointRenderInfo} from "./PointRenderInfo";
 import {Commit} from "./Commit";
 import MinHeap from "heap-js";
-import {COLORSPAN, COMMITHEIGHT, LINESPACING} from "./GraphSizeConsts";
+import {COLORSPAN, COMMITHEIGHT, LINESPACING} from "./GraphConsts";
 
 //input Commits[], return a map of commit ID to PointRenderer(cx,cy, color)
 export function getPointRenderInfos(commits: Commit[]): {

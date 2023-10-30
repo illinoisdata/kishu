@@ -9,19 +9,23 @@ import React, {
     createContext,
     useEffect,
     useMemo,
-    useRef,
     useState,
 } from "react";
 import "./App.css";
 import ReactSplit, {SplitDirection} from "@devbookhq/splitter";
 import Toolbar from "./components/Toolbar";
 import HistoryTree from "./components/HistoryPanel";
-import CodePanel from "./components/CodePanel/NotebookFilePanel";
+import NotebookFilePanel from "./components/CodePanel/NotebookFilePanel";
 import {BackEndAPI} from "./util/API";
 import {Commit, CommitDetail} from "./util/Commit";
 import VariablePanel from "./components/VariablePanel";
 import {useParams} from "react-router-dom";
 import ExecutedCodePanel from "./components/CodePanel/ExecutedCodePanel";
+import {Tabs, TabsProps} from "antd";
+import NotebookFileDiffPanel from "./components/CodePanel/NotebookFileDiffPanel";
+import ExecutedCodeDiffPanel from "./components/CodePanel/ExecutedCodeDiffPanel";
+import {DiffCommitDetail} from "./util/DiffCommitDetail";
+import logger from "./log/logger";
 
 interface appContextType {
     commits: Commit[];
@@ -36,19 +40,72 @@ interface appContextType {
     setSelectedBranchID: any;
     currentHeadID: string | undefined;
     setCurrentHeadID: any;
+    inDiffMode: boolean
+    setInDiffMode: any;
+    DiffCommitDetail: DiffCommitDetail | undefined;
+    setDiffCommitDetail: any;
 }
+
+const cells_loading: TabsProps['items'] = [
+    {
+        key: '1',
+        label: 'notebook cells',
+        children: 'loading...',
+    },
+    {
+        key: '2',
+        label: 'executed cells',
+        children: 'loading...',
+    }
+];
+
+const cells: TabsProps['items'] = [
+    {
+        key: '1',
+        label: 'notebook cells',
+        children: <div className="tile-xy notebook_panel">
+            {<NotebookFilePanel/>}
+        </div>,
+    },
+    {
+        key: '2',
+        label: 'executed cells',
+        children: <div className="tile-xy notebook_panel">
+            {<ExecutedCodePanel/>}
+        </div>,
+    }
+];
+
+const cells_diff: TabsProps['items'] = [
+    {
+        key: '1',
+        label: 'notebook cells',
+        children: <div className="tile-xy notebook_panel">
+            {<NotebookFileDiffPanel/>}
+        </div>,
+    },
+    {
+        key: '2',
+        label: 'executed cells',
+        children: <div className="tile-xy notebook_panel">
+            {<ExecutedCodeDiffPanel/>}
+        </div>,
+    }
+];
 
 export const AppContext = createContext<appContextType | undefined>(undefined);
 
 function App() {
     const [commits, setCommits] = useState<Commit[]>([]);
     const [selectedCommit, setSelectedCommit] = useState<CommitDetail>();
+    const [DiffCommitDetail, setDiffCommitDetail] = useState<DiffCommitDetail>();
     const [selectedCommitID, setSelectedCommitID] = useState<string>();
     const [selectedBranchID, setSelectedBranchID] = useState<string>();
     const [currentHeadID, setCurrentHeadID] = useState<string>();
     const [branchID2CommitMap, setBranchID2CommitMap] = useState<
         Map<string, string>
     >(new Map());
+    const [inDiffMode, setInDiffMode] = useState<boolean>(false);
     const appContext: appContextType = {
         commits,
         setCommits,
@@ -62,68 +119,96 @@ function App() {
         setSelectedBranchID,
         currentHeadID,
         setCurrentHeadID,
+        inDiffMode,
+        setInDiffMode,
+        DiffCommitDetail,
+        setDiffCommitDetail
     };
 
     const [globalLoading, setGlobalLoading] = useState(true);
     const [error, setError] = useState<string | undefined>(undefined);
 
-    const [splitSizes1, setSplitSizes1] = useState([30, 45, 25]);
-    const [splitSizes2, setSplitSizes2] = useState([50, 50]);
+    const [splitSizes1, setSplitSizes1] = useState([30, 70]);
+    const [splitSizes2, setSplitSizes2] = useState([60, 40]);
 
     globalThis.NotebookID = useParams().notebookName;
 
-    useEffect(() => {
-        //initialize the states
-        async function loadInitialData() {
-            setGlobalLoading(true);
-            try {
-                const data = await BackEndAPI.getCommitGraph();
-                console.log("git graph after parse:");
-                console.log(data);
-                setCommits(data.commits);
-                const newSetBranchID2CommitMap = new Map<string, string>();
-                data.commits.map((commit) => {
-                    commit.branchIds.map((branchID) => {
-                        newSetBranchID2CommitMap.set(branchID, commit.oid);
-                    });
+    async function loadInitialData() {
+        setGlobalLoading(true);
+        try {
+            const data = await BackEndAPI.getCommitGraph();
+            logger.silly("git graph after parse:", data);
+            setCommits(data.commits);
+            const newSetBranchID2CommitMap = new Map<string, string>();
+            data.commits.map((commit) => {
+                commit.branchIds.map((branchID) => {
+                    newSetBranchID2CommitMap.set(branchID, commit.oid);
                 });
-                setBranchID2CommitMap(newSetBranchID2CommitMap);
-                setSelectedCommitID(data.currentHead);
-                setSelectedBranchID(data.currentHeadBranch);
-                setCurrentHeadID(data.currentHead);
-            } catch (e) {
-                if (e instanceof Error) {
-                    setError(e.message);
-                }
-            } finally {
-                setGlobalLoading(false);
+            });
+            setBranchID2CommitMap(newSetBranchID2CommitMap);
+            setSelectedCommitID(data.currentHead);
+            setSelectedBranchID(data.currentHeadBranch);
+            setCurrentHeadID(data.currentHead);
+        } catch (e) {
+            if (e instanceof Error) {
+                setError(e.message);
+            }
+        } finally {
+            setGlobalLoading(false);
+        }
+    }
+
+    async function loadCommitDetail(selectedCommitID: string) {
+        if (!selectedCommitID) {
+            return;
+        }
+        try {
+            const data = await BackEndAPI.getCommitDetail(selectedCommitID);
+            console.log("commit detail after parse:");
+            console.log(data);
+            setSelectedCommit(data!);
+        } catch (e) {
+            if (e instanceof Error) {
+                setError(e.message);
             }
         }
+    }
 
+    async function loadDiffCommitDetail(selectedCommitID: string) {
+        if (!selectedCommitID) {
+            return;
+        }
+        try {
+            const data = await BackEndAPI.getDiff(selectedCommitID);
+            console.log("commit detail diff after parse:");
+            console.log(data);
+            setDiffCommitDetail(data!)
+        } catch (e) {
+            if (e instanceof Error) {
+                setError(e.message);
+            }
+        }
+    }
+
+    useEffect(() => {
+        //initialize the states
         loadInitialData();
     }, []);
 
     useMemo(() => {
-        async function loadCommitDetail(selectedCommitID: string) {
-            if (!selectedCommitID) {
-                return;
-            }
-            try {
-                const data = await BackEndAPI.getCommitDetail(selectedCommitID);
-                console.log("commit detail after parse:");
-                console.log(data);
-                setSelectedCommit(data!);
-            } catch (e) {
-                if (e instanceof Error) {
-                    setError(e.message);
-                }
-            }
-        }
-
         loadCommitDetail(selectedCommitID!);
+        if (inDiffMode) {
+            loadDiffCommitDetail(selectedCommitID!)
+        }
     }, [selectedCommitID]);
 
-    let codePanelRef = useRef<HTMLDivElement | null>(null);
+    useMemo(() => {
+        if (inDiffMode) {
+            loadDiffCommitDetail(selectedCommitID!)
+        }
+    }, [inDiffMode]);
+
+
     return (
         <AppContext.Provider value={appContext}>
             <>
@@ -147,9 +232,10 @@ function App() {
                             }}
                             gutterClassName="custom_gutter"
                         >
-                            <div className="tile-xy">
+                            <div className="tile-xy history_panel">
                                 <HistoryTree/>
                             </div>
+
                             <ReactSplit
                                 direction={SplitDirection.Vertical}
                                 initialSizes={splitSizes2}
@@ -158,11 +244,7 @@ function App() {
                                 }}
                                 gutterClassName="custom_gutter"
                             >
-                                <div className="tile-xy u-showbottom">
-                                    <div className="center-page">
-                                        <p>Loading...</p>
-                                    </div>
-                                </div>
+                                <Tabs defaultActiveKey="1" items={cells_loading}/>
                                 <div className="tile-xy">
                                     <div className="center-page">
                                         <p>Loading...</p>
@@ -184,7 +266,7 @@ function App() {
                             }}
                             gutterClassName="custom_gutter"
                         >
-                            <div className="tile-xy">
+                            <div className="tile-xy  history_panel">
                                 <HistoryTree/>
                             </div>
                             <ReactSplit
@@ -196,15 +278,13 @@ function App() {
                                 gutterClassName="custom_gutter"
                             >
                                 <div className="tile-xy u-showbottom">
-                                    {<ExecutedCodePanel/>}
+                                    {inDiffMode ? <Tabs defaultActiveKey="1" items={cells_diff}/> :
+                                        <Tabs defaultActiveKey="1" items={cells}/>}
                                 </div>
-                                <div className="tile-xy u-showbottom" ref={codePanelRef}>
-                                    {<CodePanel containerRef={codePanelRef}/>}
+                                <div className="tile-xy">
+                                    <VariablePanel variables={selectedCommit!.variables!}/>
                                 </div>
                             </ReactSplit>
-                            <div className="tile-xy">
-                                <VariablePanel variables={selectedCommit!.variables!}/>
-                            </div>
                         </ReactSplit>
                     </>
                 )}

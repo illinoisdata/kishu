@@ -9,13 +9,13 @@ import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
-import "./SingleCell.css";
-import {useContext} from "react";
-import {AppContext} from "../../App";
+import "./Cell.css";
+
 
 export interface SingleCellProps {
     execNumber?: string;
     content: string;
+    cssClassNames?: string;
 }
 
 //helper functions
@@ -25,14 +25,13 @@ function countLines(text: string) {
 }
 
 function SingleCell(props: SingleCellProps) {
-    const props1 = useContext(AppContext);
     return (
         <div className="singleCellLayout">
       <span className="executionOrder left">
-        &#91;{props.execNumber === "-1" ? " " : props.execNumber}&#93;
+        &#91;{props.execNumber === "-1" ? " " : props.execNumber}&#93; :
       </span>
             <AceEditor
-                className={"code"}
+                className={props.cssClassNames ? props.cssClassNames : "notebook"}
                 // className={!props.execNumber ? "code unexcecuted" : "code executed"}
                 placeholder="Placeholder Text"
                 mode="python"
@@ -40,10 +39,10 @@ function SingleCell(props: SingleCellProps) {
                 name="blah2"
                 fontSize={14}
                 width="90%"
-                height={(countLines(props.content) * 30).toString() + "px"}
+                height={(countLines(props.content) * 20).toString() + "px"}
                 // height="10px"
                 showPrintMargin={false}
-                showGutter={true}
+                showGutter={false}
                 highlightActiveLine={false}
                 value={props.content}
                 readOnly

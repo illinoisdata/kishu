@@ -5,25 +5,22 @@
  * @FilePath: /src/components/CodePanel/ExecutedCodePanel.tsx
  * @Description: The panel to display code cells of the currently selected history
  */
-import {useContext,} from "react";
-import SingleCell from "./SingleCell";
+import {useContext} from "react";
 import {AppContext} from "../../App";
+import SingleDiffCell from "./SingleDiffCell";
 
 
-function NotebookFilePanel() {
+function ExecutedCodeDiffPanel() {
     const props = useContext(AppContext);
     return (
         <div>
-            {props!.selectedCommit!.codes!.map((code, i) => (
-                <div
+            {props!.DiffCommitDetail?.executedCellDiffHunks.map((hunk, i) => {
+                return <div
                     key={i}
-                >
-                    <SingleCell execNumber={code.execNum} content={code.content} cssClassNames={"notebook"}/>
-                    <br/>
-                </div>
-            ))}
+                ><SingleDiffCell diffHunk={hunk}/><br/></div>
+            })}
         </div>
-    );
+    )
 }
 
-export default NotebookFilePanel;
+export default ExecutedCodeDiffPanel;

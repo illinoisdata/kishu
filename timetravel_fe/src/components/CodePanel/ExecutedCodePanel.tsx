@@ -5,48 +5,25 @@
  * @FilePath: /src/components/CodePanel/ExecutedCodePanel.tsx
  * @Description: The panel to display code cells of the currently selected history
  */
-import { useContext, useEffect, useLayoutEffect, useRef } from "react";
-import { AppContext } from "../../App";
+import {useContext} from "react";
+import {AppContext} from "../../App";
 import SingleCell from "./SingleCell";
 
-// export interface CodePanelProps {
-//   containerRef: React.MutableRefObject<HTMLDivElement | null>;
-// }
-
 function ExecutedCodePanel() {
-  const props = useContext(AppContext);
+    const props = useContext(AppContext);
 
-  let containerRef = useRef<null | HTMLDivElement>(null);
-  let targetRef = useRef<null | HTMLDivElement>(null);
+    const length = props!.selectedCommit!.historyExecCells.length;
 
-  useEffect(() => {
-    // Scroll to the element when the component mounts (for example, after data loads)
-    if (containerRef.current && targetRef.current) {
-      // containerRef.current.scrollTop = containerRef.current.scrollHeight;
-
-      const container = containerRef.current;
-      const target = targetRef.current;
-
-      // Calculate the scroll position to bring the target element into view
-      const scrollPosition = target.offsetTop - container.offsetTop;
-
-      // Scroll to the target element
-      container.scrollTop = scrollPosition;
-    }
-  }, [props]);
-
-  const length = props!.selectedCommit!.historyExecCells.length;
-
-  return (
-    <div ref={containerRef}>
-      {props!.selectedCommit!.historyExecCells.map((code, i) => (
-        <div ref={i !== length - 1 ? null : targetRef} key={i}>
-          <SingleCell execNumber={(i + 1).toString()} content={code.content} />
-          <br />
+    return (
+        <div>
+            {props!.selectedCommit!.historyExecCells.map((code, i) => (
+                <div key={i}>
+                    <SingleCell execNumber={(length - i).toString()} content={code.content} cssClassNames={"notebook"}/>
+                    <br/>
+                </div>
+            ))}
         </div>
-      ))}
-    </div>
-  );
+    );
 }
 
 export default ExecutedCodePanel;
