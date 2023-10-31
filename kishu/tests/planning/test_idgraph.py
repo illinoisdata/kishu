@@ -7,6 +7,18 @@ import xxhash
 
 from kishu.planning.idgraph import get_object_hash, get_object_state
 
+'''
+Python version: 3.10.12
+Pickle version: 4.0
+
+Library versions:
+
+Pandas version: 2.1.1
+Numpy version: 1.24.3
+Matplotlib version: 3.8.0 - Pickle binaries not equal
+Seaborn version: 0.13.0 - Pickle binaries not equal
+'''
+
 
 def benchmark_idgraph_creation(obj):
     idgraph1 = get_object_state(obj, {})
@@ -123,10 +135,6 @@ def test_idgraph_pandas_Series():
         Test if idgraph is accurately generated for panda series
     """
 
-    with open('myfile.txt', 'a') as file:
-        file.write(pd.__version__ + "\n")
-        file.write('numpy version: ' + np.__version__ + "\n")
-        file.write('seaborn version: ' + sns.__version__ + "\n")
     s1 = pd.Series([1, 2, 3, 4])
 
     idgraph1 = get_object_state(s1, {})
