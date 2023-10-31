@@ -331,6 +331,8 @@ def test_idgraph_matplotlib():
     """
         Test if idgraph is accurately generated for matplotlib objects
     """
+    # In Python version 3.10.12 and matplotlib version 3.8.0, pickled binaries are not equal
+
     plt.close('all')
     df = pd.DataFrame(
         np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
@@ -521,6 +523,8 @@ def test_idgraph_seaborn_displot():
     """
         Test if idgraph is accurately generated for seaborn displot objects (figure-level object)
     """
+    # In Python version 3.10.12 and seaborn version 0.13.0, pickled binaries are not equal
+
     plt.close('all')
     df = sns.load_dataset('penguins')
     plot1 = sns.displot(data=df, x="flipper_length_mm",
