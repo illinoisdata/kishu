@@ -7,24 +7,6 @@ import xxhash
 
 from kishu.planning.idgraph import get_object_hash, get_object_state
 
-# def noop_benchmark(func, *args, **kwargs):
-#     """
-#     A no-op benchmark function that just calls the provided function.
-#     """
-#     return func(*args, **kwargs)
-
-
-# def benchmark_idgraph_ret_comp_id(obj):
-#     # print("Called")
-#     idgraph1 = get_object_state(obj, {})
-#     idgraph2 = get_object_state(obj, {})
-#     return idgraph1 == idgraph2, idgraph1
-
-# def benchmark_hash_ret_comp_hash(obj):
-#     hash1 = get_object_hash(obj)
-#     hash2 = get_object_hash(obj)
-#     return hash1.digest() == hash2.digest(), hash1
-
 
 def benchmark_idgraph_creation(obj):
     idgraph1 = get_object_state(obj, {})
@@ -88,8 +70,8 @@ def test_idgraph_comparison_numpy(benchmark):
     idgraph1 = get_object_state(a, {})
     idgraph2 = get_object_state(a, {})
 
-    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
-    assert res
+    idgraph_equal = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    assert idgraph_equal
 
 
 def test_hash_numpy():
@@ -132,8 +114,8 @@ def test_hash_comparison_numpy(benchmark):
     hash1 = get_object_hash(a)
     hash2 = get_object_hash(a)
 
-    res = benchmark(benchmark_hash_comparison, hash1, hash2)
-    assert res
+    hash_equal = benchmark(benchmark_hash_comparison, hash1, hash2)
+    assert hash_equal
 
 
 def test_idgraph_pandas_Series():
@@ -186,8 +168,8 @@ def test_idgraph_comparison_pandas_Series(benchmark):
     idgraph1 = get_object_state(s1, {})
     idgraph2 = get_object_state(s1, {})
 
-    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
-    assert res
+    idgraph_equal = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    assert idgraph_equal
 
 
 def test_hash_pandas_Series():
@@ -232,8 +214,8 @@ def test_hash_comparison_pandas_Series(benchmark):
     hash1 = get_object_hash(s1)
     hash2 = get_object_hash(s1)
 
-    res = benchmark(benchmark_hash_comparison, hash1, hash2)
-    assert res
+    hash_equal = benchmark(benchmark_hash_comparison, hash1, hash2)
+    assert hash_equal
 
 
 def test_idgraph_pandas_df():
@@ -288,8 +270,8 @@ def test_idgraph_comparison_pandas_df(benchmark):
     idgraph1 = get_object_state(df, {})
     idgraph2 = get_object_state(df, {})
 
-    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
-    assert res
+    idgraph_equal = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    assert idgraph_equal
 
 
 def test_hash_pandas_df():
@@ -341,8 +323,8 @@ def test_hash_comparison_pandas_df(benchmark):
     hash1 = get_object_hash(df)
     hash2 = get_object_hash(df)
 
-    res = benchmark(benchmark_hash_comparison, hash1, hash2)
-    assert res
+    hash_equal = benchmark(benchmark_hash_comparison, hash1, hash2)
+    assert hash_equal
 
 
 def test_idgraph_matplotlib():
@@ -432,12 +414,12 @@ def test_idgraph_comparison_matplotlib(benchmark):
     pick1 = pickle.dumps(a[0])
     pick2 = pickle.dumps(a[0])
 
-    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    idgraph_equal = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
 
     if pick1 != pick2:
-        assert not res
+        assert not idgraph_equal
     else:
-        assert res
+        assert idgraph_equal
 
     plt.close('all')
 
@@ -526,11 +508,11 @@ def test_hash_comparison_matplotlib(benchmark):
     pick1 = pickle.dumps(a[0])
     pick2 = pickle.dumps(a[0])
 
-    res = benchmark(benchmark_hash_comparison, hash1, hash2)
+    hash_equal = benchmark(benchmark_hash_comparison, hash1, hash2)
     if pick1 != pick2:
-        assert not res
+        assert not hash_equal
     else:
-        assert res
+        assert hash_equal
 
     plt.close('all')
 
@@ -606,11 +588,11 @@ def test_idgraph_comparison_seaborn_displot(benchmark):
     pick1 = pickle.dumps(plot1)
     pick2 = pickle.dumps(plot1)
 
-    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    idgraph_equal = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
     if pick1 != pick2:
-        assert not res
+        assert not idgraph_equal
     else:
-        assert res
+        assert idgraph_equal
 
     plt.close('all')
 
@@ -682,11 +664,11 @@ def test_hash_comparison_seaborn_displot(benchmark):
     pick1 = pickle.dumps(plot1)
     pick2 = pickle.dumps(plot1)
 
-    res = benchmark(benchmark_hash_comparison, hash1, hash2)
+    hash_equal = benchmark(benchmark_hash_comparison, hash1, hash2)
     if pick1 != pick2:
-        assert not res
+        assert not hash_equal
     else:
-        assert res
+        assert hash_equal
     plt.close('all')
 
 
@@ -770,11 +752,11 @@ def test_idgraph_comparison_seaborn_scatterplot(benchmark):
     pick1 = pickle.dumps(plot1)
     pick2 = pickle.dumps(plot1)
 
-    res = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
+    idgraph_equal = benchmark(benchmark_idgraph_comparison, idgraph1, idgraph2)
     if pick1 != pick2:
-        assert not res
+        assert not idgraph_equal
     else:
-        assert res
+        assert idgraph_equal
     plt.close('all')
 
 
@@ -851,9 +833,9 @@ def test_hash_comparison_seaborn_scatterplot(benchmark):
     pick1 = pickle.dumps(plot1)
     pick2 = pickle.dumps(plot1)
 
-    res = benchmark(benchmark_hash_comparison, hash1, hash2)
+    hash_equal = benchmark(benchmark_hash_comparison, hash1, hash2)
     if pick1 != pick2:
-        assert not res
+        assert not hash_equal
     else:
-        assert res
+        assert hash_equal
     plt.close('all')
