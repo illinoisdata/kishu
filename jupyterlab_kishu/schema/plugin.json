@@ -1,8 +1,15 @@
 {
   "jupyter.lab.shortcuts": [],
-  "title": "jupyterlab_kishu",
-  "description": "jupyterlab_kishu settings.",
+  "title": "Kishu",
+  "description": "Kishu JupyterLab Extension (jupyterlab_kishu) settings.",
   "type": "object",
-  "properties": {},
+  "properties": {
+    "kishu_dir": {
+      "type": "string",
+      "title": "Kishu directory",
+      "description": "Path to Kishu directory storing all notebook commits.",
+      "default": "~/.kishu/"
+    }
+  },
   "additionalProperties": false
 }

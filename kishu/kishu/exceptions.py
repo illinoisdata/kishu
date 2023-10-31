@@ -9,6 +9,21 @@ class TypeNotSupportedError(Exception):
 
 
 """
+Raised by notebook_id
+"""
+
+
+class MissingNotebookMetadataError(Exception):
+    def __init__(self):
+        super().__init__("Missing Kishu metadata in the notebook.")
+
+
+class NotNotebookPathOrKey(Exception):
+    def __init__(self, s: str):
+        super().__init__(f"\"{s}\" is neither a notebook path nor a Kishu notebook key.")
+
+
+"""
 Raised by jupyterint
 """
 

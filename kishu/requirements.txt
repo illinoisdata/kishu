@@ -1,13 +1,28 @@
+# Packages required to import kishu.
+# README: Keep in sync with pyproject.toml
+
+# Core
 dataclasses
+dataclasses_json
 dill
+ipykernel
 ipylab
-ipynbname
-pytest
-loguru
-shortuuid
-typing
-flask
-dataclasses-json
 jupyter_ui_poll
-typer
+nbconvert
+nbformat
 networkx
+psutil
+typing
+
+# User interfaces: cli, backend, jupyterlab_kishu
+flask
+typer
+
+# Planning
+numpy
+pandas
+shortuuid
+xxhash
+
+# Watchdog
+loguru
