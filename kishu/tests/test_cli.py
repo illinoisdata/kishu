@@ -9,6 +9,7 @@ from kishu.exceptions import (
 )
 from kishu.cli import kishu_app
 from kishu.commands import (
+    DetachResult,
     ListResult,
     InitResult,
 )
@@ -49,6 +50,28 @@ class TestKishuApp:
         assert result.exit_code == 0
         init_result = InitResult.from_json(result.stdout)
         assert init_result == InitResult(
+            status="error",
+            message="FileNotFoundError: Kernel for the notebook not found.",
+        )
+
+    def test_detach_empty(self, runner, tmp_kishu_path):
+        result = runner.invoke(kishu_app, ["detach", "non_existent_notebook.ipynb"])
+        assert result.exit_code == 0
+        detach_result = DetachResult.from_json(result.stdout)
+        assert detach_result == DetachResult(
+            status="error",
+            message="FileNotFoundError: Kernel for the notebook not found.",
+        )
+
+    def test_detach_simple(self, runner, tmp_kishu_path, nb_simple_path):
+        init_result_raw = runner.invoke(kishu_app, ["init", str(nb_simple_path)])
+        assert init_result_raw.exit_code == 0
+        detach_result_raw = runner.invoke(kishu_app, ["detach", str(nb_simple_path)])
+        assert detach_result_raw.exit_code == 0
+
+        # TODO: This should pass with Jupyter Server
+        detach_result = DetachResult.from_json(detach_result_raw.stdout)
+        assert detach_result == DetachResult(
             status="error",
             message="FileNotFoundError: Kernel for the notebook not found.",
         )

@@ -54,7 +54,6 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from jupyter_ui_poll import run_ui_poll_loop
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from kishu.exceptions import (
@@ -804,37 +803,47 @@ def init_kishu() -> None:
     load_kishu(nb_id, nb.metadata.kishu.session_count)
 
 
-def remove_event_handlers() -> None:
-    # Remove hooks
+def remove_event_handlers(nb_id: NotebookId) -> None:
+    # access ipython
     ip = kishu_ipython()
-    if not ip:
-        return
-    pre_run_cell_callbacks = ip.events.callbacks['pre_run_cell']
-    post_run_cell_callbacks = ip.events.callbacks['post_run_cell']
+    if ip:
+        if KISHU_INSTRUMENT in ip.user_ns:
+            # if kishu is in the user_ns of ipython, delete hooks
+            kishu = ip.user_ns[KISHU_INSTRUMENT]
+            try:
+                ip.events.unregister('pre_run_cell', kishu.pre_run_cell)
+            except ValueError:
+                # if here, then kishu.pre_run_cell is not attached to notebook, so do nothing
+                pass
 
-    # Remove the kishu event handlers from the callback lists
-    pre_run_cell_callbacks[:] = [cb for cb in pre_run_cell_callbacks if cb.__name__ != 'pre_run_cell']
-    post_run_cell_callbacks[:] = [cb for cb in post_run_cell_callbacks if cb.__name__ != 'post_run_cell']
+            try:
+                ip.events.unregister('post_run_cell', kishu.post_run_cell)
+            except ValueError:
+                # if here, then kishu.post_run_cell is not attached to notebook, so do nothing
+                pass
 
-    # Remove the Kishu instance from user_ns
-    if KISHU_INSTRUMENT in ip.user_ns:
-        del ip.user_ns[KISHU_INSTRUMENT]
+            # delete kishu instrument from user_ns
+            del ip.user_ns[KISHU_INSTRUMENT]
 
     # Set global kishu value to be None
     global _kishu_ipython
     _kishu_ipython = None
 
 
-def detach_kishu(nb_path: str) -> None:
-    # Access actual notebook
-    nb = JupyterRuntimeEnv.read_notebook(Path(nb_path))
+def detach_kishu() -> None:
+    # Create notebook id object
+    nb_id = NotebookId.from_enclosing_with_key("")
 
-    # Remove metadata from notebook
+    # Open notebook file
+    nb = JupyterRuntimeEnv.read_notebook(nb_id.path())
+
     try:
+        # Remove metadata from notebook
         NotebookId.remove_kishu_metadata(nb)
-        nbformat.write(nb, nb_path)
+        nbformat.write(nb, nb_id.path())
     except MissingNotebookMetadataError:
-        return
+        # This means that kishu metadata is not in the notebook, so do nothing
+        pass
 
     # Remove all hooks
-    remove_event_handlers()
+    remove_event_handlers(nb_id)

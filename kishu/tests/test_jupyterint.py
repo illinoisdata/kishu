@@ -196,9 +196,15 @@ class TestOnNotebookRunner:
             assert dill.dumps(namespace_before_checkout[key]) == dill.dumps(namespace_after_checkout[key])
 
     @pytest.mark.parametrize("set_real_notebook_path_env", ["test_detach_kishu.ipynb"], indirect=True)
-    def test_detachment(self, tmp_kishu_path_os: Path, set_real_notebook_path_env):
+    def test_detachment_valid(self, tmp_kishu_path_os: Path, set_real_notebook_path_env):
         notebook = NotebookRunner(set_real_notebook_path_env)
         notebook.execute([], [])
         with open(set_real_notebook_path_env, "r") as nb_file:
             nb = nbformat.read(nb_file, 4)
             assert "kishu" not in nb.metadata
+
+    @pytest.mark.parametrize("set_real_notebook_path_env", ["test_detach_kishu_2.ipynb"], indirect=True)
+    def test_detachment_fails_gracefully(self, tmp_kishu_path_os: Path, set_real_notebook_path_env):
+        notebook = NotebookRunner(set_real_notebook_path_env)
+        notebook.execute([], [])
+        assert True  # making sure no errors were thrown
