@@ -1,7 +1,8 @@
+import dataclasses
 import pytest
 
 from typer.testing import CliRunner
-from typing import Generator
+from typing import Generator, List, Optional
 
 from kishu import __app_name__, __version__
 from kishu.exceptions import (
@@ -12,12 +13,61 @@ from kishu.commands import (
     DetachResult,
     ListResult,
     InitResult,
+    BranchResult,
+    DeleteBranchResult,
+    RenameBranchResult,
 )
+from kishu.jupyterint import KishuForJupyter
+from kishu.notebook_id import NotebookId
 
 
 @pytest.fixture()
 def runner() -> Generator[CliRunner, None, None]:
     yield CliRunner(mix_stderr=False)
+
+
+@pytest.fixture()
+def notebook_key() -> Generator[str, None, None]:
+    yield "notebook_123"
+
+
+@pytest.fixture()
+def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
+    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
+    kishu_jupyter.set_test_mode()
+    yield kishu_jupyter
+
+
+@pytest.fixture()
+def basic_execution_ids(kishu_jupyter) -> Generator[List[str], None, None]:
+    execution_count = 1
+    info = JupyterInfoMock(raw_cell="x = 1")
+    kishu_jupyter.pre_run_cell(info)
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+    execution_count = 2
+    info = JupyterInfoMock(raw_cell="y = 2")
+    kishu_jupyter.pre_run_cell(info)
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+    execution_count = 3
+    info = JupyterInfoMock(raw_cell="y = x + 1")
+    kishu_jupyter.pre_run_cell(info)
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+
+    yield ["0:1", "0:2", "0:3"]  # List of commit IDs
+
+
+@dataclasses.dataclass
+class JupyterInfoMock:
+    raw_cell: Optional[str] = None
+
+
+@dataclasses.dataclass
+class JupyterResultMock:
+    info: JupyterInfoMock = dataclasses.field(default_factory=JupyterInfoMock)
+    execution_count: Optional[int] = None
+    error_before_exec: Optional[str] = None
+    error_in_exec: Optional[str] = None
+    result: Optional[str] = None
 
 
 class TestKishuApp:
@@ -92,3 +142,82 @@ class TestKishuApp:
         assert result.exit_code == 1
         assert isinstance(result.exception, NotNotebookPathOrKey)
         assert "NON_EXISTENT_NOTEBOOK_ID" in str(result.exception)
+
+    def test_create_branch(self, runner, tmp_kishu_path, notebook_key, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["branch", notebook_key, "-c", "new_branch"])
+        assert result.exit_code == 0
+        branch_result = BranchResult.from_json(result.stdout)
+        assert branch_result == BranchResult(
+            status="ok",
+            branch_name="new_branch",
+            commit_id=branch_result.commit_id,  # Not tested
+            head=branch_result.head,  # Not tested
+        )
+
+    def test_delete_non_checked_out_branch(self, runner, tmp_kishu_path, notebook_key, basic_execution_ids):
+        runner.invoke(kishu_app, ["branch", notebook_key, basic_execution_ids[-2], "-c", "branch_to_keep"])
+        runner.invoke(kishu_app, ["branch", notebook_key, basic_execution_ids[-1], "-c", "branch_to_delete"])
+        result = runner.invoke(kishu_app, ["checkout", notebook_key, "branch_to_keep"])
+        assert result.exit_code == 0
+
+        result = runner.invoke(kishu_app, ["branch", notebook_key, "-d", "branch_to_delete"])
+        assert result.exit_code == 0
+        delete_branch_result = DeleteBranchResult.from_json(result.stdout)
+        assert delete_branch_result == DeleteBranchResult(
+            status="ok",
+            message="Branch branch_to_delete deleted.",
+        )
+
+    def test_delete_checked_out_branch(self, runner, tmp_kishu_path, notebook_key, basic_execution_ids):
+        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "branch_to_delete"])  # Checked out branch
+
+        result = runner.invoke(kishu_app, ["branch", notebook_key, "-d", "branch_to_delete"])
+        assert result.exit_code == 0
+        delete_branch_result = DeleteBranchResult.from_json(result.stdout)
+        assert delete_branch_result == DeleteBranchResult(
+            status="error",
+            message="Cannot delete the currently checked-out branch.",
+        )
+
+    def test_delete_nonexisting_branch(self, runner, tmp_kishu_path, kishu_jupyter):
+        result = runner.invoke(kishu_app, ["branch", kishu_jupyter._notebook_id.key(), "-d", "NON_EXISTENT_BRANCH"])
+        assert result.exit_code == 0
+        delete_branch_result = DeleteBranchResult.from_json(result.stdout)
+        assert delete_branch_result == DeleteBranchResult(
+            status="error",
+            message="The provided branch 'NON_EXISTENT_BRANCH' does not exist.",
+        )
+
+    def test_rename_branch(self, runner, tmp_kishu_path, notebook_key, basic_execution_ids):
+        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "old_name"])
+        result = runner.invoke(kishu_app, ["branch", notebook_key, "-m", "old_name", "new_name"])
+        assert result.exit_code == 0
+        rename_branch_result = RenameBranchResult.from_json(result.stdout)
+        assert rename_branch_result == RenameBranchResult(
+            status="ok",
+            branch_name="new_name",
+            message="Branch renamed from old_name to new_name.",
+        )
+
+    def test_rename_non_existing_branch(self, runner, tmp_kishu_path, kishu_jupyter):
+        result = runner.invoke(
+            kishu_app, ["branch", kishu_jupyter._notebook_id.key(), "-m", "NON_EXISTENT_BRANCH", "new_name"])
+        assert result.exit_code == 0
+        rename_branch_result = RenameBranchResult.from_json(result.stdout)
+        assert rename_branch_result == RenameBranchResult(
+            status="error",
+            branch_name="",
+            message="The provided branch 'NON_EXISTENT_BRANCH' does not exist.",
+        )
+
+    def test_rename_to_existing_branch(self, runner, tmp_kishu_path, notebook_key, basic_execution_ids):
+        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "old_name"])
+        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "existing_name"])
+        result = runner.invoke(kishu_app, ["branch", notebook_key, "-m", "old_name", "existing_name"])
+        assert result.exit_code == 0
+        rename_branch_result = RenameBranchResult.from_json(result.stdout)
+        assert rename_branch_result == RenameBranchResult(
+            status="error",
+            branch_name="",
+            message="The provided new branch name already exists.",
+        )

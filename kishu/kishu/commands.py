@@ -119,6 +119,7 @@ CheckoutResult = JupyterCommandResult
 CommitResult = JupyterCommandResult
 
 
+@dataclass_json
 @dataclass
 class BranchResult:
     status: str
@@ -127,12 +128,14 @@ class BranchResult:
     head: Optional[HeadBranch] = None
 
 
+@dataclass_json
 @dataclass
 class DeleteBranchResult:
     status: str
     message: str
 
 
+@dataclass_json
 @dataclass
 class RenameBranchResult:
     status: str
@@ -327,14 +330,9 @@ class KishuCommand:
             KishuBranch.delete_branch(notebook_id, branch_name)
             return DeleteBranchResult(
                 status="ok",
-                message="ok status confirmed",
+                message=f"Branch {branch_name} deleted.",
             )
-        except BranchConflictError as e:
-            return DeleteBranchResult(
-                status="error",
-                message=str(e),
-            )
-        except BranchNotFoundError as e:
+        except (BranchConflictError, BranchNotFoundError) as e:
             return DeleteBranchResult(
                 status="error",
                 message=str(e),
@@ -351,15 +349,9 @@ class KishuCommand:
             return RenameBranchResult(
                 status="ok",
                 branch_name=new_name,
-                message="ok status confirmed",
+                message=f"Branch renamed from {old_name} to {new_name}.",
             )
-        except BranchNotFoundError as e:
-            return RenameBranchResult(
-                status="error",
-                branch_name="",
-                message=str(e),
-            )
-        except BranchConflictError as e:
+        except (BranchNotFoundError, BranchConflictError) as e:
             return RenameBranchResult(
                 status="error",
                 branch_name="",
