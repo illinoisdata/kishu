@@ -92,6 +92,12 @@ class NotebookId:
             raise MissingNotebookMetadataError()
         return KishuNotebookMetadata(**nb.metadata.kishu)
 
+    @staticmethod
+    def remove_kishu_metadata(nb: nbformat.NotebookNode) -> None:
+        if "kishu" not in nb.metadata:
+            raise MissingNotebookMetadataError()
+        del nb.metadata["kishu"]
+
     """
     Kishu Jupyter connection information.
     """

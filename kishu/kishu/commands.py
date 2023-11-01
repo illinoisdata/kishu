@@ -68,6 +68,20 @@ class InitResult:
         )
 
 
+@dataclass_json
+@dataclass
+class DetachResult:
+    status: str
+    message: str
+
+    @staticmethod
+    def wrap(result: JupyterCommandResult) -> DetachResult:
+        return DetachResult(
+            status=result.status,
+            message=result.message,
+        )
+
+
 @dataclass
 class CommitSummary:
     commit_id: str
@@ -191,6 +205,20 @@ class KishuCommand:
         return InitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
             pre_command="from kishu import init_kishu; init_kishu()",
             command="str(_kishu)",
+        ))
+
+    @staticmethod
+    def detach(notebook_path: str) -> DetachResult:
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(Path(notebook_path))
+        except FileNotFoundError as e:
+            return DetachResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+            )
+        return DetachResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+            pre_command="from kishu import detach_kishu; detach_kishu()",
+            command=f"\"Successfully detatched notebook at {notebook_path}\"",
         ))
 
     @staticmethod
