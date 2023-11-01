@@ -69,9 +69,6 @@ class NotebookId:
     def kernel_id(self) -> str:
         return self._kernel_id
 
-    def set_key(self, key: str) -> None:
-        self._key = key
-
     """
     Kishu notebook metadata.
     """

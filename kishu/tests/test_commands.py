@@ -7,7 +7,7 @@ from kishu.storage.commit_graph import CommitNodeInfo
 
 
 class TestKishuCommand:
-    def test_list(self, set_temp_notebook_path_env, notebook_key, basic_execution_ids):
+    def test_list(self, set_notebook_path_env, notebook_key, basic_execution_ids):
         list_result = KishuCommand.list()
         assert len(list_result.sessions) == 0
 

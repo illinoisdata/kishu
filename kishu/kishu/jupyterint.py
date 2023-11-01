@@ -774,9 +774,10 @@ def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[in
     kishu = KishuForJupyter(notebook_id)
     if session_id:
         kishu.set_session_id(session_id)
+
+    ip.user_ns[KISHU_INSTRUMENT] = kishu
     ip.events.register('pre_run_cell', kishu.pre_run_cell)
     ip.events.register('post_run_cell', kishu.post_run_cell)
-    ip.user_ns[KISHU_INSTRUMENT] = kishu
 
 
 def init_kishu() -> None:
@@ -803,27 +804,32 @@ def init_kishu() -> None:
     load_kishu(nb_id, nb.metadata.kishu.session_count)
 
 
-def remove_event_handlers(nb_id: NotebookId) -> None:
+def remove_event_handlers() -> None:
+    """
+    Removes event handlers added by load_kishu
+    """
     # access ipython
     ip = kishu_ipython()
-    if ip:
-        if KISHU_INSTRUMENT in ip.user_ns:
-            # if kishu is in the user_ns of ipython, delete hooks
-            kishu = ip.user_ns[KISHU_INSTRUMENT]
-            try:
-                ip.events.unregister('pre_run_cell', kishu.pre_run_cell)
-            except ValueError:
-                # if here, then kishu.pre_run_cell is not attached to notebook, so do nothing
-                pass
+    if ip is None:
+        return
 
-            try:
-                ip.events.unregister('post_run_cell', kishu.post_run_cell)
-            except ValueError:
-                # if here, then kishu.post_run_cell is not attached to notebook, so do nothing
-                pass
+    if KISHU_INSTRUMENT in ip.user_ns:
+        # if kishu is in the user_ns of ipython, delete hooks
+        kishu = ip.user_ns[KISHU_INSTRUMENT]
+        try:
+            ip.events.unregister('pre_run_cell', kishu.pre_run_cell)
+        except ValueError:
+            # if here, then kishu.pre_run_cell is not attached to notebook, so do nothing
+            pass
 
-            # delete kishu instrument from user_ns
-            del ip.user_ns[KISHU_INSTRUMENT]
+        try:
+            ip.events.unregister('post_run_cell', kishu.post_run_cell)
+        except ValueError:
+            # if here, then kishu.post_run_cell is not attached to notebook, so do nothing
+            pass
+
+        # delete kishu instrument from user_ns
+        del ip.user_ns[KISHU_INSTRUMENT]
 
     # Set global kishu value to be None
     global _kishu_ipython
@@ -846,4 +852,4 @@ def detach_kishu() -> None:
         pass
 
     # Remove all hooks
-    remove_event_handlers(nb_id)
+    remove_event_handlers()
