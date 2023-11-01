@@ -171,6 +171,30 @@ class TestKishuCommand:
             tags=[],
         )
 
+    def test_delete_basic(self, notebook_key, basic_execution_ids):
+        branch_1 = "branch_1"
+        KishuCommand.branch(notebook_key, branch_1, basic_execution_ids[1])
+
+        delete_result = KishuCommand.delete_branch(notebook_key, branch_1)
+        assert delete_result.status == "ok"
+
+        log_result = KishuCommand.log(notebook_key, basic_execution_ids[-1])
+        for commit in log_result.commit_graph:
+            assert branch_1 not in commit.branches
+
+    def test_delete_branch_none_existing_branch(
+            self, notebook_key, basic_execution_ids):
+        delete_result = KishuCommand.delete_branch(notebook_key, "non_existing_branch")
+        assert delete_result.status == "error"
+
+    def test_delete_checked_out_branch(
+            self, notebook_key, basic_execution_ids):
+        branch_1 = "branch_1"
+        KishuCommand.branch(notebook_key, branch_1, None)
+
+        delete_result = KishuCommand.delete_branch(notebook_key, branch_1)
+        assert delete_result.status == "error"
+
     def test_rename_branch_basic(self, notebook_key, basic_execution_ids):
         branch_1 = "branch_1"
         KishuCommand.branch(notebook_key, branch_1, None)
