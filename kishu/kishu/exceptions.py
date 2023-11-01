@@ -66,3 +66,23 @@ class StartChannelError(JupyterConnectionError):
 class NoChannelError(JupyterConnectionError):
     def __init__(self):
         super().__init__("No channel is connected.")
+
+
+class FrontEndError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class NoFormattedCellsError(FrontEndError):
+    def __init__(self, commit_id=None):
+        message = "No formatted cells"
+        if commit_id:
+            message += f" for commitID: {commit_id}"
+        super().__init__(message)
+
+class NoCommitError(FrontEndError):
+    def __init__(self, commit_id=None):
+        message = "Commit doesn't exist"
+        if commit_id:
+            message += f" for commitID: {commit_id}"
+        super().__init__(message)

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from collections import namedtuple
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
+
+
+@dataclass
+class DiffResult:
+    cell_diff_hunks: List[DiffHunk]
 
 
 @dataclass
@@ -23,6 +27,14 @@ class DiffAlgorithmResult:
     similarity: float  # the similarity score between the two series
 
 
+@dataclass
+class Frontier:
+    x: int
+    history: List[DiffHunk]
+    same_idxs: List[Tuple[int, int]]
+    matched_num: int
+
+
 class DiffAlgorithms:
 
     @staticmethod
@@ -34,7 +46,6 @@ class DiffAlgorithms:
            @return : list1[3] = 5, means that series1[0] = series2[5],
                         list2[3] = 5, means that series2[3] = series1[5]
         """
-        Frontier = namedtuple('Frontier', ['x', 'history', 'same_idxs', 'matched_num'])
 
         def one(idx):
             """
@@ -48,7 +59,8 @@ class DiffAlgorithms:
         # This marks the farthest-right point along each diagonal in the edit
         # graph, along with the history that got it there
         frontier = {1: Frontier(0, [], [], 0)}
-
+        final_result = DiffAlgorithmResult([], [], [], 0)
+        end_flag = False
         for d in range(0, a_max + b_max + 1):
             for k in range(-d, d + 1, 2):
                 # This determines whether our next search point will be going down
@@ -69,10 +81,12 @@ class DiffAlgorithms:
                 # down, your diagonal is lower, and if you're going right, your
                 # diagonal is higher.
                 if go_down:
-                    old_x, history, same_idxs, matched_num = frontier[k + 1]
+                    old_x, history, same_idxs, matched_num = \
+                        (frontier[k + 1].x, frontier[k + 1].history, frontier[k + 1].same_idxs, frontier[k + 1].matched_num)
                     x = old_x
                 else:
-                    old_x, history, same_idxs, matched_num = frontier[k - 1]
+                    old_x, history, same_idxs, matched_num = \
+                        (frontier[k - 1].x, frontier[k - 1].history, frontier[k - 1].same_idxs, frontier[k - 1].matched_num)
                     x = old_x + 1
 
                 # We want to avoid modifying the old history, since some other step
@@ -107,11 +121,15 @@ class DiffAlgorithms:
                         series1_common[item[0]] = item[1]
                         series2_common[item[1]] = item[0]
                     similarity = matched_num / max(a_max, b_max)
-                    return DiffAlgorithmResult(series1_common, series2_common, history, similarity)
+                    final_result = DiffAlgorithmResult(series1_common, series2_common, history, similarity)
+                    end_flag = True
+                    break
 
                 else:
                     frontier[k] = Frontier(x, history, same_idxs, matched_num)
-        return DiffAlgorithmResult([], [], [], 0)
+            if end_flag:
+                break
+        return final_result
 
     @staticmethod
     def edr_diff(origin: List[str], destination: List[str], threshold=0.5) -> DiffAlgorithmResult:
@@ -142,7 +160,7 @@ class DiffAlgorithms:
 
         for i in range(1, m + 1):
             for j in range(1, n + 1):
-                if (i == 2 and j == 3):
+                if i == 2 and j == 3:
                     print("debug")
                 myre = DiffAlgorithms.myre_diff(origin[i - 1].split("\n"), destination[j - 1].split("\n"))
                 if myre.similarity < threshold:
@@ -182,7 +200,6 @@ class DiffAlgorithms:
         # construct the diff hunk
         diff_hunks = []
         j = 0
-        i = 0
         for i in range(m):
             if origin_same_idx[i] == -1:
                 diff_hunks.append(DiffHunk("Origin_only", origin[i], sub_diff_hunks=None))
@@ -191,13 +208,65 @@ class DiffAlgorithms:
                 for k in range(j, to):
                     diff_hunks.append(DiffHunk("Destination_only", destination[k], sub_diff_hunks=None))
                 line_level_myre = DiffAlgorithms.myre_diff(origin[i].split("\n"), destination[to].split("\n"))
-                if (abs(line_level_myre.similarity - 1) < 1e-9):
+                if abs(line_level_myre.similarity - 1) < 1e-9:
                     line_diff_hunks = None
                 else:
                     line_diff_hunks = line_level_myre.diff_hunks
                 diff_hunks.append(DiffHunk("Both", origin[i], sub_diff_hunks=line_diff_hunks))
-                # if line level diff only contains both, then we should not add this diff hunk, meaning they are the same
+                # if line level diff only contains both, then we should not add this diff hunk, meaning they are the
+                # same
                 j = to + 1
         for k in range(j, n):
             diff_hunks.append(DiffHunk("Destination_only", destination[k], sub_diff_hunks=None))
         return DiffAlgorithmResult(origin_same_idx, destination_same_idx, diff_hunks, similarity)
+
+
+class KishuDiff:
+    @staticmethod
+    def kishu_get_diff(origin: List[str], destination: List[str]) -> DiffResult:
+        offset_diff = 0
+
+        def _get_new_index(origin_index):
+            """
+            Known the index of an element in the initial_diff_hunks, get the new index of the item in the new result
+            diff_hunks.
+            """
+            return origin_index + offset_diff
+
+        # Get the initial corresponding matched index from myre_diff.
+        initial_diff_hunks = DiffAlgorithms.myre_diff(origin, destination).diff_hunks
+
+        # Get add-remove groups between two matched_cell_groups and then refine the matches of add-remove groups.
+        from_idx = 0
+        to_idx = 0
+        add_hunks: List[str] = []
+        remove_hunks: List[str] = []
+        diff_hunks = initial_diff_hunks.copy()
+        for i in range(len(initial_diff_hunks)):
+            if initial_diff_hunks[i].option == "Both":
+                if len(add_hunks) > 0 and len(remove_hunks) > 0:
+                    # get the corresponding matched hunks from edr_diff of the add_remove groups
+                    refined_hunks = DiffAlgorithms.edr_diff(origin=remove_hunks, destination=add_hunks).diff_hunks
+                    # replace the add_remove groups with edr_diff result
+                    diff_hunks[_get_new_index(from_idx):_get_new_index(to_idx) + 1] = refined_hunks
+                    offset_diff += len(refined_hunks) - (to_idx - from_idx + 1)
+
+                # try to find the next group of add-remove
+                add_hunks.clear()
+                remove_hunks.clear()  # replace the add_remove groups with edr_diff result
+                from_idx = i + 1
+                to_idx = from_idx
+            elif initial_diff_hunks[i].option == "Destination_only":
+                add_hunks.append(initial_diff_hunks[i].content)
+                to_idx = i
+            elif initial_diff_hunks[i].option == "Origin_only":
+                remove_hunks.append(initial_diff_hunks[i].content)
+                to_idx = i
+        if len(add_hunks) > 0 and len(remove_hunks) > 0:
+            # get the corresponding matched hunks from edr_diff of the add_remove groups
+            refined_hunks = DiffAlgorithms.edr_diff(origin=remove_hunks, destination=add_hunks).diff_hunks
+            # replace the add_remove groups with edr_diff result
+            diff_hunks[_get_new_index(from_idx):_get_new_index(to_idx) + 1] = refined_hunks
+            offset_diff += len(refined_hunks) - (to_idx - from_idx + 1)
+
+        return DiffResult(diff_hunks)
