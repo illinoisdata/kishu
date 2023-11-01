@@ -124,6 +124,7 @@ def test_idgraph_pandas_Series():
     """
 
     print(f'Pandas version: {pd.__version__}')
+    print(f'Pandas version: {np.__version__}')
     s1 = pd.Series([1, 2, 3, 4])
 
     idgraph1 = get_object_state(s1, {})
