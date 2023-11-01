@@ -123,8 +123,10 @@ def test_idgraph_pandas_Series():
         Test if idgraph is accurately generated for panda series
     """
 
-    print(f'Pandas version: {pd.__version__}')
-    print(f'Pandas version: {np.__version__}')
+    with open('myfile.txt', 'a') as file:
+        file.write(pd.__version__ + "\n")
+        file.write('numpy version: ' + np.__version__ + "\n")
+        file.write('seaborn version: ' + sns.__version__ + "\n")
     s1 = pd.Series([1, 2, 3, 4])
 
     idgraph1 = get_object_state(s1, {})
