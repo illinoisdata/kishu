@@ -14,6 +14,7 @@ from kishu.notebook_id import NotebookId
 from kishu.storage.path import ENV_KISHU_PATH_ROOT, KishuPath
 
 from tests.helpers.nbexec import NB_DIR
+from tests.helpers.serverexec import JupyterServerRunner
 
 
 """
@@ -176,3 +177,14 @@ def basic_execution_ids(kishu_jupyter) -> Generator[List[str], None, None]:
     kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
 
     yield ["0:1", "0:2", "0:3"]  # List of commit IDs
+
+
+"""
+Jupyter Server Fixtures
+"""
+
+
+@pytest.fixture()
+def jupyter_server() -> Generator[JupyterServerRunner, None, None]:
+    with JupyterServerRunner() as jupyter_server:
+        yield jupyter_server

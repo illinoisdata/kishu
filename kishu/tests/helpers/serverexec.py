@@ -112,10 +112,6 @@ class JupyterServerRunner:
         # Header for sending requests to the server.
         self.header: Dict[str, Any] = {'Authorization': f"Token {server_token}"}
 
-        # The URL of the Jupyter Notebook Server. Note that the actual port may be different from the specified port
-        # as the latter may be in use.
-        self.server_url: str = ""
-
         # Server process for communication with the server.
         command = f"""jupyter notebook --allow-root --no-browser --ip={self.server_ip} --port={self.port}
             --ServerApp.disable_check_xsrf=True --NotebookApp.token='{self.server_token}'"""
@@ -123,8 +119,9 @@ class JupyterServerRunner:
         self.server_process: subprocess.Popen = subprocess.Popen(command.split(), shell=False,
                                                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        # Get the URL of the server process.
-        self.server_url = self.get_server_url()
+        # The URL of the Jupyter Notebook Server. Note that the actual port may be different from the specified port
+        # as the latter may be in use.
+        self.server_url: str = self.get_server_url()
 
         # Connections to kernels in the server.
         self.kernel_connections: Dict[str, NotebookHandler] = {}
@@ -188,4 +185,8 @@ class JupyterServerRunner:
         Shuts down the Jupyter server.
         """
         if self.server_process is not None:
-            self.server_process.kill()
+            self.server_process.terminate()
+
+            # process is still alive; kill it.
+            if self.server_process.poll() is None:
+                self.server_process.kill()
