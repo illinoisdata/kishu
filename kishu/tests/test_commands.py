@@ -1,6 +1,5 @@
 import os
 import pytest
-import time
 
 from typing import List
 
@@ -319,8 +318,6 @@ class TestKishuCommand:
         for notebook_name in notebook_names:
             with jupyter_server.start_session(NB_DIR, notebook_name) as notebook_session:
                 notebook_session.run_code(KISHU_INIT_STR)
-
-        time.sleep(0.5)
 
         # Kishu should be able to see these sessions.
         list_result = KishuCommand.list()

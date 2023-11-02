@@ -1,5 +1,5 @@
+import json
 import pytest
-import time
 
 from typer.testing import CliRunner
 from typing import Generator, List
@@ -188,16 +188,15 @@ class TestKishuApp:
             with jupyter_server.start_session(NB_DIR, notebook_name) as notebook_session:
                 notebook_session.run_code(KISHU_INIT_STR)
 
-        time.sleep(0.5)
-
         # Kishu should be able to see these sessions.
+        # json.loads is used here instead of ListResult.from_json as mypy complains ListResult has no from_json.
         result = runner.invoke(kishu_app, ["list"])
         assert result.exit_code == 0
-        list_result = ListResult.from_json(result.stdout)
-        assert len(list_result.sessions) == len(notebook_names)
+        list_result = json.loads(result.stdout)
+        assert len(list_result["sessions"]) == len(notebook_names)
 
         # The notebook names reported by Kishu list should match those at the server side.
-        kishu_list_notebook_names = [session.notebook_path.split("/")[-1] for session in list_result.sessions]
+        kishu_list_notebook_names = [session["notebook_path"].split("/")[-1] for session in list_result["sessions"]]
         assert set(notebook_names) == set(kishu_list_notebook_names)
 
     def test_list_with_server_no_init(self, runner, jupyter_server, notebook_name="simple.ipynb"):
