@@ -1,6 +1,6 @@
 import pytest
 
-from tests.helpers.nbexec import KISHU_INIT_STR, NB_DIR
+from tests.helpers.nbexec import KISHU_INIT_STR_NO_TEST, NB_DIR
 
 from kishu.commands import KishuCommand
 
@@ -20,7 +20,7 @@ def test_end_to_end_checkout(jupyter_server, notebook_name: str, cell_num_to_res
     # Start the notebook session.
     with jupyter_server.start_session(NB_DIR, notebook_name) as notebook_session:
         # Run the kishu init cell.
-        notebook_session.run_code(KISHU_INIT_STR)
+        notebook_session.run_code(KISHU_INIT_STR_NO_TEST)
 
         # Run some notebook cells.
         for i in range(cell_num_to_restore):

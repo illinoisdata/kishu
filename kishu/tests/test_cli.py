@@ -4,7 +4,7 @@ import pytest
 from typer.testing import CliRunner
 from typing import Generator, List
 
-from tests.helpers.nbexec import KISHU_INIT_STR, NB_DIR
+from tests.helpers.nbexec import KISHU_INIT_STR_NO_TEST, NB_DIR
 
 from kishu import __app_name__, __version__
 from kishu.exceptions import (
@@ -186,7 +186,7 @@ class TestKishuApp:
         # Start sessions and run kishu init cell in each of these sessions.
         for notebook_name in notebook_names:
             with jupyter_server.start_session(NB_DIR, notebook_name) as notebook_session:
-                notebook_session.run_code(KISHU_INIT_STR)
+                notebook_session.run_code(KISHU_INIT_STR_NO_TEST)
 
         # Kishu should be able to see these sessions.
         # json.loads is used here instead of ListResult.from_json as mypy complains ListResult has no from_json.

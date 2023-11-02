@@ -30,7 +30,10 @@ from kishu.jupyterint import IPYTHON_VARS, KISHU_VARS
 NB_DIR: str = "tests/notebooks"
 
 
-KISHU_INIT_STR: str = "from kishu import load_kishu; load_kishu()"
+KISHU_INIT_STR: str = "from kishu import load_kishu; load_kishu(); _kishu.set_test_mode()"
+
+
+KISHU_INIT_STR_NO_TEST: str = "from kishu import load_kishu; load_kishu();"
 
 
 def get_kishu_checkout_str(cell_num: int, session_num: int = 0) -> str:
