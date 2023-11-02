@@ -179,7 +179,7 @@ function App() {
             return;
         }
         try {
-            const data = await BackEndAPI.getDiff(selectedCommitID);
+            const data = await BackEndAPI.getDiff(selectedCommitID,currentHeadID!);
             console.log("commit detail diff after parse:");
             console.log(data);
             setDiffCommitDetail(data!)
@@ -197,7 +197,7 @@ function App() {
 
     useMemo(() => {
         loadCommitDetail(selectedCommitID!);
-        if (inDiffMode) {
+        if (inDiffMode && currentHeadID) {
             loadDiffCommitDetail(selectedCommitID!)
         }
     }, [selectedCommitID]);

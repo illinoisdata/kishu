@@ -5,6 +5,7 @@ import "./DetailModal.css";
 export interface detailModalProps {
     value?: string;
     isOpen: boolean;
+    html?: string;
     setIsModalOpen: any;
 }
 
@@ -20,13 +21,16 @@ export function DetailModal(props: detailModalProps) {
     return (
         <>
             <Modal
-                title="Basic Modal"
+                title="Variable Detail"
                 open={props.isOpen}
                 onOk={handleOk}
                 onCancel={handleCancel}
-                className="newline"
+                // className="newline"
+                width={"80%"}
+                // className={"newline"}
             >
-                <p>{props.value}</p>
+                {props.html ? <div dangerouslySetInnerHTML={{__html: props.html || ''}}/> : <p>props.value</p>}
+                <div>.....</div>
             </Modal>
         </>
     );

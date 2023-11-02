@@ -21,10 +21,12 @@ export default function VariablePanel(props: VariablePanelProps) {
         string | undefined
     >(undefined);
     const [openModal, setOpenModal] = useState(false);
+    const [detailVariableHtml, setDetailVariableHtml] = useState<string | undefined>(undefined);
 
-    function handleDetailClick(text: string) {
+    function handleDetailClick(text: string,html?:string) {
         setDetailVariableValue(text.replaceAll("\\n", "\n"));
         setOpenModal(true);
+        setDetailVariableHtml(html)
     }
 
     const [searchText, setSearchText] = useState("");
@@ -159,21 +161,10 @@ export default function VariablePanel(props: VariablePanelProps) {
             dataIndex: "state",
             width: "30%",
             key: "state",
-            // onCell: () => {
-            //   return {
-            //     style: {
-            //       maxWidth: 100,
-            //       overflow: "hidden",
-            //       whiteSpace: "nowrap",
-            //       textOverflow: "ellipsis",
-            //       cursor: "pointer",
-            //     },
-            //   };
-            // },
             ellipsis: true,
-            render: (text) =>
+            render: (text,record) =>
                 (text as string).includes("\\n") ? (
-                    <div className="custom-div" onClick={() => handleDetailClick(text)}>
+                    <div className="custom-div" onClick={() => handleDetailClick(text,record.html)}>
                         {text}
                     </div>
                 ) : (
@@ -188,6 +179,7 @@ export default function VariablePanel(props: VariablePanelProps) {
                 value={detailVariableValue}
                 isOpen={openModal}
                 setIsModalOpen={setOpenModal}
+                html={detailVariableHtml}
             ></DetailModal>
         </>
     );

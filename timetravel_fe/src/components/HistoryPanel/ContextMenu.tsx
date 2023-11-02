@@ -35,8 +35,8 @@ const items: MenuItem[] = [
     getItem("Add/Modify Tag for Selected History", "tag", <EditOutlined/>),
     getItem("Create Branch", "branch", <CalendarOutlined/>),
     getItem("RollBack to Selected History ", "rollback", <AppstoreOutlined/>, [
-        getItem("Rollback Codes&Variable States", "both"),
-        getItem("Rollback States", "states"),
+        getItem("Checkout Codes&Variables", "both"),
+        getItem("Rollback Executions", "states"),
     ]),
 ];
 
@@ -78,7 +78,7 @@ function ContextMenu({
         } else if (key === "branch") {
             setIsBranchNameEditorOpen(true);
         } else if (key === "states") {
-            if (!props!.selectedCommit!.commit.branchIds) {
+            if (props!.selectedCommit!.commit.branchIds.length === 0) {
                 setIsCheckoutWaitingModalOpen(true);
                 setChckoutMode("checkout variables only");
             } else {

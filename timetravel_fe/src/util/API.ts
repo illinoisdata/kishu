@@ -1,4 +1,5 @@
 import {parseCommitGraph, parseCommitDetail, parseList, parseDiff} from "./parser";
+import logger from "../log/logger";
 
 /*
  * @Author: University of Illinois at Urbana Champaign
@@ -54,6 +55,7 @@ const BackEndAPI = {
             throw new Error("get commit detail error, status != 200");
         }
         const data = await res.json();
+        logger.silly("commit detail before parse", data);
         return parseCommitDetail(data);
     },
 
@@ -102,9 +104,9 @@ const BackEndAPI = {
 
     },
 
-    async getDiff(commitID: string) {
+    async getDiff(originID: string,destID: string) {
         const res = await fetch(
-            BACKEND_URL + "/fe/commit_diff/" + globalThis.NotebookID! + "/" + commitID,
+            BACKEND_URL + "/fe/diff/" + globalThis.NotebookID! + "/" + originID + "/" + destID,
         );
         if (res.status !== 200) {
             throw new Error("get diff error, status != 200");

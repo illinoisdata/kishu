@@ -1,10 +1,3 @@
-/*
- * @Author: University of Illinois at Urbana Champaign
- * @Date: 2023-07-29 11:45:06
- * @LastEditTime: 2023-07-29 15:28:50
- * @FilePath: /src/util/parser.ts
- * @Description:
- */
 import {Cell} from "./Cell";
 import {Commit, CommitDetail} from "./Commit";
 import {Variable} from "./Variable";
@@ -104,6 +97,7 @@ function recursiveGetVariable(item: any): Variable {
             state: (item["state"] as string).replaceAll("\n", "\\n"),
             type: item["type"],
             size: item["size"],
+            html: item["html"],
         } as Variable;
     } else {
         return {
@@ -112,6 +106,7 @@ function recursiveGetVariable(item: any): Variable {
             state: (item["state"] as string).replaceAll("\n", "\\n"),
             type: item["type"],
             size: item["size"],
+            html: item["html"],
             children: item["children"].map((child: any) =>
                 recursiveGetVariable(child),
             ),
