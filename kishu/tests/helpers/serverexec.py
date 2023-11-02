@@ -1,6 +1,8 @@
 import datetime
 import json
+import jupyter_client
 import os
+import queue
 import requests
 import subprocess
 import time
@@ -9,9 +11,12 @@ import uuid
 from requests.adapters import HTTPAdapter
 from typing import Any, Dict, List, Optional
 from urllib3.util import Retry
-from websocket import create_connection, WebSocketTimeoutException
-from websocket._core import WebSocket
 
+from kishu.exceptions import (
+    KernelNotAliveError,
+    NoChannelError,
+    StartChannelError,
+)
 from kishu.runtime import _iter_maybe_running_servers
 
 
@@ -40,42 +45,52 @@ class NotebookHandler:
     """
         Class for running notebook code in Jupyter Sessions hosted in Jupyter Notebook servers.
     """
-    def __init__(self, request_url: str, header: Dict[str, Any]):
-        self.request_url: str = request_url
-        self.header: Dict[str, Any] = header
-        self.kernel_conn: Optional[WebSocket] = None
+    def __init__(self, kernel_id: str, header: Dict[str, Any]):
+        self.kernel_id = kernel_id
+        self.km: Optional[jupyter_client.BlockingKernelClient] = None
 
     def __enter__(self):
-        self.kernel_conn = create_connection(self.request_url, header=self.header)
+        # Find connection file.
+        try:
+            cf = jupyter_client.find_connection_file(self.kernel_id)
+        except OSError:
+            raise KernelNotAliveError()
+
+        # Connect to kernel.
+        self.km = jupyter_client.BlockingKernelClient(connection_file=cf)
+        self.km.load_connection_file()
+        self.km.start_channels()
+        self.km.wait_for_ready()
+        if not self.km.is_alive():
+            self.km = None
+            raise StartChannelError()
+
         return self
 
     def run_code(self, cell_code: str) -> str:
-        if self.kernel_conn is None:
-            raise RuntimeError("Kernel connection has not been initialized yet.")
+        if self.km is None:
+            raise NoChannelError()
 
-        self.kernel_conn.send(json.dumps(send_execute_request(cell_code)))
+        # Execute cell code
+        self.km.execute(cell_code)
+        self.km.get_shell_msg()
 
-        # Read the output of the cell execution.
-        cell_output = ""
-        try:
-            msg_type = ''
-            while msg_type != "execute_input":
-                rsp = json.loads(self.kernel_conn.recv())
-                msg_type = rsp["msg_type"]
-            msg_type = ''
-            while msg_type != "status":
-                rsp = json.loads(self.kernel_conn.recv())
-                msg_type = rsp["msg_type"]
-                if msg_type == "stream":
-                    cell_output = rsp["content"]["text"]
-        except WebSocketTimeoutException:
-            raise WebSocketTimeoutException("Cell execution timed out.")
+        # Read cell output
+        output = ""
+        while True:
+            try:
+                io_msg = self.km.get_iopub_msg(timeout=1)
+                if "name" in io_msg["content"] and io_msg["content"]["name"] == "stdout":
+                    output += io_msg["content"]["text"]
+            except queue.Empty:
+                break
 
-        return cell_output
+        return output
 
     def __exit__(self, exception_type, exception_value, traceback):
-        if self.kernel_conn is not None:
-            self.kernel_conn.close()
+        if self.km is not None:
+            self.km.stop_channels()
+            self.km = None
 
 
 class JupyterServerRunner:
@@ -177,8 +192,7 @@ class JupyterServerRunner:
 
             # Extract kernel id and establish connection with the kernel.
             kernel_id = response_json["kernel"]["id"]
-            request_url = self.server_url.replace("http", "ws") + f"/api/kernels/{kernel_id}/channels"
-            return NotebookHandler(request_url, self.header)
+            return NotebookHandler(kernel_id, self.header)
 
     def __exit__(self, exception_type, exception_value, traceback) -> None:
         """
