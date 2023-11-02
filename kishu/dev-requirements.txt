@@ -8,13 +8,16 @@ pytest
 pytest-cov
 pytest-benchmark
 
-
 # Test cases
 matplotlib
 numpy
 scikit-learn
 seaborn
 textblob
-pandas
-xxhash
+pandas==2.1.1
 
+# Testing framework/infra
+websocket-client
+requests
+types-requests
+jupyter
