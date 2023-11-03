@@ -1,73 +1,86 @@
+import datetime
 import json
-import jupyter_client
-import queue
 import requests
 import subprocess
 import time
+import uuid
+import websocket
 
 from pathlib import Path
 from requests.adapters import HTTPAdapter
 from typing import Any, Dict, Optional
 from urllib3.util import Retry
 
-from kishu.exceptions import (
-    KernelNotAliveError,
-    NoChannelError,
-    StartChannelError,
-)
 from kishu.runtime import JupyterRuntimeEnv
 
 
 class NotebookHandler:
+    # Number of seconds to wait on kernel connection.
+    CONNECTION_TIMEOUT = 5
+
+    # Number of seconds to wait on receiving output from cell executions.
+    CELL_EXECUTION_TIMEOUT = 600
     """
         Class for running notebook code in Jupyter Sessions hosted in Jupyter Notebook servers.
     """
-    def __init__(self, kernel_id: str):
-        self.kernel_id = kernel_id
-        self.km: Optional[jupyter_client.BlockingKernelClient] = None
+    def __init__(self, request_url: str, header: Dict[str, Any]):
+        self.request_url = request_url
+        self.header = header
+        self.websocket: Optional[websocket.WebSocket] = None
 
     def __enter__(self):
-        # Find connection file.
-        try:
-            cf = jupyter_client.find_connection_file(self.kernel_id)
-        except OSError:
-            raise KernelNotAliveError()
-
-        # Connect to kernel.
-        self.km = jupyter_client.BlockingKernelClient(connection_file=cf)
-        self.km.load_connection_file()
-        self.km.start_channels()
-        self.km.wait_for_ready()
-        if not self.km.is_alive():
-            self.km = None
-            raise StartChannelError()
-
+        self.websocket = websocket.create_connection(self.request_url, header=self.header,
+                                                     timeout=NotebookHandler.CONNECTION_TIMEOUT,
+                                                     close_timeout=NotebookHandler.CONNECTION_TIMEOUT)
+        self.websocket.settimeout(NotebookHandler.CELL_EXECUTION_TIMEOUT)
         return self
 
+    @staticmethod
+    def send_execute_request(code):
+        msg_type = 'execute_request'
+        content = {'code': code, 'silent': False}
+        hdr = {'msg_id': uuid.uuid1().hex,
+               'username': 'test',
+               'session': uuid.uuid1().hex,
+               'data': datetime.datetime.now().isoformat(),
+               'msg_type': msg_type,
+               'version': '5.0'}
+        msg = {'header': hdr, 'parent_header': hdr,
+               'metadata': {},
+               'content': content}
+        return msg
+
     def run_code(self, cell_code: str) -> str:
-        if self.km is None:
-            raise NoChannelError()
+        if self.websocket is None:
+            raise RuntimeError("Websocket is not initialized")
 
         # Execute cell code
-        self.km.execute(cell_code)
-        self.km.get_shell_msg()
+        self.websocket.send(json.dumps(NotebookHandler.send_execute_request(cell_code)))
 
         # Read cell output
         output = ""
-        while True:
-            try:
-                io_msg = self.km.get_iopub_msg(timeout=1)
-                if "name" in io_msg["content"] and io_msg["content"]["name"] == "stdout":
-                    output += io_msg["content"]["text"]
-            except queue.Empty:
-                break
+        try:
+            msg_type = ""
+            while msg_type != "execute_input":
+                rsp = json.loads(self.websocket.recv())
+                msg_type = rsp["msg_type"]
+            msg_type = ""
+            while msg_type != "status":
+                rsp = json.loads(self.websocket.recv())
+                msg_type = rsp["msg_type"]
+                if msg_type == "stream":
+                    output += rsp["content"]["text"]
+        except TimeoutError:
+            print("Cell execution timed out.")
 
         return output
 
     def __exit__(self, exception_type, exception_value, traceback):
-        if self.km is not None:
-            self.km.stop_channels()
-            self.km = None
+        if self.websocket is not None:
+            try:
+                self.websocket.close()
+            except TimeoutError:
+                print("Connection close timed out.")
 
 
 class JupyterServerRunner:
@@ -158,7 +171,8 @@ class JupyterServerRunner:
 
             # Extract kernel id and establish connection with the kernel.
             kernel_id = response_json["kernel"]["id"]
-            return NotebookHandler(kernel_id)
+            request_url = self.server_url.replace("http", "ws") + f"/api/kernels/{kernel_id}/channels"
+            return NotebookHandler(request_url, self.header)
 
     def __exit__(self, exception_type, exception_value, traceback) -> None:
         """
