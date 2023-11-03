@@ -123,6 +123,9 @@ class JupyterServerRunner:
         return self
 
     def get_server_url(self) -> str:
+        if self.server_process is None:
+            raise RuntimeError("The Jupyter Server is not initialized yet.")
+
         for _ in range(JupyterServerRunner.MAX_RETRIES):
             time.sleep(JupyterServerRunner.SLEEP_TIME)
             for server in _iter_maybe_running_servers():
