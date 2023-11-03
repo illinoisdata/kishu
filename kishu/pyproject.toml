@@ -77,6 +77,12 @@ dev = [  # README: Keep in sync with dev-requirements.txt
     "seaborn",
     "textblob",
     "pandas",
+
+    # Testing framework/infra
+    "websocket-client",
+    "requests",
+    "types-requests",
+    "jupyter"
 ]
 
 

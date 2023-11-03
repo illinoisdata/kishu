@@ -30,6 +30,7 @@ from kishu.jupyterint import IPYTHON_VARS, KISHU_VARS
 NB_DIR: str = "tests/notebooks"
 
 
+# Breaks test_full_checkout in test_jupyterint when using init_kishu
 KISHU_INIT_STR: str = "from kishu import load_kishu; load_kishu(); _kishu.set_test_mode()"
 
 
