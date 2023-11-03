@@ -78,7 +78,7 @@ class JupyterServerRunner:
     """
 
     # Maximum number of retries each connection is attempted.
-    MAX_RETRIES = 50
+    MAX_RETRIES = 100
 
     # Base sleep time between consecutive retries.
     SLEEP_TIME = 0.1
