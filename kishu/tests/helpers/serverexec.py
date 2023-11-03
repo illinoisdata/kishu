@@ -1,13 +1,13 @@
 import json
 import jupyter_client
-import os
 import queue
 import requests
 import subprocess
 import time
 
+from pathlib import Path
 from requests.adapters import HTTPAdapter
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from urllib3.util import Retry
 
 from kishu.exceptions import (
@@ -15,7 +15,7 @@ from kishu.exceptions import (
     NoChannelError,
     StartChannelError,
 )
-from kishu.runtime import _iter_maybe_running_servers
+from kishu.runtime import JupyterRuntimeEnv
 
 
 class NotebookHandler:
@@ -112,8 +112,10 @@ class JupyterServerRunner:
             port (str): port to connect to the server with.
             server_token (str): token to connect to the server with for user authentication.
         """
-        command = f"""jupyter notebook --allow-root --no-browser --ip={self.server_ip} --port={self.port}
-            --ServerApp.disable_check_xsrf=True --NotebookApp.token='{self.server_token}'"""
+        command = (
+            f"jupyter notebook --allow-root --no-browser --ip={self.server_ip} --port={self.port} "
+            f"--ServerApp.disable_check_xsrf=True --NotebookApp.token='{self.server_token}'"
+        )
 
         # Start the Jupyter Server process and get its URL.
         self.server_process = subprocess.Popen(command.split(), shell=False,
@@ -128,50 +130,26 @@ class JupyterServerRunner:
 
         for _ in range(JupyterServerRunner.MAX_RETRIES):
             time.sleep(JupyterServerRunner.SLEEP_TIME)
-            for server in _iter_maybe_running_servers():
+            for server in JupyterRuntimeEnv.iter_maybe_running_servers():
                 if server["pid"] == self.server_process.pid:
                     return server["url"][:-1]
         raise TimeoutError("server connection timed out")
 
-    def get_notebook_contents(self, notebook_dir: str, notebook_name: str) -> List[str]:
-        """
-        Gets and returns the cell code of a notebook by reading it server-side.
-
-        Args:
-            notebook_dir (str): directory of notebook file relative to Jupyter Server's root.
-            notebook_name (str): name of the notebook file.
-        """
-        if self.server_process is None:
-            raise RuntimeError("The Jupyter Server is not initialized yet.")
-
-        request_url = self.server_url + f"/api/contents/{os.path.join(notebook_dir, notebook_name)}"
-
-        # Send request to read notebook to server
-        with requests.Session() as session:
-            session.mount('http://', JupyterServerRunner.ADAPTER)
-            response = requests.get(request_url, headers=self.header)
-            response_json = json.loads(response.text)
-            assert response_json['name'] == notebook_name
-
-            # Extract code from notebook
-            return [c['source'] for c in response_json['content']['cells']]
-
-    def start_session(self, notebook_dir: str, notebook_name: str, kernel_name: str = "python3") -> NotebookHandler:
+    def start_session(self, notebook_path: Path, kernel_name: str = "python3") -> NotebookHandler:
         """
         Create a notebook session backed by the specified notebook file on disk. Returns the ID of the newly
         started kernel.
 
         Args:
-            notebook_dir (str): directory of notebook file relative to Jupyter Server's root.
-            notebook_name (str): name of the notebook file.
+            notebook_path (Path): path to notebook file.
             kernel_name (str): Python kernel version to use.
         """
         if self.server_process is None:
             raise RuntimeError("The Jupyter Server is not initialized yet.")
 
         request_url = self.server_url + "/api/sessions"
-        create_session_data = {"kernel": {"name": kernel_name}, "name": notebook_name, "type": "notebook",
-                               "path": '/'.join([notebook_dir, notebook_name])}
+        create_session_data = {"kernel": {"name": kernel_name}, "name": notebook_path.name, "type": "notebook",
+                               "path": str(notebook_path)}
 
         with requests.Session() as session:
             session.mount('http://', JupyterServerRunner.ADAPTER)

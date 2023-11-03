@@ -4,10 +4,11 @@ import pytest
 from pathlib import Path
 from typing import List
 
-from tests.helpers.nbexec import KISHU_INIT_STR, NB_DIR
+from tests.helpers.nbexec import KISHU_INIT_STR
 
 from kishu.commands import CommitSummary, FECommit, FESelectedCommit, KishuCommand, KishuSession
 from kishu.jupyterint import CommitEntryKind, CommitEntry
+from kishu.runtime import JupyterRuntimeEnv
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
 
@@ -314,10 +315,17 @@ class TestKishuCommand:
                              [[],
                               ["simple.ipynb"],
                               ["simple.ipynb", "numpy.ipynb"]])
-    def test_list_alive_sessions(self, tmp_kishu_path, tmp_kishu_path_os, jupyter_server, notebook_names: List[str]):
+    def test_list_alive_sessions(
+        self,
+        tmp_kishu_path,
+        tmp_kishu_path_os,
+        tmp_nb_path,
+        jupyter_server,
+        notebook_names: List[str],
+    ):
         # Start sessions and run kishu init cell in each of these sessions.
         for notebook_name in notebook_names:
-            with jupyter_server.start_session(NB_DIR, notebook_name) as notebook_session:
+            with jupyter_server.start_session(tmp_nb_path(notebook_name)) as notebook_session:
                 notebook_session.run_code(KISHU_INIT_STR)
 
         # Kishu should be able to see these sessions.
@@ -329,9 +337,15 @@ class TestKishuCommand:
                                      else '' for session in list_result.sessions]
         assert set(notebook_names) == set(kishu_list_notebook_names)
 
-    def test_list_alive_session_no_init(self, tmp_kishu_path, tmp_kishu_path_os, jupyter_server, notebook_name="simple.ipynb"):
+    def test_list_alive_session_no_init(
+        self,
+        tmp_kishu_path,
+        tmp_kishu_path_os,
+        tmp_nb_path,
+        jupyter_server,
+    ):
         # Start the session.
-        jupyter_server.start_session(NB_DIR, notebook_name)
+        jupyter_server.start_session(tmp_nb_path("simple.ipynb"))
 
         # Kishu should not be able to see this session as "kishu init" was not executed.
         list_result = KishuCommand.list()
@@ -344,14 +358,23 @@ class TestKishuCommand:
             ('simple.ipynb', 4, "b")
         ]
     )
-    def test_end_to_end_checkout(self, tmp_kishu_path, tmp_kishu_path_os, jupyter_server,
-                                 notebook_name: str, cell_num_to_restore: int, var_to_compare: str):
+    def test_end_to_end_checkout(
+        self,
+        tmp_kishu_path,
+        tmp_kishu_path_os,
+        tmp_nb_path,
+        jupyter_server,
+        notebook_name: str,
+        cell_num_to_restore: int,
+        var_to_compare: str,
+    ):
         # Get the contents of the test notebook.
-        contents = jupyter_server.get_notebook_contents(NB_DIR, notebook_name)
+        notebook_path = tmp_nb_path(notebook_name)
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
         assert cell_num_to_restore >= 1 and cell_num_to_restore <= len(contents) - 1
 
         # Start the notebook session.
-        with jupyter_server.start_session(NB_DIR, notebook_name) as notebook_session:
+        with jupyter_server.start_session(notebook_path) as notebook_session:
             # Run the kishu init cell.
             notebook_session.run_code(KISHU_INIT_STR)
 

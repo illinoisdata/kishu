@@ -5,7 +5,7 @@ import pytest
 import shutil
 
 from pathlib import Path, PurePath
-from typing import Generator, List, Optional, Type
+from typing import Callable, Generator, List, Optional, Type
 from unittest.mock import patch
 
 from kishu.backend import app as kishu_app
@@ -60,11 +60,18 @@ KISHU_TEST_NOTEBOOKS_DIR = "notebooks"
 
 
 @pytest.fixture()
-def nb_simple_path(tmp_path: Path, kishu_test_dir: Path) -> Path:
-    real_nb_path = kishu_test_dir / PurePath(KISHU_TEST_NOTEBOOKS_DIR, "simple.ipynb")
-    tmp_nb_path = tmp_path / PurePath("simple.ipynb")
-    shutil.copy(real_nb_path, tmp_nb_path)
-    return tmp_nb_path
+def tmp_nb_path(tmp_path: Path, kishu_test_dir: Path) -> Callable[[str], Path]:
+    def _tmp_nb_path(notebook_name: str) -> Path:
+        real_nb_path = kishu_test_dir / PurePath(KISHU_TEST_NOTEBOOKS_DIR, notebook_name)
+        tmp_nb_path = tmp_path / PurePath(notebook_name)
+        shutil.copy(real_nb_path, tmp_nb_path)
+        return tmp_nb_path
+    return _tmp_nb_path
+
+
+@pytest.fixture()
+def nb_simple_path(tmp_nb_path: Callable[[str], Path]) -> Path:
+    return tmp_nb_path("simple.ipynb")
 
 
 """

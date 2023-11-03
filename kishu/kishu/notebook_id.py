@@ -45,13 +45,17 @@ class NotebookId:
         return NotebookId(key=key, path=path, kernel_id=kernel_id)
 
     @staticmethod
+    def parse_key_from_path(path: Path) -> str:
+        nb = JupyterRuntimeEnv.read_notebook(path)
+        metadata = NotebookId.read_kishu_metadata(nb)
+        return metadata.notebook_id
+
+    @staticmethod
     def parse_key_from_path_or_key(path_or_key: str) -> str:
         # Try parsing as path, if exists.
         path = Path(path_or_key)
         if path.exists():
-            nb = JupyterRuntimeEnv.read_notebook(path)
-            metadata = NotebookId.read_kishu_metadata(nb)
-            return metadata.notebook_id
+            return NotebookId.parse_key_from_path(path)
 
         # Notebook path does not exist, try parsing as key.
         key = path_or_key

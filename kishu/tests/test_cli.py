@@ -5,8 +5,6 @@ from pathlib import Path
 from typer.testing import CliRunner
 from typing import Generator, List
 
-from tests.helpers.nbexec import KISHU_INIT_STR, NB_DIR
-
 from kishu import __app_name__, __version__
 from kishu.exceptions import (
     NotNotebookPathOrKey,
@@ -20,6 +18,11 @@ from kishu.commands import (
     DeleteBranchResult,
     RenameBranchResult,
 )
+
+from tests.helpers.nbexec import KISHU_INIT_STR
+
+
+NB_DIR: Path = Path(".") / "tests" / "notebooks"
 
 
 @pytest.fixture()
@@ -112,8 +115,8 @@ class TestKishuApp:
         )
 
     def test_delete_non_checked_out_branch(self, runner, tmp_kishu_path, notebook_key, basic_execution_ids):
-        runner.invoke(kishu_app, ["branch", notebook_key, basic_execution_ids[-2], "-c", "branch_to_keep"])
-        runner.invoke(kishu_app, ["branch", notebook_key, basic_execution_ids[-1], "-c", "branch_to_delete"])
+        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "branch_to_keep", basic_execution_ids[-2]])
+        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "branch_to_delete", basic_execution_ids[-1]])
         result = runner.invoke(kishu_app, ["checkout", notebook_key, "branch_to_keep"])
         assert result.exit_code == 0
 
@@ -183,11 +186,11 @@ class TestKishuApp:
                              [[],
                               ["simple.ipynb"],
                               ["simple.ipynb", "numpy.ipynb"]])
-    def test_list_with_server(self, runner, tmp_kishu_path, tmp_kishu_path_os,
+    def test_list_with_server(self, runner, tmp_kishu_path, tmp_kishu_path_os, tmp_nb_path,
                               jupyter_server, notebook_names: List[str]):
         # Start sessions and run kishu init cell in each of these sessions.
         for notebook_name in notebook_names:
-            with jupyter_server.start_session(NB_DIR, notebook_name) as notebook_session:
+            with jupyter_server.start_session(tmp_nb_path(notebook_name)) as notebook_session:
                 notebook_session.run_code(KISHU_INIT_STR)
 
         # Kishu should be able to see these sessions.
@@ -201,10 +204,10 @@ class TestKishuApp:
         kishu_list_notebook_names = [Path(session["notebook_path"]).name for session in list_result["sessions"]]
         assert set(notebook_names) == set(kishu_list_notebook_names)
 
-    def test_list_with_server_no_init(self, runner, tmp_kishu_path, tmp_kishu_path_os,
+    def test_list_with_server_no_init(self, runner, tmp_kishu_path, tmp_kishu_path_os, tmp_nb_path,
                                       jupyter_server, notebook_name="simple.ipynb"):
         # Start the session.
-        jupyter_server.start_session(NB_DIR, notebook_name)
+        jupyter_server.start_session(tmp_nb_path(notebook_name))
 
         # Kishu should not be able to see this session as "kishu init" was not executed.
         result = runner.invoke(kishu_app, ["list"])

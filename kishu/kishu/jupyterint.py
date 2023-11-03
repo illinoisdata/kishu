@@ -480,7 +480,7 @@ class KishuForJupyter:
     @staticmethod
     def kishu_sessions() -> List[KishuSession]:
         # List alive IPython sessions.
-        alive_sessions = {session.kernel_id: session for session in JupyterRuntimeEnv.iter_sessions()}
+        alive_kernels = {session.kernel_id: session for session in JupyterRuntimeEnv.iter_sessions()}
 
         # List all Kishu sessions.
         sessions = []
@@ -498,7 +498,23 @@ class KishuForJupyter:
                 continue
 
             # No matching alive kernel ID.
-            if cf.kernel_id not in alive_sessions:
+            if cf.kernel_id not in alive_kernels:
+                sessions.append(KishuSession(
+                    notebook_key=notebook_key,
+                    kernel_id=cf.kernel_id,
+                    notebook_path=cf.notebook_path,
+                    is_alive=False,
+                ))
+                continue
+
+            # No matching notebook with notebook key in its metadata.
+            notebook_path = alive_kernels[cf.kernel_id].notebook_path
+            written_notebook_key: Optional[str] = None
+            try:
+                written_notebook_key = NotebookId.parse_key_from_path(notebook_path)
+            except (FileNotFoundError, MissingNotebookMetadataError):
+                pass
+            if notebook_key != written_notebook_key:
                 sessions.append(KishuSession(
                     notebook_key=notebook_key,
                     kernel_id=cf.kernel_id,
@@ -511,7 +527,7 @@ class KishuForJupyter:
             sessions.append(KishuSession(
                 notebook_key=notebook_key,
                 kernel_id=cf.kernel_id,
-                notebook_path=str(alive_sessions[cf.kernel_id].notebook_path),
+                notebook_path=str(notebook_path),
                 is_alive=True,
             ))
         return sessions
