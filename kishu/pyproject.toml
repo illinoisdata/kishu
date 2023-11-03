@@ -78,7 +78,7 @@ dev = [  # README: Keep in sync with dev-requirements.txt
     "textblob",
     "pandas",
 
-    # E2E testing framework/infra
+    # Testing framework/infra
     "websocket-client",
     "requests",
     "types-requests",

@@ -1,6 +1,7 @@
 import json
 import pytest
 
+from pathlib import Path
 from typer.testing import CliRunner
 from typing import Generator, List
 
@@ -182,7 +183,8 @@ class TestKishuApp:
                              [[],
                               ["simple.ipynb"],
                               ["simple.ipynb", "numpy.ipynb"]])
-    def test_list_with_server(self, runner, jupyter_server, notebook_names: List[str]):
+    def test_list_with_server(self, runner, tmp_kishu_path, tmp_kishu_path_os,
+                              jupyter_server, notebook_names: List[str]):
         # Start sessions and run kishu init cell in each of these sessions.
         for notebook_name in notebook_names:
             with jupyter_server.start_session(NB_DIR, notebook_name) as notebook_session:
@@ -196,10 +198,11 @@ class TestKishuApp:
         assert len(list_result["sessions"]) == len(notebook_names)
 
         # The notebook names reported by Kishu list should match those at the server side.
-        kishu_list_notebook_names = [session["notebook_path"].split("/")[-1] for session in list_result["sessions"]]
+        kishu_list_notebook_names = [Path(session["notebook_path"]).name for session in list_result["sessions"]]
         assert set(notebook_names) == set(kishu_list_notebook_names)
 
-    def test_list_with_server_no_init(self, runner, jupyter_server, notebook_name="simple.ipynb"):
+    def test_list_with_server_no_init(self, runner, tmp_kishu_path, tmp_kishu_path_os,
+                                      jupyter_server, notebook_name="simple.ipynb"):
         # Start the session.
         jupyter_server.start_session(NB_DIR, notebook_name)
 
