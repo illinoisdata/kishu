@@ -1,15 +1,31 @@
+from __future__ import annotations
+
 import ipykernel
 import json
 import jupyter_core.paths
 import nbformat
 import os
+import requests
 import psutil
-import urllib.request
 
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path, PurePath
-from typing import Generator, List, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
+
+
+class JupyterRuntimeContextHandler:
+    def __init__(self, cookies: Dict[str, str]) -> None:
+        self.cookies = cookies
+        self.prev_cookies = cookies
+
+    def __enter__(self) -> JupyterRuntimeContextHandler:
+        self.prev_cookies = JupyterRuntimeEnv.COOKIES
+        JupyterRuntimeEnv.COOKIES = self.cookies
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        JupyterRuntimeEnv.COOKIES = self.prev_cookies
 
 
 @dataclass
@@ -20,6 +36,13 @@ class IPythonSession:
 
 class JupyterRuntimeEnv:
     NBFORMAT_VERSION = 4
+    COOKIES: Dict[str, str] = {}
+
+    @staticmethod
+    def context(cookies: Optional[Dict[str, str]] = None) -> JupyterRuntimeContextHandler:
+        return JupyterRuntimeContextHandler(
+            cookies=cookies if cookies is not None else JupyterRuntimeEnv.COOKIES,
+        )
 
     @staticmethod
     def enclosing_kernel_id() -> str:
@@ -57,9 +80,12 @@ class JupyterRuntimeEnv:
             url = f"{srv['url']}api/sessions"
             if srv['token']:
                 url += f"?token={srv['token']}"
-            with urllib.request.urlopen(url, timeout=1.0) as req:
-                sessions = json.load(req)
-                return sessions
+            resp = requests.get(
+                url,
+                cookies=JupyterRuntimeEnv.COOKIES,
+                timeout=1.0,
+            )
+            return [] if not resp.ok else json.loads(resp.content)
         except Exception:
             return []
 

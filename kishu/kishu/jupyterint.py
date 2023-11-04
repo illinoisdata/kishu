@@ -54,6 +54,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from jupyter_ui_poll import run_ui_poll_loop
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from kishu.exceptions import (
@@ -796,28 +797,35 @@ def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[in
     ip.events.register('post_run_cell', kishu.post_run_cell)
 
 
-def init_kishu() -> None:
+def init_kishu(notebook_path: Optional[str] = None) -> None:
     """
     1. Create notebook key
     2. Find kernel id using enclosing_kernel_id()
     3. KishuForJupyter
     """
     # Create notebook id object storing path and kernel_id
-    nb_id = NotebookId.from_enclosing_with_key("")
+    if notebook_path is None:
+        notebook_id = NotebookId.from_enclosing_with_key("")
+    else:
+        notebook_id = NotebookId.from_enclosing_with_key_and_path("", Path(notebook_path))
 
     # Open notebook file
-    nb = JupyterRuntimeEnv.read_notebook(nb_id.path())
+    nb = JupyterRuntimeEnv.read_notebook(notebook_id.path())
 
     # Update notebook metadata.
     NotebookId.write_kishu_metadata(nb)
-    nbformat.write(nb, nb_id.path())
+    nbformat.write(nb, notebook_id.path())
 
     # Construct Notebook Id.
     new_key = nb.metadata.kishu.notebook_id
-    nb_id = NotebookId(key=new_key, path=nb_id.path(), kernel_id=nb_id.kernel_id())
+    notebook_id = NotebookId(
+        key=new_key,
+        path=notebook_id.path(),
+        kernel_id=notebook_id.kernel_id(),
+    )
 
     # Attach Kishu instrumentation.
-    load_kishu(nb_id, nb.metadata.kishu.session_count)
+    load_kishu(notebook_id, nb.metadata.kishu.session_count)
 
 
 def remove_event_handlers() -> None:
@@ -852,17 +860,20 @@ def remove_event_handlers() -> None:
     _kishu_ipython = None
 
 
-def detach_kishu() -> None:
+def detach_kishu(notebook_path: Optional[str] = None) -> None:
     # Create notebook id object
-    nb_id = NotebookId.from_enclosing_with_key("")
+    if notebook_path is None:
+        notebook_id = NotebookId.from_enclosing_with_key("")
+    else:
+        notebook_id = NotebookId.from_enclosing_with_key_and_path("", Path(notebook_path))
 
     # Open notebook file
-    nb = JupyterRuntimeEnv.read_notebook(nb_id.path())
+    nb = JupyterRuntimeEnv.read_notebook(notebook_id.path())
 
     try:
         # Remove metadata from notebook
         NotebookId.remove_kishu_metadata(nb)
-        nbformat.write(nb, nb_id.path())
+        nbformat.write(nb, notebook_id.path())
     except MissingNotebookMetadataError:
         # This means that kishu metadata is not in the notebook, so do nothing
         pass

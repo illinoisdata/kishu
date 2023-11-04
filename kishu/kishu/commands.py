@@ -208,31 +208,33 @@ class KishuCommand:
         return ListResult(sessions=sessions)
 
     @staticmethod
-    def init(notebook_path: str) -> InitResult:
+    def init(notebook_path_str: str) -> InitResult:
+        notebook_path = Path(notebook_path_str)
         try:
-            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(Path(notebook_path))
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
             return InitResult(
                 status="error",
                 message=f"{type(e).__name__}: {str(e)}",
             )
         return InitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
-            pre_command="from kishu import init_kishu; init_kishu()",
+            pre_command=f"from kishu import init_kishu; init_kishu(\"{notebook_path.resolve()}\")",
             command="str(_kishu)",
         ))
 
     @staticmethod
-    def detach(notebook_path: str) -> DetachResult:
+    def detach(notebook_path_str: str) -> DetachResult:
+        notebook_path = Path(notebook_path_str)
         try:
-            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(Path(notebook_path))
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
             return DetachResult(
                 status="error",
                 message=f"{type(e).__name__}: {str(e)}",
             )
         return DetachResult.wrap(JupyterConnection(kernel_id).execute_one_command(
-            pre_command="from kishu import detach_kishu; detach_kishu()",
-            command=f"\"Successfully detatched notebook at {notebook_path}\"",
+            pre_command=f"from kishu import detach_kishu; detach_kishu(\"{notebook_path.resolve()}\")",
+            command=f"\"Successfully detatched notebook at {notebook_path.resolve()}\"",
         ))
 
     @staticmethod

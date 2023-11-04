@@ -2,6 +2,7 @@ import dataclasses
 import json
 import os
 import pytest
+import requests
 import shutil
 
 from pathlib import Path, PurePath
@@ -106,13 +107,14 @@ def glob_side_effect(pattern):
 # used to test runtime.py
 @pytest.fixture
 def mock_servers():
+    resp = requests.Response()
+    resp.status_code = 200
+    resp._content = json.dumps([MOCK_SESSION])
     with patch('kishu.runtime.Path.read_bytes', return_value=json.dumps(MOCK_SERVER).encode()), \
          patch('kishu.runtime.psutil.pid_exists', return_value=True), \
          patch('kishu.runtime.Path.glob', side_effect=glob_side_effect), \
          patch("kishu.runtime.jupyter_core.paths.jupyter_runtime_dir", return_value=Path("/")), \
-         patch('kishu.runtime.urllib.request.urlopen') as mock_urlopen:
-
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = json.dumps([MOCK_SESSION]).encode()
+         patch('kishu.runtime.requests.get', return_value=resp):
         yield [MOCK_SERVER]
 
 

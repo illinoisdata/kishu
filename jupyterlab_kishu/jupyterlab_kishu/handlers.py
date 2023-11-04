@@ -6,11 +6,13 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 
 from kishu.commands import KishuCommand, into_json
+from kishu.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
 
 
-def subp_kishu_init(notebook_path, queue):
-    init_result = KishuCommand.init(notebook_path)
+def subp_kishu_init(notebook_path, queue, cookies):
+    with JupyterRuntimeEnv.context(cookies=cookies):
+        init_result = KishuCommand.init(notebook_path)
     queue.put(into_json(init_result))
 
 
@@ -19,13 +21,14 @@ class InitHandler(APIHandler):
     @tornado.web.authenticated
     def post(self):
         input_data = self.get_json_body()
+        cookies = {morsel.key: morsel.value for _, morsel in self.cookies.items()}
 
         # We need to run KishuCommand.init in a separate process to unblock Jupyter Server backend
         # so that our later API calls (e.g., session discovery) are unblocked.
         init_queue = multiprocessing.Queue()
         init_process = multiprocessing.Process(
             target=subp_kishu_init,
-            args=(input_data["notebook_path"], init_queue)
+            args=(input_data["notebook_path"], init_queue, cookies)
         )
         init_process.start()
         while init_queue.empty():

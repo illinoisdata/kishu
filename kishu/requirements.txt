@@ -12,6 +12,7 @@ nbconvert
 nbformat
 networkx
 psutil
+requests
 typing
 
 # User interfaces: cli, backend, jupyterlab_kishu

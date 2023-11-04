@@ -46,6 +46,7 @@ dependencies = [  # README: Keep in sync with requirements.txt
     "nbformat",
     "networkx",
     "psutil",
+    "requests",
     "typing",
 
     # User interfaces: cli, backend, jupyterlab_kishu
