@@ -45,7 +45,7 @@ def test_iter_maybe_running_servers_bad_json():
 
 
 def test_get_sessions_raises_exception():
-    with patch('kishu.runtime.urllib.request.urlopen', side_effect=Exception):
+    with patch('kishu.runtime.requests.get', side_effect=Exception):
         sessions = JupyterRuntimeEnv.get_sessions({"url": "http://localhost:8888/", "token": "token_value"})
     assert not sessions
 

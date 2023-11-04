@@ -45,6 +45,11 @@ class NotebookId:
         return NotebookId(key=key, path=path, kernel_id=kernel_id)
 
     @staticmethod
+    def from_enclosing_with_key_and_path(key: str, path: Path) -> NotebookId:
+        kernel_id = JupyterRuntimeEnv.enclosing_kernel_id()
+        return NotebookId(key=key, path=path, kernel_id=kernel_id)
+
+    @staticmethod
     def parse_key_from_path(path: Path) -> str:
         nb = JupyterRuntimeEnv.read_notebook(path)
         metadata = NotebookId.read_kishu_metadata(nb)
