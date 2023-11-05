@@ -47,7 +47,6 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif isinstance(obj, list):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         if include_id:
@@ -83,7 +82,8 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
             node.check_value_only = False
 
         for key, value in sorted(obj.items()):
-            node.children.append(key)
+            child = get_object_state(key, visited, include_id)
+            node.children.append(child)
             child = get_object_state(value, visited, include_id)
             node.children.append(child)
 
@@ -92,18 +92,19 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
     elif isinstance(obj, (bytes, bytearray)):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        visited[id(obj)] = node
         node.children.append(obj)
         node.children.append("/EOC")
         return node
 
     elif isinstance(obj, type):
         node = GraphNode(obj_type=type(obj), check_value_only=True)
+        visited[id(obj)] = node
         node.children.append(str(obj))
         node.children.append("/EOC")
         return node
 
     elif callable(obj):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         if include_id:
@@ -115,7 +116,6 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif hasattr(obj, '__reduce_ex__'):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         if is_pickable(obj):
@@ -135,7 +135,6 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif hasattr(obj, '__reduce__'):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if is_pickable(obj):
@@ -154,7 +153,6 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif hasattr(obj, '__getstate__'):
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         node.id_obj = id(obj)
@@ -182,13 +180,11 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     else:
-        # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj), check_value_only=True)
         visited[id(obj)] = node
         if include_id:
             node.id_obj = id(obj)
             node.check_value_only = False
-        # node.children.append(str(obj))
         node.children.append(pickle.dumps(obj))
         node.children.append("/EOC")
         return node
@@ -214,8 +210,8 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
 
     elif isinstance(obj, list):
         hashed.update(str(type(obj)))
+        visited.add(id(obj))
         if include_id:
-            visited.add(id(obj))
             hashed.update(str(id(obj)))
 
         for item in obj:
@@ -225,8 +221,8 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
 
     elif isinstance(obj, set):
         hashed.update(str(type(obj)))
+        visited.add(id(obj))
         if include_id:
-            visited.add(id(obj))
             hashed.update(str(id(obj)))
 
         for item in sorted(obj):
@@ -236,8 +232,8 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
 
     elif isinstance(obj, dict):
         hashed.update(str(type(obj)))
+        visited.add(id(obj))
         if include_id:
-            visited.add(id(obj))
             hashed.update(str(id(obj)))
 
         for key, value in sorted(obj.items()):
