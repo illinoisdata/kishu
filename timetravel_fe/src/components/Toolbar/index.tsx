@@ -2,97 +2,79 @@
  * @Author: University of Illinois at Urbana Champaign
  * @Date: 2023-06-18 10:20:09
  * @LastEditTime: 2023-07-15 22:18:28
- * @FilePath: /src/components/Toolbar/index.tsx
+ * @FilePath: /src/components/Toolbar/ExecutedCodePanel.tsx
  * @Description: toolBar includes rollback buttons, and the menu to choose rollback type.
  */
-import React, { SyntheticEvent, useState } from "react";
+import React, {useContext} from "react";
 import "./toolbar.css";
 import "../utility.css";
-import { DownOutlined } from "@ant-design/icons";
-import type { MenuProps } from "antd";
-import { Dropdown, Space, message } from "antd";
-import { log } from "console";
-import { BackEndAPI } from "../../util/API";
+import {SearchOutlined} from "@ant-design/icons";
+import {Button, Input, ConfigProvider, Checkbox} from "antd";
+import DropdownBranch from "./DropDownBranch";
+import {AppContext} from "../../App";
+import {CheckboxChangeEvent} from "antd/es/checkbox";
 
-export interface Props {
-  selectedHistoryID: number;
-}
+function Toolbar() {
+    const props = useContext(AppContext);
 
-enum RollBackType {
-  "BOTH" = 1,
-  "CODES" = 2,
-  "VARIABLES" = 3,
-}
+    const onDiffModeChange = (e: CheckboxChangeEvent) => {
+        props?.setInDiffMode(e.target.checked);
+    };
 
-function Toolbar({ selectedHistoryID }: Props) {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [rollbackType, setRollbackType] = useState(RollBackType.BOTH);
-
-  async function enterLoading() {
-    setLoading(true);
-    try {
-      if (rollbackType === RollBackType.BOTH) {
-        await BackEndAPI.rollbackBoth(selectedHistoryID);
-      } else if (rollbackType === RollBackType.CODES) {
-        await BackEndAPI.rollbackCodes(selectedHistoryID);
-      } else {
-        await BackEndAPI.rollbackVariables(selectedHistoryID);
-      }
-      message.info("rollback succeed");
-    } catch (e) {
-      if (e instanceof Error) {
-        message.info(e.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const onClickMenuItem: MenuProps["onClick"] = ({ key }) => {
-    setRollbackType(Number(key));
-  };
-
-  //menu to choose rollback type
-  const items: MenuProps["items"] = [
-    {
-      key: "1",
-      label: "rollback both",
-    },
-    {
-      key: "2",
-      label: "rollback codes",
-    },
-    {
-      key: "3",
-      label: "rollback variables",
-    },
-  ];
-
-  return (
-    <>
-      <div className="toolBar">
-        <Space wrap>kishu_timeTravel</Space>
-        <div>
-          <Space wrap>
-            <Dropdown.Button
-              type="primary"
-              icon={<DownOutlined />}
-              loading={loading}
-              menu={{
-                items,
-                onClick: onClickMenuItem,
-                selectable: true,
-                defaultSelectedKeys: ["1"],
-              }}
-              onClick={() => enterLoading()}
+    return (
+        <>
+            <ConfigProvider
+                theme={{
+                    "components": {
+                        "Button": {
+                            "colorPrimary": "rgb(219,222,225)",
+                            "primaryColor": "rgb(87,89,90)"
+                        },
+                        "Input": {
+                            "colorBgContainer": "rgb(219,222,225)",
+                            "colorText": "rgb(87,89,90)",
+                            "colorBgContainerDisabled": "rgb(219,222,225)",
+                            "colorTextDisabled": "rgb(87,89,90)",
+                            "colorTextPlaceholder": "rgb(87,89,90)"
+                        },
+                        "Select": {
+                            "colorBgContainer": "rgb(219,222,225)",
+                            "colorText": "rgb(87,89,90)",
+                            "colorTextPlaceholder": "rgb(87,89,90)",
+                            "optionSelectedBg": "rgb(197,202,207)"
+                        },
+                    }
+                }}
             >
-              Submit Rollback
-            </Dropdown.Button>
-          </Space>
-        </div>
-      </div>
-    </>
-  );
+                {" "}
+                <div className="toolBar">
+                    <Input
+                        placeholder={"Notebook Name: " + globalThis.NotebookID}
+                        disabled={true}
+                        style={{width: "20%"}}
+                    />
+                    <div className="searchBar">
+                        <Input
+                            placeholder="input search text"
+                            // disabled={true}
+
+                        />
+                        <Button
+                            type="primary" shape={"round"} icon={<SearchOutlined/>}
+                        />
+                    </div>
+
+                    <Checkbox onChange={onDiffModeChange}>DiffMode</Checkbox>
+
+                    <div>
+                        <DropdownBranch/>
+                    </div>
+
+                    {/* onSearch={} */}
+                </div>
+            </ConfigProvider>
+        </>
+    );
 }
 
 export default Toolbar;

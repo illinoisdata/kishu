@@ -1,42 +1,109 @@
-import { error, time } from "console";
-import { History } from "./History";
-import { MOCK_HISTORIES, MOCK_DETAILED_HISTORIES } from "./mockdata";
+import {parseCommitGraph, parseCommitDetail, parseList, parseDiff} from "./parser";
+import logger from "../log/logger";
 
-/*
- * @Author: University of Illinois at Urbana Champaign
- * @Date: 2023-07-14 16:36:40
- * @LastEditTime: 2023-07-18 14:12:27
- * @FilePath: /src/util/API.ts
- * @Description:
- */
-
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 const BackEndAPI = {
-  rollbackBoth(historyID: number) {
-    return new Promise((resolve) => setTimeout(resolve, 1000));
-    // message.info(`rollback succeeds`);
-  },
+    async rollbackBoth(commitID: string, branchID?: string) {
+        // message.info(`rollback succeeds`);
+        let res;
+        if (branchID) {
+            res = await fetch(BACKEND_URL + "/checkout/" + globalThis.NotebookID! + "/" + branchID);
+        } else {
+            res = await fetch(BACKEND_URL + "/checkout/" + globalThis.NotebookID! + "/" + commitID);
+        }
+        if (res.status !== 200) {
+            throw new Error("rollback backend error, status != OK");
+        }
+    },
 
-  rollbackCodes(historyID: number) {
-    // message.info(`rollback succeeds`);
-  },
 
-  rollbackVariables(historyID: number) {
-    // message.info(`rollback succeeds`);
-  },
+    async rollbackVariables(commitID: string, branchID?: string) {
+        // message.info(`rollback succeeds`);
+        let res;
+        if (branchID) {
+            res = await fetch(BACKEND_URL + "/checkout/" + globalThis.NotebookID! + "/" + branchID + "?skip_notebook=True");
+        } else {
+            res = await fetch(BACKEND_URL + "/checkout/" + globalThis.NotebookID! + "/" + commitID + "?skip_notebook=True");
+        }
+        if (res.status !== 200) {
+            throw new Error("rollback backend error, status != OK");
+        }
+    },
 
-  getInitialData(): { histories: History[]; selectedID: number } {
-    return { histories: MOCK_HISTORIES, selectedID: 1004 };
-  },
+    async getCommitGraph() {
+        const res = await fetch(BACKEND_URL + "/fe/commit_graph/" + globalThis.NotebookID!);
+        if (res.status !== 200) {
+            throw new Error("get commit graph backend error, status != 200");
+        }
+        const data = await res.json();
+        return parseCommitGraph(data);
+    },
 
-  getHistoryDetail(historyID: number): History {
-    console.log("get:" + historyID);
-    const result = MOCK_DETAILED_HISTORIES.get(historyID);
-    console.log(result);
-    if (!result) {
-      throw new Error("The detail information of this history doesn't exist!");
+    async getCommitDetail(commitID: string) {
+        const res = await fetch(
+            BACKEND_URL + "/fe/commit/" + globalThis.NotebookID! + "/" + commitID,
+        );
+        if (res.status !== 200) {
+            throw new Error("get commit detail error, status != 200");
+        }
+        const data = await res.json();
+        logger.silly("commit detail before parse", data);
+        return parseCommitDetail(data);
+    },
+
+    async setTag(commitID: string, newTag: string) {
+        const res = await fetch(
+            BACKEND_URL + "/tag/" +
+            globalThis.NotebookID! +
+            "/" +
+            newTag +
+            "?commit_id=" +
+            commitID,
+            //
+            // "&message=" +
+            // newTag,
+        );
+        if (res.status !== 200) {
+            throw new Error("setting tags error, status != 200");
+        }
+    },
+
+    async createBranch(commitID: string, newBranchname: string) {
+        // message.info(`rollback succeeds`);
+        const res = await fetch(
+            BACKEND_URL + "/branch/" +
+            globalThis.NotebookID! +
+            "/" +
+            newBranchname +
+            "?commit_id=" +
+            commitID,
+        );
+        if (res.status !== 200) {
+            throw new Error("create branch error, status != 200");
+        }
+    },
+
+    async getNotebookList() {
+        const res = await fetch(BACKEND_URL + "/list");
+        if (res.status !== 200) {
+            throw new Error("get commit detail error, status != 200");
+        }
+        const data = await res.json()
+        return parseList(data)
+
+    },
+
+    async getDiff(originID: string, destID: string) {
+        const res = await fetch(
+            BACKEND_URL + "/fe/diff/" + globalThis.NotebookID! + "/" + originID + "/" + destID,
+        );
+        if (res.status !== 200) {
+            throw new Error("get diff error, status != 200");
+        }
+        const data = await res.json();
+        return parseDiff(data);
+
     }
-    return result!;
-  },
 };
 
-export { BackEndAPI };
+export {BackEndAPI};

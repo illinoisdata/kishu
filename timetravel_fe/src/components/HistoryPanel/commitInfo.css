@@ -1,0 +1,56 @@
+.right_aligned {
+    float: right;
+}
+
+.commitInfo {
+    height: 68px;
+    /*border: 1px solid black;*/
+    /*border-radius: 5px;*/
+    /*padding:15px;*/
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+
+}
+
+.selected_commitInfo {
+    height: 68px;
+    flex-grow: 1;
+    border: 1px solid black;
+    border-radius: 5px;
+    padding: 15px 0px 15px 0px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+
+}
+
+.branch_name {
+    color: #1e1f22;
+    /*background-color: blue;*/
+    /*margin: 100px 20px 15px 30px;*/
+    background-color: #d0d7de;
+    margin: 0px 0px 0px 10px;
+    padding: 0px 3px 0px 3px
+}
+
+
+.tag_name {
+    color: #1e1f22;
+    /*margin: 1000px 8px 0px 0px;*/
+    background-color: rgb(253, 199, 51);
+    margin: 0px 0px 0px 10px;
+    padding: 0px 3px 0px 3px
+}
+
+.empty-line {
+    /* Add styles for the empty line here */
+    height: 1em; /* Adjust the height as needed */
+}
+
+.same_row {
+    white-space: nowrap; /* Prevent content from wrapping */
+    display: inline-block; /* Keep the content inline */
+}
