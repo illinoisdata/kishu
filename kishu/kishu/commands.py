@@ -102,11 +102,13 @@ class CommitSummary:
 @dataclass
 class LogResult:
     commit_graph: List[CommitSummary]
+    head: HeadBranch
 
 
 @dataclass
 class LogAllResult:
     commit_graph: List[CommitSummary]
+    head: HeadBranch
 
 
 @dataclass
@@ -190,7 +192,7 @@ class FESelectedCommit:
 @dataclass
 class FEInitializeResult:
     commits: List[FECommit]
-    head: Optional[HeadBranch]
+    head: HeadBranch
 
 
 class KishuCommand:
@@ -244,18 +246,24 @@ class KishuCommand:
             commit_id = head.commit_id
 
         if commit_id is None:
-            return LogResult([])
+            return LogResult(commit_graph=[], head=KishuBranch.get_head(notebook_id))
 
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
-        return LogResult(KishuCommand._decorate_graph(notebook_id, graph))
+        return LogResult(
+            commit_graph=KishuCommand._decorate_graph(notebook_id, graph),
+            head=KishuBranch.get_head(notebook_id),
+        )
 
     @staticmethod
     def log_all(notebook_id: str) -> LogAllResult:
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
-        return LogAllResult(KishuCommand._decorate_graph(notebook_id, graph))
+        return LogAllResult(
+            commit_graph=KishuCommand._decorate_graph(notebook_id, graph),
+            head=KishuBranch.get_head(notebook_id),
+        )
 
     @staticmethod
     def status(notebook_id: str, commit_id: str) -> StatusResult:

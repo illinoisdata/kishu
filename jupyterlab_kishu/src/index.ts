@@ -42,6 +42,11 @@ interface CommitSummary {
   runtime_ms?: number;
 }
 
+interface HeadBranch {
+  branch_name?: string;
+  commit_id?: string;
+}
+
 interface InitResult {
   status: string;
   message: string;
@@ -49,6 +54,7 @@ interface InitResult {
 
 interface LogAllResult {
   commit_graph: CommitSummary[];
+  head: HeadBranch;
 }
 
 interface CheckoutResult {
@@ -70,11 +76,12 @@ function currentNotebookPath(tracker: INotebookTracker): string | undefined {
 }
 
 function commitSummaryToString(commit: CommitSummary): string {
-  return `[${commit.commit_id}] ${commit.message}`;
+  const date = new Date(commit.timestamp);
+  return `[${date.toLocaleString()}]: ${commit.message} (${commit.commit_id})`;
 }
 
 function extractHashFromString(inputString: string): string | undefined {
-  const regex = /\[([a-fA-F0-9-]+)\]\s/;
+  const regex = /\(([0-9a-fA-F-]+)\)$/;
   const match = inputString.match(regex);
   if (match && match[1]) {
     return match[1];
@@ -179,12 +186,23 @@ function installCommands(
             okLabel: trans.__('Checkout')
           })
         ).value ?? undefined;
+        if (!maybe_commit_id) {
+          notifyError(trans.__(`Kishu checkout requires commit ID.`));
+        }
       } else {
+        // Find the index to current commit.
+        let current_idx = log_all_result.commit_graph.findIndex(
+          commit => commit.commit_id === log_all_result.head.commit_id
+        );
+        if (current_idx == -1) {
+          current_idx = log_all_result.commit_graph.length - 1;
+        }
+
         // Show the list and ask to pick one item
         const selected_commit_str = (
           await InputDialog.getItem({
             items: log_all_result.commit_graph.map(commitSummaryToString),
-            current: log_all_result.commit_graph.length - 1,
+            current: current_idx,
             editable: false,
             title: trans.__('Checkout to...'),
             okLabel: trans.__('Checkout')
@@ -195,7 +213,6 @@ function installCommands(
         }
       }
       if (!maybe_commit_id) {
-        notifyError(trans.__(`Kishu checkout requires commit ID.`));
         return;
       }
       const commit_id: string = maybe_commit_id;
