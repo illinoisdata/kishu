@@ -93,6 +93,63 @@ const cells_diff: TabsProps['items'] = [
     }
 ];
 
+async function loadInitialData(setGlobalLoading: any, setError: any, setCommits: any, setBranchID2CommitMap: any, setSelectedCommitID: any, setSelectedBranchID: any, setCurrentHeadID: any) {
+    setGlobalLoading(true);
+    try {
+        const data = await BackEndAPI.getCommitGraph();
+        logger.silly("git graph after parse:", data);
+        setCommits(data.commits);
+        const newSetBranchID2CommitMap = new Map<string, string>();
+        data.commits.forEach((commit) => {
+            commit.branchIds.forEach((branchID) => {
+                newSetBranchID2CommitMap.set(branchID, commit.oid);
+            });
+        });
+        setBranchID2CommitMap(newSetBranchID2CommitMap);
+        setSelectedCommitID(data.currentHead);
+        setSelectedBranchID(data.currentHeadBranch);
+        setCurrentHeadID(data.currentHead);
+    } catch (e) {
+        if (e instanceof Error) {
+            setError(e.message);
+        }
+    } finally {
+        setGlobalLoading(false);
+    }
+}
+
+async function loadCommitDetail(selectedCommitID: string, setSelectedCommit: any, setError: any) {
+    if (!selectedCommitID) {
+        return;
+    }
+    try {
+        const data = await BackEndAPI.getCommitDetail(selectedCommitID);
+        console.log("commit detail after parse:");
+        console.log(data);
+        setSelectedCommit(data!);
+    } catch (e) {
+        if (e instanceof Error) {
+            setError(e.message);
+        }
+    }
+}
+
+async function loadDiffCommitDetail(selectedCommitID: string, currentHeadID: string | undefined, setDiffCommitDetail: any, setError: any) {
+    if (!selectedCommitID) {
+        return;
+    }
+    try {
+        const data = await BackEndAPI.getDiff(selectedCommitID,currentHeadID!);
+        console.log("commit detail diff after parse:");
+        console.log(data);
+        setDiffCommitDetail(data!)
+    } catch (e) {
+        if (e instanceof Error) {
+            setError(e.message);
+        }
+    }
+}
+
 export const AppContext = createContext<appContextType | undefined>(undefined);
 
 function App() {
@@ -133,80 +190,23 @@ function App() {
 
     globalThis.NotebookID = useParams().notebookName;
 
-    async function loadInitialData() {
-        setGlobalLoading(true);
-        try {
-            const data = await BackEndAPI.getCommitGraph();
-            logger.silly("git graph after parse:", data);
-            setCommits(data.commits);
-            const newSetBranchID2CommitMap = new Map<string, string>();
-            data.commits.map((commit) => {
-                commit.branchIds.map((branchID) => {
-                    newSetBranchID2CommitMap.set(branchID, commit.oid);
-                });
-            });
-            setBranchID2CommitMap(newSetBranchID2CommitMap);
-            setSelectedCommitID(data.currentHead);
-            setSelectedBranchID(data.currentHeadBranch);
-            setCurrentHeadID(data.currentHead);
-        } catch (e) {
-            if (e instanceof Error) {
-                setError(e.message);
-            }
-        } finally {
-            setGlobalLoading(false);
-        }
-    }
-
-    async function loadCommitDetail(selectedCommitID: string) {
-        if (!selectedCommitID) {
-            return;
-        }
-        try {
-            const data = await BackEndAPI.getCommitDetail(selectedCommitID);
-            console.log("commit detail after parse:");
-            console.log(data);
-            setSelectedCommit(data!);
-        } catch (e) {
-            if (e instanceof Error) {
-                setError(e.message);
-            }
-        }
-    }
-
-    async function loadDiffCommitDetail(selectedCommitID: string) {
-        if (!selectedCommitID) {
-            return;
-        }
-        try {
-            const data = await BackEndAPI.getDiff(selectedCommitID,currentHeadID!);
-            console.log("commit detail diff after parse:");
-            console.log(data);
-            setDiffCommitDetail(data!)
-        } catch (e) {
-            if (e instanceof Error) {
-                setError(e.message);
-            }
-        }
-    }
-
     useEffect(() => {
         //initialize the states
-        loadInitialData();
+        loadInitialData(setGlobalLoading, setError, setCommits, setBranchID2CommitMap, setSelectedCommitID, setSelectedBranchID, setCurrentHeadID);
     }, []);
 
     useMemo(() => {
-        loadCommitDetail(selectedCommitID!);
+        loadCommitDetail(selectedCommitID!, setSelectedCommit, setError);
         if (inDiffMode && currentHeadID) {
-            loadDiffCommitDetail(selectedCommitID!)
+            loadDiffCommitDetail(selectedCommitID!, currentHeadID, setDiffCommitDetail, setError)
         }
-    }, [selectedCommitID]);
+    }, [selectedCommitID,currentHeadID,inDiffMode]);
 
     useMemo(() => {
         if (inDiffMode) {
-            loadDiffCommitDetail(selectedCommitID!)
+            loadDiffCommitDetail(selectedCommitID!, currentHeadID, setDiffCommitDetail, setError)
         }
-    }, [inDiffMode]);
+    }, [inDiffMode,currentHeadID,selectedCommitID]);
 
 
     return (

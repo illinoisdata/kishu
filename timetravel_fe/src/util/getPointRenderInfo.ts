@@ -33,7 +33,6 @@ export function getPointRenderInfos(commits: Commit[]): {
 
     //traverse commits to assign y coordinates
     for (let i = 0; i < commits.length; i++) {
-        let commit = commits[i];
         cy[i] = y;
         y += COMMITHEIGHT;
     }
@@ -48,7 +47,7 @@ export function getPointRenderInfos(commits: Commit[]): {
         let parentOid = commit.parentOid;
         let parentIndex = commitIDIndex.get(parentOid);
         //if cx hasn't been assigned, it means he is a leaf, assign cx first
-        if (cx[i] == -1) {
+        if (cx[i] === -1) {
             findCycledColumnFlag = false;
             if (recycleXs.length > 0) {
                 let unqualified_recycled_x:[number,number][] = [];

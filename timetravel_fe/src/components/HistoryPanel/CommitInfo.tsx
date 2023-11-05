@@ -39,7 +39,7 @@ export function CommitInfo(props: CommitInfoProps) {
   return (
     <div
       className={
-        props.commit.oid == appContext?.selectedCommitID
+        props.commit.oid === appContext?.selectedCommitID
           ? "selected_commitInfo"
           : "commitInfo"
       }

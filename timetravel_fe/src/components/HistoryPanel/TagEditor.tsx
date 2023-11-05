@@ -1,13 +1,5 @@
-/*
- * @Author: University of Illinois at Urbana Champaign
- * @Date: 2023-07-27 16:58:26
- * @LastEditTime: 2023-08-01 10:52:17
- * @FilePath: /src/components/HistoryPanel/TagEditor.tsx
- * @Description:Modal when the user choose to edit the tag for the selected history
- */
 import React, {useState} from "react";
 import {Modal, Input, Button, message} from "antd";
-import {info} from "console";
 
 export interface TagEditorProps {
     isModalOpen: boolean;

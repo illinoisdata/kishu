@@ -28,7 +28,7 @@ export function HistoryGraph(props: HistoryGraphProps) {
                 let parent = props.Commits.get(parentOid);
                 let parentCX = props.pointRendererInfos.get(parentOid!)?.cx;
                 let parentCY = props.pointRendererInfos.get(parentOid!)?.cy;
-                let dashLine = parent?.variableVersion == me?.variableVersion;
+                let dashLine = parent?.variableVersion === me?.variableVersion;
                 if (parentCX && parentCY) {
                     return (
                         <path

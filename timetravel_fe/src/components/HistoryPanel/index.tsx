@@ -67,8 +67,8 @@ function HistoryTree() {
             logger.silly("tag submit, git graph after parse:", newGraph);
             props!.setCommits(newGraph.commits);
             const newSetBranchID2CommitMap = new Map<string, string>();
-            props!.commits.map((commit) => {
-                commit.branchIds.map((branchID) => {
+            props!.commits.forEach((commit) => {
+                commit.branchIds.forEach((branchID) => {
                     newSetBranchID2CommitMap.set(branchID, commit.oid);
                 });
             });
@@ -86,8 +86,8 @@ function HistoryTree() {
             logger.silly("branch name submit, git graph after parse:", newGraph);
             props!.setCommits(newGraph.commits);
             const newSetBranchID2CommitMap = new Map<string, string>();
-            props!.commits.map((commit) => {
-                commit.branchIds.map((branchID) => {
+            props!.commits.forEach((commit) => {
+                commit.branchIds.forEach((branchID) => {
                     newSetBranchID2CommitMap.set(branchID, commit.oid);
                 });
             });
@@ -105,8 +105,8 @@ function HistoryTree() {
             logger.silly("checkout submit, git graph after parse:", newGraph);
             props!.setCommits(newGraph.commits);
             const newSetBranchID2CommitMap = new Map<string, string>();
-            props!.commits.map((commit) => {
-                commit.branchIds.map((branchID) => {
+            props!.commits.forEach((commit) => {
+                commit.branchIds.forEach((branchID) => {
                     newSetBranchID2CommitMap.set(branchID, commit.oid);
                 });
             });
@@ -124,8 +124,8 @@ function HistoryTree() {
             logger.silly("checkout submit, git graph after parse:", newGraph);
             props!.setCommits(newGraph.commits);
             const newSetBranchID2CommitMap = new Map<string, string>();
-            props!.commits.map((commit) => {
-                commit.branchIds.map((branchID) => {
+            props!.commits.forEach((commit) => {
+                commit.branchIds.forEach((branchID) => {
                     newSetBranchID2CommitMap.set(branchID, commit.oid);
                 });
             });
@@ -226,136 +226,3 @@ function HistoryTree() {
 
 React.createElement("svg");
 export default HistoryTree;
-
-{
-    /****************************pop-ups ***********************/
-}
-{
-    /*{contextMenuPosition && (*/
-}
-{
-    /*  <ContextMenu*/
-}
-{
-    /*    setIsBranchNameEditorOpen={setIsBranchNameEditorOpen}*/
-}
-{
-    /*    x={contextMenuPosition.x}*/
-}
-{
-    /*    y={contextMenuPosition.y}*/
-}
-{
-    /*    onClose={handleCloseContextMenu}*/
-}
-{
-    /*    setIsTagEditorOpen={setIsTagEditorOpen}*/
-}
-{
-    /*    setJudgeFunctionID={setJudgeShowFunctionID}*/
-}
-{
-    /*    setIsGroupFolded={setIsGroupFolded}*/
-}
-{
-    /*    setIsWaitingModalOpen={setIsCheckoutWaitingModelOpen}*/
-}
-{
-    /*    setWaitingfor={setWaitingfor}*/
-}
-{
-    /*    judgeFunctionID={judgeShowFunctionID}*/
-}
-{
-    /*    isGroupFolded={isGroupFolded}*/
-}
-{
-    /*  />*/
-}
-{
-    /*)}*/
-}
-{
-    /*{mouseOverPosition && (*/
-}
-{
-    /*  <HoverPopup*/
-}
-{
-    /*    x={mouseOverPosition.x}*/
-}
-{
-    /*    y={mouseOverPosition.y}*/
-}
-{
-    /*    timestamp={mouseOverTimestamp}*/
-}
-{
-    /*  />*/
-}
-{
-    /*)}*/
-}
-{
-    /*<TagEditor*/
-}
-{
-    /*  isModalOpen={isTagEditorOpen}*/
-}
-{
-    /*  setIsModalOpen={setIsTagEditorOpen}*/
-}
-{
-    /*  defaultContent={*/
-}
-{
-    /*    previousTag4SelectedCommit ? previousTag4SelectedCommit : ""*/
-}
-{
-    /*  }*/
-}
-{
-    /*  submitHandler={handleTagSubmit}*/
-}
-{
-    /*  selectedHistoryID={props!.selectedCommitID!}*/
-}
-{
-    /*></TagEditor>*/
-}
-{
-    /*<BranchNameEditor*/
-}
-{
-    /*  isModalOpen={isBranchNameEditorOpen}*/
-}
-{
-    /*  setIsModalOpen={setIsBranchNameEditorOpen}*/
-}
-{
-    /*  submitHandler={handleBranchNameSubmit}*/
-}
-{
-    /*  selectedHistoryID={props!.selectedCommitID!}*/
-}
-{
-    /*></BranchNameEditor>*/
-}
-{
-    /*<CheckoutWaitingModal*/
-}
-{
-    /*  waitingFor={waitingFor}*/
-}
-{
-    /*  isWaitingModalOpen={isCheckoutWaitingModelOpen}*/
-}
-{
-    /*  setIsWaitingModalOpen={setIsCheckoutWaitingModelOpen}*/
-}
-{
-    /*  submitHandler={handleCheckout}*/
-}
-{
-    /*></CheckoutWaitingModal>*/
-}

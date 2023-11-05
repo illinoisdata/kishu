@@ -1,13 +1,6 @@
 import {parseCommitGraph, parseCommitDetail, parseList, parseDiff} from "./parser";
 import logger from "../log/logger";
 
-/*
- * @Author: University of Illinois at Urbana Champaign
- * @Date: 2023-07-14 16:36:40
- * @LastEditTime: 2023-08-01 10:50:15
- * @FilePath: /src/util/API.ts
- * @Description:
- */
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 const BackEndAPI = {
     async rollbackBoth(commitID: string, branchID?: string) {
@@ -35,7 +28,6 @@ const BackEndAPI = {
         if (res.status !== 200) {
             throw new Error("rollback backend error, status != OK");
         }
-        const data = await res.json();
     },
 
     async getCommitGraph() {
@@ -74,8 +66,6 @@ const BackEndAPI = {
         if (res.status !== 200) {
             throw new Error("setting tags error, status != 200");
         }
-        const data = await res.json();
-
     },
 
     async createBranch(commitID: string, newBranchname: string) {
@@ -91,7 +81,6 @@ const BackEndAPI = {
         if (res.status !== 200) {
             throw new Error("create branch error, status != 200");
         }
-        const data = await res.json();
     },
 
     async getNotebookList() {
@@ -104,7 +93,7 @@ const BackEndAPI = {
 
     },
 
-    async getDiff(originID: string,destID: string) {
+    async getDiff(originID: string, destID: string) {
         const res = await fetch(
             BACKEND_URL + "/fe/diff/" + globalThis.NotebookID! + "/" + originID + "/" + destID,
         );
