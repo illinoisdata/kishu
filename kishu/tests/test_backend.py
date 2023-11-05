@@ -3,6 +3,7 @@ from kishu.commands import (
     ListResult,
     LogResult,
 )
+from kishu.storage.branch import HeadBranch
 
 
 def test_health(backend_client):
@@ -24,4 +25,7 @@ def test_list_empty(backend_client, tmp_kishu_path):
 def test_log_empty(backend_client, tmp_kishu_path):
     result = backend_client.get("/log/NON_EXISTENT_NOTEBOOK_ID")
     assert result.status_code == 200
-    assert LogResult.from_json(result.data) == LogResult(commit_graph=[])
+    assert LogResult.from_json(result.data) == LogResult(
+        commit_graph=[],
+        head=HeadBranch(branch_name=None, commit_id=None),
+    )
