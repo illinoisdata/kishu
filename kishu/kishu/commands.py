@@ -12,8 +12,11 @@ from kishu.exceptions import (
     BranchNotFoundError,
     BranchConflictError,
 )
+from kishu.diff import DiffHunk, KishuDiff
+from kishu.exceptions import NoFormattedCellsError
 from kishu.jupyterint import (
     CommitEntry,
+    FormattedCell,
     JupyterCommandResult,
     JupyterConnection,
     KishuForJupyter,
@@ -177,7 +180,6 @@ class FESelectedCommitVariable:
     type: str
     children: List[FESelectedCommitVariable]
     size: Optional[str]
-    html: Optional[str]
 
 
 @dataclass
@@ -192,6 +194,12 @@ class FESelectedCommit:
 class FEInitializeResult:
     commits: List[FECommit]
     head: Optional[HeadBranch]
+
+
+@dataclass
+class FECodeDiffResult:
+    notebook_cells_diff: List[DiffHunk]
+    executed_cells_diff: List[DiffHunk]
 
 
 class KishuCommand:
@@ -448,6 +456,15 @@ class KishuCommand:
             vardepth=vardepth,
         )
 
+    @staticmethod
+    def fe_commit_diff(notebook_id: str, from_commit_id: str, to_commit_id: str) -> FECodeDiffResult:
+        to_cells, to_executed_cells = KishuCommand._retrieve_all_cells(notebook_id, to_commit_id)
+        from_cells, from_executed_cells = KishuCommand._retrieve_all_cells(notebook_id, from_commit_id)
+        cell_diff = KishuDiff.diff_cells(from_cells, to_cells)
+        executed_cell_diff = KishuDiff.diff_cells(from_executed_cells, to_executed_cells)
+        return FECodeDiffResult(cell_diff.cell_diff_hunks, executed_cell_diff.cell_diff_hunks)
+
+
     """Helpers"""
 
     @staticmethod
@@ -653,7 +670,6 @@ class KishuCommand:
             type=str(type(value).__name__),
             children=KishuCommand._recurse_variable(value, vardepth=vardepth),
             size=KishuCommand._size_or_none(value),
-            html=html,
         )
 
     @staticmethod
@@ -687,3 +703,19 @@ class KishuCommand:
     @staticmethod
     def _str_or_none(value: Optional[Any]) -> Optional[str]:
         return None if value is None else str(value)
+
+    @staticmethod
+    def _get_cells_as_strings(formated_cells: List[FormattedCell]) -> List[str]:
+        return [cell.source for cell in formated_cells]
+
+    @staticmethod
+    def _retrieve_all_cells(notebook_id: str, commit_id: str):
+        commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
+        formatted_cells = commit_entry.formatted_cells
+        if formatted_cells is None:
+            raise NoFormattedCellsError(commit_id)
+        executed_cells = commit_entry.executed_cells
+        if executed_cells is None:
+            executed_cells = []
+        cells = KishuCommand._get_cells_as_strings(formatted_cells)
+        return cells, executed_cells

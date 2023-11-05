@@ -52,6 +52,7 @@ dependencies = [  # README: Keep in sync with requirements.txt
     # User interfaces: cli, backend, jupyterlab_kishu
     "flask",
     "typer",
+    "Flask-CORS",
 
     # Planning
     "numpy",
@@ -83,7 +84,7 @@ dev = [  # README: Keep in sync with dev-requirements.txt
     "websocket-client",
     "requests",
     "types-requests",
-    "jupyter"
+    "jupyter",
 ]
 
 

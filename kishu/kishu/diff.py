@@ -223,7 +223,7 @@ class DiffAlgorithms:
 
 class KishuDiff:
     @staticmethod
-    def kishu_get_diff(origin: List[str], destination: List[str]) -> DiffResult:
+    def diff_cells(origin: List[str], destination: List[str]) -> DiffResult:
         offset_diff = 0
 
         def _get_new_index(origin_index):
