@@ -8,6 +8,10 @@ from dataclasses_json import dataclass_json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
+from kishu.exceptions import (
+    BranchNotFoundError,
+    BranchConflictError,
+)
 from kishu.jupyterint import (
     CommitEntry,
     JupyterCommandResult,
@@ -68,6 +72,20 @@ class InitResult:
         )
 
 
+@dataclass_json
+@dataclass
+class DetachResult:
+    status: str
+    message: str
+
+    @staticmethod
+    def wrap(result: JupyterCommandResult) -> DetachResult:
+        return DetachResult(
+            status=result.status,
+            message=result.message,
+        )
+
+
 @dataclass
 class CommitSummary:
     commit_id: str
@@ -101,6 +119,7 @@ CheckoutResult = JupyterCommandResult
 CommitResult = JupyterCommandResult
 
 
+@dataclass_json
 @dataclass
 class BranchResult:
     status: str
@@ -109,10 +128,19 @@ class BranchResult:
     head: Optional[HeadBranch] = None
 
 
+@dataclass_json
+@dataclass
+class DeleteBranchResult:
+    status: str
+    message: str
+
+
+@dataclass_json
 @dataclass
 class RenameBranchResult:
     status: str
     branch_name: str
+    message: str
 
 
 @dataclass
@@ -180,17 +208,33 @@ class KishuCommand:
         return ListResult(sessions=sessions)
 
     @staticmethod
-    def init(notebook_path: str) -> InitResult:
+    def init(notebook_path_str: str) -> InitResult:
+        notebook_path = Path(notebook_path_str)
         try:
-            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(Path(notebook_path))
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
             return InitResult(
                 status="error",
                 message=f"{type(e).__name__}: {str(e)}",
             )
         return InitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
-            pre_command="from kishu import init_kishu; init_kishu()",
+            pre_command=f"from kishu import init_kishu; init_kishu(\"{notebook_path.resolve()}\")",
             command="str(_kishu)",
+        ))
+
+    @staticmethod
+    def detach(notebook_path_str: str) -> DetachResult:
+        notebook_path = Path(notebook_path_str)
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
+        except FileNotFoundError as e:
+            return DetachResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+            )
+        return DetachResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+            pre_command=f"from kishu import detach_kishu; detach_kishu(\"{notebook_path.resolve()}\")",
+            command=f"\"Successfully detatched notebook at {notebook_path.resolve()}\"",
         ))
 
     @staticmethod
@@ -202,6 +246,7 @@ class KishuCommand:
         if commit_id is None:
             return LogResult([])
 
+        commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
         return LogResult(KishuCommand._decorate_graph(notebook_id, graph))
@@ -214,6 +259,7 @@ class KishuCommand:
 
     @staticmethod
     def status(notebook_id: str, commit_id: str) -> StatusResult:
+        commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         commit_node_info = next(
             KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
@@ -258,11 +304,12 @@ class KishuCommand:
             head = KishuBranch.update_head(notebook_id, is_detach=True)
             print(f"detaching {head}")
 
-        # Fail to determine commit ID, possibly because a commit does not exist.
+        # Fail to determine commit ID, possibly because no commit does not exist.
         if commit_id is None:
             return BranchResult(status="no_commit")
 
         # Now add this branch.
+        commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         KishuBranch.upsert_branch(notebook_id, branch_name, commit_id)
 
         # Create new commit for this branch action.
@@ -277,6 +324,23 @@ class KishuCommand:
         )
 
     @staticmethod
+    def delete_branch(
+        notebook_id: str,
+        branch_name: str,
+    ) -> DeleteBranchResult:
+        try:
+            KishuBranch.delete_branch(notebook_id, branch_name)
+            return DeleteBranchResult(
+                status="ok",
+                message=f"Branch {branch_name} deleted.",
+            )
+        except (BranchConflictError, BranchNotFoundError) as e:
+            return DeleteBranchResult(
+                status="error",
+                message=str(e),
+            )
+
+    @staticmethod
     def rename_branch(
         notebook_id: str,
         old_name: str,
@@ -287,11 +351,13 @@ class KishuCommand:
             return RenameBranchResult(
                 status="ok",
                 branch_name=new_name,
+                message=f"Branch renamed from {old_name} to {new_name}.",
             )
-        except ValueError:
+        except (BranchNotFoundError, BranchConflictError) as e:
             return RenameBranchResult(
                 status="error",
                 branch_name="",
+                message=str(e),
             )
 
     @staticmethod
@@ -312,6 +378,7 @@ class KishuCommand:
             return TagResult(status="no_commit")
 
         # Now add this tag.
+        commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         tag = TagRow(tag_name=tag_name, commit_id=commit_id, message=message)
         KishuTag.upsert_tag(notebook_id, tag)
         return TagResult(
@@ -362,6 +429,7 @@ class KishuCommand:
 
     @staticmethod
     def fe_commit(notebook_id: str, commit_id: str, vardepth: int) -> FESelectedCommit:
+        commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         commit_node_info = next(
             KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)

@@ -1,15 +1,31 @@
+from __future__ import annotations
+
 import ipykernel
 import json
 import jupyter_core.paths
 import nbformat
 import os
+import requests
 import psutil
-import urllib.request
 
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path, PurePath
-from typing import Generator, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
+
+
+class JupyterRuntimeContextHandler:
+    def __init__(self, cookies: Dict[str, str]) -> None:
+        self.cookies = cookies
+        self.prev_cookies = cookies
+
+    def __enter__(self) -> JupyterRuntimeContextHandler:
+        self.prev_cookies = JupyterRuntimeEnv.COOKIES
+        JupyterRuntimeEnv.COOKIES = self.cookies
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        JupyterRuntimeEnv.COOKIES = self.prev_cookies
 
 
 @dataclass
@@ -18,43 +34,15 @@ class IPythonSession:
     notebook_path: Path
 
 
-def _iter_maybe_running_servers() -> Generator[dict, None, None]:
-    runtime_dir = Path(jupyter_core.paths.jupyter_runtime_dir())
-    if runtime_dir.is_dir():
-        config_files = chain(
-            runtime_dir.glob("nbserver-*.json"),  # jupyter notebook (or lab 2)
-            runtime_dir.glob("jpserver-*.json"),  # jupyterlab 3
-        )
-        for file_name in sorted(config_files, key=os.path.getmtime, reverse=True):
-            try:
-                srv = json.loads(file_name.read_bytes())
-                if psutil.pid_exists(srv.get("pid", -1)):
-                    # pid_exists always returns False for negative PIDs.
-                    yield srv
-            except json.JSONDecodeError:
-                pass
-
-
-def _get_sessions(srv: dict):
-    try:
-        url = f"{srv['url']}api/sessions"
-        if srv['token']:
-            url += f"?token={srv['token']}"
-        with urllib.request.urlopen(url, timeout=1.0) as req:
-            sessions = json.load(req)
-            return sessions
-    except Exception:
-        return []
-
-
-def _iter_maybe_sessions() -> Generator[Tuple[dict, dict], None, None]:
-    for srv in _iter_maybe_running_servers():
-        for sess in _get_sessions(srv):
-            yield srv, sess
-
-
 class JupyterRuntimeEnv:
     NBFORMAT_VERSION = 4
+    COOKIES: Dict[str, str] = {}
+
+    @staticmethod
+    def context(cookies: Optional[Dict[str, str]] = None) -> JupyterRuntimeContextHandler:
+        return JupyterRuntimeContextHandler(
+            cookies=cookies if cookies is not None else JupyterRuntimeEnv.COOKIES,
+        )
 
     @staticmethod
     def enclosing_kernel_id() -> str:
@@ -70,8 +58,46 @@ class JupyterRuntimeEnv:
         return connection_file.split('-', 1)[1].split('.')[0]
 
     @staticmethod
+    def iter_maybe_running_servers() -> Generator[dict, None, None]:
+        runtime_dir = Path(jupyter_core.paths.jupyter_runtime_dir())
+        if runtime_dir.is_dir():
+            config_files = chain(
+                runtime_dir.glob("nbserver-*.json"),  # jupyter notebook (or lab 2)
+                runtime_dir.glob("jpserver-*.json"),  # jupyterlab 3
+            )
+            for file_name in sorted(config_files, key=os.path.getmtime, reverse=True):
+                try:
+                    srv = json.loads(file_name.read_bytes())
+                    if psutil.pid_exists(srv.get("pid", -1)):
+                        # pid_exists always returns False for negative PIDs.
+                        yield srv
+                except json.JSONDecodeError:
+                    pass
+
+    @staticmethod
+    def get_sessions(srv: dict):
+        try:
+            url = f"{srv['url']}api/sessions"
+            if srv['token']:
+                url += f"?token={srv['token']}"
+            resp = requests.get(
+                url,
+                cookies=JupyterRuntimeEnv.COOKIES,
+                timeout=1.0,
+            )
+            return [] if not resp.ok else json.loads(resp.content)
+        except Exception:
+            return []
+
+    @staticmethod
+    def iter_maybe_sessions() -> Generator[Tuple[dict, dict], None, None]:
+        for srv in JupyterRuntimeEnv.iter_maybe_running_servers():
+            for sess in JupyterRuntimeEnv.get_sessions(srv):
+                yield srv, sess
+
+    @staticmethod
     def iter_sessions() -> Generator[IPythonSession, None, None]:
-        for srv, sess in _iter_maybe_sessions():
+        for srv, sess in JupyterRuntimeEnv.iter_maybe_sessions():
             relative_path = PurePath(sess["notebook"]["path"])
             yield IPythonSession(
                 kernel_id=sess["kernel"]["id"],
@@ -100,3 +126,12 @@ class JupyterRuntimeEnv:
     def read_notebook(notebook_path: Path) -> nbformat.NotebookNode:
         with open(notebook_path, 'r') as f:
             return nbformat.read(f, JupyterRuntimeEnv.NBFORMAT_VERSION)
+
+    @staticmethod
+    def read_notebook_cell_source(notebook_path: Path) -> List[str]:
+        nb = JupyterRuntimeEnv.read_notebook(notebook_path)
+        return [
+            cell["source"]
+            for cell in nb.get("cells", {})
+            if "source" in cell
+        ]

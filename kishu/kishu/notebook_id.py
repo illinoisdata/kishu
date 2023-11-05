@@ -45,13 +45,22 @@ class NotebookId:
         return NotebookId(key=key, path=path, kernel_id=kernel_id)
 
     @staticmethod
+    def from_enclosing_with_key_and_path(key: str, path: Path) -> NotebookId:
+        kernel_id = JupyterRuntimeEnv.enclosing_kernel_id()
+        return NotebookId(key=key, path=path, kernel_id=kernel_id)
+
+    @staticmethod
+    def parse_key_from_path(path: Path) -> str:
+        nb = JupyterRuntimeEnv.read_notebook(path)
+        metadata = NotebookId.read_kishu_metadata(nb)
+        return metadata.notebook_id
+
+    @staticmethod
     def parse_key_from_path_or_key(path_or_key: str) -> str:
         # Try parsing as path, if exists.
         path = Path(path_or_key)
         if path.exists():
-            nb = JupyterRuntimeEnv.read_notebook(path)
-            metadata = NotebookId.read_kishu_metadata(nb)
-            return metadata.notebook_id
+            return NotebookId.parse_key_from_path(path)
 
         # Notebook path does not exist, try parsing as key.
         key = path_or_key
@@ -91,6 +100,12 @@ class NotebookId:
         if "kishu" not in nb.metadata:
             raise MissingNotebookMetadataError()
         return KishuNotebookMetadata(**nb.metadata.kishu)
+
+    @staticmethod
+    def remove_kishu_metadata(nb: nbformat.NotebookNode) -> None:
+        if "kishu" not in nb.metadata:
+            raise MissingNotebookMetadataError()
+        del nb.metadata["kishu"]
 
     """
     Kishu Jupyter connection information.

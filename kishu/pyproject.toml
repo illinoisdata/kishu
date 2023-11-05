@@ -46,6 +46,7 @@ dependencies = [  # README: Keep in sync with requirements.txt
     "nbformat",
     "networkx",
     "psutil",
+    "requests",
     "typing",
 
     # User interfaces: cli, backend, jupyterlab_kishu
@@ -77,6 +78,12 @@ dev = [  # README: Keep in sync with dev-requirements.txt
     "seaborn",
     "textblob",
     "pandas",
+
+    # Testing framework/infra
+    "websocket-client",
+    "requests",
+    "types-requests",
+    "jupyter"
 ]
 
 

@@ -1,15 +1,21 @@
+import dataclasses
 import json
 import os
 import pytest
+import requests
 import shutil
 
 from pathlib import Path, PurePath
-from typing import Generator, Type
+from typing import Callable, Generator, List, Optional, Type
 from unittest.mock import patch
 
 from kishu.backend import app as kishu_app
+from kishu.jupyterint import KishuForJupyter
+from kishu.notebook_id import NotebookId
 from kishu.storage.path import ENV_KISHU_PATH_ROOT, KishuPath
+
 from tests.helpers.nbexec import NB_DIR
+from tests.helpers.serverexec import JupyterServerRunner
 
 
 """
@@ -55,11 +61,18 @@ KISHU_TEST_NOTEBOOKS_DIR = "notebooks"
 
 
 @pytest.fixture()
-def nb_simple_path(tmp_path: Path, kishu_test_dir: Path) -> Path:
-    real_nb_path = kishu_test_dir / PurePath(KISHU_TEST_NOTEBOOKS_DIR, "simple.ipynb")
-    tmp_nb_path = tmp_path / PurePath("simple.ipynb")
-    shutil.copy(real_nb_path, tmp_nb_path)
-    return tmp_nb_path
+def tmp_nb_path(tmp_path: Path, kishu_test_dir: Path) -> Callable[[str], Path]:
+    def _tmp_nb_path(notebook_name: str) -> Path:
+        real_nb_path = kishu_test_dir / PurePath(KISHU_TEST_NOTEBOOKS_DIR, notebook_name)
+        tmp_nb_path = tmp_path / PurePath(notebook_name)
+        shutil.copy(real_nb_path, tmp_nb_path)
+        return tmp_nb_path
+    return _tmp_nb_path
+
+
+@pytest.fixture()
+def nb_simple_path(tmp_nb_path: Callable[[str], Path]) -> Path:
+    return tmp_nb_path("simple.ipynb")
 
 
 """
@@ -94,13 +107,14 @@ def glob_side_effect(pattern):
 # used to test runtime.py
 @pytest.fixture
 def mock_servers():
+    resp = requests.Response()
+    resp.status_code = 200
+    resp._content = json.dumps([MOCK_SESSION])
     with patch('kishu.runtime.Path.read_bytes', return_value=json.dumps(MOCK_SERVER).encode()), \
          patch('kishu.runtime.psutil.pid_exists', return_value=True), \
          patch('kishu.runtime.Path.glob', side_effect=glob_side_effect), \
          patch("kishu.runtime.jupyter_core.paths.jupyter_runtime_dir", return_value=Path("/")), \
-         patch('kishu.runtime.urllib.request.urlopen') as mock_urlopen:
-
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = json.dumps([MOCK_SESSION]).encode()
+         patch('kishu.runtime.requests.get', return_value=resp):
         yield [MOCK_SERVER]
 
 
@@ -123,3 +137,63 @@ def set_notebook_path_env(tmp_path, request):
     yield temp_path
 
     del os.environ["TEST_NOTEBOOK_PATH"]
+
+
+"""
+KishuForJupyter Fixtures
+"""
+
+
+@dataclasses.dataclass
+class JupyterInfoMock:
+    raw_cell: Optional[str] = None
+
+
+@dataclasses.dataclass
+class JupyterResultMock:
+    info: JupyterInfoMock = dataclasses.field(default_factory=JupyterInfoMock)
+    execution_count: Optional[int] = None
+    error_before_exec: Optional[str] = None
+    error_in_exec: Optional[str] = None
+    result: Optional[str] = None
+
+
+@pytest.fixture()
+def notebook_key() -> Generator[str, None, None]:
+    yield "notebook_123"
+
+
+@pytest.fixture()
+def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
+    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
+    kishu_jupyter.set_test_mode()
+    yield kishu_jupyter
+
+
+@pytest.fixture()
+def basic_execution_ids(kishu_jupyter) -> Generator[List[str], None, None]:
+    execution_count = 1
+    info = JupyterInfoMock(raw_cell="x = 1")
+    kishu_jupyter.pre_run_cell(info)
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+    execution_count = 2
+    info = JupyterInfoMock(raw_cell="y = 2")
+    kishu_jupyter.pre_run_cell(info)
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+    execution_count = 3
+    info = JupyterInfoMock(raw_cell="y = x + 1")
+    kishu_jupyter.pre_run_cell(info)
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+
+    yield ["0:1", "0:2", "0:3"]  # List of commit IDs
+
+
+"""
+Jupyter Server Fixtures
+"""
+
+
+@pytest.fixture()
+def jupyter_server() -> Generator[JupyterServerRunner, None, None]:
+    with JupyterServerRunner() as jupyter_server:
+        yield jupyter_server

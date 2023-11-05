@@ -29,7 +29,9 @@ def get_from_table(dbfile: str, table_name: str, commit_id: str) -> bytes:
         (commit_id, )
         )
     res: tuple = cur.fetchone()
-    return res[0]
+    result = res[0]
+    con.commit()
+    return result
 
 
 def save_into_table(dbfile: str, table_name: str, commit_id: str, data: bytes) -> None:
@@ -57,7 +59,7 @@ def store_log_item(dbfile: str, commit_id: str, data: bytes) -> None:
 
 
 def get_log(dbfile: str) -> Dict[str, bytes]:
-    log = {}
+    result = {}
     con = sqlite3.connect(dbfile)
     cur = con.cursor()
     cur.execute(
@@ -65,8 +67,9 @@ def get_log(dbfile: str) -> Dict[str, bytes]:
         )
     res = cur.fetchall()
     for key, data in res:
-        log[key] = data
-    return log
+        result[key] = data
+    con.commit()
+    return result
 
 
 def get_log_item(dbfile: str, commit_id: str) -> bytes:
@@ -75,9 +78,23 @@ def get_log_item(dbfile: str, commit_id: str) -> bytes:
     cur.execute(
         "select data from {} where commit_id = ?".format(HISTORY_LOG_TABLE),
         (commit_id, )
-        )
+    )
     res: tuple = cur.fetchone()
-    return res[0] if res else bytes()
+    result = res[0] if res else bytes()
+    con.commit()
+    return result
+
+
+def keys_like(dbfile: str, commit_id_like: str) -> List[str]:
+    con = sqlite3.connect(dbfile)
+    cur = con.cursor()
+    cur.execute(
+        "select commit_id from {} where commit_id LIKE ?".format(HISTORY_LOG_TABLE),
+        (commit_id_like + "%", )
+    )
+    result = [commit_id for (commit_id,) in cur.fetchall()]
+    con.commit()
+    return result
 
 
 def get_log_items(dbfile: str, commit_ids: List[str]) -> Dict[str, bytes]:
@@ -85,7 +102,7 @@ def get_log_items(dbfile: str, commit_ids: List[str]) -> Dict[str, bytes]:
     Returns a mapping from requested commit ID to its data. Order and completeness are not
     guaranteed (i.e. not all commit IDs may be present). Data bytes are those from store_log_item
     """
-    log = {}
+    result = {}
     con = sqlite3.connect(dbfile)
     cur = con.cursor()
     query = "select commit_id, data from {} where commit_id in ({})".format(
@@ -95,8 +112,9 @@ def get_log_items(dbfile: str, commit_ids: List[str]) -> Dict[str, bytes]:
     cur.execute(query, commit_ids)
     res = cur.fetchall()
     for key, data in res:
-        log[key] = data
-    return log
+        result[key] = data
+    con.commit()
+    return result
 
 
 def get_checkpoint(dbfile: str, commit_id: str) -> bytes:

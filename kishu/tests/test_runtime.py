@@ -2,18 +2,17 @@ import pytest
 import json
 from unittest.mock import patch
 from pathlib import Path
-from kishu.runtime import IPythonSession, JupyterRuntimeEnv, _iter_maybe_running_servers, \
-    _iter_maybe_sessions, _get_sessions
+from kishu.runtime import IPythonSession, JupyterRuntimeEnv
 from .conftest import MOCK_SERVER, MOCK_SESSION
 
 
 def test_iter_maybe_running_servers(mock_servers):
-    result = list(_iter_maybe_running_servers())
+    result = list(JupyterRuntimeEnv.iter_maybe_running_servers())
     assert result == mock_servers
 
 
 def test_server_with_sessions(mock_servers):
-    sessions = list(_iter_maybe_sessions())
+    sessions = list(JupyterRuntimeEnv.iter_maybe_sessions())
     assert sessions == [(MOCK_SERVER, MOCK_SESSION)]
 
 
@@ -41,13 +40,13 @@ def test_kernel_id_from_notebook(mock_servers):
 
 def test_iter_maybe_running_servers_bad_json():
     with patch('kishu.runtime.json.loads', side_effect=json.JSONDecodeError("", "", 0)):
-        result = list(_iter_maybe_running_servers())
+        result = list(JupyterRuntimeEnv.iter_maybe_running_servers())
     assert not result  # should return an empty list
 
 
 def test_get_sessions_raises_exception():
-    with patch('kishu.runtime.urllib.request.urlopen', side_effect=Exception):
-        sessions = _get_sessions({"url": "http://localhost:8888/", "token": "token_value"})
+    with patch('kishu.runtime.requests.get', side_effect=Exception):
+        sessions = JupyterRuntimeEnv.get_sessions({"url": "http://localhost:8888/", "token": "token_value"})
     assert not sessions
 
 

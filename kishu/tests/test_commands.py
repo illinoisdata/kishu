@@ -1,58 +1,16 @@
-import dataclasses
 import os
 import pytest
 
-from typing import Generator, List, Optional
+from pathlib import Path
+from typing import List
+
+from tests.helpers.nbexec import KISHU_INIT_STR
 
 from kishu.commands import CommitSummary, FECommit, FESelectedCommit, KishuCommand, KishuSession
-from kishu.jupyterint import CommitEntryKind, CommitEntry, KishuForJupyter
-from kishu.notebook_id import NotebookId
+from kishu.jupyterint import CommitEntryKind, CommitEntry
+from kishu.runtime import JupyterRuntimeEnv
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
-
-
-@pytest.fixture()
-def notebook_key() -> Generator[str, None, None]:
-    yield "notebook_123"
-
-
-@pytest.fixture()
-def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
-    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
-    kishu_jupyter.set_test_mode()
-    yield kishu_jupyter
-
-
-@pytest.fixture()
-def basic_execution_ids(kishu_jupyter) -> Generator[List[str], None, None]:
-    execution_count = 1
-    info = JupyterInfoMock(raw_cell="x = 1")
-    kishu_jupyter.pre_run_cell(info)
-    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
-    execution_count = 2
-    info = JupyterInfoMock(raw_cell="y = 2")
-    kishu_jupyter.pre_run_cell(info)
-    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
-    execution_count = 3
-    info = JupyterInfoMock(raw_cell="y = x + 1")
-    kishu_jupyter.pre_run_cell(info)
-    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
-
-    yield ["0:1", "0:2", "0:3"]  # List of commit IDs
-
-
-@dataclasses.dataclass
-class JupyterInfoMock:
-    raw_cell: Optional[str] = None
-
-
-@dataclasses.dataclass
-class JupyterResultMock:
-    info: JupyterInfoMock = dataclasses.field(default_factory=JupyterInfoMock)
-    execution_count: Optional[int] = None
-    error_before_exec: Optional[str] = None
-    error_in_exec: Optional[str] = None
-    result: Optional[str] = None
 
 
 class TestKishuCommand:
@@ -220,6 +178,30 @@ class TestKishuCommand:
             tags=[],
         )
 
+    def test_delete_basic(self, notebook_key, basic_execution_ids):
+        branch_1 = "branch_1"
+        KishuCommand.branch(notebook_key, branch_1, basic_execution_ids[1])
+
+        delete_result = KishuCommand.delete_branch(notebook_key, branch_1)
+        assert delete_result.status == "ok"
+
+        log_result = KishuCommand.log(notebook_key, basic_execution_ids[-1])
+        for commit in log_result.commit_graph:
+            assert branch_1 not in commit.branches
+
+    def test_delete_branch_none_existing_branch(
+            self, notebook_key, basic_execution_ids):
+        delete_result = KishuCommand.delete_branch(notebook_key, "non_existing_branch")
+        assert delete_result.status == "error"
+
+    def test_delete_checked_out_branch(
+            self, notebook_key, basic_execution_ids):
+        branch_1 = "branch_1"
+        KishuCommand.branch(notebook_key, branch_1, None)
+
+        delete_result = KishuCommand.delete_branch(notebook_key, branch_1)
+        assert delete_result.status == "error"
+
     def test_rename_branch_basic(self, notebook_key, basic_execution_ids):
         branch_1 = "branch_1"
         KishuCommand.branch(notebook_key, branch_1, None)
@@ -328,3 +310,100 @@ class TestKishuCommand:
             cells=fe_commit_result.cells,  # Not tested
             variables=[],
         )
+
+    @pytest.mark.parametrize("notebook_names",
+                             [[],
+                              ["simple.ipynb"],
+                              ["simple.ipynb", "numpy.ipynb"]])
+    def test_list_alive_sessions(
+        self,
+        tmp_kishu_path,
+        tmp_kishu_path_os,
+        tmp_nb_path,
+        jupyter_server,
+        notebook_names: List[str],
+    ):
+        # Start sessions and run kishu init cell in each of these sessions.
+        for notebook_name in notebook_names:
+            with jupyter_server.start_session(tmp_nb_path(notebook_name)) as notebook_session:
+                notebook_session.run_code(KISHU_INIT_STR)
+
+        # Kishu should be able to see these sessions.
+        list_result = KishuCommand.list()
+        assert len(list_result.sessions) == len(notebook_names)
+
+        # The notebook names reported by Kishu list should match those at the server side.
+        kishu_list_notebook_names = [Path(session.notebook_path).name if session.notebook_path is not None
+                                     else '' for session in list_result.sessions]
+        assert set(notebook_names) == set(kishu_list_notebook_names)
+
+    def test_list_alive_session_no_init(
+        self,
+        tmp_kishu_path,
+        tmp_kishu_path_os,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        # Start the session.
+        jupyter_server.start_session(tmp_nb_path("simple.ipynb"))
+
+        # Kishu should not be able to see this session as "kishu init" was not executed.
+        list_result = KishuCommand.list()
+        assert len(list_result.sessions) == 0
+
+    @pytest.mark.parametrize(
+        ("notebook_name", "cell_num_to_restore", "var_to_compare"),
+        [
+            ('numpy.ipynb', 4, "iris_X_train"),
+            ('simple.ipynb', 4, "b")
+        ]
+    )
+    def test_end_to_end_checkout(
+        self,
+        tmp_kishu_path,
+        tmp_kishu_path_os,
+        tmp_nb_path,
+        jupyter_server,
+        notebook_name: str,
+        cell_num_to_restore: int,
+        var_to_compare: str,
+    ):
+        # Get the contents of the test notebook.
+        notebook_path = tmp_nb_path(notebook_name)
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        assert cell_num_to_restore >= 1 and cell_num_to_restore <= len(contents) - 1
+
+        # Start the notebook session.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR)
+
+            # Run some notebook cells.
+            for i in range(cell_num_to_restore):
+                notebook_session.run_code(contents[i])
+
+            # Get the variable value before checkout.
+            var_value_before = notebook_session.run_code(f"print({var_to_compare})")
+
+            # Run the rest of the notebook cells.
+            for i in range(cell_num_to_restore, len(contents)):
+                notebook_session.run_code(contents[i])
+
+            # Get the notebook key of the session.
+            list_result = KishuCommand.list(list_all=True)
+            assert len(list_result.sessions) == 1
+            assert list_result.sessions[0].notebook_path is not None
+            assert Path(list_result.sessions[0].notebook_path).name == notebook_name
+            notebook_key = list_result.sessions[0].notebook_key
+
+            # Get commit id of commit which we want to restore
+            log_result = KishuCommand.log_all(notebook_key)
+            assert len(log_result.commit_graph) == len(contents) + 2  # all cells + init cell + print variable cell
+            commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
+
+            # Restore to that commit
+            KishuCommand.checkout(notebook_key, commit_id)
+
+            # Get the variable value after checkout.
+            var_value_after = notebook_session.run_code(f"print({var_to_compare})")
+            assert var_value_before == var_value_after

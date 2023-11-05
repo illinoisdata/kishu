@@ -21,6 +21,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Extract branch name
+      shell: bash
+      run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      id: extract_branch
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -50,11 +54,12 @@ jobs:
         cd kishu
         if [ "${{ matrix.python-version }}" == "3.8" ]; then
           pytest -vv --cov=kishu/ --cov-report=xml;
+          head coverage.xml
         else
           pytest -vv
         fi
     - name: Upload coverage reports to Codecov
-      if:  matrix.python-version == '3.8'
+      if:  ${{ matrix.python-version == '3.8' && steps.extract_branch.outputs.branch == 'main' }}
       uses: codecov/codecov-action@v3
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

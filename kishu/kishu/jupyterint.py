@@ -54,12 +54,14 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from jupyter_ui_poll import run_ui_poll_loop
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from kishu.exceptions import (
     JupyterConnectionError,
     KernelNotAliveError,
     MissingConnectionInfoError,
+    MissingNotebookMetadataError,
     NoChannelError,
     StartChannelError,
 )
@@ -293,6 +295,7 @@ class KishuForJupyter:
         self._notebook_id = notebook_id
         self._commit_id_mode = "uuid4"  # TODO: Load from environment/configuration
         self._enable_auto_branch = True
+        self._enable_auto_commit_when_skip_notebook = True
         init_checkpoint_database(self.checkpoint_file())
         self._history: ExecutionHistory = ExecutionHistory(self.checkpoint_file())
         self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
@@ -374,9 +377,8 @@ class KishuForJupyter:
 
         # Retrieve checkout plan.
         checkpoint_file = self.checkpoint_file()
+        commit_id = KishuForJupyter.disambiguate_commit(self._notebook_id.key(), commit_id)
         unit_exec_cell = UnitExecution.get_from_db(checkpoint_file, commit_id)
-        if unit_exec_cell is None:
-            raise ValueError("No commit entry found for commit_id = {}".format(commit_id))
         commit_entry = cast(CommitEntry, unit_exec_cell)
         if commit_entry.restore_plan is None:
             raise ValueError("No restore plan found for commit_id = {}".format(commit_id))
@@ -410,8 +412,14 @@ class KishuForJupyter:
             commit_id=commit_id,
             is_detach=is_detach,
         )
+
+        # Create new commit when skip restoring notebook.
+        if self._enable_auto_commit_when_skip_notebook and skip_notebook:
+            new_commit = self.commit(f"Auto-commit after checking out {commit_id} only variables.")
+            return BareReprStr(f"Checkout {commit_id} only variables and commit {new_commit}.")
+
         if is_detach:
-            return BareReprStr(f"Checkout {branch_or_commit_id} in detach mode.")
+            return BareReprStr(f"Checkout {commit_id} in detach mode.")
         return BareReprStr(f"Checkout {branch_or_commit_id} ({commit_id}).")
 
     def pre_run_cell(self, info) -> None:
@@ -473,7 +481,7 @@ class KishuForJupyter:
     @staticmethod
     def kishu_sessions() -> List[KishuSession]:
         # List alive IPython sessions.
-        alive_sessions = {session.kernel_id: session for session in JupyterRuntimeEnv.iter_sessions()}
+        alive_kernels = {session.kernel_id: session for session in JupyterRuntimeEnv.iter_sessions()}
 
         # List all Kishu sessions.
         sessions = []
@@ -491,7 +499,23 @@ class KishuForJupyter:
                 continue
 
             # No matching alive kernel ID.
-            if cf.kernel_id not in alive_sessions:
+            if cf.kernel_id not in alive_kernels:
+                sessions.append(KishuSession(
+                    notebook_key=notebook_key,
+                    kernel_id=cf.kernel_id,
+                    notebook_path=cf.notebook_path,
+                    is_alive=False,
+                ))
+                continue
+
+            # No matching notebook with notebook key in its metadata.
+            notebook_path = alive_kernels[cf.kernel_id].notebook_path
+            written_notebook_key: Optional[str] = None
+            try:
+                written_notebook_key = NotebookId.parse_key_from_path(notebook_path)
+            except (FileNotFoundError, MissingNotebookMetadataError):
+                pass
+            if notebook_key != written_notebook_key:
                 sessions.append(KishuSession(
                     notebook_key=notebook_key,
                     kernel_id=cf.kernel_id,
@@ -504,10 +528,22 @@ class KishuForJupyter:
             sessions.append(KishuSession(
                 notebook_key=notebook_key,
                 kernel_id=cf.kernel_id,
-                notebook_path=str(alive_sessions[cf.kernel_id].notebook_path),
+                notebook_path=str(notebook_path),
                 is_alive=True,
             ))
         return sessions
+
+    @staticmethod
+    def disambiguate_commit(notebook_key: str, commit_id: str) -> str:
+        checkpoint_file = KishuPath.checkpoint_path(notebook_key)
+        possible_commit_ids = UnitExecution.keys_from_db_like(checkpoint_file, commit_id)
+        if len(possible_commit_ids) == 0:
+            raise ValueError(f"No commit with ID {repr(commit_id)}")
+        if commit_id in possible_commit_ids:
+            return commit_id
+        if len(possible_commit_ids) > 1:
+            raise ValueError(f"Ambiguous commit ID {repr(commit_id)}, having many choices {possible_commit_ids}.")
+        return possible_commit_ids[0]
 
     def commit(self, message: Optional[str] = None) -> BareReprStr:
         entry = CommitEntry(kind=CommitEntryKind.manual)
@@ -547,7 +583,7 @@ class KishuForJupyter:
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":
             return str(self._session_id) + ":" + str(self._last_execution_count)
-        return str(uuid.uuid4())[:8]  # TODO: Extend to whole UUID.
+        return str(uuid.uuid4())
 
     def _checkpoint(self, cell_info: CommitEntry) -> Tuple[RestorePlan, int]:
         """
@@ -755,30 +791,92 @@ def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[in
     kishu = KishuForJupyter(notebook_id)
     if session_id:
         kishu.set_session_id(session_id)
+
+    ip.user_ns[KISHU_INSTRUMENT] = kishu
     ip.events.register('pre_run_cell', kishu.pre_run_cell)
     ip.events.register('post_run_cell', kishu.post_run_cell)
-    ip.user_ns[KISHU_INSTRUMENT] = kishu
 
 
-def init_kishu() -> None:
+def init_kishu(notebook_path: Optional[str] = None) -> None:
     """
     1. Create notebook key
     2. Find kernel id using enclosing_kernel_id()
     3. KishuForJupyter
     """
     # Create notebook id object storing path and kernel_id
-    nb_id = NotebookId.from_enclosing_with_key("")
+    if notebook_path is None:
+        notebook_id = NotebookId.from_enclosing_with_key("")
+    else:
+        notebook_id = NotebookId.from_enclosing_with_key_and_path("", Path(notebook_path))
 
     # Open notebook file
-    nb = JupyterRuntimeEnv.read_notebook(nb_id.path())
+    nb = JupyterRuntimeEnv.read_notebook(notebook_id.path())
 
     # Update notebook metadata.
     NotebookId.write_kishu_metadata(nb)
-    nbformat.write(nb, nb_id.path())
+    nbformat.write(nb, notebook_id.path())
 
     # Construct Notebook Id.
     new_key = nb.metadata.kishu.notebook_id
-    nb_id = NotebookId(key=new_key, path=nb_id.path(), kernel_id=nb_id.kernel_id())
+    notebook_id = NotebookId(
+        key=new_key,
+        path=notebook_id.path(),
+        kernel_id=notebook_id.kernel_id(),
+    )
 
     # Attach Kishu instrumentation.
-    load_kishu(nb_id, nb.metadata.kishu.session_count)
+    load_kishu(notebook_id, nb.metadata.kishu.session_count)
+
+
+def remove_event_handlers() -> None:
+    """
+    Removes event handlers added by load_kishu
+    """
+    # access ipython
+    ip = kishu_ipython()
+    if ip is None:
+        return
+
+    if KISHU_INSTRUMENT in ip.user_ns:
+        # if kishu is in the user_ns of ipython, delete hooks
+        kishu = ip.user_ns[KISHU_INSTRUMENT]
+        try:
+            ip.events.unregister('pre_run_cell', kishu.pre_run_cell)
+        except ValueError:
+            # if here, then kishu.pre_run_cell is not attached to notebook, so do nothing
+            pass
+
+        try:
+            ip.events.unregister('post_run_cell', kishu.post_run_cell)
+        except ValueError:
+            # if here, then kishu.post_run_cell is not attached to notebook, so do nothing
+            pass
+
+        # delete kishu instrument from user_ns
+        del ip.user_ns[KISHU_INSTRUMENT]
+
+    # Set global kishu value to be None
+    global _kishu_ipython
+    _kishu_ipython = None
+
+
+def detach_kishu(notebook_path: Optional[str] = None) -> None:
+    # Create notebook id object
+    if notebook_path is None:
+        notebook_id = NotebookId.from_enclosing_with_key("")
+    else:
+        notebook_id = NotebookId.from_enclosing_with_key_and_path("", Path(notebook_path))
+
+    # Open notebook file
+    nb = JupyterRuntimeEnv.read_notebook(notebook_id.path())
+
+    try:
+        # Remove metadata from notebook
+        NotebookId.remove_kishu_metadata(nb)
+        nbformat.write(nb, notebook_id.path())
+    except MissingNotebookMetadataError:
+        # This means that kishu metadata is not in the notebook, so do nothing
+        pass
+
+    # Remove all hooks
+    remove_event_handlers()
