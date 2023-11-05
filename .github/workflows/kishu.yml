@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         # python-version: ["3.8", "3.9", "3.10"]
-        python-version: ["3.8"]
+        python-version: ["3.9"]
 
     steps:
     - uses: actions/checkout@v2
@@ -52,14 +52,14 @@ jobs:
     - name: Test Kishu with pytest
       run: |
         cd kishu
-        if [ "${{ matrix.python-version }}" == "3.8" ]; then
+        if [ "${{ matrix.python-version }}" == "3.9" ]; then
           pytest -vv --cov=kishu/ --cov-report=xml;
           head coverage.xml
         else
           pytest -vv
         fi
     - name: Upload coverage reports to Codecov
-      if:  ${{ matrix.python-version == '3.8' && steps.extract_branch.outputs.branch == 'main' }}
+      if:  ${{ matrix.python-version == '3.9' && steps.extract_branch.outputs.branch == 'main' }}
       uses: codecov/codecov-action@v3
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
