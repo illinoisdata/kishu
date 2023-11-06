@@ -101,6 +101,16 @@ class TestKishuApp:
         assert isinstance(result.exception, NotNotebookPathOrKey)
         assert "NON_EXISTENT_NOTEBOOK_ID" in str(result.exception)
 
+    def test_log_basic(self, runner, tmp_kishu_path, notebook_key, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["log", notebook_key])
+        assert result.exit_code == 0
+        assert "commit" in result.stdout
+
+        result_with_graph = runner.invoke(kishu_app, ["log", "--graph", notebook_key])
+        assert result_with_graph.exit_code == 0
+        assert "*" in result_with_graph.stdout
+        assert "|" in result_with_graph.stdout
+
     def test_create_branch(self, runner, tmp_kishu_path, notebook_key, basic_execution_ids):
         result = runner.invoke(kishu_app, ["branch", notebook_key, "-c", "new_branch"])
         assert result.exit_code == 0
