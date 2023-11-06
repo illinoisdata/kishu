@@ -87,6 +87,6 @@ def fe_commit(notebook_id: str, commit_id: str):
 
 
 @app.get("/fe/diff/<notebook_id>/<from_commit_id>/<to_commit_id>")
-def fe_commit_diff(notebook_id: str, from_commit_id: str,to_commit_id: str):
+def fe_commit_diff(notebook_id: str, from_commit_id: str, to_commit_id: str):
     fe_commit_diff_result = KishuCommand.fe_commit_diff(notebook_id, from_commit_id, to_commit_id)
     return into_json(fe_commit_diff_result)

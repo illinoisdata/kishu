@@ -464,7 +464,6 @@ class KishuCommand:
         executed_cell_diff = KishuDiff.diff_cells(from_executed_cells, to_executed_cells)
         return FECodeDiffResult(cell_diff.cell_diff_hunks, executed_cell_diff.cell_diff_hunks)
 
-
     """Helpers"""
 
     @staticmethod
@@ -658,12 +657,6 @@ class KishuCommand:
 
     @staticmethod
     def _make_selected_variable(key: str, value: Any, vardepth: int = 1) -> FESelectedCommitVariable:
-        html = None
-        try:
-            # TODO: Support load html incrementally when the html is too large
-            html = value.to_html()
-        except:
-            html = None
         return FESelectedCommitVariable(
             variable_name=key,
             state=str(value),

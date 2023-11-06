@@ -80,6 +80,7 @@ class NoFormattedCellsError(FrontEndError):
             message += f" for commitID: {commit_id}"
         super().__init__(message)
 
+
 class NoCommitError(FrontEndError):
     def __init__(self, commit_id=None):
         message = "Commit doesn't exist"

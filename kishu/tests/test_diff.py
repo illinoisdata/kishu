@@ -1,8 +1,4 @@
-from dataclasses import dataclass
-
 import pytest
-from typing import Generator, List
-
 from kishu.diff import DiffAlgorithms, KishuDiff
 
 
