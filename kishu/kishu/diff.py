@@ -5,11 +5,6 @@ from typing import List, Optional, Tuple
 
 
 @dataclass
-class DiffResult:
-    cell_diff_hunks: List[DiffHunk]
-
-
-@dataclass
 class DiffHunk:
     option: str  # origin_only, destination_only, both
     content: str  # if option is both, but contents of origin and destination is similar but not same, then it will
@@ -160,8 +155,6 @@ class DiffAlgorithms:
 
         for i in range(1, m + 1):
             for j in range(1, n + 1):
-                if i == 2 and j == 3:
-                    print("debug")
                 myre = DiffAlgorithms.myre_diff(origin[i - 1].split("\n"), destination[j - 1].split("\n"))
                 if myre.similarity < threshold:
                     cost = float('inf')  # never regard as similar
@@ -223,7 +216,7 @@ class DiffAlgorithms:
 
 class KishuDiff:
     @staticmethod
-    def diff_cells(origin: List[str], destination: List[str]) -> DiffResult:
+    def diff_cells(origin: List[str], destination: List[str]) -> List[DiffHunk]:
         offset_diff = 0
 
         def _get_new_index(origin_index):
@@ -269,4 +262,4 @@ class KishuDiff:
             diff_hunks[_get_new_index(from_idx):_get_new_index(to_idx) + 1] = refined_hunks
             offset_diff += len(refined_hunks) - (to_idx - from_idx + 1)
 
-        return DiffResult(diff_hunks)
+        return diff_hunks

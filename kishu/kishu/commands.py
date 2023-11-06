@@ -13,7 +13,7 @@ from kishu.exceptions import (
     BranchConflictError,
 )
 from kishu.diff import DiffHunk, KishuDiff
-from kishu.exceptions import NoFormattedCellsError
+from kishu.exceptions import NoExecutedCellsError, NoFormattedCellsError
 from kishu.jupyterint import (
     CommitEntry,
     FormattedCell,
@@ -462,7 +462,7 @@ class KishuCommand:
         from_cells, from_executed_cells = KishuCommand._retrieve_all_cells(notebook_id, from_commit_id)
         cell_diff = KishuDiff.diff_cells(from_cells, to_cells)
         executed_cell_diff = KishuDiff.diff_cells(from_executed_cells, to_executed_cells)
-        return FECodeDiffResult(cell_diff.cell_diff_hunks, executed_cell_diff.cell_diff_hunks)
+        return FECodeDiffResult(cell_diff, executed_cell_diff)
 
     """Helpers"""
 
@@ -709,6 +709,6 @@ class KishuCommand:
             raise NoFormattedCellsError(commit_id)
         executed_cells = commit_entry.executed_cells
         if executed_cells is None:
-            executed_cells = []
+            raise NoExecutedCellsError(commit_id)
         cells = KishuCommand._get_cells_as_strings(formatted_cells)
         return cells, executed_cells

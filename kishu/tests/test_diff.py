@@ -98,4 +98,4 @@ class TestDiff:
     )
     def test_kishu_get_diff(self, origin, destination, expected):
         result = KishuDiff.diff_cells(origin, destination)
-        assert [hunk.option for hunk in result.cell_diff_hunks] == expected
+        assert [hunk.option for hunk in result] == expected
