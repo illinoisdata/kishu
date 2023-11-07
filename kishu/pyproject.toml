@@ -52,6 +52,7 @@ dependencies = [  # README: Keep in sync with requirements.txt
     # User interfaces: cli, backend, jupyterlab_kishu
     "flask",
     "typer",
+    "Flask-CORS",
 
     # Planning
     "numpy",
