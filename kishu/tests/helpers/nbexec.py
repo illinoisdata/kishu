@@ -160,9 +160,6 @@ class NotebookRunner:
         kishu_checkout_code = get_kishu_checkout_str(cell_num_to_restore)
         notebook.cells.append(new_code_cell(source=kishu_checkout_code))
 
-        # Insert kishu log string
-        # notebook.cells.append(new_code_cell("stuff = _kishu.log()"))
-
         # Insert dump session code at end of notebook after kishu checkout.
         dumpsession_code_end = get_dump_namespace_str(self.pickle_file + ".end")
         notebook.cells.append(new_code_cell(source=dumpsession_code_end))
