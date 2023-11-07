@@ -9,3 +9,8 @@
     display: flex;
     justify-content: center;
 }
+
+.u-same_row {
+    white-space: nowrap; /* Prevent content from wrapping */
+    display: inline-block; /* Keep the content inline */
+}

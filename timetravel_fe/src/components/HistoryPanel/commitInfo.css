@@ -11,6 +11,7 @@
     flex-direction: column;
     justify-content: center;
     align-items: flex-end;
+    z-index: 99;
 
 }
 
@@ -53,4 +54,8 @@
 .same_row {
     white-space: nowrap; /* Prevent content from wrapping */
     display: inline-block; /* Keep the content inline */
+}
+
+.newDay{
+    background-color: #fff677;
 }

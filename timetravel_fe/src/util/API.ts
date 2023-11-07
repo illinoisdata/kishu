@@ -83,6 +83,19 @@ const BackEndAPI = {
         }
     },
 
+    async deleteBranch(branchID: string) {
+        // message.info(`rollback succeeds`);
+        const res = await fetch(
+            BACKEND_URL + "/delete_branch/" +
+            globalThis.NotebookID! +
+            "/" +
+            branchID,
+        );
+        if (res.status !== 200) {
+            throw new Error("delete branch error, status != 200");
+        }
+    },
+
     async getNotebookList() {
         const res = await fetch(BACKEND_URL + "/list");
         if (res.status !== 200) {

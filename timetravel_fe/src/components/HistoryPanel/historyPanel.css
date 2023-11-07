@@ -1,5 +1,6 @@
 /* App.css */
 .historyPanel {
+    position:relative;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -24,6 +25,7 @@
     position: absolute;
     width: 100%;
     height: 100%;
+    z-index: 2;
 
 }
 
@@ -35,4 +37,12 @@
 .wrapper {
     display: flex;
     flex-direction: row;
+}
+
+.select-highlight {
+    position:absolute;
+    width:100%;
+    height: 68px;
+    background-color: rgba(207, 223, 237,0.6);
+    z-index: 1;
 }

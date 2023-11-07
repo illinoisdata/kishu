@@ -14,6 +14,7 @@ import {
 import {Menu} from "antd";
 import type {MenuProps} from "antd/es/menu";
 import {AppContext} from "../../App";
+import {BackEndAPI} from "../../util/API";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -31,14 +32,40 @@ function getItem(
     } as MenuItem;
 }
 
-const items: MenuItem[] = [
-    getItem("Add/Modify Tag for Selected History", "tag", <EditOutlined/>),
-    getItem("Create Branch", "branch", <CalendarOutlined/>),
-    getItem("RollBack to Selected History ", "rollback", <AppstoreOutlined/>, [
+function getTagChildrenItem(tag: string): MenuItem[] {
+    return [
+        getItem("Delete Tag " + tag, "Delete Tag " + tag),
+        getItem("Edit Tag " + tag, "Edit Tag " + tag),
+    ]
+}
+
+function getBranchChildrenItem(branch: string): MenuItem[] {
+    return [
+        getItem("Delete Branch " + branch, "Delete Branch " + branch),
+        getItem("Edit Branch " + branch, "Edit Branch " + branch),
+    ]
+}
+
+function getItems(tags: string[]|undefined, branches: string[]|undefined): MenuItem[] {
+    let items: MenuItem[] = [];
+    items.push(getItem("Add Tag for Selected History", "tag", <EditOutlined/>))
+    items.push(getItem("Create Branch", "branch", <CalendarOutlined/>))
+    items.push(getItem("RollBack to Selected History ", "rollback", <AppstoreOutlined/>, [
         getItem("Checkout Codes&Variables", "both"),
         getItem("Rollback Executions", "states"),
-    ]),
-];
+    ]))
+    if(tags){
+        for (let tag of tags) {
+            items.push(getItem("Tag " + tag, "Tag " + tag, <EditOutlined/>, getTagChildrenItem(tag)));
+        }
+    }
+    if(branches){
+        for (let branch of branches) {
+            items.push(getItem("Branch " + branch, "Branch " + branch, <EditOutlined/>, getBranchChildrenItem(branch)));
+        }
+    }
+    return items;
+}
 
 interface ContextMenuProps {
     x: number;
@@ -62,6 +89,7 @@ function ContextMenu({
                          setChckoutMode,
                      }: ContextMenuProps) {
     const props = useContext(AppContext);
+    const items = getItems(props!.selectedCommit?.commit.tags, props!.selectedCommit?.commit.branchIds);
     const onClickMenuItem: MenuProps["onClick"] = async ({key, domEvent}) => {
         onClose();
         domEvent.preventDefault();
@@ -85,6 +113,17 @@ function ContextMenu({
                 setChooseCheckoutBranchModelOpen(true);
                 setChckoutMode("checkout variables only");
             }
+        } else if (key.startsWith("Delete Branch")){
+            let branchName = getLastWord(key);
+            await BackEndAPI.deleteBranch(branchName!);
+        } else if (key.startsWith("Delete Tag")){
+            let tagName = getLastWord(key);
+            // await BackEndAPI.deleteTag(tagName!);
+        } else if (key.startsWith("Edit Branch")){
+            let branchName = getLastWord(key);
+            setIsBranchNameEditorOpen(true);
+            // props!.setBranchNameToEdit(branchName!);
+            // await BackEndAPI.editBranch(branchName!);
         }
         // message.info(key);
     };
@@ -111,5 +150,23 @@ function ContextMenu({
         </>
     );
 }
+
+
+function getLastWord(inputString: string): string | null {
+    // Trim the input string to remove leading and trailing spaces
+    const trimmedString = inputString.trim();
+
+    // Split the trimmed string into words using spaces as the separator
+    const words = trimmedString.split(' ');
+
+    // Check if there are any words in the string
+    if (words.length === 0) {
+        return null; // No words found, return null or an appropriate value
+    }
+
+    // Return the last word
+    return words[words.length - 1];
+}
+
 
 export default ContextMenu;

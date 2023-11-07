@@ -24,6 +24,7 @@ import {CommitInfo} from "./CommitInfo";
 import {PointRenderInfo} from "../../util/PointRenderInfo";
 import {CheckoutBranchModel} from "./CheckoutBranchModel";
 import logger from "../../log/logger";
+import {TimeGroupHeader} from "./TimeGroupHeader";
 
 function HistoryTree() {
     const props = useContext(AppContext);
@@ -149,9 +150,16 @@ function HistoryTree() {
         setsvgMaxY(infos["maxY"]);
     }, [props?.commits]);
 
-    const commitInfos = props?.commits.map((commit) => {
+    const commitInfos = props?.commits.map((commit,index) => {
+        let newDay:string
+        if (index === 0 || commit.timestamp.substring(0, 10) !== props?.commits[index - 1].timestamp.substring(0, 10)) {
+            newDay = commit.timestamp.substring(0, 10);
+        } else {
+            newDay = "";
+        }
         return (
             <CommitInfo
+                newDay={newDay}
                 commit={commit}
                 pointRendererInfo={pointRenderInfos.get(commit.oid)!}
                 onclick={() => {
@@ -168,6 +176,8 @@ function HistoryTree() {
         );
     });
 
+    const highlightTop = pointRenderInfos.get(props?.selectedCommitID!)?.cy! - 34;
+
     return (
         <div className="historyPanel" onClick={handleCloseContextMenu}>
             <HistoryGraph
@@ -178,7 +188,9 @@ function HistoryTree() {
                 svgMaxX={svgMaxX}
                 svgMaxY={svgMaxY}
             />
-            <div className={"commitInfos"}>{commitInfos}</div>
+            <div className={"commitInfos"} style={{zIndex: 2}}>{commitInfos}</div>
+            <div className={"select-highlight"} style={{ top: `${highlightTop}px` }}></div>
+
             {/****************************pop-ups ***********************/}
             {contextMenuPosition && (
                 <ContextMenu
