@@ -62,7 +62,10 @@ function Menu() {
 
     return (
         <div className={"parent"}>
-            <div className="d2">Welcome To Kishu</div>
+            <div className="title">
+                <img src="/logo.png" alt="Kishu Logo" className="logo"/>
+                Welcome To Kishu
+            </div>
             <Select
                 open={true}
                 ref={selectRef}

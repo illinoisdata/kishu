@@ -1,3 +1,16 @@
+.title {
+    font-family: 'Arial', sans-serif; /* Arial font, or a similar sans-serif font */
+    color: #1e1f22; /* White text */
+    font-size: 72px; /* Large font size, adjust as necessary */
+    text-align: center;
+    padding-top: 30px;
+}
+
+.logo {
+    height: 1em;
+    width: auto;
+    margin-right: 0.5em;
+}
 
 .d2 {
     color: white;
