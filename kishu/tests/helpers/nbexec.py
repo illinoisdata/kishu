@@ -30,12 +30,10 @@ from kishu.jupyterint import IPYTHON_VARS, KISHU_VARS
 NB_DIR: str = "tests/notebooks"
 
 
-# Breaks test_full_checkout in test_jupyterint when using init_kishu
-KISHU_LOAD_STR: str = "from kishu import load_kishu; load_kishu(); _kishu.set_test_mode()"
 KISHU_INIT_STR: str = "from kishu import init_kishu; init_kishu(); _kishu.set_test_mode()"
 
 
-def get_kishu_checkout_str(cell_num: int, session_num: int = 0) -> str:
+def get_kishu_checkout_str(cell_num: int, session_num: int = 1) -> str:
     return f"_kishu.checkout('{session_num}:{cell_num}')"
 
 
@@ -152,7 +150,7 @@ class NotebookRunner:
         assert cell_num_to_restore >= 2 and cell_num_to_restore <= len(notebook["cells"]) - 1
 
         # create a kishu initialization cell and add it to the start of the notebook.
-        notebook.cells.insert(0, new_code_cell(source=KISHU_LOAD_STR))
+        notebook.cells.insert(0, new_code_cell(source=KISHU_INIT_STR))
 
         # Insert dump session code at middle of notebook after the **cell_num_to_restore**th code cell.
         dumpsession_code_middle = get_dump_namespace_str(self.pickle_file + ".middle")
@@ -161,6 +159,9 @@ class NotebookRunner:
         # Insert kishu checkout code at end of notebook.
         kishu_checkout_code = get_kishu_checkout_str(cell_num_to_restore)
         notebook.cells.append(new_code_cell(source=kishu_checkout_code))
+
+        # Insert kishu log string
+        # notebook.cells.append(new_code_cell("stuff = _kishu.log()"))
 
         # Insert dump session code at end of notebook after kishu checkout.
         dumpsession_code_end = get_dump_namespace_str(self.pickle_file + ".end")
