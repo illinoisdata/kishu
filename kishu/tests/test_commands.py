@@ -355,7 +355,8 @@ class TestKishuCommand:
         ("notebook_name", "cell_num_to_restore", "var_to_compare"),
         [
             ('numpy.ipynb', 4, "iris_X_train"),
-            ('simple.ipynb', 4, "b")
+            ('simple.ipynb', 4, "b"),
+            ('QiskitDemo_NCSA_May2023.ipynb', 59, "qc_alice")
         ]
     )
     def test_end_to_end_checkout(
@@ -380,6 +381,7 @@ class TestKishuCommand:
 
             # Run some notebook cells.
             for i in range(cell_num_to_restore):
+                print(i)
                 notebook_session.run_code(contents[i])
 
             # Get the variable value before checkout.
@@ -387,6 +389,8 @@ class TestKishuCommand:
 
             # Run the rest of the notebook cells.
             for i in range(cell_num_to_restore, len(contents)):
+                print(i)
+                print(contents[i])
                 notebook_session.run_code(contents[i])
 
             # Get the notebook key of the session.

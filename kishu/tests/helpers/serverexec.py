@@ -56,6 +56,7 @@ class NotebookHandler:
 
         # Execute cell code
         self.websocket.send(json.dumps(NotebookHandler.send_execute_request(cell_code)))
+        print(self.websocket)
 
         # Read cell output
         output = ""
@@ -64,12 +65,14 @@ class NotebookHandler:
             while msg_type != "execute_input":
                 rsp = json.loads(self.websocket.recv())
                 msg_type = rsp["msg_type"]
+                print(msg_type)
             msg_type = ""
             while msg_type != "status":
                 rsp = json.loads(self.websocket.recv())
                 msg_type = rsp["msg_type"]
                 if msg_type == "stream":
                     output += rsp["content"]["text"]
+                print(msg_type)
         except TimeoutError:
             print("Cell execution timed out.")
 
