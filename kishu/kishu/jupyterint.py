@@ -66,6 +66,7 @@ from kishu.exceptions import (
     StartChannelError,
 )
 from kishu.notebook_id import NotebookId
+from kishu.planning.namespace import Namespace
 from kishu.planning.plan import ExecutionHistory, RestorePlan, StoreEverythingCheckpointPlan, UnitExecution
 from kishu.planning.planner import CheckpointRestorePlanner
 from kishu.runtime import JupyterRuntimeEnv
@@ -312,11 +313,11 @@ class KishuForJupyter:
         self._start_time_ms: Optional[int] = None
         self._test_mode = False
 
-        self._cr_planner = CheckpointRestorePlanner(
-            {} if kishu_ipython() is None
-            else kishu_ipython().user_ns
+        self._cr_planner = CheckpointRestorePlanner.from_existing(
+            Namespace({}) if kishu_ipython() is None
+            else Namespace(kishu_ipython().user_ns),
+            kishu_ipython_in()
         )
-        self._cr_planner.fill_ahg_with_existing_items(self.get_user_namespace_vars(), kishu_ipython_in())
 
     def set_test_mode(self):
         # Configure this object for testing.

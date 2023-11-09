@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import dill
+import time
 
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
+
+from kishu.exceptions import MissingHistoryError
+from kishu.planning.namespace import Namespace
 
 
 @dataclass
@@ -65,6 +69,23 @@ class AHG:
         # Keys are variable names, while values are lists of the actual VSs.
         # i.e. {"x": [(x, 1), (x, 2)], "y": [(y, 1), (y, 2), (y, 3)]}
         self._variable_snapshots: Dict[str, List[VariableSnapshot]] = defaultdict(list)
+
+    @staticmethod
+    def from_existing(user_ns: Namespace, existing_cell_executions: List[str]) -> AHG:
+        ahg = AHG()
+        # Throw error if there are existing variables but the cell executions are missing.
+        if existing_cell_executions is None and user_ns.keys():
+            raise MissingHistoryError()
+
+        # First cell execution has no input variables and outputs all existing variables.
+        if existing_cell_executions:
+            ahg.update_graph(existing_cell_executions[0], 1.0, time.time(), set(), user_ns.keys(), set())
+
+            # Subsequent cell executions has all existing variables as input and output variables.
+            for i in range(1, len(existing_cell_executions)):
+                ahg.update_graph(existing_cell_executions[i], 1.0, time.time(), user_ns.keys(), user_ns.keys(), set())
+
+        return ahg
 
     def create_variable_snapshot(self, variable_name: str, deleted: bool) -> VariableSnapshot:
         """

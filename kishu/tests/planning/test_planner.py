@@ -1,3 +1,4 @@
+from kishu.planning.namespace import Namespace
 from kishu.planning.planner import CheckpointRestorePlanner
 
 
@@ -46,12 +47,9 @@ def test_checkpoint_restore_planner_with_existing_items():
         Test running a few cell updates.
     """
     user_ns = {"x": 1, "y": 2}
-    planner = CheckpointRestorePlanner(user_ns)
-
-    existing_vars = {"x", "y"}
     existing_cell_executions = ["x = 1", "y = 2"]
 
-    planner.fill_ahg_with_existing_items(existing_vars, existing_cell_executions)
+    planner = CheckpointRestorePlanner.from_existing(Namespace(user_ns), existing_cell_executions)
 
     variable_snapshots = planner.get_ahg().get_variable_snapshots()
     cell_executions = planner.get_ahg().get_cell_executions()

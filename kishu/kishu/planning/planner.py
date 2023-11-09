@@ -1,14 +1,14 @@
-import time
+from __future__ import annotations
 
 import numpy as np
 
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set
 
-from kishu.exceptions import MissingHistoryError
 from kishu.planning.ahg import AHG
 from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
 from kishu.planning.idgraph import GraphNode, compare_idgraph, get_object_state
+from kishu.planning.namespace import Namespace
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import RestorePlan
 from kishu.planning.profiler import profile_variable_size
@@ -19,35 +19,18 @@ class CheckpointRestorePlanner:
         The CheckpointRestorePlanner class holds items (e.g., AHG) relevant for creating
         the checkpoint and restoration plans during notebook runtime.
     """
-    def __init__(self, user_ns: Dict[Any, Any]) -> None:
+    def __init__(self, user_ns: Namespace = Namespace(), ahg: AHG = AHG()) -> None:
         """
             @param user_ns  User namespace containing variables in the kernel.
         """
-        self._ahg = AHG()
+        self._ahg = ahg
         self._user_ns = user_ns
         self._id_graph_map: Dict[str, GraphNode] = {}
         self._pre_run_cell_vars: Set[str] = set()
 
-    def fill_ahg_with_existing_items(self, existing_vars: Set[str], existing_cell_executions: Optional[List[str]]) -> None:
-        """
-            Fills the AHG with variables and cell executions declared/performed prior to initialization.
-            Required as the user may execute cells prior to running "kishu init".
-            Pessimistically assumes that each cell execution accessess and modifies all existing variables.
-
-            @param existing_vars  Variables already in the namespace prior to initialization.
-            @param existing_cell_executions  Cell executions already performed prior to initialization.
-        """
-        # Throw error if there are existing variables but the cell executions are missing.
-        if existing_cell_executions is None and existing_vars:
-            raise MissingHistoryError()
-
-        # First cell execution has no input variables and outputs all existing variables.
-        if existing_cell_executions:
-            self._ahg.update_graph(existing_cell_executions[0], 1.0, time.time(), set(), existing_vars, set())
-
-            # Subsequent cell executions has all existing variables as input and output variables.
-            for i in range(1, len(existing_cell_executions)):
-                self._ahg.update_graph(existing_cell_executions[i], 1.0, time.time(), existing_vars, existing_vars, set())
+    @staticmethod
+    def from_existing(user_ns: Namespace, executed_cells: Optional[List[str]]) -> CheckpointRestorePlanner:
+        return CheckpointRestorePlanner(user_ns, AHG.from_existing(user_ns, executed_cells))
 
     def pre_run_cell_update(self, pre_run_cell_vars: Set[str]) -> None:
         """
