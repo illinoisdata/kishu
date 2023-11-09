@@ -61,6 +61,7 @@ from kishu.exceptions import (
     JupyterConnectionError,
     KernelNotAliveError,
     MissingConnectionInfoError,
+    MissingIpythonError,
     MissingNotebookMetadataError,
     NoChannelError,
     StartChannelError,
@@ -316,9 +317,7 @@ class KishuForJupyter:
             {} if kishu_ipython() is None
             else kishu_ipython().user_ns
         )
-        self._cr_planner.fill_ahg_with_existing_items(self.get_user_namespace_vars(),
-                                                      [] if kishu_ipython() is None
-                                                      else kishu_ipython().user_ns["In"][1:])
+        self._cr_planner.fill_ahg_with_existing_items(self.get_user_namespace_vars(), kishu_ipython_in())
 
     def set_test_mode(self):
         # Configure this object for testing.

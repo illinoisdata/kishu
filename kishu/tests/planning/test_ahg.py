@@ -15,10 +15,12 @@ def test_create_variable_snapshot():
     assert vs2.version == 1  # vs2 is second VS for variable x
     assert vs3.version == 0
 
+    variable_snapshots = ahg.get_variable_snapshots()
+
     # VSs are stored in the graph correctly
-    assert ahg.variable_snapshots.keys() == {"x", "y"}
-    assert len(ahg.variable_snapshots["x"]) == 2
-    assert len(ahg.variable_snapshots["y"]) == 1
+    assert variable_snapshots.keys() == {"x", "y"}
+    assert len(variable_snapshots["x"]) == 2
+    assert len(variable_snapshots["y"]) == 1
 
 
 def test_add_cell_execution():
@@ -28,12 +30,14 @@ def test_add_cell_execution():
 
     ahg.add_cell_execution("", 1, 1, [vs1], [vs2])
 
+    cell_executions = ahg.get_cell_executions()
+
     # CE is stored in the graph correctly
-    assert len(ahg.cell_executions) == 1
+    assert len(cell_executions) == 1
 
     # Newly create CE correctly set as adjacent CE of variable snapshots
-    assert vs1.input_ces[0] == ahg.cell_executions[0]
-    assert vs2.output_ce == ahg.cell_executions[0]
+    assert vs1.input_ces[0] == cell_executions[0]
+    assert vs2.output_ce == cell_executions[0]
 
 
 def test_update_graph():
@@ -44,14 +48,17 @@ def test_update_graph():
     # x is read and modified, z is created, y is deleted
     ahg.update_graph("", 1, 1, {"x"}, {"x", "z"}, {"y"})
 
+    variable_snapshots = ahg.get_variable_snapshots()
+    cell_executions = ahg.get_cell_executions()
+
     # Check contents of AHG are correct
-    assert len(ahg.cell_executions) == 1
-    assert ahg.variable_snapshots.keys() == {"x", "y", "z"}
-    assert len(ahg.variable_snapshots["x"]) == 2
-    assert len(ahg.variable_snapshots["y"]) == 2
-    assert len(ahg.variable_snapshots["z"]) == 1
+    assert len(cell_executions) == 1
+    assert variable_snapshots.keys() == {"x", "y", "z"}
+    assert len(variable_snapshots["x"]) == 2
+    assert len(variable_snapshots["y"]) == 2
+    assert len(variable_snapshots["z"]) == 1
 
     # Check links between AHG contents are correct
-    assert vs1.input_ces[0] == ahg.cell_executions[0]
-    assert len(ahg.cell_executions[0].src_vss) == 1
-    assert len(ahg.cell_executions[0].dst_vss) == 3
+    assert vs1.input_ces[0] == cell_executions[0]
+    assert len(cell_executions[0].src_vss) == 1
+    assert len(cell_executions[0].dst_vss) == 3

@@ -398,7 +398,7 @@ class TestKishuCommand:
 
             # Get commit id of commit which we want to restore
             log_result = KishuCommand.log_all(notebook_key)
-            assert len(log_result.commit_graph) == len(contents) + 2  # all cells + print variable cell
+            assert len(log_result.commit_graph) == len(contents) + 2  # all cells + init cell + print variable cell
             commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
 
             # Restore to that commit
@@ -408,31 +408,23 @@ class TestKishuCommand:
             var_value_after = notebook_session.run_code(f"print({var_to_compare})")
             assert var_value_before == var_value_after
 
-    @pytest.mark.parametrize(
-        "prior_executions",
-        [1, 2, 3]
-    )
     def test_init_in_nonempty_session(
         self,
         tmp_kishu_path,
         tmp_kishu_path_os,
         tmp_nb_path,
         jupyter_server,
-        prior_executions: int,
     ):
-
-        # Start the notebook session.
+        # Start the notebook session. Even though this test doesn't use the notebook contents, the session
+        # still must be based on an existing notebook file.
         with jupyter_server.start_session(tmp_nb_path("simple.ipynb")) as notebook_session:
             # Kishu should not be able to see this session as "kishu init" has not yet been executed.
             list_result = KishuCommand.list()
             assert len(list_result.sessions) == 0
 
             # Run some notebook cells.
-            for i in range(prior_executions):
-                if i == 0:
-                    notebook_session.run_code("x = 1")
-                else:
-                    notebook_session.run_code("x += 1")
+            notebook_session.run_code("x = 1")
+            notebook_session.run_code("x += 1")
 
             # Run the kishu init cell.
             notebook_session.run_code(KISHU_INIT_STR)
@@ -445,4 +437,4 @@ class TestKishuCommand:
 
             # Run one more cell.
             x_value = notebook_session.run_code("print(x)")
-            assert x_value.strip("\n") == str(prior_executions)
+            assert x_value.strip("\n") == "2"

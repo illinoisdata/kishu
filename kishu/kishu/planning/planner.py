@@ -5,6 +5,7 @@ import numpy as np
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set
 
+from kishu.exceptions import MissingIpythonError
 from kishu.planning.ahg import AHG
 from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
 from kishu.planning.idgraph import GraphNode, compare_idgraph, get_object_state
@@ -27,7 +28,7 @@ class CheckpointRestorePlanner:
         self._id_graph_map: Dict[str, GraphNode] = {}
         self._pre_run_cell_vars: Set[str] = set()
 
-    def fill_ahg_with_existing_items(self, existing_vars: Set[str], existing_cell_executions: List[str]) -> None:
+    def fill_ahg_with_existing_items(self, existing_vars: Set[str], existing_cell_executions: Optional[List[str]]) -> None:
         """
             Fills the AHG with variables and cell executions declared/performed prior to initialization.
             Required as the user may execute cells prior to running "kishu init".
@@ -36,13 +37,17 @@ class CheckpointRestorePlanner:
             @param existing_vars  Variables already in the namespace prior to initialization.
             @param existing_cell_executions  Cell executions already performed prior to initialization.
         """
+        # Throw error if there are existing variables but the cell executions are missing.
+        if existing_cell_executions is None and existing_vars:
+            raise MissingIpythonError()
+            
         # First cell execution has no input variables and outputs all existing variables.
         if existing_cell_executions:
             self._ahg.update_graph(existing_cell_executions[0], 1.0, time.time(), set(), existing_vars, set())
 
-        # Subsequent cell executions has all existing variables as input and output variables.
-        for cell_execution in existing_cell_executions[1:]:
-            self._ahg.update_graph(cell_execution, 1.0, time.time(), existing_vars, existing_vars, set())
+            # Subsequent cell executions has all existing variables as input and output variables.
+            for i in range(1, len(existing_cell_executions)):
+                self._ahg.update_graph(existing_cell_executions[i], 1.0, time.time(), existing_vars, existing_vars, set())
 
     def pre_run_cell_update(self, pre_run_cell_vars: Set[str]) -> None:
         """
@@ -52,7 +57,7 @@ class CheckpointRestorePlanner:
         self._pre_run_cell_vars = pre_run_cell_vars
 
         # Populate missing ID graph entries.
-        for var in self._ahg.variable_snapshots.keys():
+        for var in self._ahg.get_variable_snapshots().keys():
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
@@ -96,7 +101,7 @@ class CheckpointRestorePlanner:
     def generate_restore_plan(self) -> RestorePlan:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = []
-        for vs_list in self._ahg.variable_snapshots.values():
+        for vs_list in self._ahg.get_variable_snapshots().values():
             if not vs_list[-1].deleted:
                 active_vss.append(vs_list[-1])
 
@@ -114,11 +119,11 @@ class CheckpointRestorePlanner:
         # Sort variables to migrate based on cells they were created in.
         ce_to_vs_map = defaultdict(list)
         for vs_name in vss_to_migrate:
-            ce_to_vs_map[self._ahg.variable_snapshots[vs_name][-1].output_ce.cell_num].append(vs_name)
+            ce_to_vs_map[self._ahg.get_variable_snapshots()[vs_name][-1].output_ce.cell_num].append(vs_name)
 
         # Create restore plan using optimization results.
         restore_plan = RestorePlan()
-        for ce in self._ahg.cell_executions:
+        for ce in self._ahg.get_cell_executions():
             if ce.cell_num in ces_to_recompute:
                 restore_plan.add_rerun_cell_restore_action(ce.cell)
             if len(ce_to_vs_map[ce.cell_num]) > 0:
@@ -126,6 +131,18 @@ class CheckpointRestorePlanner:
                         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]])
 
         return restore_plan
+
+    def get_ahg(self) -> AHG:
+        """
+            For testing only.
+        """
+        return self._ahg
+
+    def get_id_graph_map(self) -> Dict[str, GraphNode]:
+        """
+            For testing only.
+        """
+        return self._id_graph_map
 
     def serialize_ahg(self) -> str:
         """

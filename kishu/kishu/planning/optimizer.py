@@ -64,7 +64,7 @@ class Optimizer():
         """
             Find the necessary (prerequisite) cell executions to rerun a cell execution.
         """
-        for ce in self.ahg.cell_executions:
+        for ce in self.ahg.get_cell_executions():
             # Find prerequisites only if the CE has at least 1 active output.
             if set(vs.name for vs in ce.dst_vss).intersection(self.active_vss_lookup):
                 prerequisite_ces = set()
@@ -96,7 +96,7 @@ class Optimizer():
             flow_graph.add_edge("source", active_vs.name, capacity=active_vs.size / self.migration_speed_bps)
 
         # Add all CEs as nodes, connect them with the sink with edge capacity equal to recomputation cost.
-        for ce in self.ahg.cell_executions:
+        for ce in self.ahg.get_cell_executions():
             flow_graph.add_node(ce.cell_num)
             flow_graph.add_edge(ce.cell_num, "sink", capacity=ce.cell_runtime)
 
@@ -111,7 +111,7 @@ class Optimizer():
             flow_graph.add_edge(vs_pair[1].name, vs_pair[0].name, capacity=np.inf)
 
         # Prune CEs which produce no active variables to speedup computation.
-        for ce in self.ahg.cell_executions:
+        for ce in self.ahg.get_cell_executions():
             if flow_graph.in_degree(ce.cell_num) == 0:
                 flow_graph.remove_node(ce.cell_num)
 
@@ -120,6 +120,6 @@ class Optimizer():
 
         # Determine the replication plan from the partition.
         vss_to_migrate = set(partition[1]).intersection(self.active_vss_lookup)
-        ces_to_recompute = set(partition[0]).intersection(set(ce.cell_num for ce in self.ahg.cell_executions))
+        ces_to_recompute = set(partition[0]).intersection(set(ce.cell_num for ce in self.ahg.get_cell_executions()))
 
         return vss_to_migrate, ces_to_recompute
