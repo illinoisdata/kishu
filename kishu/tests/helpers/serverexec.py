@@ -72,6 +72,8 @@ class NotebookHandler:
                 msg_type = rsp["msg_type"]
                 if msg_type == "stream":
                     output += rsp["content"]["text"]
+                if msg_type == "error":
+                    print("error:", rsp)
                 print(msg_type)
         except TimeoutError:
             print("Cell execution timed out.")

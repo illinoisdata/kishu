@@ -128,10 +128,10 @@ class JupyterRuntimeEnv:
             return nbformat.read(f, JupyterRuntimeEnv.NBFORMAT_VERSION)
 
     @staticmethod
-    def read_notebook_cell_source(notebook_path: Path) -> List[str]:
+    def read_notebook_cell_source(notebook_path: Path, code_cells_only = True) -> List[str]:
         nb = JupyterRuntimeEnv.read_notebook(notebook_path)
         return [
             cell["source"]
             for cell in nb.get("cells", {})
-            if "source" in cell
+            if "source" in cell and (not code_cells_only or cell["cell_type"] == "code")
         ]
