@@ -71,10 +71,10 @@ class AHG:
         self._variable_snapshots: Dict[str, List[VariableSnapshot]] = defaultdict(list)
 
     @staticmethod
-    def from_existing(user_ns: Namespace, existing_cell_executions: List[str]) -> AHG:
+    def from_existing(user_ns: Namespace, existing_cell_executions: Optional[List[str]]) -> AHG:
         ahg = AHG()
         # Throw error if there are existing variables but the cell executions are missing.
-        if existing_cell_executions is None and user_ns.keys():
+        if not existing_cell_executions and user_ns.keys():
             raise MissingHistoryError()
 
         # First cell execution has no input variables and outputs all existing variables.

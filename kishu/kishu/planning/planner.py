@@ -140,7 +140,7 @@ class CheckpointRestorePlanner:
             Called when a checkout is performed.
         """
         self._ahg = AHG.deserialize(new_ahg_string)
-        self._user_ns = new_user_ns
+        self._user_ns = Namespace(new_user_ns)
 
         # Also clear the old ID graphs and pre-run cell info.
         # TODO: only clear ID graphs of variables which have changed between pre and post-checkout.
