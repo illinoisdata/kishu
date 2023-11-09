@@ -82,3 +82,13 @@ class NoExecutedCellsError(Exception):
         if commit_id:
             message += f" for commitID: {commit_id}"
         super().__init__(message)
+
+
+"""
+Raised by planner
+"""
+
+
+class MissingHistoryError(JupyterConnectionError):
+    def __init__(self):
+        super().__init__("Missing cell execution history.")

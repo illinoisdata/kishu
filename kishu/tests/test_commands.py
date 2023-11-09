@@ -407,3 +407,34 @@ class TestKishuCommand:
             # Get the variable value after checkout.
             var_value_after = notebook_session.run_code(f"print({var_to_compare})")
             assert var_value_before == var_value_after
+
+    def test_init_in_nonempty_session(
+        self,
+        tmp_kishu_path,
+        tmp_kishu_path_os,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        # Start the notebook session. Even though this test doesn't use the notebook contents, the session
+        # still must be based on an existing notebook file.
+        with jupyter_server.start_session(tmp_nb_path("simple.ipynb")) as notebook_session:
+            # Kishu should not be able to see this session as "kishu init" has not yet been executed.
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 0
+
+            # Run some notebook cells.
+            notebook_session.run_code("x = 1")
+            notebook_session.run_code("x += 1")
+
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR)
+
+            # Kishu should be able to see the notebook session now.
+            list_result = KishuCommand.list(list_all=True)
+            assert len(list_result.sessions) == 1
+            assert list_result.sessions[0].notebook_path is not None
+            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
+
+            # Run one more cell.
+            x_value = notebook_session.run_code("print(x)")
+            assert x_value.strip("\n") == "2"

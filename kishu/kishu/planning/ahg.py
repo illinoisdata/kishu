@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import dill
+import time
 
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
+
+from kishu.exceptions import MissingHistoryError
+from kishu.planning.namespace import Namespace
 
 
 @dataclass
@@ -59,12 +63,29 @@ class AHG:
             Create a new AHG. Called when Kishu is initialized for a notebook.
         """
         # Cell executions in chronological order.
-        self.cell_executions: List[CellExecution] = []
+        self._cell_executions: List[CellExecution] = []
 
         # Dict of variable snapshots.
         # Keys are variable names, while values are lists of the actual VSs.
         # i.e. {"x": [(x, 1), (x, 2)], "y": [(y, 1), (y, 2), (y, 3)]}
-        self.variable_snapshots: Dict[str, List[VariableSnapshot]] = defaultdict(list)
+        self._variable_snapshots: Dict[str, List[VariableSnapshot]] = defaultdict(list)
+
+    @staticmethod
+    def from_existing(user_ns: Namespace, existing_cell_executions: Optional[List[str]]) -> AHG:
+        ahg = AHG()
+        # Throw error if there are existing variables but the cell executions are missing.
+        if not existing_cell_executions and user_ns.keys():
+            raise MissingHistoryError()
+
+        # First cell execution has no input variables and outputs all existing variables.
+        if existing_cell_executions:
+            ahg.update_graph(existing_cell_executions[0], 1.0, time.time(), set(), user_ns.keys(), set())
+
+            # Subsequent cell executions has all existing variables as input and output variables.
+            for i in range(1, len(existing_cell_executions)):
+                ahg.update_graph(existing_cell_executions[i], 1.0, time.time(), user_ns.keys(), user_ns.keys(), set())
+
+        return ahg
 
     def create_variable_snapshot(self, variable_name: str, deleted: bool) -> VariableSnapshot:
         """
@@ -74,11 +95,11 @@ class AHG:
             @param deleted: Whether this VS is created for the deletion of a variable, i.e. 'del x'.
         """
         # Assign a version number to the VS.
-        version = len(self.variable_snapshots[variable_name]) if variable_name in self.variable_snapshots else 0
+        version = len(self._variable_snapshots[variable_name]) if variable_name in self._variable_snapshots else 0
 
         # Create a new VS instance and store it in the graph.
         vs = VariableSnapshot(variable_name, version, deleted)
-        self.variable_snapshots[variable_name].append(vs)
+        self._variable_snapshots[variable_name].append(vs)
         return vs
 
     def add_cell_execution(self, cell, cell_runtime: float, start_time: float,
@@ -93,10 +114,10 @@ class AHG:
             @param dst_vss: List containing output VSs of the cell execution.
         """
         # Create a cell execution.
-        ce = CellExecution(len(self.cell_executions), cell, cell_runtime, start_time, src_vss, dst_vss)
+        ce = CellExecution(len(self._cell_executions), cell, cell_runtime, start_time, src_vss, dst_vss)
 
         # Add the newly created cell execution to the graph.
-        self.cell_executions.append(ce)
+        self._cell_executions.append(ce)
 
         # Set the newly created cell execution as dependent on its input variable snapshots.
         for src_vs in src_vss:
@@ -121,7 +142,7 @@ class AHG:
         cell = "" if not cell else cell
 
         # Retrieve input variable snapshots
-        input_vss = [self.variable_snapshots[variable][-1] for variable in input_variables]
+        input_vss = [self._variable_snapshots[variable][-1] for variable in input_variables]
 
         # Create output variable snapshots
         output_vss_create = [self.create_variable_snapshot(k, False) for k in created_and_modified_variables]
@@ -129,6 +150,12 @@ class AHG:
 
         # Add the newly created CE to the graph.
         self.add_cell_execution(cell, cell_runtime, start_time, input_vss, output_vss_create + output_vss_delete)
+
+    def get_cell_executions(self) -> List[CellExecution]:
+        return self._cell_executions
+
+    def get_variable_snapshots(self) -> Dict[str, List[VariableSnapshot]]:
+        return self._variable_snapshots
 
     def serialize(self) -> str:
         """
