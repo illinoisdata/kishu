@@ -61,7 +61,6 @@ from kishu.exceptions import (
     JupyterConnectionError,
     KernelNotAliveError,
     MissingConnectionInfoError,
-    MissingIpythonError,
     MissingNotebookMetadataError,
     NoChannelError,
     StartChannelError,

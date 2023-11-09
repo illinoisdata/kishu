@@ -5,7 +5,7 @@ import numpy as np
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set
 
-from kishu.exceptions import MissingIpythonError
+from kishu.exceptions import MissingHistoryError
 from kishu.planning.ahg import AHG
 from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
 from kishu.planning.idgraph import GraphNode, compare_idgraph, get_object_state
@@ -39,8 +39,8 @@ class CheckpointRestorePlanner:
         """
         # Throw error if there are existing variables but the cell executions are missing.
         if existing_cell_executions is None and existing_vars:
-            raise MissingIpythonError()
-            
+            raise MissingHistoryError()
+
         # First cell execution has no input variables and outputs all existing variables.
         if existing_cell_executions:
             self._ahg.update_graph(existing_cell_executions[0], 1.0, time.time(), set(), existing_vars, set())
