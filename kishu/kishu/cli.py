@@ -3,10 +3,11 @@ from __future__ import annotations
 import os
 import typer
 
+from functools import wraps
 from typing import Tuple
 
 from kishu import __app_name__, __version__
-from kishu.commands import KishuCommand, into_json
+from kishu.commands import KishuCommand, into_json, DetachResult, InitResult
 from kishu.notebook_id import NotebookId
 
 
@@ -17,6 +18,47 @@ def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"{__app_name__} v{__version__}")
         raise typer.Exit()
+
+
+def print_clean_errors(f):
+    @wraps(f)
+    def main_fn(*args, **kwargs):
+        if os.environ.get("KISHU_VERBOSE") == "true":
+            return f(*args, **kwargs)
+        try:
+            return f(*args, **kwargs)
+        except TypeError:
+            print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
+        except Exception:
+            print("Error performing Kishu operation")
+    return main_fn
+
+
+def print_init_message(response: InitResult) -> None:
+    nb_id = response.notebook_id
+    if response.status != "ok":
+        error, message = response.message.split(": ")
+        if error == "FileNotFoundError":
+            print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
+        else:
+            print(message)
+    else:
+        assert nb_id is not None
+        output_str = f"Successfully initialized notebook {nb_id.path()}."
+        output_str += f" Notebook key: {nb_id.key()}."
+        output_str += f" Kernel Id: {nb_id.kernel_id()}"
+        print(output_str)
+
+
+def print_detach_message(response: DetachResult, notebook_path: str) -> None:
+    if response.status != "ok":
+        error, message = response.message.split(": ")
+        if error == "FileNotFoundError":
+            print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
+        else:
+            print(message)
+    else:
+        print(f"Successfully detached notebook {notebook_path}")
 
 
 @kishu_app.callback()
@@ -54,6 +96,7 @@ def list(
 
 
 @kishu_app.command()
+@print_clean_errors
 def init(
     notebook_path: str = typer.Argument(
         ...,
@@ -64,10 +107,11 @@ def init(
     """
     Initialize Kishu instrumentation in a notebook.
     """
-    print(into_json(KishuCommand.init(notebook_path)))
+    print_init_message(KishuCommand.init(notebook_path))
 
 
 @kishu_app.command()
+@print_clean_errors
 def detach(
     notebook_path: str = typer.Argument(
         ...,
@@ -78,7 +122,7 @@ def detach(
     """
     Detach Kishu instrumentation from notebook
     """
-    print(into_json(KishuCommand.detach(notebook_path)))
+    print_detach_message(KishuCommand.detach(notebook_path), notebook_path)
 
 
 @kishu_app.command()

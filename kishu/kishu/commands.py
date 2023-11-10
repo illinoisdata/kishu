@@ -22,6 +22,7 @@ from kishu.jupyterint import (
     KishuForJupyter,
     KishuSession,
 )
+from kishu.notebook_id import NotebookId
 from kishu.planning.plan import UnitExecution
 from kishu.runtime import JupyterRuntimeEnv
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
@@ -66,12 +67,14 @@ class ListResult:
 class InitResult:
     status: str
     message: str
+    notebook_id: Optional[NotebookId]
 
     @staticmethod
-    def wrap(result: JupyterCommandResult) -> InitResult:
+    def wrap(result: JupyterCommandResult, nb_id: Optional[NotebookId]) -> InitResult:
         return InitResult(
             status=result.status,
             message=result.message,
+            notebook_id=nb_id
         )
 
 
@@ -225,13 +228,16 @@ class KishuCommand:
             kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
             return InitResult(
+                notebook_id=None,
                 status="error",
                 message=f"{type(e).__name__}: {str(e)}",
             )
-        return InitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+        init_result = JupyterConnection(kernel_id).execute_one_command(
             pre_command=f"from kishu import init_kishu; init_kishu(\"{notebook_path.resolve()}\")",
             command="str(_kishu)",
-        ))
+        )
+        notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path_str)
+        return InitResult.wrap(init_result, NotebookId(notebook_key, notebook_path, kernel_id))
 
     @staticmethod
     def detach(notebook_path_str: str) -> DetachResult:
@@ -245,7 +251,7 @@ class KishuCommand:
             )
         return DetachResult.wrap(JupyterConnection(kernel_id).execute_one_command(
             pre_command=f"from kishu import detach_kishu; detach_kishu(\"{notebook_path.resolve()}\")",
-            command=f"\"Successfully detatched notebook at {notebook_path.resolve()}\"",
+            command="print(\"\", end=\"\")",
         ))
 
     @staticmethod
