@@ -8,7 +8,7 @@ class Namespace:
         Wrapper class around the kernel namespace.
     """
     IPYTHON_VARS = set(['In', 'Out', 'get_ipython', 'exit', 'quit', 'open'])
-    KISHU_VARS = set()
+    KISHU_VARS: Set[str] = set()
 
     @staticmethod
     def register_kishu_vars(kishu_vars: Set[str]) -> None:
