@@ -37,7 +37,7 @@ class TestKishuCommand:
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
             code_block="x = 1",
-            runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
+            runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
         )
@@ -47,7 +47,7 @@ class TestKishuCommand:
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
             code_block="y = 2",
-            runtime_ms=log_result.commit_graph[1].runtime_ms,  # Not tested
+            runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=[],
         )
@@ -57,7 +57,7 @@ class TestKishuCommand:
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
-            runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
+            runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
             branches=["auto_0:1"],
             tags=[],
         )
@@ -70,7 +70,7 @@ class TestKishuCommand:
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
             code_block="x = 1",
-            runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
+            runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
         )
@@ -84,7 +84,7 @@ class TestKishuCommand:
             message=log_all_result.commit_graph[0].message,  # Not tested
             timestamp=log_all_result.commit_graph[0].timestamp,  # Not tested
             code_block="x = 1",
-            runtime_ms=log_all_result.commit_graph[0].runtime_ms,  # Not tested
+            runtime_s=log_all_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
         )
@@ -94,7 +94,7 @@ class TestKishuCommand:
             message=log_all_result.commit_graph[1].message,  # Not tested
             timestamp=log_all_result.commit_graph[1].timestamp,  # Not tested
             code_block="y = 2",
-            runtime_ms=log_all_result.commit_graph[1].runtime_ms,  # Not tested
+            runtime_s=log_all_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=[],
         )
@@ -104,7 +104,7 @@ class TestKishuCommand:
             message=log_all_result.commit_graph[2].message,  # Not tested
             timestamp=log_all_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
-            runtime_ms=log_all_result.commit_graph[2].runtime_ms,  # Not tested
+            runtime_s=log_all_result.commit_graph[2].runtime_s,  # Not tested
             branches=["auto_0:1"],
             tags=[],
         )
@@ -122,14 +122,14 @@ class TestKishuCommand:
             code_block="y = x + 1",
             checkpoint_vars=[],
             message=status_result.commit_entry.message,  # Not tested,
-            timestamp_ms=status_result.commit_entry.timestamp_ms,  # Not tested
+            timestamp=status_result.commit_entry.timestamp,  # Not tested
             ahg_string=status_result.commit_entry.ahg_string,  # Not tested
             code_version=status_result.commit_entry.code_version,  # Not tested
             var_version=status_result.commit_entry.var_version,  # Not tested
-            start_time_ms=status_result.commit_entry.start_time_ms,  # Not tested
-            end_time_ms=status_result.commit_entry.end_time_ms,  # Not tested
-            checkpoint_runtime_ms=status_result.commit_entry.checkpoint_runtime_ms,  # Not tested
-            runtime_ms=status_result.commit_entry.runtime_ms,  # Not tested
+            start_time=status_result.commit_entry.start_time,  # Not tested
+            end_time=status_result.commit_entry.end_time,  # Not tested
+            checkpoint_runtime_s=status_result.commit_entry.checkpoint_runtime_s,  # Not tested
+            runtime_s=status_result.commit_entry.runtime_s,  # Not tested
             raw_nb=status_result.commit_entry.raw_nb,  # Not tested
             formatted_cells=status_result.commit_entry.formatted_cells,  # Not tested
             restore_plan=status_result.commit_entry.restore_plan,  # Not tested
@@ -153,7 +153,7 @@ class TestKishuCommand:
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
             code_block="x = 1",
-            runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
+            runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
         )
@@ -163,7 +163,7 @@ class TestKishuCommand:
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
             code_block="y = 2",
-            runtime_ms=log_result.commit_graph[1].runtime_ms,  # Not tested
+            runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=["historical"],
             tags=[],
         )
@@ -173,7 +173,7 @@ class TestKishuCommand:
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
-            runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
+            runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
             branches=["auto_0:1", "at_head"],
             tags=[],
         )
@@ -261,7 +261,7 @@ class TestKishuCommand:
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
             code_block="x = 1",
-            runtime_ms=log_result.commit_graph[0].runtime_ms,  # Not tested
+            runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
         )
@@ -271,7 +271,7 @@ class TestKishuCommand:
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
             code_block="y = 2",
-            runtime_ms=log_result.commit_graph[1].runtime_ms,  # Not tested
+            runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=["historical"],
         )
@@ -281,7 +281,7 @@ class TestKishuCommand:
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             code_block="y = x + 1",
-            runtime_ms=log_result.commit_graph[2].runtime_ms,  # Not tested
+            runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
             branches=["auto_0:1"],
             tags=["at_head"],
         )

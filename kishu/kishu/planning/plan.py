@@ -37,7 +37,7 @@ class UnitExecution:
     """
     exec_id: str = shortuuid.uuid()[:5]
     code_block: Optional[str] = None
-    runtime_ms: Optional[int] = None
+    runtime_s: Optional[float] = None
     accessed_resources: List[str] = field(default_factory=lambda: [])
     modified_resources: List[str] = field(default_factory=lambda: [])
 
