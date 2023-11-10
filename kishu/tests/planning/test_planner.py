@@ -14,14 +14,14 @@ def test_checkpoint_restore_planner():
 
     # Post run cell 1
     user_ns["x"] = 1
-    planner.post_run_cell_update("x = 1", 0.0, 1.0)
+    planner.post_run_cell_update("x = 1", 1.0)
 
     # Pre run cell 2
     planner.pre_run_cell_update()
 
     # Post run cell 2
     user_ns["y"] = 2
-    planner.post_run_cell_update("y = x + 1", 1.0, 1.0)
+    planner.post_run_cell_update("y = x + 1", 1.0)
 
     variable_snapshots = planner.get_ahg().get_variable_snapshots()
     cell_executions = planner.get_ahg().get_cell_executions()
@@ -67,7 +67,7 @@ def test_checkpoint_restore_planner_with_existing_items():
 
     # Post run cell 3; x is incremented by 1.
     user_ns["x"] = 2
-    planner.post_run_cell_update("x += 1", 0.0, 1.0)
+    planner.post_run_cell_update("x += 1", 1.0)
 
     # Assert correct contents of AHG is maintained after initializing the planner in a non-empty namespace.
     assert variable_snapshots.keys() == {"x", "y"}

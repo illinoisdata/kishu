@@ -460,11 +460,7 @@ class KishuForJupyter:
         entry.result = repr_if_not_none(result.result)
 
         # Update optimization items.
-        self._cr_planner.post_run_cell_update(
-            entry.code_block,
-            entry.start_time_ms,
-            entry.runtime_ms,
-        )
+        self._cr_planner.post_run_cell_update(entry.code_block, entry.runtime_ms)
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count

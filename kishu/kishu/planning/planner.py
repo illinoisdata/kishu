@@ -44,12 +44,10 @@ class CheckpointRestorePlanner:
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def post_run_cell_update(self, code_block: Optional[str],
-                             start_time_ms: Optional[float], runtime_ms: Optional[float]) -> None:
+    def post_run_cell_update(self, code_block: Optional[str], runtime_ms: Optional[float]) -> None:
         """
             Post-processing steps performed after cell execution.
             @param code_block: code of executed cell.
-            @param start_time_ms: start time of cell execution.
             @param runtime_ms: runtime of cell execution.
         """
         # Find accessed variables.
@@ -71,10 +69,9 @@ class CheckpointRestorePlanner:
                 modified_vars.add(k)
 
         # Update AHG.
-        start_time = 0.0 if start_time_ms is None else float(start_time_ms * 1000)
         runtime = 0.0 if runtime_ms is None else float(runtime_ms * 1000)
 
-        self._ahg.update_graph(code_block, runtime, start_time, accessed_vars,
+        self._ahg.update_graph(code_block, runtime, accessed_vars,
                                created_vars.union(modified_vars), deleted_vars)
 
         # Update ID graphs for newly created variables.
