@@ -55,7 +55,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from kishu.exceptions import (
     JupyterConnectionError,
@@ -302,6 +302,7 @@ class KishuForJupyter:
         self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
             KishuPath.commit_graph_directory(self._notebook_id.key())
         )
+        self._user_ns = Namespace({}) if kishu_ipython() is None else Namespace(kishu_ipython().user_ns)
         try:
             self._notebook_id.record_connection()
         except Exception as e:
@@ -313,11 +314,7 @@ class KishuForJupyter:
         self._start_time_ms: Optional[int] = None
         self._test_mode = False
 
-        self._cr_planner = CheckpointRestorePlanner.from_existing(
-            Namespace({}) if kishu_ipython() is None
-            else Namespace(kishu_ipython().user_ns),
-            kishu_ipython_in()
-        )
+        self._cr_planner = CheckpointRestorePlanner.from_existing(self._user_ns)
 
     def set_test_mode(self):
         # Configure this object for testing.
@@ -350,11 +347,6 @@ class KishuForJupyter:
 
     def checkpoint_file(self) -> str:
         return KishuPath.checkpoint_path(self._notebook_id.key())
-
-    def get_user_namespace_vars(self) -> Set[str]:
-        ip = kishu_ipython()
-        user_ns = {} if ip is None else ip.user_ns
-        return set(varname for varname, _ in filter(no_ipython_var, user_ns.items()))
 
     def checkout(self, branch_or_commit_id: str, skip_notebook: bool = False) -> BareReprStr:
         """
@@ -391,13 +383,13 @@ class KishuForJupyter:
 
         # Restore list of executed cells.
         if commit_entry.executed_cells is not None:
-            current_executed_cells = kishu_ipython_in()
+            current_executed_cells = self._user_ns.ipython_in()
             if current_executed_cells is not None:
                 current_executed_cells[:] = commit_entry.executed_cells[:]
 
         # Restore user-namespace variables.
-        user_ns = ip.user_ns   # will restore to global namespace
-        target_ns: Dict[str, Any] = {}         # temp location
+        user_ns = Namespace(ip.user_ns)   # will restore to global namespace
+        target_ns: Namespace = Namespace({})         # temp location
         commit_entry.restore_plan.run(target_ns, checkpoint_file, commit_id)
         self._checkout_namespace(user_ns, target_ns)
 
@@ -438,7 +430,7 @@ class KishuForJupyter:
         """
         self._start_time_ms = get_epoch_time_ms()
 
-        self._cr_planner.pre_run_cell_update(self.get_user_namespace_vars())
+        self._cr_planner.pre_run_cell_update()
 
     def post_run_cell(self, result) -> None:
         """
@@ -469,7 +461,6 @@ class KishuForJupyter:
         # Update optimization items.
         self._cr_planner.post_run_cell_update(
             entry.code_block,
-            self.get_user_namespace_vars(),
             entry.start_time_ms,
             entry.runtime_ms,
         )
@@ -561,7 +552,7 @@ class KishuForJupyter:
 
         # Force saving to observe all cells and extract notebook informations.
         self._save_notebook()
-        entry.executed_cells = kishu_ipython_in()
+        entry.executed_cells = self._user_ns.ipython_in()
         entry.raw_nb, entry.formatted_cells = self._all_notebook_cells()
         if entry.formatted_cells is not None:
             code_cells = []
@@ -594,25 +585,22 @@ class KishuForJupyter:
         TODO: Perform more intelligent checkpointing.
         """
         # Step 1: checkpoint
-        ip = kishu_ipython()
-        user_ns = {} if ip is None else ip.user_ns
         checkpoint_file = self.checkpoint_file()
         exec_id = cell_info.exec_id
-        filter_user_ns = {item[0]: item[1] for item in user_ns.items() if no_ipython_var(item)}
-        cell_info.checkpoint_vars = list(filter_user_ns.keys())
+        cell_info.checkpoint_vars = list(self._user_ns.keys())
         checkpoint = StoreEverythingCheckpointPlan.create(
-            user_ns,
+            self._user_ns,
             checkpoint_file,
             exec_id,
             cell_info.checkpoint_vars,
         )
-        checkpoint.run(user_ns)
+        checkpoint.run(self._user_ns)
 
         # Step 2: prepare a restoration plan using results from the optimizer.
         restore_plan = self._cr_planner.generate_restore_plan()
 
         # Extra: generate variable version. TODO: we should avoid the extra namespace serialization.
-        var_version = hash(pickle.dumps(filter_user_ns))
+        var_version = hash(pickle.dumps(self._user_ns.items()))
         return restore_plan, var_version
 
     def _save_notebook(self) -> None:
@@ -722,9 +710,9 @@ class KishuForJupyter:
         # Save change
         nbformat.write(nb, nb_path)
 
-    def _checkout_namespace(self, user_ns: Dict[Any, Any], target_ns: Dict[Any, Any]) -> None:
+    def _checkout_namespace(self, user_ns: Namespace, target_ns: Namespace) -> None:
         user_ns.update(target_ns)
-        for key, _ in list(filter(no_ipython_var, user_ns.items())):
+        for key in list(user_ns.keys()):
             if key not in target_ns:
                 del user_ns[key]
 
@@ -771,13 +759,6 @@ _kishu_ipython = None
 
 def kishu_ipython():
     return _kishu_ipython
-
-
-def kishu_ipython_in() -> Optional[List[str]]:
-    ip = kishu_ipython()
-    if ip is None:
-        return None
-    return ip.user_ns["In"]
 
 
 def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[int] = None) -> None:

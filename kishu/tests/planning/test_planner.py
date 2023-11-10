@@ -6,22 +6,22 @@ def test_checkpoint_restore_planner():
     """
         Test running a few cell updates.
     """
-    user_ns = {}
+    user_ns = Namespace({})
     planner = CheckpointRestorePlanner(user_ns)
 
     # Pre run cell 1
-    planner.pre_run_cell_update(set())
+    planner.pre_run_cell_update()
 
     # Post run cell 1
     user_ns["x"] = 1
-    planner.post_run_cell_update("x = 1", {"x"}, 0.0, 1.0)
+    planner.post_run_cell_update("x = 1", 0.0, 1.0)
 
     # Pre run cell 2
-    planner.pre_run_cell_update({"x"})
+    planner.pre_run_cell_update()
 
     # Post run cell 2
     user_ns["y"] = 2
-    planner.post_run_cell_update("y = x + 1", {"x", "y"}, 1.0, 1.0)
+    planner.post_run_cell_update("y = x + 1", 1.0, 1.0)
 
     variable_snapshots = planner.get_ahg().get_variable_snapshots()
     cell_executions = planner.get_ahg().get_cell_executions()
@@ -46,10 +46,9 @@ def test_checkpoint_restore_planner_with_existing_items():
     """
         Test running a few cell updates.
     """
-    user_ns = {"x": 1, "y": 2}
-    existing_cell_executions = ["x = 1", "y = 2"]
+    user_ns = Namespace({"x": 1, "y": 2, "In": ["x = 1", "y = 2"]})
 
-    planner = CheckpointRestorePlanner.from_existing(Namespace(user_ns), existing_cell_executions)
+    planner = CheckpointRestorePlanner.from_existing(user_ns)
 
     variable_snapshots = planner.get_ahg().get_variable_snapshots()
     cell_executions = planner.get_ahg().get_cell_executions()
@@ -61,14 +60,14 @@ def test_checkpoint_restore_planner_with_existing_items():
     assert len(cell_executions) == 2
 
     # Pre run cell 3
-    planner.pre_run_cell_update({"x", "y"})
+    planner.pre_run_cell_update()
 
     # Pre-running should fill in missing ID graph entries for x and y.
     assert len(planner.get_id_graph_map().keys()) == 2
 
     # Post run cell 3; x is incremented by 1.
     user_ns["x"] = 2
-    planner.post_run_cell_update("x += 1", {"x", "y"}, 0.0, 1.0)
+    planner.post_run_cell_update("x += 1", 0.0, 1.0)
 
     # Assert correct contents of AHG is maintained after initializing the planner in a non-empty namespace.
     assert variable_snapshots.keys() == {"x", "y"}
