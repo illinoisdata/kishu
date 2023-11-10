@@ -98,7 +98,7 @@ class Optimizer():
         # Add all CEs as nodes, connect them with the sink with edge capacity equal to recomputation cost.
         for ce in self.ahg.get_cell_executions():
             flow_graph.add_node(ce.cell_num)
-            flow_graph.add_edge(ce.cell_num, "sink", capacity=ce.cell_runtime)
+            flow_graph.add_edge(ce.cell_num, "sink", capacity=ce.cell_runtime_s)
 
         # Connect each CE with its output variables and its prerequisite CEs.
         for active_vs in self.active_vss:

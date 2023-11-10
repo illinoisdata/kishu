@@ -17,13 +17,13 @@ class CellExecution:
 
         @param cell_num: The nth cell execution of the current session.
         @param cell: Raw cell code.
-        @param cell_runtime: Cell runtime in seconds.
+        @param cell_runtime_s: Cell runtime in seconds.
         @param src_vss: List containing input VSs of the cell execution.
         @param dst_vss: List containing output VSs of the cell execution.
     """
     cell_num: int
     cell: str
-    cell_runtime: float
+    cell_runtime_s: float
     src_vss: List[VariableSnapshot]
     dst_vss: List[VariableSnapshot]
 
@@ -104,7 +104,7 @@ class AHG:
     def add_cell_execution(
         self,
         cell: str,
-        cell_runtime: float,
+        cell_runtime_s: float,
         src_vss: List[VariableSnapshot],
         dst_vss: List[VariableSnapshot],
     ) -> None:
@@ -112,12 +112,12 @@ class AHG:
             Create a cell execution from captured metrics.
 
             @param cell: Raw cell code.
-            @param cell_runtime: Cell runtime in seconnds.
+            @param cell_runtime_s: Cell runtime in seconnds.
             @param src_vss: List containing input VSs of the cell execution.
             @param dst_vss: List containing output VSs of the cell execution.
         """
         # Create a cell execution.
-        ce = CellExecution(len(self._cell_executions), cell, cell_runtime, src_vss, dst_vss)
+        ce = CellExecution(len(self._cell_executions), cell, cell_runtime_s, src_vss, dst_vss)
 
         # Add the newly created cell execution to the graph.
         self._cell_executions.append(ce)
@@ -130,13 +130,13 @@ class AHG:
         for dst_vs in dst_vss:
             dst_vs.output_ce = ce
 
-    def update_graph(self, cell: Optional[str], cell_runtime: float, input_variables: Set[str],
+    def update_graph(self, cell: Optional[str], cell_runtime_s: float, input_variables: Set[str],
                      created_and_modified_variables: Set[str], deleted_variables: Set[str]) -> None:
         """
             Updates the graph according to the newly executed cell and its input and output variables.
 
             @param cell: Raw cell code.
-            @param cell_runtime: Cell runtime in seconds.
+            @param cell_runtime_s: Cell runtime in seconds.
             @param input_variables: Set of input variables of the cell.
             @param created_and_modified_variables: set of created and modified variables.
             @param deleted_variables: set of deleted variables.
@@ -151,7 +151,7 @@ class AHG:
         output_vss_delete = [self.create_variable_snapshot(k, True) for k in deleted_variables]
 
         # Add the newly created CE to the graph.
-        self.add_cell_execution(cell, cell_runtime, input_vss, output_vss_create + output_vss_delete)
+        self.add_cell_execution(cell, cell_runtime_s, input_vss, output_vss_create + output_vss_delete)
 
     def get_cell_executions(self) -> List[CellExecution]:
         return self._cell_executions

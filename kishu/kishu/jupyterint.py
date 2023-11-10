@@ -148,14 +148,14 @@ class CommitEntry(UnitExecution):
     Records the information related to Jupyter's cell execution.
 
     @param execution_count  The ipython-tracked execution count, which is used for displaying
-                            the cell number on Jupyter.
+                            the cell number on Jruntimeupyter.
     @param result  A printable form of the returned result (obtained by __repr__).
-    @param start_time_ms  The epoch time in milliseconds. Obtained by round(time.time()*1000).
-            start_time_ms=None means that the start time is unknown, which is the case when
+    @param start_time  The epoch time.
+            start_time=None means that the start time is unknown, which is the case when
             the callback is first registered.
-    @param end_time_ms  The epoch time the cell execution completed.
-    @param runtime_ms  The difference betweeen start_time_ms and end_time_ms.
-    @param checkpoint_runtime_ms  The overhead of checkpoint operation (after the execution of
+    @param end_time  The epoch time the cell execution completed.
+    @param runtime_s  The difference betweeen start_time and end_time.
+    @param checkpoint_runtime_s  The overhead of checkpoint operation (after the execution of
             the cell).
     @param checkpoint_vars  The variable names that are checkpointed after the cell execution.
     @param restore_plan  The checkpoint algorithm also sets this restoration plan, which
@@ -163,14 +163,14 @@ class CommitEntry(UnitExecution):
     """
     kind: CommitEntryKind = CommitEntryKind.unspecified
 
-    checkpoint_runtime_ms: Optional[int] = None
+    checkpoint_runtime_s: Optional[float] = None
     checkpoint_vars: Optional[List[str]] = None
     executed_cells: Optional[List[str]] = None
     raw_nb: Optional[str] = None
     formatted_cells: Optional[List[FormattedCell]] = None
     restore_plan: Optional[RestorePlan] = None
     message: str = ""
-    timestamp_ms: int = 0
+    timestamp: float = 0.0
     ahg_string: Optional[str] = None
     code_version: int = 0
     var_version: int = 0
@@ -180,8 +180,8 @@ class CommitEntry(UnitExecution):
     error_before_exec: Optional[str] = None
     error_in_exec: Optional[str] = None
     result: Optional[str] = None
-    start_time_ms: Optional[int] = None
-    end_time_ms: Optional[int] = None
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
 
 
 @dataclass
@@ -312,7 +312,7 @@ class KishuForJupyter:
         self._platform = enclosing_platform()
         self._session_id = 0
         self._last_execution_count = 0
-        self._start_time_ms: Optional[int] = None
+        self._start_time: Optional[float] = None
         self._test_mode = False
 
         self._cr_planner = CheckpointRestorePlanner.from_existing(self._user_ns)
@@ -428,7 +428,7 @@ class KishuForJupyter:
         print('info.cell_id =', info.cell_id)
         print(dir(info))
         """
-        self._start_time_ms = get_epoch_time_ms()
+        self._start_time = time.time()
 
         self._cr_planner.pre_run_cell_update()
 
@@ -449,21 +449,21 @@ class KishuForJupyter:
         entry.message = f"Auto-commit after executing < {short_raw_cell} >"
 
         # Jupyter-specific info for commit entry.
-        entry.start_time_ms = self._start_time_ms
-        entry.end_time_ms = get_epoch_time_ms()
-        if entry.start_time_ms is not None:
-            entry.runtime_ms = entry.end_time_ms - entry.start_time_ms
+        entry.start_time = self._start_time
+        entry.end_time = time.time()
+        if entry.start_time is not None:
+            entry.runtime_s = entry.end_time - entry.start_time
         entry.code_block = result.info.raw_cell
         entry.error_before_exec = repr_if_not_none(result.error_before_exec)
         entry.error_in_exec = repr_if_not_none(result.error_in_exec)
         entry.result = repr_if_not_none(result.result)
 
         # Update optimization items.
-        self._cr_planner.post_run_cell_update(entry.code_block, entry.runtime_ms)
+        self._cr_planner.post_run_cell_update(entry.code_block, entry.runtime_s)
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count
-        self._start_time_ms = None
+        self._start_time = None
 
         self._commit_entry(entry)
 
@@ -544,7 +544,7 @@ class KishuForJupyter:
     def _commit_entry(self, entry: CommitEntry) -> None:
         # Generate commit ID.
         entry.exec_id = self._commit_id()
-        entry.timestamp_ms = get_epoch_time_ms()
+        entry.timestamp = time.time()
 
         # Force saving to observe all cells and extract notebook informations.
         self._save_notebook()
@@ -558,11 +558,11 @@ class KishuForJupyter:
             entry.code_version = hash(tuple(code_cells))
 
         # Plan for checkpointing and restoration.
-        checkpoint_start_sec = time.time()
+        checkpoint_start_time = time.time()
         entry.restore_plan, entry.var_version = self._checkpoint(entry)
         entry.ahg_string = self._cr_planner.serialize_ahg()
-        checkpoint_runtime_ms = round((time.time() - checkpoint_start_sec) * 1000)
-        entry.checkpoint_runtime_ms = checkpoint_runtime_ms
+        checkpoint_runtime_s = time.time() - checkpoint_start_time
+        entry.checkpoint_runtime_s = checkpoint_runtime_s
 
         # Update other structures.
         self._history.append(entry)
@@ -722,10 +722,6 @@ def repr_if_not_none(obj: Any) -> Optional[str]:
 KISHU_INSTRUMENT = '_kishu'
 KISHU_VARS = set(['kishu', 'init_kishu', KISHU_INSTRUMENT])
 Namespace.register_kishu_vars(KISHU_VARS)
-
-
-def get_epoch_time_ms() -> int:
-    return round(time.time() * 1000)
 
 
 def _install_kishu_hooks(notebook_id: NotebookId, session_id: int) -> None:

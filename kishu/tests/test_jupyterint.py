@@ -22,7 +22,7 @@ def test_history_to_sqlite(tmp_path: Path):
     commit_entry = CommitEntry()
     commit_entry.exec_id = '0:1'
     commit_entry.code_block = 'code'
-    commit_entry.runtime_ms = 2
+    commit_entry.runtime_s = 2
     commit_entry.accessed_resources = ['a']
     commit_entry.modified_resources = ['b']
     commit_entry.save_into_db(filename)
@@ -104,11 +104,11 @@ class TestOnNotebookRunner:
             dict_obj[field] = value
 
         def replace_start_time(commit_entry):
-            set_field_to(commit_entry, 'checkpoint_runtime_ms', 0)
-            set_field_to(commit_entry, 'timestamp_ms', 0)
-            set_field_to(commit_entry, 'end_time_ms', 0)
-            set_field_to(commit_entry, 'runtime_ms', 0)
-            set_field_to(commit_entry, 'start_time_ms', 0)
+            set_field_to(commit_entry, 'checkpoint_runtime_s', 0)
+            set_field_to(commit_entry, 'timestamp', 0)
+            set_field_to(commit_entry, 'end_time', 0)
+            set_field_to(commit_entry, 'runtime_s', 0)
+            set_field_to(commit_entry, 'start_time', 0)
             set_field_to(commit_entry, 'message', "")
             set_field_to(commit_entry, 'ahg_string', "")
             set_field_to(commit_entry, 'formatted_cells', [])
@@ -120,9 +120,9 @@ class TestOnNotebookRunner:
         # TODO: This test is hacky; we ought to reach for list of commits through public methods.
         history_dict = json.loads(output['history'])
         assert replace_start_time(history_dict['1:1']) == {
-                "checkpoint_runtime_ms": 0,
+                "checkpoint_runtime_s": 0,
                 "code_block": "from kishu import init_kishu\ninit_kishu()\n_kishu.set_test_mode()",
-                "end_time_ms": 0,
+                "end_time": 0,
                 "exec_id": "1:1",
                 "execution_count": 1,
                 'executed_cells': [
@@ -136,13 +136,13 @@ class TestOnNotebookRunner:
                 "ahg_string": "",
                 "code_version": 0,
                 "var_version": 0,
-                "timestamp_ms": 0,
+                "timestamp": 0,
             }
         assert replace_start_time(history_dict['1:2']) == {
-                "checkpoint_runtime_ms": 0,
+                "checkpoint_runtime_s": 0,
                 "checkpoint_vars": ["a"],
                 "code_block": "a = 1",
-                "end_time_ms": 0,
+                "end_time": 0,
                 "exec_id": "1:2",
                 'executed_cells': [
                     '',
@@ -150,8 +150,8 @@ class TestOnNotebookRunner:
                     'a = 1',
                 ],
                 "execution_count": 2,
-                "runtime_ms": 0,
-                "start_time_ms": 0,
+                "runtime_s": 0,
+                "start_time": 0,
                 "kind": "jupyter",
                 "message": "",
                 "ahg_string": "",
@@ -159,7 +159,7 @@ class TestOnNotebookRunner:
                 "raw_nb": "",
                 "code_version": 0,
                 "var_version": 0,
-                "timestamp_ms": 0,
+                "timestamp": 0,
             }
 
     @pytest.mark.parametrize(
