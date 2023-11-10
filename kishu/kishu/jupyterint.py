@@ -789,7 +789,7 @@ def remove_event_handlers() -> None:
         return
 
     if KISHU_INSTRUMENT not in ip.user_ns:
-        return None
+        return
 
     # if kishu is in the user_ns of ipython, delete hooks
     kishu = ip.user_ns[KISHU_INSTRUMENT]
