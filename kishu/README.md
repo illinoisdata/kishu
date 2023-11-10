@@ -17,15 +17,15 @@ Run Jupyter after installing kishu. In your notebook, you can enable kishu with 
 ## Basic Usage
 
 ```
-from kishu import load_kishu
-load_kishu()
+from kishu import init_kishu
+init_kishu()
 ```
 Then, all the cell executions are recorded, and the result of each cell execution is checkpointed.
 
 
 ## Working with Kishu
 
-load_kishu() adds a new variable `_kishu` (of type KishuJupyterExecHistory) to Jupyter's namespace.
+`init_kishu()` adds a new variable `_kishu` (of type KishuJupyterExecHistory) to Jupyter's namespace.
 The special variable can be used for kishu-related operations, as follows.
 
 Browse the execution log.
