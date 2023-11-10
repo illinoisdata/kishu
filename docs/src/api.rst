@@ -10,7 +10,6 @@ API
    kishu.commands
    kishu.jupyterint
    kishu.notebook_id
-   kishu.runtime
    kishu.storage
    kishu.storage.branch
    kishu.storage.checkpoint_io

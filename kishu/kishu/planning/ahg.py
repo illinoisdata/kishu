@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import dill
-import time
 
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 
 from kishu.exceptions import MissingHistoryError
-from kishu.planning.namespace import Namespace
+from kishu.jupyter.namespace import Namespace
 
 
 @dataclass
@@ -19,14 +18,12 @@ class CellExecution:
         @param cell_num: The nth cell execution of the current session.
         @param cell: Raw cell code.
         @param cell_runtime: Cell runtime in seconds.
-        @param start_time : Time of start of cell execution. Note that this is different from when the cell was queued.
         @param src_vss: List containing input VSs of the cell execution.
         @param dst_vss: List containing output VSs of the cell execution.
     """
     cell_num: int
     cell: str
     cell_runtime: float
-    start_time: float
     src_vss: List[VariableSnapshot]
     dst_vss: List[VariableSnapshot]
 
@@ -49,7 +46,7 @@ class VariableSnapshot:
     deleted: bool
     size: float = 0.0
     input_ces: List[CellExecution] = field(default_factory=lambda: [])
-    output_ce: CellExecution = field(default_factory=lambda: CellExecution(0, "", 0.0, 0.0, [], []))
+    output_ce: CellExecution = field(default_factory=lambda: CellExecution(0, "", 0.0, [], []))
 
 
 class AHG:
@@ -71,19 +68,21 @@ class AHG:
         self._variable_snapshots: Dict[str, List[VariableSnapshot]] = defaultdict(list)
 
     @staticmethod
-    def from_existing(user_ns: Namespace, existing_cell_executions: Optional[List[str]]) -> AHG:
+    def from_existing(user_ns: Namespace) -> AHG:
         ahg = AHG()
+
         # Throw error if there are existing variables but the cell executions are missing.
-        if not existing_cell_executions and user_ns.keys():
+        existing_cell_executions = user_ns.ipython_in()
+        if not existing_cell_executions and user_ns.keyset():
             raise MissingHistoryError()
 
         # First cell execution has no input variables and outputs all existing variables.
         if existing_cell_executions:
-            ahg.update_graph(existing_cell_executions[0], 1.0, time.time(), set(), user_ns.keys(), set())
+            ahg.update_graph(existing_cell_executions[0], 1.0, set(), user_ns.keyset(), set())
 
             # Subsequent cell executions has all existing variables as input and output variables.
             for i in range(1, len(existing_cell_executions)):
-                ahg.update_graph(existing_cell_executions[i], 1.0, time.time(), user_ns.keys(), user_ns.keys(), set())
+                ahg.update_graph(existing_cell_executions[i], 1.0, user_ns.keyset(), user_ns.keyset(), set())
 
         return ahg
 
@@ -102,19 +101,23 @@ class AHG:
         self._variable_snapshots[variable_name].append(vs)
         return vs
 
-    def add_cell_execution(self, cell, cell_runtime: float, start_time: float,
-                           src_vss: List[VariableSnapshot], dst_vss: List[VariableSnapshot]) -> None:
+    def add_cell_execution(
+        self,
+        cell: str,
+        cell_runtime: float,
+        src_vss: List[VariableSnapshot],
+        dst_vss: List[VariableSnapshot],
+    ) -> None:
         """
             Create a cell execution from captured metrics.
 
             @param cell: Raw cell code.
             @param cell_runtime: Cell runtime in seconnds.
-            @param start_time: Time of cell execution start. Note that this is different from when the cell was queued.
             @param src_vss: List containing input VSs of the cell execution.
             @param dst_vss: List containing output VSs of the cell execution.
         """
         # Create a cell execution.
-        ce = CellExecution(len(self._cell_executions), cell, cell_runtime, start_time, src_vss, dst_vss)
+        ce = CellExecution(len(self._cell_executions), cell, cell_runtime, src_vss, dst_vss)
 
         # Add the newly created cell execution to the graph.
         self._cell_executions.append(ce)
@@ -127,14 +130,13 @@ class AHG:
         for dst_vs in dst_vss:
             dst_vs.output_ce = ce
 
-    def update_graph(self, cell: Optional[str], cell_runtime: float, start_time: float, input_variables: Set[str],
+    def update_graph(self, cell: Optional[str], cell_runtime: float, input_variables: Set[str],
                      created_and_modified_variables: Set[str], deleted_variables: Set[str]) -> None:
         """
             Updates the graph according to the newly executed cell and its input and output variables.
 
             @param cell: Raw cell code.
             @param cell_runtime: Cell runtime in seconds.
-            @param start_time: Time of cell execution start. Note that this is different from when the cell was queued.
             @param input_variables: Set of input variables of the cell.
             @param created_and_modified_variables: set of created and modified variables.
             @param deleted_variables: set of deleted variables.
@@ -149,7 +151,7 @@ class AHG:
         output_vss_delete = [self.create_variable_snapshot(k, True) for k in deleted_variables]
 
         # Add the newly created CE to the graph.
-        self.add_cell_execution(cell, cell_runtime, start_time, input_vss, output_vss_create + output_vss_delete)
+        self.add_cell_execution(cell, cell_runtime, input_vss, output_vss_create + output_vss_delete)
 
     def get_cell_executions(self) -> List[CellExecution]:
         return self._cell_executions

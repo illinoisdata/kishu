@@ -11,7 +11,7 @@ from requests.adapters import HTTPAdapter
 from typing import Any, Dict, Optional
 from urllib3.util import Retry
 
-from kishu.runtime import JupyterRuntimeEnv
+from kishu.jupyter.runtime import JupyterRuntimeEnv
 
 
 class NotebookHandler:

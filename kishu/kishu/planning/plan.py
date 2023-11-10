@@ -8,6 +8,7 @@ import shortuuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from kishu.jupyter.namespace import Namespace
 from kishu.storage.checkpoint_io import (
     get_checkpoint,
     get_log,
@@ -143,7 +144,7 @@ class VarNamesToObjects:
 
 
 class CheckpointAction:
-    def run(self, user_ns: dict):
+    def run(self, user_ns: Namespace):
         raise NotImplementedError("Must be extended by inherited classes.")
 
 
@@ -156,7 +157,7 @@ class SaveVariablesCheckpointAction(CheckpointAction):
         self.filename: Optional[str] = None
         self.exec_id: Optional[str] = None
 
-    def run(self, user_ns: dict):
+    def run(self, user_ns: Namespace):
         if self.filename is None:
             raise ValueError("filename is not set.")
         if self.exec_id is None:
@@ -172,7 +173,7 @@ class CheckpointPlan:
     def __init__(self) -> None:
         self.actions: List[CheckpointAction] = []
 
-    def run(self, user_ns: dict) -> None:
+    def run(self, user_ns: Namespace) -> None:
         for action in self.actions:
             action.run(user_ns)
 
@@ -195,7 +196,7 @@ class StoreEverythingCheckpointPlan(CheckpointPlan):
         self.checkpoint_file: Optional[str] = None
 
     @classmethod
-    def create(cls, user_ns: dict, checkpoint_file: str, exec_id: str,
+    def create(cls, user_ns: Namespace, checkpoint_file: str, exec_id: str,
                var_names: Optional[List[str]] = None):
         """
         @param user_ns  A dictionary representing a target variable namespace. In Jupyter, this
@@ -209,7 +210,8 @@ class StoreEverythingCheckpointPlan(CheckpointPlan):
         return plan
 
     @classmethod
-    def set_up_actions(cls, user_ns, checkpoint_file, exec_id, var_names) -> List[CheckpointAction]:
+    def set_up_actions(cls, user_ns: Namespace, checkpoint_file: str,
+                       exec_id: str, var_names: Optional[List[str]]) -> List[CheckpointAction]:
         if user_ns is None or checkpoint_file is None:
             raise ValueError("Fields are not properly initialized.")
         actions: List[CheckpointAction] = []
@@ -222,12 +224,12 @@ class StoreEverythingCheckpointPlan(CheckpointPlan):
         return actions
 
     @classmethod
-    def vars_to_checkpoint(cls, user_ns: dict, var_names=None) -> List[str]:
+    def vars_to_checkpoint(cls, user_ns: Namespace, var_names=None) -> List[str]:
         if user_ns is None:
             return []
         if var_names is None:
-            return list(user_ns.keys())
-        key_set = set(user_ns.keys())
+            return list(user_ns.keyset())
+        key_set = set(user_ns.keyset())
         for name in var_names:
             if name not in key_set:
                 raise ValueError("Checkpointing a non-existenting var: {}".format(name))
@@ -242,7 +244,7 @@ class RestoreAction:
     """
     A base class for any action.
     """
-    def run(self, user_ns: dict, checkpoint_file: str, exec_id: str):
+    def run(self, user_ns: Namespace, checkpoint_file: str, exec_id: str):
         """
         @param user_ns  A target space where restored variables will be set.
         """
@@ -261,7 +263,7 @@ class LoadVariableRestoreAction(RestoreAction):
             raise ValueError("Unexpected type for var_names: {}".format(type(var_names)))
         self.variable_names: Optional[List[str]] = var_names
 
-    def run(self, user_ns: dict, checkpoint_file: str, exec_id: str):
+    def run(self, user_ns: Namespace, checkpoint_file: str, exec_id: str):
         """
         @param user_ns  A target space where restored variables will be set.
         """
@@ -293,7 +295,7 @@ class RerunCellRestoreAction(RestoreAction):
             raise ValueError("Unexpected type for cell_code: {}".format(type(cell_code)))
         self.cell_code: Optional[str] = cell_code
 
-    def run(self, user_ns: dict, checkpoint_file: str, exec_id: str):
+    def run(self, user_ns: Namespace, checkpoint_file: str, exec_id: str):
         """
         @param user_ns  A target space where restored variables will be set.
         """
@@ -322,7 +324,7 @@ class RestorePlan:
     def add_load_variable_restore_action(self, variable_names: List[str]):
         self.actions.append(LoadVariableRestoreAction(variable_names))
 
-    def run(self, user_ns: dict, checkpoint_file: str, exec_id: str):
+    def run(self, user_ns: Namespace, checkpoint_file: str, exec_id: str):
         """
         Performs a series of actions as specified in self.actions.
 

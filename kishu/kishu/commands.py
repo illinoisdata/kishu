@@ -22,8 +22,9 @@ from kishu.jupyterint import (
     KishuForJupyter,
     KishuSession,
 )
+from kishu.jupyter.namespace import Namespace
+from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.planning.plan import UnitExecution
-from kishu.runtime import JupyterRuntimeEnv
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
@@ -545,7 +546,7 @@ class KishuCommand:
         vardepth: int,
     ) -> FESelectedCommit:
         # Restores variables.
-        commit_variables: Dict[str, Any] = {}
+        commit_variables = Namespace({})
         restore_plan = commit_entry.restore_plan
         if restore_plan is not None:
             restore_plan.run(
@@ -555,7 +556,7 @@ class KishuCommand:
             )
         variables = [
             KishuCommand._make_selected_variable(key, value, vardepth=vardepth)
-            for key, value in commit_variables.items()
+            for key, value in commit_variables.to_dict().items()
         ]
 
         # Compile list of executed cells.

@@ -81,19 +81,24 @@ Jupyter runtime mocks
 
 
 # Mock Jupyter server info.
-MOCK_SERVER = {
-    'url': 'http://localhost:8888/',
-    'token': 'token_value',
-    'pid': 12345,
-    'root_dir': '/root/',
-    'notebook_dir': '/notebooks/'
-}
+@pytest.fixture
+def mock_server_header():
+    return {
+        'url': 'http://localhost:8888/',
+        'token': 'token_value',
+        'pid': 12345,
+        'root_dir': '/root/',
+        'notebook_dir': '/notebooks/'
+    }
+
 
 # Mock Jupyter session info.
-MOCK_SESSION = {
-    'notebook': {'path': 'notebook1.ipynb'},
-    'kernel': {'id': 'test_kernel_id'}
-}
+@pytest.fixture
+def mock_session_header():
+    return {
+        'notebook': {'path': 'notebook1.ipynb'},
+        'kernel': {'id': 'test_kernel_id'}
+    }
 
 
 # Ensures Path.glob() returns the notebook path we want to return
@@ -106,16 +111,16 @@ def glob_side_effect(pattern):
 # Mocks relevant external dependancies to produce the effect of reading data from servers and sessions
 # used to test runtime.py
 @pytest.fixture
-def mock_servers():
+def mock_servers(mock_server_header, mock_session_header):
     resp = requests.Response()
     resp.status_code = 200
-    resp._content = json.dumps([MOCK_SESSION])
-    with patch('kishu.runtime.Path.read_bytes', return_value=json.dumps(MOCK_SERVER).encode()), \
-         patch('kishu.runtime.psutil.pid_exists', return_value=True), \
-         patch('kishu.runtime.Path.glob', side_effect=glob_side_effect), \
-         patch("kishu.runtime.jupyter_core.paths.jupyter_runtime_dir", return_value=Path("/")), \
-         patch('kishu.runtime.requests.get', return_value=resp):
-        yield [MOCK_SERVER]
+    resp._content = json.dumps([mock_session_header])
+    with patch('kishu.jupyter.runtime.Path.read_bytes', return_value=json.dumps(mock_server_header).encode()), \
+         patch('kishu.jupyter.runtime.psutil.pid_exists', return_value=True), \
+         patch('kishu.jupyter.runtime.Path.glob', side_effect=glob_side_effect), \
+         patch("kishu.jupyter.runtime.jupyter_core.paths.jupyter_runtime_dir", return_value=Path("/")), \
+         patch('kishu.jupyter.runtime.requests.get', return_value=resp):
+        yield [mock_server_header]
 
 
 def create_temporary_copy(path: str, filename: str, temp_dir: str):

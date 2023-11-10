@@ -6,7 +6,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 
 from kishu.commands import KishuCommand, into_json
-from kishu.runtime import JupyterRuntimeEnv
+from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
 
 
