@@ -5,10 +5,10 @@ import numpy as np
 from collections import defaultdict
 from typing import Dict, Optional, Set
 
+from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG
 from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
 from kishu.planning.idgraph import GraphNode, compare_idgraph, get_object_state
-from kishu.planning.namespace import Namespace
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import RestorePlan
 from kishu.planning.profiler import profile_variable_size
@@ -37,7 +37,7 @@ class CheckpointRestorePlanner:
             Preprocessing steps performed prior to cell execution.
         """
         # Record variables in the user name prior to running cell.
-        self._pre_run_cell_vars = self._user_ns.keys()
+        self._pre_run_cell_vars = self._user_ns.keyset()
 
         # Populate missing ID graph entries.
         for var in self._ahg.get_variable_snapshots().keys():
@@ -60,7 +60,7 @@ class CheckpointRestorePlanner:
 
         # Find created and deleted variables.
         created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
-                                                                   self._user_ns.keys())
+                                                                   self._user_ns.keyset())
 
         # Find modified variables.
         modified_vars = set()

@@ -1,4 +1,4 @@
-from kishu.planning.namespace import Namespace
+from kishu.jupyter.namespace import Namespace
 from kishu.planning.planner import CheckpointRestorePlanner
 
 

@@ -25,7 +25,8 @@ from nbformat import read
 from nbformat.v4 import new_code_cell
 from typing import Dict, List, Tuple
 
-from kishu.jupyterint import IPYTHON_VARS, KISHU_VARS
+from kishu.jupyter.namespace import Namespace
+from kishu.jupyterint import KISHU_VARS
 
 NB_DIR: str = os.path.join("tests", "notebooks")
 
@@ -41,7 +42,7 @@ def get_dump_namespace_str(pickle_file_name: str) -> str:
         [
             "import dill",
             "dill.dump({k: v for k, v in locals().items() if not k.startswith('_')",
-            f"and k not in {repr(IPYTHON_VARS.union(KISHU_VARS))}""},",
+            f"and k not in {repr(Namespace.IPYTHON_VARS.union(KISHU_VARS))}""},",
             f"open({repr(pickle_file_name)}, 'wb'))",
         ]
     )

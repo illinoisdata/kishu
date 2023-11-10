@@ -8,8 +8,11 @@ class Namespace:
         Wrapper class around the kernel namespace.
     """
     IPYTHON_VARS = set(['In', 'Out', 'get_ipython', 'exit', 'quit', 'open'])
-    KISHU_INSTRUMENT = '_kishu'
-    KISHU_VARS = set(['kishu', 'load_kishu', 'init_kishu', KISHU_INSTRUMENT])
+    KISHU_VARS = set()
+
+    @staticmethod
+    def register_kishu_vars(kishu_vars: Set[str]) -> None:
+        Namespace.KISHU_VARS.update(kishu_vars)
 
     def __init__(self, user_ns: Dict[str, Any] = {}):
         self._user_ns = user_ns
@@ -26,10 +29,13 @@ class Namespace:
     def __setitem__(self, key, value) -> Any:
         self._user_ns[key] = value
 
-    def keys(self) -> Set[str]:
+    def __eq__(self, other) -> bool:
+        return self._user_ns == other._user_ns
+
+    def keyset(self) -> Set[str]:
         return set(varname for varname, _ in filter(Namespace.no_ipython_var, self._user_ns.items()))
 
-    def items(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         return {k: v for k, v in filter(Namespace.no_ipython_var, self._user_ns.items())}
 
     def update(self, other: Namespace):

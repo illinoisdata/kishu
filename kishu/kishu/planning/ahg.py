@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 
 from kishu.exceptions import MissingHistoryError
-from kishu.planning.namespace import Namespace
+from kishu.jupyter.namespace import Namespace
 
 
 @dataclass
@@ -76,16 +76,16 @@ class AHG:
 
         # Throw error if there are existing variables but the cell executions are missing.
         existing_cell_executions = user_ns.ipython_in()
-        if not existing_cell_executions and user_ns.keys():
+        if not existing_cell_executions and user_ns.keyset():
             raise MissingHistoryError()
 
         # First cell execution has no input variables and outputs all existing variables.
         if existing_cell_executions:
-            ahg.update_graph(existing_cell_executions[0], 1.0, time.time(), set(), user_ns.keys(), set())
+            ahg.update_graph(existing_cell_executions[0], 1.0, time.time(), set(), user_ns.keyset(), set())
 
             # Subsequent cell executions has all existing variables as input and output variables.
             for i in range(1, len(existing_cell_executions)):
-                ahg.update_graph(existing_cell_executions[i], 1.0, time.time(), user_ns.keys(), user_ns.keys(), set())
+                ahg.update_graph(existing_cell_executions[i], 1.0, time.time(), user_ns.keyset(), user_ns.keyset(), set())
 
         return ahg
 

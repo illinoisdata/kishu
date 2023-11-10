@@ -7,8 +7,8 @@ from typing import List
 from tests.helpers.nbexec import KISHU_INIT_STR
 
 from kishu.commands import CommitSummary, FECommit, FESelectedCommit, KishuCommand, KishuSession
+from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import CommitEntryKind, CommitEntry
-from kishu.runtime import JupyterRuntimeEnv
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
 

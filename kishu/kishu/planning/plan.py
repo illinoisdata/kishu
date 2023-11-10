@@ -8,7 +8,7 @@ import shortuuid
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from kishu.planning.namespace import Namespace
+from kishu.jupyter.namespace import Namespace
 from kishu.storage.checkpoint_io import (
     get_checkpoint,
     get_log,
@@ -210,7 +210,8 @@ class StoreEverythingCheckpointPlan(CheckpointPlan):
         return plan
 
     @classmethod
-    def set_up_actions(cls, user_ns, checkpoint_file, exec_id, var_names) -> List[CheckpointAction]:
+    def set_up_actions(cls, user_ns: Namespace, checkpoint_file: str,
+                       exec_id: str, var_names: Optional[List[str]]) -> List[CheckpointAction]:
         if user_ns is None or checkpoint_file is None:
             raise ValueError("Fields are not properly initialized.")
         actions: List[CheckpointAction] = []
@@ -227,8 +228,8 @@ class StoreEverythingCheckpointPlan(CheckpointPlan):
         if user_ns is None:
             return []
         if var_names is None:
-            return list(user_ns.keys())
-        key_set = set(user_ns.keys())
+            return list(user_ns.keyset())
+        key_set = set(user_ns.keyset())
         for name in var_names:
             if name not in key_set:
                 raise ValueError("Checkpointing a non-existenting var: {}".format(name))
