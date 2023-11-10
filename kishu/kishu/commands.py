@@ -546,7 +546,7 @@ class KishuCommand:
         vardepth: int,
     ) -> FESelectedCommit:
         # Restores variables.
-        commit_variables: Namespace = Namespace({})
+        commit_variables = Namespace({})
         restore_plan = commit_entry.restore_plan
         if restore_plan is not None:
             restore_plan.run(

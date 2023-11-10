@@ -390,7 +390,7 @@ class KishuForJupyter:
 
         # Restore user-namespace variables.
         user_ns = Namespace(self._ip.user_ns)   # will restore to global namespace
-        target_ns: Namespace = Namespace({})         # temp location
+        target_ns = Namespace({})         # temp location
         commit_entry.restore_plan.run(target_ns, checkpoint_file, commit_id)
         self._checkout_namespace(user_ns, target_ns)
 
