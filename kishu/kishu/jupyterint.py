@@ -52,7 +52,6 @@ import time
 import uuid
 
 from dataclasses import dataclass
-from datetime import datetime
 from IPython.core.interactiveshell import InteractiveShell
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path
@@ -721,7 +720,7 @@ def repr_if_not_none(obj: Any) -> Optional[str]:
 
 
 KISHU_INSTRUMENT = '_kishu'
-KISHU_VARS = set(['kishu', 'load_kishu', 'init_kishu', KISHU_INSTRUMENT])
+KISHU_VARS = set(['kishu', 'init_kishu', KISHU_INSTRUMENT])
 Namespace.register_kishu_vars(KISHU_VARS)
 
 
@@ -729,19 +728,36 @@ def get_epoch_time_ms() -> int:
     return round(time.time() * 1000)
 
 
-def load_kishu(notebook_id: Optional[NotebookId] = None, session_id: Optional[int] = None) -> None:
+def _install_kishu_hooks(notebook_id: NotebookId, session_id: int) -> None:
     ip = eval('get_ipython()')
 
-    if notebook_id is None:
-        notebook_key = datetime.now().strftime('%Y%m%dT%H%M%S')
-        notebook_id = NotebookId.from_enclosing_with_key(notebook_key)
     kishu = KishuForJupyter(notebook_id, ip)
-    if session_id:
-        kishu.set_session_id(session_id)
+    kishu.set_session_id(session_id)
 
     ip.user_ns[KISHU_INSTRUMENT] = kishu
     ip.events.register('pre_run_cell', kishu.pre_run_cell)
     ip.events.register('post_run_cell', kishu.post_run_cell)
+
+
+def _uninstall_kishu_hooks() -> None:
+    """
+    Removes event handlers added by load_kishu
+    """
+    # access ipython
+    ip = eval('get_ipython()')
+    if ip is None or KISHU_INSTRUMENT not in ip.user_ns:
+        return
+
+    kishu = ip.user_ns[KISHU_INSTRUMENT]
+    try:
+        ip.events.unregister('post_run_cell', kishu.post_run_cell)
+    except ValueError:
+        pass
+    try:
+        ip.events.unregister('pre_run_cell', kishu.pre_run_cell)
+    except ValueError:
+        pass
+    del ip.user_ns[KISHU_INSTRUMENT]
 
 
 def init_kishu(notebook_path: Optional[str] = None) -> None:
@@ -772,40 +788,13 @@ def init_kishu(notebook_path: Optional[str] = None) -> None:
     )
 
     # Attach Kishu instrumentation.
-    load_kishu(notebook_id, nb.metadata.kishu.session_count)
-
-
-def remove_event_handlers() -> None:
-    """
-    Removes event handlers added by load_kishu
-    """
-    # access ipython
-    ip = eval('get_ipython()')
-    if ip is None:
-        return
-
-    if KISHU_INSTRUMENT not in ip.user_ns:
-        return
-
-    # if kishu is in the user_ns of ipython, delete hooks
-    kishu = ip.user_ns[KISHU_INSTRUMENT]
-    try:
-        ip.events.unregister('pre_run_cell', kishu.pre_run_cell)
-    except ValueError:
-        # if here, then kishu.pre_run_cell is not attached to notebook, so do nothing
-        pass
-
-    try:
-        ip.events.unregister('post_run_cell', kishu.post_run_cell)
-    except ValueError:
-        # if here, then kishu.post_run_cell is not attached to notebook, so do nothing
-        pass
-
-    # delete kishu instrument from user_ns
-    del ip.user_ns[KISHU_INSTRUMENT]
+    _install_kishu_hooks(notebook_id, nb.metadata.kishu.session_count)
 
 
 def detach_kishu(notebook_path: Optional[str] = None) -> None:
+    # Remove all hooks
+    _uninstall_kishu_hooks()
+
     # Create notebook id object
     if notebook_path is None:
         notebook_id = NotebookId.from_enclosing_with_key("")
@@ -822,6 +811,3 @@ def detach_kishu(notebook_path: Optional[str] = None) -> None:
     except MissingNotebookMetadataError:
         # This means that kishu metadata is not in the notebook, so do nothing
         pass
-
-    # Remove all hooks
-    remove_event_handlers()
