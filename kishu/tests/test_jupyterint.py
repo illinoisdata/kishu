@@ -1,37 +1,13 @@
 import dill
-import json
 import nbformat
 import pytest
 
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
-from kishu.jupyterint import CommitEntry, KishuForJupyter
-from kishu.planning.plan import ExecutionHistory
-from kishu.storage.checkpoint_io import init_checkpoint_database
+from kishu.jupyterint import KishuForJupyter
 
 from tests.helpers.nbexec import NotebookRunner
-
-
-def test_history_to_sqlite(tmp_path: Path):
-    # create a temp file for database
-    filename = str(tmp_path / "dbfile.sqlite")
-    init_checkpoint_database(filename)
-
-    # construct an example
-    commit_entry = CommitEntry()
-    commit_entry.exec_id = '0:1'
-    commit_entry.code_block = 'code'
-    commit_entry.runtime_s = 2
-    commit_entry.accessed_resources = ['a']
-    commit_entry.modified_resources = ['b']
-    commit_entry.save_into_db(filename)
-
-    log_dict = ExecutionHistory(filename).get_history()
-    assert commit_entry.exec_id in log_dict
-
-    retrieved_item = log_dict[commit_entry.exec_id]
-    assert retrieved_item == commit_entry
 
 
 class TestOnMockEnclosing:
@@ -88,79 +64,6 @@ class TestOnNotebookRunner:
         with open(set_notebook_path_env, "r") as temp_file:
             nb = nbformat.read(temp_file, 4)
             assert nb.metadata.kishu.session_count == 2
-
-    @pytest.mark.parametrize("set_notebook_path_env", ["test_jupyter_load_module.ipynb"], indirect=True)
-    def test_record_history(self, tmp_kishu_path_os: Path, set_notebook_path_env):
-        notebook = NotebookRunner(set_notebook_path_env)
-        exprs = {"history": "repr(_kishu.log())"}
-        output = notebook.execute([], [], exprs)
-
-        # The first two cells are something we use for testing. Additional cells appear in the history
-        # because of the way NotebookRunner runs.
-
-        def set_field_to(dict_obj: dict, field: str, value: Any):
-            if field not in dict_obj:
-                return
-            dict_obj[field] = value
-
-        def replace_start_time(commit_entry):
-            set_field_to(commit_entry, 'checkpoint_runtime_s', 0)
-            set_field_to(commit_entry, 'timestamp', 0)
-            set_field_to(commit_entry, 'end_time', 0)
-            set_field_to(commit_entry, 'runtime_s', 0)
-            set_field_to(commit_entry, 'start_time', 0)
-            set_field_to(commit_entry, 'message', "")
-            set_field_to(commit_entry, 'ahg_string', "")
-            set_field_to(commit_entry, 'formatted_cells', [])
-            set_field_to(commit_entry, 'raw_nb', "")
-            set_field_to(commit_entry, 'code_version', 0)
-            set_field_to(commit_entry, 'var_version', 0)
-            return commit_entry
-
-        # TODO: This test is hacky; we ought to reach for list of commits through public methods.
-        history_dict = json.loads(output['history'])
-        assert replace_start_time(history_dict['1:1']) == {
-                "checkpoint_runtime_s": 0,
-                "code_block": "from kishu import init_kishu\ninit_kishu()\n_kishu.set_test_mode()",
-                "end_time": 0,
-                "exec_id": "1:1",
-                "execution_count": 1,
-                'executed_cells': [
-                    '',
-                    'from kishu import init_kishu\ninit_kishu()\n_kishu.set_test_mode()',
-                ],
-                "kind": "jupyter",
-                "formatted_cells": [],
-                "raw_nb": "",
-                "message": "",
-                "ahg_string": "",
-                "code_version": 0,
-                "var_version": 0,
-                "timestamp": 0,
-            }
-        assert replace_start_time(history_dict['1:2']) == {
-                "checkpoint_runtime_s": 0,
-                "checkpoint_vars": ["a"],
-                "code_block": "a = 1",
-                "end_time": 0,
-                "exec_id": "1:2",
-                'executed_cells': [
-                    '',
-                    'from kishu import init_kishu\ninit_kishu()\n_kishu.set_test_mode()',
-                    'a = 1',
-                ],
-                "execution_count": 2,
-                "runtime_s": 0,
-                "start_time": 0,
-                "kind": "jupyter",
-                "message": "",
-                "ahg_string": "",
-                "formatted_cells": [],
-                "raw_nb": "",
-                "code_version": 0,
-                "var_version": 0,
-                "timestamp": 0,
-            }
 
     @pytest.mark.parametrize(
         ("set_notebook_path_env", "cell_num_to_restore"),

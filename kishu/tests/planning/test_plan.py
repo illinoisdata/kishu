@@ -1,16 +1,15 @@
 import pytest
 
-from tempfile import NamedTemporaryFile
+from pathlib import Path
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.plan import LoadVariableRestoreAction, StoreEverythingCheckpointPlan
-from kishu.storage.checkpoint_io import init_checkpoint_database
+from kishu.storage.checkpoint import KishuCheckpoint
 
 
-def test_checkout_wrong_id_error():
-    checkpoint_file = NamedTemporaryFile()
-    filename = checkpoint_file.name
-    init_checkpoint_database(filename)
+def test_checkout_wrong_id_error(tmp_path: Path):
+    filename = str(tmp_path / "ckpt.sqlite")
+    KishuCheckpoint(filename).init_database()
 
     exec_id = 'abc'
     restore_ns = {}
@@ -20,14 +19,13 @@ def test_checkout_wrong_id_error():
         restore.run(restore_ns, filename, exec_id)
 
 
-def test_save_everything_checkpoint_plan():
+def test_save_everything_checkpoint_plan(tmp_path: Path):
     user_ns = Namespace({
         'a': 1,
         'b': 2
     })
-    checkpoint_file = NamedTemporaryFile()
-    filename = checkpoint_file.name
-    init_checkpoint_database(filename)
+    filename = str(tmp_path / "ckpt.sqlite")
+    KishuCheckpoint(filename).init_database()
 
     # save
     exec_id = 1
@@ -42,14 +40,13 @@ def test_save_everything_checkpoint_plan():
     assert restore_ns == user_ns
 
 
-def test_store_everything_generated_restore_plan():
+def test_store_everything_generated_restore_plan(tmp_path: Path):
     user_ns = Namespace({
         'a': 1,
         'b': 2
     })
-    checkpoint_file = NamedTemporaryFile()
-    filename = checkpoint_file.name
-    init_checkpoint_database(filename)
+    filename = str(tmp_path / "ckpt.sqlite")
+    KishuCheckpoint(filename).init_database()
 
     # save
     exec_id = 1

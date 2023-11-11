@@ -84,11 +84,26 @@ class NoExecutedCellsError(Exception):
         super().__init__(message)
 
 
+class PostWithoutPreError(Exception):
+    def __init__(self):
+        super().__init__("Called post_run_cell without calling pre_run_cell")
+
+
 """
 Raised by planner
 """
 
 
-class MissingHistoryError(JupyterConnectionError):
+class MissingHistoryError(Exception):
     def __init__(self):
         super().__init__("Missing cell execution history.")
+
+
+"""
+Raised by commit
+"""
+
+
+class MissingCommitEntryError(Exception):
+    def __init__(self, commit_id):
+        super().__init__(f"Missing commit entry for commit ID: {commit_id}.")

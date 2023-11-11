@@ -15,7 +15,7 @@ Then, all the cell executions are recorded, and the result of each cell executio
 load_kishu() adds a new variable `_kishu` (of type KishuJupyterExecHistory) to Jupyter's namespace.
 The special variable can be used for kishu-related operations, as follows:
 1. browse the history: _kishu.log()
-2. see the database file: _kishu.checkpoint_file()
+2. see the database file: _kishu.database_path()
 3. restore a state: _kishu.checkout(commit_id)
 
 *Note:* currently, "restore" is limited to restoring a variable state, not including code state.
@@ -41,7 +41,6 @@ Reference
 from __future__ import annotations
 
 import dill as pickle
-import enum
 import IPython
 import ipylab
 import json
@@ -55,7 +54,7 @@ from dataclasses import dataclass
 from IPython.core.interactiveshell import InteractiveShell
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 from kishu.exceptions import (
     JupyterConnectionError,
@@ -63,17 +62,20 @@ from kishu.exceptions import (
     MissingConnectionInfoError,
     MissingNotebookMetadataError,
     NoChannelError,
+    PostWithoutPreError,
     StartChannelError,
 )
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
-from kishu.planning.plan import ExecutionHistory, RestorePlan, StoreEverythingCheckpointPlan, UnitExecution
+from kishu.planning.plan import RestorePlan, StoreEverythingCheckpointPlan
 from kishu.planning.planner import CheckpointRestorePlanner
 from kishu.storage.branch import KishuBranch
-from kishu.storage.checkpoint_io import init_checkpoint_database
+from kishu.storage.checkpoint import KishuCheckpoint
+from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import KishuCommitGraph
 from kishu.storage.path import KishuPath
+from kishu.storage.tag import KishuTag
 
 
 """
@@ -126,62 +128,6 @@ class KishuSession:
     kernel_id: Optional[str]
     notebook_path: Optional[str]
     is_alive: bool
-
-
-class CommitEntryKind(str, enum.Enum):
-    unspecified = "unspecified"
-    jupyter = "jupyter"
-    manual = "manual"
-
-
-@dataclass
-class FormattedCell:
-    cell_type: str
-    source: str
-    output: Optional[str]
-    execution_count: Optional[int]
-
-
-@dataclass
-class CommitEntry(UnitExecution):
-    """
-    Records the information related to Jupyter's cell execution.
-
-    @param execution_count  The ipython-tracked execution count, which is used for displaying
-                            the cell number on Jruntimeupyter.
-    @param result  A printable form of the returned result (obtained by __repr__).
-    @param start_time  The epoch time.
-            start_time=None means that the start time is unknown, which is the case when
-            the callback is first registered.
-    @param end_time  The epoch time the cell execution completed.
-    @param runtime_s  The difference betweeen start_time and end_time.
-    @param checkpoint_runtime_s  The overhead of checkpoint operation (after the execution of
-            the cell).
-    @param checkpoint_vars  The variable names that are checkpointed after the cell execution.
-    @param restore_plan  The checkpoint algorithm also sets this restoration plan, which
-            when executed, restores all the variables as they are.
-    """
-    kind: CommitEntryKind = CommitEntryKind.unspecified
-
-    checkpoint_runtime_s: Optional[float] = None
-    checkpoint_vars: Optional[List[str]] = None
-    executed_cells: Optional[List[str]] = None
-    raw_nb: Optional[str] = None
-    formatted_cells: Optional[List[FormattedCell]] = None
-    restore_plan: Optional[RestorePlan] = None
-    message: str = ""
-    timestamp: float = 0.0
-    ahg_string: Optional[str] = None
-    code_version: int = 0
-    var_version: int = 0
-
-    # Only available in jupyter commit entries
-    execution_count: Optional[int] = None
-    error_before_exec: Optional[str] = None
-    error_in_exec: Optional[str] = None
-    result: Optional[str] = None
-    start_time: Optional[float] = None
-    end_time: Optional[float] = None
 
 
 @dataclass
@@ -288,17 +234,12 @@ class KishuForJupyter:
     SAVE_CMD = "try { IPython.notebook.save_checkpoint(); } catch { }"
 
     def __init__(self, notebook_id: NotebookId, ip: Optional[InteractiveShell] = None) -> None:
-        """
-        @param _history  The connector to log data.
-        @param _running_cell  A temporary data created during a cell execution.
-        @param _checkpoint_file  The file for storing all the data.
-        """
         self._notebook_id = notebook_id
         self._commit_id_mode = "uuid4"  # TODO: Load from environment/configuration
         self._enable_auto_branch = True
         self._enable_auto_commit_when_skip_notebook = True
-        init_checkpoint_database(self.checkpoint_file())
-        self._history: ExecutionHistory = ExecutionHistory(self.checkpoint_file())
+        self._kishu_commit = KishuCommit(self.database_path())
+        self._kishu_checkpoint = KishuCheckpoint(self.database_path())
         self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
             KishuPath.commit_graph_directory(self._notebook_id.key())
         )
@@ -308,6 +249,11 @@ class KishuForJupyter:
             self._notebook_id.record_connection()
         except Exception as e:
             print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
+
+        self._kishu_commit.init_database()
+        self._kishu_checkpoint.init_database()
+        KishuBranch.init_database(self._notebook_id.key())
+        KishuTag.init_database(self._notebook_id.key())
 
         self._platform = enclosing_platform()
         self._session_id = 0
@@ -343,11 +289,8 @@ class KishuForJupyter:
             f"commit_id_mode: {self._commit_id_mode})"
         )
 
-    def log(self) -> ExecutionHistory:
-        return self._history
-
-    def checkpoint_file(self) -> str:
-        return KishuPath.checkpoint_path(self._notebook_id.key())
+    def database_path(self) -> str:
+        return KishuPath.database_path(self._notebook_id.key())
 
     def checkout(self, branch_or_commit_id: str, skip_notebook: bool = False) -> BareReprStr:
         """
@@ -370,10 +313,9 @@ class KishuForJupyter:
             is_detach = False
 
         # Retrieve checkout plan.
-        checkpoint_file = self.checkpoint_file()
+        database_path = self.database_path()
         commit_id = KishuForJupyter.disambiguate_commit(self._notebook_id.key(), commit_id)
-        unit_exec_cell = UnitExecution.get_from_db(checkpoint_file, commit_id)
-        commit_entry = cast(CommitEntry, unit_exec_cell)
+        commit_entry = self._kishu_commit.get_log_item(commit_id)
         if commit_entry.restore_plan is None:
             raise ValueError("No restore plan found for commit_id = {}".format(commit_id))
 
@@ -390,7 +332,7 @@ class KishuForJupyter:
         # Restore user-namespace variables.
         user_ns = Namespace(self._ip.user_ns)   # will restore to global namespace
         target_ns = Namespace({})         # temp location
-        commit_entry.restore_plan.run(target_ns, checkpoint_file, commit_id)
+        commit_entry.restore_plan.run(target_ns, database_path, commit_id)
         self._checkout_namespace(user_ns, target_ns)
 
         # Update C/R planner with AHG from checkpoint file and new namespace.
@@ -451,15 +393,15 @@ class KishuForJupyter:
         # Jupyter-specific info for commit entry.
         entry.start_time = self._start_time
         entry.end_time = time.time()
-        if entry.start_time is not None:
-            entry.runtime_s = entry.end_time - entry.start_time
-        entry.code_block = result.info.raw_cell
+        if entry.start_time is None:
+            raise PostWithoutPreError()
+        entry.raw_cell = result.info.raw_cell
         entry.error_before_exec = repr_if_not_none(result.error_before_exec)
         entry.error_in_exec = repr_if_not_none(result.error_in_exec)
         entry.result = repr_if_not_none(result.result)
 
         # Update optimization items.
-        self._cr_planner.post_run_cell_update(entry.code_block, entry.runtime_s)
+        self._cr_planner.post_run_cell_update(entry.raw_cell, entry.end_time - entry.start_time)
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count
@@ -524,8 +466,9 @@ class KishuForJupyter:
 
     @staticmethod
     def disambiguate_commit(notebook_key: str, commit_id: str) -> str:
-        checkpoint_file = KishuPath.checkpoint_path(notebook_key)
-        possible_commit_ids = UnitExecution.keys_from_db_like(checkpoint_file, commit_id)
+        database_path = KishuPath.database_path(notebook_key)
+        kishu_commit = KishuCommit(database_path)
+        possible_commit_ids = kishu_commit.keys_like(commit_id)
         if len(possible_commit_ids) == 0:
             raise ValueError(f"No commit with ID {repr(commit_id)}")
         if commit_id in possible_commit_ids:
@@ -539,11 +482,11 @@ class KishuForJupyter:
         entry.execution_count = self._last_execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
         self._commit_entry(entry)
-        return BareReprStr(entry.exec_id)
+        return BareReprStr(entry.commit_id)
 
     def _commit_entry(self, entry: CommitEntry) -> None:
         # Generate commit ID.
-        entry.exec_id = self._commit_id()
+        entry.commit_id = self._commit_id()
         entry.timestamp = time.time()
 
         # Force saving to observe all cells and extract notebook informations.
@@ -565,9 +508,9 @@ class KishuForJupyter:
         entry.checkpoint_runtime_s = checkpoint_runtime_s
 
         # Update other structures.
-        self._history.append(entry)
-        self._graph.step(entry.exec_id)
-        self._step_branch(entry.exec_id)
+        self._kishu_commit.store_log_item(entry)
+        self._graph.step(entry.commit_id)
+        self._step_branch(entry.commit_id)
 
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":
@@ -581,13 +524,13 @@ class KishuForJupyter:
         TODO: Perform more intelligent checkpointing.
         """
         # Step 1: checkpoint
-        checkpoint_file = self.checkpoint_file()
-        exec_id = cell_info.exec_id
+        database_path = self.database_path()
+        commit_id = cell_info.commit_id
         cell_info.checkpoint_vars = list(self._user_ns.keyset())
         checkpoint = StoreEverythingCheckpointPlan.create(
             self._user_ns,
-            checkpoint_file,
-            exec_id,
+            database_path,
+            commit_id,
             cell_info.checkpoint_vars,
         )
         checkpoint.run(self._user_ns)

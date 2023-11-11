@@ -36,7 +36,7 @@ class TestKishuCommand:
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
-            code_block="x = 1",
+            raw_cell="x = 1",
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -46,7 +46,7 @@ class TestKishuCommand:
             parent_id="0:1",
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
-            code_block="y = 2",
+            raw_cell="y = 2",
             runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -56,7 +56,7 @@ class TestKishuCommand:
             parent_id="0:2",
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
-            code_block="y = x + 1",
+            raw_cell="y = x + 1",
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
             branches=["auto_0:1"],
             tags=[],
@@ -69,7 +69,7 @@ class TestKishuCommand:
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
-            code_block="x = 1",
+            raw_cell="x = 1",
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -83,7 +83,7 @@ class TestKishuCommand:
             parent_id="",
             message=log_all_result.commit_graph[0].message,  # Not tested
             timestamp=log_all_result.commit_graph[0].timestamp,  # Not tested
-            code_block="x = 1",
+            raw_cell="x = 1",
             runtime_s=log_all_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -93,7 +93,7 @@ class TestKishuCommand:
             parent_id="0:1",
             message=log_all_result.commit_graph[1].message,  # Not tested
             timestamp=log_all_result.commit_graph[1].timestamp,  # Not tested
-            code_block="y = 2",
+            raw_cell="y = 2",
             runtime_s=log_all_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -103,7 +103,7 @@ class TestKishuCommand:
             parent_id="0:2",
             message=log_all_result.commit_graph[2].message,  # Not tested
             timestamp=log_all_result.commit_graph[2].timestamp,  # Not tested
-            code_block="y = x + 1",
+            raw_cell="y = x + 1",
             runtime_s=log_all_result.commit_graph[2].runtime_s,  # Not tested
             branches=["auto_0:1"],
             tags=[],
@@ -117,9 +117,9 @@ class TestKishuCommand:
         )
         assert status_result.commit_entry == CommitEntry(
             kind=CommitEntryKind.jupyter,
-            exec_id="0:3",
+            commit_id="0:3",
             execution_count=3,
-            code_block="y = x + 1",
+            raw_cell="y = x + 1",
             checkpoint_vars=[],
             message=status_result.commit_entry.message,  # Not tested,
             timestamp=status_result.commit_entry.timestamp,  # Not tested
@@ -129,7 +129,6 @@ class TestKishuCommand:
             start_time=status_result.commit_entry.start_time,  # Not tested
             end_time=status_result.commit_entry.end_time,  # Not tested
             checkpoint_runtime_s=status_result.commit_entry.checkpoint_runtime_s,  # Not tested
-            runtime_s=status_result.commit_entry.runtime_s,  # Not tested
             raw_nb=status_result.commit_entry.raw_nb,  # Not tested
             formatted_cells=status_result.commit_entry.formatted_cells,  # Not tested
             restore_plan=status_result.commit_entry.restore_plan,  # Not tested
@@ -152,7 +151,7 @@ class TestKishuCommand:
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
-            code_block="x = 1",
+            raw_cell="x = 1",
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -162,7 +161,7 @@ class TestKishuCommand:
             parent_id="0:1",
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
-            code_block="y = 2",
+            raw_cell="y = 2",
             runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=["historical"],
             tags=[],
@@ -172,7 +171,7 @@ class TestKishuCommand:
             parent_id="0:2",
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
-            code_block="y = x + 1",
+            raw_cell="y = x + 1",
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
             branches=["auto_0:1", "at_head"],
             tags=[],
@@ -229,7 +228,7 @@ class TestKishuCommand:
 
     def test_auto_detach_commit_branch(self, kishu_jupyter):
         KishuBranch.update_head(kishu_jupyter._notebook_id.key(), branch_name=None, commit_id="0:1", is_detach=True)
-        commit = CommitEntry(kind=CommitEntryKind.manual, execution_count=1, code_block="x = 1")
+        commit = CommitEntry(kind=CommitEntryKind.manual, execution_count=1, raw_cell="x = 1")
         commit_id = kishu_jupyter.commit(commit)
 
         head = KishuBranch.get_head(kishu_jupyter._notebook_id.key())
@@ -260,7 +259,7 @@ class TestKishuCommand:
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
-            code_block="x = 1",
+            raw_cell="x = 1",
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -270,7 +269,7 @@ class TestKishuCommand:
             parent_id="0:1",
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
-            code_block="y = 2",
+            raw_cell="y = 2",
             runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=["historical"],
@@ -280,7 +279,7 @@ class TestKishuCommand:
             parent_id="0:2",
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
-            code_block="y = x + 1",
+            raw_cell="y = x + 1",
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
             branches=["auto_0:1"],
             tags=["at_head"],
@@ -398,7 +397,7 @@ class TestKishuCommand:
 
             # Get commit id of commit which we want to restore
             log_result = KishuCommand.log_all(notebook_key)
-            assert len(log_result.commit_graph) == len(contents) + 2  # all cells + init cell + print variable cell
+            assert len(log_result.commit_graph) == len(contents) + 1  # all cells + init cell + print variable cell
             commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
 
             # Restore to that commit

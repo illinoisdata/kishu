@@ -5,8 +5,10 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Dict, List
 
-from kishu.storage.checkpoint_io import TAG_TABLE
 from kishu.storage.path import KishuPath
+
+
+TAG_TABLE = 'tag'
 
 
 @dataclass
@@ -19,8 +21,16 @@ class TagRow:
 class KishuTag:
 
     @staticmethod
+    def init_database(notebook_id: str):
+        dbfile = KishuPath.database_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+        cur.execute(f'create table if not exists {TAG_TABLE} (tag_name text primary key, commit_id text, message text)')
+        con.commit()
+
+    @staticmethod
     def upsert_tag(notebook_id: str, tag: TagRow) -> None:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
         query = f"insert or replace into {TAG_TABLE} values (?, ?, ?)"
@@ -29,7 +39,7 @@ class KishuTag:
 
     @staticmethod
     def list_tag(notebook_id: str) -> List[TagRow]:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
         query = f"select tag_name, commit_id, message from {TAG_TABLE}"
@@ -47,7 +57,7 @@ class KishuTag:
 
     @staticmethod
     def tags_for_commit(notebook_id: str, commit_id: str) -> List[TagRow]:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
         query = f"select tag_name, commit_id, message from {TAG_TABLE} where commit_id = ?"
@@ -65,7 +75,7 @@ class KishuTag:
 
     @staticmethod
     def tags_for_many_commits(notebook_id: str, commit_ids: List[str]) -> Dict[str, List[TagRow]]:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
         query = "select tag_name, commit_id, message from {} where commit_id in ({})".format(

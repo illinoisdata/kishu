@@ -11,8 +11,10 @@ from kishu.exceptions import (
     BranchNotFoundError,
     BranchConflictError,
 )
-from kishu.storage.checkpoint_io import BRANCH_TABLE
 from kishu.storage.path import KishuPath
+
+
+BRANCH_TABLE = 'branch'
 
 
 @dataclass_json
@@ -29,6 +31,14 @@ class BranchRow:
 
 
 class KishuBranch:
+
+    @staticmethod
+    def init_database(notebook_id: str):
+        dbfile = KishuPath.database_path(notebook_id)
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+        cur.execute(f'create table if not exists {BRANCH_TABLE} (branch_name text primary key, commit_id text)')
+        con.commit()
 
     @staticmethod
     def get_head(notebook_id: str) -> HeadBranch:
@@ -68,7 +78,7 @@ class KishuBranch:
 
     @staticmethod
     def upsert_branch(notebook_id: str, branch: str, commit_id: str) -> None:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
         query = f"insert or replace into {BRANCH_TABLE} values (?, ?)"
@@ -77,7 +87,7 @@ class KishuBranch:
 
     @staticmethod
     def list_branch(notebook_id: str) -> List[BranchRow]:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
         query = f"select branch_name, commit_id from {BRANCH_TABLE}"
@@ -95,7 +105,7 @@ class KishuBranch:
 
     @staticmethod
     def get_branch(notebook_id: str, branch_name: str) -> List[BranchRow]:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
         query = f"select branch_name, commit_id from {BRANCH_TABLE} where branch_name = ?"
@@ -113,7 +123,7 @@ class KishuBranch:
 
     @staticmethod
     def branches_for_commit(notebook_id: str, commit_id: str) -> List[BranchRow]:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
         query = f"select branch_name, commit_id from {BRANCH_TABLE} where commit_id = ?"
@@ -134,7 +144,7 @@ class KishuBranch:
         notebook_id: str,
         commit_ids: List[str],
     ) -> Dict[str, List[BranchRow]]:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
         query = "select branch_name, commit_id from {} where commit_id in ({})".format(
@@ -160,7 +170,7 @@ class KishuBranch:
 
     @staticmethod
     def delete_branch(notebook_id: str, branch_name: str) -> None:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
 
@@ -176,7 +186,7 @@ class KishuBranch:
 
     @staticmethod
     def rename_branch(notebook_id: str, old_name: str, new_name: str) -> None:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
+        dbfile = KishuPath.database_path(notebook_id)
         con = sqlite3.connect(dbfile)
         cur = con.cursor()
 
