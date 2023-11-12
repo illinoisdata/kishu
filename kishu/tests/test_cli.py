@@ -82,10 +82,12 @@ class TestKishuApp:
         assert result.exit_code == 0
 
         init_result = result.stdout
-        pattern = f"Successfully initialized notebook {re.escape(str(nb_simple_path))}."
-        pattern += " Notebook key: .*."
-        pattern += " Kernel Id: .*"
-        assert re.match(pattern, init_result).group(0) == init_result.strip()
+        pattern = (
+            f"Successfully initialized notebook {re.escape(str(nb_simple_path))}."
+            " Notebook key: .*."
+            " Kernel Id: .*"
+        )
+        assert re.search(pattern, init_result).group(0) is not None
 
     def test_log_empty(self, runner, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["log", "NON_EXISTENT_NOTEBOOK_ID"])

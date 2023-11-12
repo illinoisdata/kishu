@@ -20,43 +20,43 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-def print_clean_errors(f):
-    @wraps(f)
-    def main_fn(*args, **kwargs):
+def print_clean_errors(fn):
+    @wraps(fn)
+    def fn_with_clean_errors(*args, **kwargs):
         if os.environ.get("KISHU_VERBOSE") == "true":
-            return f(*args, **kwargs)
+            return fn(*args, **kwargs)
         try:
-            return f(*args, **kwargs)
-        except TypeError:
-            print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
-        except Exception:
-            print("Error performing Kishu operation")
-    return main_fn
+            return fn(*args, **kwargs)
+        except Exception as e:
+            print(f"Kishu internal error ({type(e).__name__}).")
+    return fn_with_clean_errors
 
 
 def print_init_message(response: InitResult) -> None:
     nb_id = response.notebook_id
     if response.status != "ok":
-        error, message = response.message.split(": ")
+        error = response.message.split(": ")[0]
         if error == "FileNotFoundError":
             print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
         else:
-            print(message)
+            print(response.message)
     else:
         assert nb_id is not None
-        output_str = f"Successfully initialized notebook {nb_id.path()}."
-        output_str += f" Notebook key: {nb_id.key()}."
-        output_str += f" Kernel Id: {nb_id.kernel_id()}"
+        output_str = (
+            f"Successfully initialized notebook {nb_id.path()}."
+            f" Notebook key: {nb_id.key()}."
+            f" Kernel Id: {nb_id.kernel_id()}"
+        )
         print(output_str)
 
 
 def print_detach_message(response: DetachResult, notebook_path: str) -> None:
     if response.status != "ok":
-        error, message = response.message.split(": ")
+        error = response.message.split(": ")[0]
         if error == "FileNotFoundError":
             print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
         else:
-            print(message)
+            print(response.message)
     else:
         print(f"Successfully detached notebook {notebook_path}")
 

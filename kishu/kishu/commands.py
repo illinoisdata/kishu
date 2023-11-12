@@ -68,7 +68,7 @@ class ListResult:
 class InitResult:
     status: str
     message: str
-    notebook_id: Optional[NotebookId]
+    notebook_id: Optional[NotebookId]  # Field must be filled if status is OK
 
     @staticmethod
     def wrap(result: JupyterCommandResult, nb_id: Optional[NotebookId]) -> InitResult:
@@ -252,7 +252,7 @@ class KishuCommand:
             )
         return DetachResult.wrap(JupyterConnection(kernel_id).execute_one_command(
             pre_command=f"from kishu import detach_kishu; detach_kishu(\"{notebook_path.resolve()}\")",
-            command="print(\"\", end=\"\")",
+            command=f"\"Successfully detatched notebook at {notebook_path.resolve()}\"",
         ))
 
     @staticmethod
