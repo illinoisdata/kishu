@@ -3,12 +3,12 @@ from __future__ import annotations
 import numpy as np
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Set
+from typing import Dict, Optional, Set
 
+from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG
 from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
 from kishu.planning.idgraph import GraphNode, compare_idgraph, get_object_state
-from kishu.planning.namespace import Namespace
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import RestorePlan
 from kishu.planning.profiler import profile_variable_size
@@ -29,28 +29,26 @@ class CheckpointRestorePlanner:
         self._pre_run_cell_vars: Set[str] = set()
 
     @staticmethod
-    def from_existing(user_ns: Namespace, executed_cells: Optional[List[str]]) -> CheckpointRestorePlanner:
-        return CheckpointRestorePlanner(user_ns, AHG.from_existing(user_ns, executed_cells))
+    def from_existing(user_ns: Namespace) -> CheckpointRestorePlanner:
+        return CheckpointRestorePlanner(user_ns, AHG.from_existing(user_ns))
 
-    def pre_run_cell_update(self, pre_run_cell_vars: Set[str]) -> None:
+    def pre_run_cell_update(self) -> None:
         """
-            @param pre_run_cell_vars: variables in the namespace prior to cell execution.
+            Preprocessing steps performed prior to cell execution.
         """
         # Record variables in the user name prior to running cell.
-        self._pre_run_cell_vars = pre_run_cell_vars
+        self._pre_run_cell_vars = self._user_ns.keyset()
 
         # Populate missing ID graph entries.
         for var in self._ahg.get_variable_snapshots().keys():
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def post_run_cell_update(self, code_block: Optional[str], post_run_cell_vars: Set[str],
-                             start_time_ms: Optional[float], runtime_ms: Optional[float]) -> None:
+    def post_run_cell_update(self, code_block: Optional[str], runtime_s: Optional[float]) -> None:
         """
+            Post-processing steps performed after cell execution.
             @param code_block: code of executed cell.
-            @param post_run_cell_vars: variables in the namespace post-cell execution.
-            @param start_time_ms: start time of cell execution.
-            @param runtime_ms: runtime of cell execution.
+            @param runtime_s: runtime of cell execution.
         """
         # Find accessed variables.
         accessed_vars = (
@@ -60,7 +58,7 @@ class CheckpointRestorePlanner:
 
         # Find created and deleted variables.
         created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
-                                                                   post_run_cell_vars)
+                                                                   self._user_ns.keyset())
 
         # Find modified variables.
         modified_vars = set()
@@ -71,10 +69,9 @@ class CheckpointRestorePlanner:
                 modified_vars.add(k)
 
         # Update AHG.
-        start_time = 0.0 if start_time_ms is None else float(start_time_ms * 1000)
-        runtime = 0.0 if runtime_ms is None else float(runtime_ms * 1000)
+        runtime_s = 0.0 if runtime_s is None else runtime_s
 
-        self._ahg.update_graph(code_block, runtime, start_time, accessed_vars,
+        self._ahg.update_graph(code_block, runtime_s, accessed_vars,
                                created_vars.union(modified_vars), deleted_vars)
 
         # Update ID graphs for newly created variables.
@@ -134,13 +131,13 @@ class CheckpointRestorePlanner:
         """
         return self._ahg.serialize()
 
-    def replace_state(self, new_ahg_string: str, new_user_ns: Dict[Any, Any]) -> None:
+    def replace_state(self, new_ahg_string: str, new_user_ns: Namespace) -> None:
         """
             Replace the current AHG with new_ahg_bytes and user namespace with new_user_ns.
             Called when a checkout is performed.
         """
         self._ahg = AHG.deserialize(new_ahg_string)
-        self._user_ns = Namespace(new_user_ns)
+        self._user_ns = new_user_ns
 
         # Also clear the old ID graphs and pre-run cell info.
         # TODO: only clear ID graphs of variables which have changed between pre and post-checkout.

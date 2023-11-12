@@ -22,9 +22,10 @@ from kishu.jupyterint import (
     KishuForJupyter,
     KishuSession,
 )
+from kishu.jupyter.namespace import Namespace
+from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
 from kishu.planning.plan import UnitExecution
-from kishu.runtime import JupyterRuntimeEnv
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
@@ -99,7 +100,7 @@ class CommitSummary:
     message: str
     timestamp: str
     code_block: Optional[str]
-    runtime_ms: Optional[int]
+    runtime_s: Optional[float]
     branches: List[str]
     tags: List[str]
 
@@ -425,7 +426,7 @@ class KishuCommand:
             commits.append(FECommit(
                 oid=node.commit_id,
                 parent_oid=node.parent_id,
-                timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
+                timestamp=KishuCommand._to_datetime(commit_entry.timestamp),
                 branches=[],  # To be set in _branch_commit.
                 tags=[],  # To be set in _tag_commit.
                 code_version=commit_entry.code_version,
@@ -532,9 +533,9 @@ class KishuCommand:
                 commit_id=node.commit_id,
                 parent_id=node.parent_id,
                 message=commit_entry.message,
-                timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
+                timestamp=KishuCommand._to_datetime(commit_entry.timestamp),
                 code_block=commit_entry.code_block,
-                runtime_ms=commit_entry.runtime_ms,
+                runtime_s=commit_entry.runtime_s,
                 branches=branch_names,
                 tags=tag_names,
             ))
@@ -551,7 +552,7 @@ class KishuCommand:
         vardepth: int,
     ) -> FESelectedCommit:
         # Restores variables.
-        commit_variables: Dict[str, Any] = {}
+        commit_variables = Namespace({})
         restore_plan = commit_entry.restore_plan
         if restore_plan is not None:
             restore_plan.run(
@@ -561,7 +562,7 @@ class KishuCommand:
             )
         variables = [
             KishuCommand._make_selected_variable(key, value, vardepth=vardepth)
-            for key, value in commit_variables.items()
+            for key, value in commit_variables.to_dict().items()
         ]
 
         # Compile list of executed cells.
@@ -586,7 +587,7 @@ class KishuCommand:
         commit_summary = FECommit(
             oid=commit_id,
             parent_oid=commit_node_info.parent_id,
-            timestamp=KishuCommand._to_datetime(commit_entry.timestamp_ms),
+            timestamp=KishuCommand._to_datetime(commit_entry.timestamp),
             branches=branch_names,
             tags=tag_names,
             code_version=commit_entry.code_version,
@@ -661,11 +662,11 @@ class KishuCommand:
         return commit_id
 
     @staticmethod
-    def _to_datetime(epoch_time_ms: Optional[int]) -> str:
+    def _to_datetime(epoch_time: Optional[float]) -> str:
         return (
-            "" if epoch_time_ms is None
+            "" if epoch_time is None
             else datetime.datetime
-                         .fromtimestamp(epoch_time_ms / 1000)
+                         .fromtimestamp(epoch_time)
                          .strftime("%Y-%m-%d %H:%M:%S.%f")
         )
 

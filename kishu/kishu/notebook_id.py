@@ -12,7 +12,7 @@ from kishu.exceptions import (
     MissingNotebookMetadataError,
     NotNotebookPathOrKey,
 )
-from kishu.runtime import JupyterRuntimeEnv
+from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.storage.path import KishuPath
 
 

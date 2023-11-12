@@ -28,7 +28,7 @@ def test_add_cell_execution():
     vs1 = ahg.create_variable_snapshot("x", False)
     vs2 = ahg.create_variable_snapshot("y", False)
 
-    ahg.add_cell_execution("", 1, 1, [vs1], [vs2])
+    ahg.add_cell_execution("", 1, [vs1], [vs2])
 
     cell_executions = ahg.get_cell_executions()
 
@@ -46,7 +46,7 @@ def test_update_graph():
     _ = ahg.create_variable_snapshot("y", False)
 
     # x is read and modified, z is created, y is deleted
-    ahg.update_graph("", 1, 1, {"x"}, {"x", "z"}, {"y"})
+    ahg.update_graph("", 1, {"x"}, {"x", "z"}, {"y"})
 
     variable_snapshots = ahg.get_variable_snapshots()
     cell_executions = ahg.get_cell_executions()
