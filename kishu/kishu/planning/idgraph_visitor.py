@@ -44,7 +44,8 @@ class GraphNode:
 
 
 class idgraph(Visitor):
-    def check_visited(self, visited: dict, obj_id: int, obj_type: type, include_id: bool, hash_state: None) -> Tuple[bool, Union[GraphNode, int]]:
+    def check_visited(self, visited: dict, obj_id: int, obj_type: type, include_id: bool,
+                      hash_state: None) -> Tuple[bool, Union[GraphNode, int]]:
         if obj_id in visited.keys():
             return True, visited[obj_id]
         else:

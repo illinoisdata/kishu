@@ -8,11 +8,11 @@ def create_idgraph(obj):
     vis1 = idgraph_visitor.idgraph()
     return get_object_state(obj, {}, vis1, None, True)
 
+
 def create_hash(obj):
     vis1 = hash_visitor.hash_vis()
     x = xxhash.xxh32()
     return get_object_state(obj, set(), vis1, x, True)
-
 
 
 def get_object_state(obj, visited, visitor: Visitor, hash_state=None, include_id=True):
@@ -29,7 +29,8 @@ def get_object_state(obj, visited, visitor: Visitor, hash_state=None, include_id
              In case of xxhash, the output is hash object which is recursively updated as it
                 traverses the object. Return value is the xxhash object
     """
-    check, ret = visitor.check_visited(visited, id(obj), type(obj), include_id, hash_state)
+    check, ret = visitor.check_visited(
+        visited, id(obj), type(obj), include_id, hash_state)
     if check:
         return ret
 
