@@ -76,6 +76,12 @@ class TestKishuApp:
         detach_result = detach_result_raw.stdout
         assert detach_result == f"Successfully detached notebook {nb_simple_path}\n"
 
+    def test_init_no_jupyer_server(self, runner, tmp_kishu_path):
+        result = runner.invoke(kishu_app, ["init", "non_existent_notebook.ipynb"])
+        assert result.exit_code == 0
+        detach_result = result.stdout
+        assert detach_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
+
     def test_init_simple(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
         jupyter_server.start_session(nb_simple_path)
         result = runner.invoke(kishu_app, ["init", str(nb_simple_path)])
