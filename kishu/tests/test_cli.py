@@ -1,5 +1,6 @@
 import json
 import pytest
+import re
 
 from pathlib import Path
 from typer.testing import CliRunner
@@ -11,9 +12,7 @@ from kishu.exceptions import (
 )
 from kishu.cli import kishu_app
 from kishu.commands import (
-    DetachResult,
     ListResult,
-    InitResult,
     BranchResult,
     DeleteBranchResult,
     RenameBranchResult,
@@ -58,44 +57,43 @@ class TestKishuApp:
     def test_init_empty(self, runner, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["init", "non_existent_notebook.ipynb"])
         assert result.exit_code == 0
-        init_result = InitResult.from_json(result.stdout)
-        assert init_result == InitResult(
-            status="error",
-            message="FileNotFoundError: Kernel for the notebook not found.",
-        )
+        init_result = result.stdout
+        assert init_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
 
     def test_detach_empty(self, runner, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["detach", "non_existent_notebook.ipynb"])
         assert result.exit_code == 0
-        detach_result = DetachResult.from_json(result.stdout)
-        assert detach_result == DetachResult(
-            status="error",
-            message="FileNotFoundError: Kernel for the notebook not found.",
-        )
+        detach_result = result.stdout
+        assert detach_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
 
-    def test_detach_simple(self, runner, tmp_kishu_path, nb_simple_path):
+    def test_detach_simple(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
+        jupyter_server.start_session(nb_simple_path)
         init_result_raw = runner.invoke(kishu_app, ["init", str(nb_simple_path)])
         assert init_result_raw.exit_code == 0
         detach_result_raw = runner.invoke(kishu_app, ["detach", str(nb_simple_path)])
         assert detach_result_raw.exit_code == 0
 
-        # TODO: This should pass with Jupyter Server
-        detach_result = DetachResult.from_json(detach_result_raw.stdout)
-        assert detach_result == DetachResult(
-            status="error",
-            message="FileNotFoundError: Kernel for the notebook not found.",
-        )
+        detach_result = detach_result_raw.stdout
+        assert detach_result == f"Successfully detached notebook {nb_simple_path}\n"
 
-    def test_init_simple(self, runner, tmp_kishu_path, nb_simple_path):
+    def test_init_no_jupyer_server(self, runner, tmp_kishu_path):
+        result = runner.invoke(kishu_app, ["init", "non_existent_notebook.ipynb"])
+        assert result.exit_code == 0
+        detach_result = result.stdout
+        assert detach_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
+
+    def test_init_simple(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
+        jupyter_server.start_session(nb_simple_path)
         result = runner.invoke(kishu_app, ["init", str(nb_simple_path)])
         assert result.exit_code == 0
 
-        # TODO: This should pass with Jupyter Server
-        init_result = InitResult.from_json(result.stdout)
-        assert init_result == InitResult(
-            status="error",
-            message="FileNotFoundError: Kernel for the notebook not found.",
+        init_result = result.stdout
+        pattern = (
+            f"Successfully initialized notebook {re.escape(str(nb_simple_path))}."
+            " Notebook key: .*."
+            " Kernel Id: .*"
         )
+        assert re.search(pattern, init_result).group(0) is not None
 
     def test_log_empty(self, runner, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["log", "NON_EXISTENT_NOTEBOOK_ID"])
