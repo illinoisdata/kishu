@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from collections import defaultdict
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG
@@ -44,7 +44,8 @@ class CheckpointRestorePlanner:
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def post_run_cell_update(self, code_block: Optional[str], runtime_s: Optional[float]) -> None:
+    def post_run_cell_update(self, code_block: Optional[str], runtime_s: Optional[float]) -> tuple[
+        set[str], set[str], set[str]]:
         """
             Post-processing steps performed after cell execution.
             @param code_block: code of executed cell.
@@ -77,6 +78,9 @@ class CheckpointRestorePlanner:
         # Update ID graphs for newly created variables.
         for var in created_vars:
             self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
+
+        # Return the created, modified and deleted variables
+        return created_vars, modified_vars, deleted_vars
 
     def generate_restore_plan(self) -> RestorePlan:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.

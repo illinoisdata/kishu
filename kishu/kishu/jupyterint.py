@@ -74,7 +74,7 @@ from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint_io import init_checkpoint_database
 from kishu.storage.commit_graph import KishuCommitGraph
 from kishu.storage.path import KishuPath
-
+from kishu.watchdog.var_version import VariableVersionTracker
 
 """
 Functions to find enclosing notebook name, distilled From ipynbname.
@@ -173,7 +173,11 @@ class CommitEntry(UnitExecution):
     timestamp: float = 0.0
     ahg_string: Optional[str] = None
     code_version: int = 0
-    var_version: int = 0
+    data_version: int = 0
+    created_vars: Optional[set[str]] = None
+    modified_vars: Optional[set[str]] = None
+    deleted_vars: Optional[set[str]] = None
+    var_commit_id: Optional[Dict[str, str]] = None # latest changed/created commit_id of each variable
 
     # Only available in jupyter commit entries
     execution_count: Optional[int] = None
@@ -316,6 +320,7 @@ class KishuForJupyter:
         self._test_mode = False
 
         self._cr_planner = CheckpointRestorePlanner.from_existing(self._user_ns)
+        self.var_version_tracker = VariableVersionTracker(self.checkpoint_file(), self._graph.head())
 
     def set_test_mode(self):
         # Configure this object for testing.
@@ -398,6 +403,9 @@ class KishuForJupyter:
             raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
         self._cr_planner.replace_state(commit_entry.ahg_string, user_ns)
 
+        # Update variable version tracker.
+        self.var_version_tracker.restore_variable_version(commit_id)
+
         # Update Kishu heads.
         self._graph.jump(commit_id)
         KishuBranch.update_head(
@@ -458,8 +466,9 @@ class KishuForJupyter:
         entry.error_in_exec = repr_if_not_none(result.error_in_exec)
         entry.result = repr_if_not_none(result.result)
 
-        # Update optimization items.
-        self._cr_planner.post_run_cell_update(entry.code_block, entry.runtime_s)
+        # Update optimization items and get the variable change.
+        entry.created_vars = entry.modified_vars = entry.deleted_vars = None
+        entry.created_vars, entry.modified_vars, entry.deleted_vars = self._cr_planner.post_run_cell_update(entry.code_block, entry.runtime_s)
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count
@@ -559,10 +568,13 @@ class KishuForJupyter:
 
         # Plan for checkpointing and restoration.
         checkpoint_start_time = time.time()
-        entry.restore_plan, entry.var_version = self._checkpoint(entry)
+        entry.restore_plan, entry.data_version = self._checkpoint(entry)
         entry.ahg_string = self._cr_planner.serialize_ahg()
         checkpoint_runtime_s = time.time() - checkpoint_start_time
         entry.checkpoint_runtime_s = checkpoint_runtime_s
+
+        # Update variable version.
+        self.var_version_tracker.update_variable_version(entry.exec_id, entry.created_vars | entry.modified_vars, entry.deleted_vars)
 
         # Update other structures.
         self._history.append(entry)
@@ -596,8 +608,8 @@ class KishuForJupyter:
         restore_plan = self._cr_planner.generate_restore_plan()
 
         # Extra: generate variable version. TODO: we should avoid the extra namespace serialization.
-        var_version = hash(pickle.dumps(self._user_ns.to_dict()))
-        return restore_plan, var_version
+        data_version = hash(pickle.dumps(self._user_ns.to_dict()))
+        return restore_plan, data_version
 
     def _save_notebook(self) -> None:
         # TODO re-enable notebook saving during tests when possible/supported

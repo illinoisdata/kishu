@@ -29,7 +29,7 @@ from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag, TagRow
-
+from kishu.watchdog.var_version import VariableVersion
 
 """
 Printing dataclasses
@@ -203,6 +203,11 @@ class FEInitializeResult:
 class FECodeDiffResult:
     notebook_cells_diff: List[DiffHunk]
     executed_cells_diff: List[DiffHunk]
+
+
+@dataclass
+class FECommitFilterResult:
+    commit_ids: List[str]
 
 
 class KishuCommand:
@@ -424,7 +429,7 @@ class KishuCommand:
                 branches=[],  # To be set in _branch_commit.
                 tags=[],  # To be set in _tag_commit.
                 code_version=commit_entry.code_version,
-                var_version=commit_entry.var_version,
+                var_version=commit_entry.data_version,
             ))
 
         # Retreives and joins branches.
@@ -585,7 +590,7 @@ class KishuCommand:
             branches=branch_names,
             tags=tag_names,
             code_version=commit_entry.code_version,
-            var_version=commit_entry.var_version,
+            var_version=commit_entry.data_version,
         )
         return FESelectedCommit(
             commit=commit_summary,
@@ -721,3 +726,10 @@ class KishuCommand:
             raise NoExecutedCellsError(commit_id)
         cells = KishuCommand._get_cells_as_strings(formatted_cells)
         return cells, executed_cells
+
+    @staticmethod
+    def commit_filter(notebook_id: str, variable_name: str):
+        """
+        Returns a list of commits that have changed the variable.
+        """
+        return FECommitFilterResult(VariableVersion.get_variable_changing_commits(variable_name, KishuPath.checkpoint_path(notebook_id)))
