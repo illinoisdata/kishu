@@ -6,7 +6,7 @@ import json
 from dataclasses import asdict, dataclass, is_dataclass
 from dataclasses_json import dataclass_json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 
 from kishu.exceptions import (
     BranchNotFoundError,
@@ -15,8 +15,6 @@ from kishu.exceptions import (
 from kishu.diff import DiffHunk, KishuDiff
 from kishu.exceptions import NoExecutedCellsError, NoFormattedCellsError
 from kishu.jupyterint import (
-    CommitEntry,
-    FormattedCell,
     JupyterCommandResult,
     JupyterConnection,
     KishuForJupyter,
@@ -25,8 +23,8 @@ from kishu.jupyterint import (
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
-from kishu.planning.plan import UnitExecution
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
+from kishu.storage.commit import CommitEntry, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag, TagRow
@@ -99,7 +97,7 @@ class CommitSummary:
     parent_id: str
     message: str
     timestamp: str
-    code_block: Optional[str]
+    raw_cell: Optional[str]
     runtime_s: Optional[float]
     branches: List[str]
     tags: List[str]
@@ -498,22 +496,13 @@ class KishuCommand:
 
     @staticmethod
     def _find_commit_entries(notebook_id: str, commit_ids: List[str]) -> Dict[str, CommitEntry]:
-        unit_execs = UnitExecution.get_commits(
-            KishuPath.checkpoint_path(notebook_id),
-            commit_ids,
-        )
-        return {key: cast(CommitEntry, unit_exec) for key, unit_exec in unit_execs.items()}
+        kishu_commit = KishuCommit(KishuPath.database_path(notebook_id))
+        return kishu_commit.get_log_items(commit_ids)
 
     @staticmethod
     def _find_commit_entry(notebook_id: str, commit_id: str) -> CommitEntry:
-        # TODO: Pull CommitEntry logic out of jupyterint2 to avoid this cast.
-        return cast(
-            CommitEntry,
-            UnitExecution.get_from_db(
-                KishuPath.checkpoint_path(notebook_id),
-                commit_id,
-            )
-        )
+        kishu_commit = KishuCommit(KishuPath.database_path(notebook_id))
+        return kishu_commit.get_log_item(commit_id)
 
     @staticmethod
     def _join_commit_summary(
@@ -534,7 +523,7 @@ class KishuCommand:
                 parent_id=node.parent_id,
                 message=commit_entry.message,
                 timestamp=KishuCommand._to_datetime(commit_entry.timestamp),
-                code_block=commit_entry.code_block,
+                raw_cell=commit_entry.raw_cell,
                 runtime_s=commit_entry.runtime_s,
                 branches=branch_names,
                 tags=tag_names,
@@ -557,7 +546,7 @@ class KishuCommand:
         if restore_plan is not None:
             restore_plan.run(
                 commit_variables,
-                KishuPath.checkpoint_path(notebook_id),
+                KishuPath.database_path(notebook_id),
                 commit_id
             )
         variables = [
