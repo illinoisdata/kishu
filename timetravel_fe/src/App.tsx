@@ -13,7 +13,7 @@ import React, {
 } from "react";
 import "./App.css";
 import ReactSplit, {SplitDirection} from "@devbookhq/splitter";
-import Toolbar from "./components/Toolbar";
+import {Toolbar} from "./components/Toolbar";
 import HistoryTree from "./components/HistoryPanel";
 import NotebookFilePanel from "./components/CodePanel/NotebookFilePanel";
 import {BackEndAPI} from "./util/API";
@@ -223,7 +223,7 @@ function App() {
                 {/* only the history tree has been loaded */}
                 {!globalLoading && !error && !selectedCommit && (
                     <>
-                        <Toolbar/>
+                        <Toolbar setInDiffMode={setInDiffMode}/>
                         <ReactSplit
                             direction={SplitDirection.Horizontal}
                             initialSizes={splitSizes1}
@@ -257,7 +257,7 @@ function App() {
 
                 {!globalLoading && !error && selectedCommit && (
                     <>
-                        <Toolbar/>
+                        <Toolbar setInDiffMode={setInDiffMode}/>
                         <ReactSplit
                             direction={SplitDirection.Horizontal}
                             initialSizes={splitSizes1}

@@ -1,20 +1,19 @@
 // input PointRenderer[], return an SVG
 import {PointRenderInfo} from "../../util/PointRenderInfo";
 import {Commit} from "../../util/Commit";
-import {COMMITHEIGHT, COMMITRADIUS, MESSAGEMARGINX, MESSAGEMARGINY} from "../../util/GraphConsts";
+import {COMMITHEIGHT, COMMITRADIUS, MESSAGEMARGINX, MESSAGEMARGINY} from "./GraphConsts";
 import React from "react";
 import "./historyPanel.css";
 
 export interface HistoryGraphProps {
     pointRendererInfos: Map<string, PointRenderInfo>;
     Commits: Map<string, Commit>;
-    selectedCommitID: string;
     currentCommitID: string;
     svgMaxX: number;
     svgMaxY: number;
 }
 
-export function HistoryGraph(props: HistoryGraphProps) {
+function _HistoryGraph(props: HistoryGraphProps) {
     return (
         <svg
             overflow={"visible"}
@@ -73,3 +72,5 @@ export function HistoryGraph(props: HistoryGraphProps) {
         </svg>
     );
 }
+
+export const HistoryGraph = React.memo(_HistoryGraph);

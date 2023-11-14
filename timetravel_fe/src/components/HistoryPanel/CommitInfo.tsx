@@ -9,7 +9,7 @@ import {
     DownOutlined
 } from "@ant-design/icons";
 import {AppContext} from "../../App";
-import {useContext} from "react";
+import React, {useContext} from "react";
 
 export interface CommitInfoProps {
     commit: Commit;
@@ -19,8 +19,7 @@ export interface CommitInfoProps {
     newDay: string;
 }
 
-export function CommitInfo(props: CommitInfoProps) {
-    const appContext = useContext(AppContext);
+function _CommitInfo(props: CommitInfoProps) {
 
     const _tags = props.commit.tags?.map((tag) => {
         return (
@@ -58,10 +57,12 @@ export function CommitInfo(props: CommitInfoProps) {
                 <div className="empty-line"></div>
             )}
             {props.commit.branchIds.length !== 0 || props.commit.tags.length!=0 ? (
-                <div className={"same_row"}>{_tags}{_branches} </div>
+                <div className={"tags_container"}>{_tags}{_branches} </div>
             ) : (
                _timestamp
             )}
         </div>
     );
 }
+
+export const CommitInfo =  React.memo(_CommitInfo);

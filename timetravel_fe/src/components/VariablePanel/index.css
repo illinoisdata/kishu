@@ -1,8 +1,8 @@
-.custom-div {
+.multiline-table-value {
     background-color: #f0f0f0;
 }
 
-.custom-div:hover {
+.multiline-table-value:hover {
     cursor: pointer;
     background-color: #ffcc00;
 }

@@ -1,22 +1,16 @@
-/*
- * @Author: University of Illinois at Urbana Champaign
- * @Date: 2023-06-18 10:20:09
- * @LastEditTime: 2023-07-15 22:18:28
- * @FilePath: /src/components/Toolbar/ExecutedCodePanel.tsx
- * @Description: toolBar includes rollback buttons, and the menu to choose rollback type.
- */
 import React, {useContext} from "react";
 import "./toolbar.css";
 import "../utility.css";
 import {SearchOutlined} from "@ant-design/icons";
 import {Button, Input, ConfigProvider, Checkbox} from "antd";
 import DropdownBranch from "./DropDownBranch";
-import {AppContext} from "../../App";
 import {CheckboxChangeEvent} from "antd/es/checkbox";
 
-function Toolbar() {
-    const props = useContext(AppContext);
+export interface toolBarProps{
+    setInDiffMode: any;
+}
 
+function _Toolbar(props: toolBarProps) {
     const onDiffModeChange = (e: CheckboxChangeEvent) => {
         props?.setInDiffMode(e.target.checked);
     };
@@ -77,4 +71,4 @@ function Toolbar() {
     );
 }
 
-export default Toolbar;
+export const Toolbar = React.memo(_Toolbar)

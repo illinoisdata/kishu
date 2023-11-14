@@ -1,7 +1,6 @@
 .toolBar {
     width: 100%;
     background-color: #c5cacf;
-    /*padding: 10px;*/
     display: flex;
     justify-content: space-between;
 }

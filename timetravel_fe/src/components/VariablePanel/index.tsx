@@ -164,7 +164,7 @@ export default function VariablePanel(props: VariablePanelProps) {
             ellipsis: true,
             render: (text,record) =>
                 (text as string).includes("\\n") ? (
-                    <div className="custom-div" onClick={() => handleDetailClick(text,record.html)}>
+                    <div className="multiline-table-value" onClick={() => handleDetailClick(text,record.html)}>
                         {text}
                     </div>
                 ) : (
