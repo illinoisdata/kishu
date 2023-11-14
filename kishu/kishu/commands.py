@@ -255,19 +255,20 @@ class KishuCommand:
 
     @staticmethod
     def log(notebook_id: str, commit_id: Optional[str] = None) -> LogResult:
+        kishu_branch = KishuBranch(notebook_id)
         if commit_id is None:
-            head = KishuBranch.get_head(notebook_id)
+            head = kishu_branch.get_head()
             commit_id = head.commit_id
 
         if commit_id is None:
-            return LogResult(commit_graph=[], head=KishuBranch.get_head(notebook_id))
+            return LogResult(commit_graph=[], head=kishu_branch.get_head())
 
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
         return LogResult(
             commit_graph=KishuCommand._decorate_graph(notebook_id, graph),
-            head=KishuBranch.get_head(notebook_id),
+            head=kishu_branch.get_head(),
         )
 
     @staticmethod
@@ -276,7 +277,7 @@ class KishuCommand:
         graph = store.list_all_history()
         return LogAllResult(
             commit_graph=KishuCommand._decorate_graph(notebook_id, graph),
-            head=KishuBranch.get_head(notebook_id),
+            head=KishuBranch(notebook_id).get_head(),
         )
 
     @staticmethod
@@ -315,15 +316,16 @@ class KishuCommand:
         commit_id: Optional[str],
         do_commit: bool = False,
     ) -> BranchResult:
-        head = KishuBranch.get_head(notebook_id)
+        kishu_branch = KishuBranch(notebook_id)
+        head = kishu_branch.get_head()
 
         if commit_id is None:
             # If no commit ID, create branch pointing to the commit ID at HEAD.
-            head = KishuBranch.update_head(notebook_id, branch_name=branch_name)
+            head = kishu_branch.update_head(branch_name=branch_name)
             commit_id = head.commit_id
         elif branch_name == head.branch_name and commit_id != head.commit_id:
             # Moving head branch somewhere else.
-            head = KishuBranch.update_head(notebook_id, is_detach=True)
+            head = kishu_branch.update_head(is_detach=True)
             print(f"detaching {head}")
 
         # Fail to determine commit ID, possibly because no commit does not exist.
@@ -332,7 +334,7 @@ class KishuCommand:
 
         # Now add this branch.
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
-        KishuBranch.upsert_branch(notebook_id, branch_name, commit_id)
+        kishu_branch.upsert_branch(branch_name, commit_id)
 
         # Create new commit for this branch action.
         if do_commit:
@@ -351,7 +353,7 @@ class KishuCommand:
         branch_name: str,
     ) -> DeleteBranchResult:
         try:
-            KishuBranch.delete_branch(notebook_id, branch_name)
+            KishuBranch(notebook_id).delete_branch(branch_name)
             return DeleteBranchResult(
                 status="ok",
                 message=f"Branch {branch_name} deleted.",
@@ -369,7 +371,7 @@ class KishuCommand:
         new_name: str,
     ) -> RenameBranchResult:
         try:
-            KishuBranch.rename_branch(notebook_id, old_name, new_name)
+            KishuBranch(notebook_id).rename_branch(old_name, new_name)
             return RenameBranchResult(
                 status="ok",
                 branch_name=new_name,
@@ -392,7 +394,7 @@ class KishuCommand:
         # Attempt to fill in omitted commit ID.
         if commit_id is None:
             # Try creating tag pointing to the commit ID at HEAD.
-            head = KishuBranch.get_head(notebook_id)
+            head = KishuBranch(notebook_id).get_head()
             commit_id = head.commit_id
 
         # Fail to determine commit ID, possibly because a commit does not exist.
@@ -402,7 +404,7 @@ class KishuCommand:
         # Now add this tag.
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         tag = TagRow(tag_name=tag_name, commit_id=commit_id, message=message)
-        KishuTag.upsert_tag(notebook_id, tag)
+        KishuTag(notebook_id).upsert_tag(tag)
         return TagResult(
             status="ok",
             tag_name=tag_name,
@@ -432,12 +434,13 @@ class KishuCommand:
             ))
 
         # Retreives and joins branches.
-        head = KishuBranch.get_head(notebook_id)
-        branches = KishuBranch.list_branch(notebook_id)
+        kishu_branch = KishuBranch(notebook_id)
+        head = kishu_branch.get_head()
+        branches = kishu_branch.list_branch()
         commits = KishuCommand._branch_commit(commits, branches)
 
         # Joins with tag list.
-        tags = KishuTag.list_tag(notebook_id)
+        tags = KishuTag(notebook_id).list_tag()
         commits = KishuCommand._tag_commit(commits, tags)
 
         # Sort commits by timestamp.
@@ -457,8 +460,8 @@ class KishuCommand:
                             .iter_history(commit_id)
         )
         current_commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
-        branches = KishuBranch.branches_for_commit(notebook_id, commit_id)
-        tags = KishuTag.tags_for_commit(notebook_id, commit_id)
+        branches = KishuBranch(notebook_id).branches_for_commit(commit_id)
+        tags = KishuTag(notebook_id).tags_for_commit(commit_id)
         return KishuCommand._join_selected_commit(
             notebook_id,
             commit_id,
@@ -483,8 +486,8 @@ class KishuCommand:
     def _decorate_graph(notebook_id: str, graph: List[CommitNodeInfo]) -> List[CommitSummary]:
         graph_commit_ids = [node.commit_id for node in graph]
         commit_entries = KishuCommand._find_commit_entries(notebook_id, graph_commit_ids)
-        branch_by_commit = KishuBranch.branches_for_many_commits(notebook_id, graph_commit_ids)
-        tag_by_commit = KishuTag.tags_for_many_commits(notebook_id, graph_commit_ids)
+        branch_by_commit = KishuBranch(notebook_id).branches_for_many_commits(graph_commit_ids)
+        tag_by_commit = KishuTag(notebook_id).tags_for_many_commits(graph_commit_ids)
         commits = KishuCommand._join_commit_summary(
             graph,
             commit_entries,

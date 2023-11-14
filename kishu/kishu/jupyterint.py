@@ -234,34 +234,42 @@ class KishuForJupyter:
     SAVE_CMD = "try { IPython.notebook.save_checkpoint(); } catch { }"
 
     def __init__(self, notebook_id: NotebookId, ip: Optional[InteractiveShell] = None) -> None:
+        # Kishu info and storages.
         self._notebook_id = notebook_id
+        self._kishu_commit = KishuCommit(self.database_path())
+        self._kishu_checkpoint = KishuCheckpoint(self.database_path())
+        self._kishu_branch = KishuBranch(self._notebook_id.key())
+        self._kishu_tag = KishuTag(self._notebook_id.key())
+        self._kishu_graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
+            KishuPath.commit_graph_directory(self._notebook_id.key())
+        )
+
+        # Enclosing environment.
+        self._ip = ip
+        self._user_ns = Namespace({} if self._ip is None else self._ip.user_ns)
+        self._platform = enclosing_platform()
+        self._session_id = 0
+
+        # Stateful trackers.
+        self._cr_planner = CheckpointRestorePlanner.from_existing(self._user_ns)
+        self._start_time: Optional[float] = None
+        self._last_execution_count = 0
+
+        # Configurations.
+        self._test_mode = False
         self._commit_id_mode = "uuid4"  # TODO: Load from environment/configuration
         self._enable_auto_branch = True
         self._enable_auto_commit_when_skip_notebook = True
-        self._kishu_commit = KishuCommit(self.database_path())
-        self._kishu_checkpoint = KishuCheckpoint(self.database_path())
-        self._graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
-            KishuPath.commit_graph_directory(self._notebook_id.key())
-        )
-        self._ip = ip
-        self._user_ns = Namespace({} if self._ip is None else self._ip.user_ns)
+
+        # Initialize databases.
+        self._kishu_commit.init_database()
+        self._kishu_checkpoint.init_database()
+        self._kishu_branch.init_database()
+        self._kishu_tag.init_database()
         try:
             self._notebook_id.record_connection()
         except Exception as e:
             print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
-
-        self._kishu_commit.init_database()
-        self._kishu_checkpoint.init_database()
-        KishuBranch.init_database(self._notebook_id.key())
-        KishuTag.init_database(self._notebook_id.key())
-
-        self._platform = enclosing_platform()
-        self._session_id = 0
-        self._last_execution_count = 0
-        self._start_time: Optional[float] = None
-        self._test_mode = False
-
-        self._cr_planner = CheckpointRestorePlanner.from_existing(self._user_ns)
 
     def set_test_mode(self):
         # Configure this object for testing.
@@ -305,7 +313,7 @@ class KishuForJupyter:
         is_detach = True
 
         # Attempt to interpret target as a branch.
-        retrieved_branches = KishuBranch.get_branch(self._notebook_id.key(), branch_or_commit_id)
+        retrieved_branches = self._kishu_branch.get_branch(branch_or_commit_id)
         if len(retrieved_branches) == 1:
             assert retrieved_branches[0].branch_name == branch_or_commit_id
             branch_name = retrieved_branches[0].branch_name
@@ -341,9 +349,8 @@ class KishuForJupyter:
         self._cr_planner.replace_state(commit_entry.ahg_string, user_ns)
 
         # Update Kishu heads.
-        self._graph.jump(commit_id)
-        KishuBranch.update_head(
-            self._notebook_id.key(),
+        self._kishu_graph.jump(commit_id)
+        self._kishu_branch.update_head(
             branch_name=branch_name,
             commit_id=commit_id,
             is_detach=is_detach,
@@ -509,7 +516,7 @@ class KishuForJupyter:
 
         # Update other structures.
         self._kishu_commit.store_log_item(entry)
-        self._graph.step(entry.commit_id)
+        self._kishu_graph.step(entry.commit_id)
         self._step_branch(entry.commit_id)
 
     def _commit_id(self) -> str:
@@ -628,13 +635,13 @@ class KishuForJupyter:
         return None
 
     def _step_branch(self, commit_id: str) -> None:
-        head = KishuBranch.update_head(self._notebook_id.key(), commit_id=commit_id)
+        head = self._kishu_branch.update_head(commit_id=commit_id)
         if self._enable_auto_branch and head.branch_name is None:
             new_branch_name = f"auto_{commit_id}"
-            KishuBranch.upsert_branch(self._notebook_id.key(), new_branch_name, commit_id)
-            KishuBranch.update_head(self._notebook_id.key(), new_branch_name, commit_id)
+            self._kishu_branch.upsert_branch(new_branch_name, commit_id)
+            self._kishu_branch.update_head(new_branch_name, commit_id)
         elif head.branch_name is not None:
-            KishuBranch.upsert_branch(self._notebook_id.key(), head.branch_name, commit_id)
+            self._kishu_branch.upsert_branch(head.branch_name, commit_id)
 
     def _checkout_notebook(self, raw_nb: str) -> None:
         nb_path = self._notebook_id.path()

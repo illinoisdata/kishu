@@ -207,7 +207,7 @@ class TestKishuCommand:
 
         rename_branch_result = KishuCommand.rename_branch(
             notebook_key, branch_1, "new_branch")
-        head = KishuBranch.get_head(notebook_key)
+        head = KishuBranch(notebook_key).get_head()
         assert rename_branch_result.status == "ok"
         assert head.branch_name == "new_branch"
 
@@ -227,11 +227,12 @@ class TestKishuCommand:
         assert rename_branch_result.status == "error"
 
     def test_auto_detach_commit_branch(self, kishu_jupyter):
-        KishuBranch.update_head(kishu_jupyter._notebook_id.key(), branch_name=None, commit_id="0:1", is_detach=True)
+        kishu_branch = KishuBranch(kishu_jupyter._notebook_id.key())
+        kishu_branch.update_head(branch_name=None, commit_id="0:1", is_detach=True)
         commit = CommitEntry(kind=CommitEntryKind.manual, execution_count=1, raw_cell="x = 1")
         commit_id = kishu_jupyter.commit(commit)
 
-        head = KishuBranch.get_head(kishu_jupyter._notebook_id.key())
+        head = kishu_branch.get_head()
         assert head.branch_name is not None
         assert head.branch_name.startswith("auto_")
         assert head.commit_id == commit_id
