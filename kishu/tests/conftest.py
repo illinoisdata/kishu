@@ -34,7 +34,7 @@ def set_test_mode() -> Generator[None, None, None]:
 
 
 # Use this fixture to mount Kishu in a temporary directory.
-@pytest.fixture()
+@pytest.fixture(autouse=True)
 def tmp_kishu_path(tmp_path: Path) -> Generator[Type[KishuPath], None, None]:
     original_root = os.environ.get(ENV_KISHU_PATH_ROOT, None)
     os.environ[ENV_KISHU_PATH_ROOT] = str(tmp_path)

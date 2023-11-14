@@ -12,7 +12,7 @@ def test_health(backend_client):
     assert data["status"] == "ok"
 
 
-def test_list_empty(backend_client, tmp_kishu_path):
+def test_list_empty(backend_client):
     result = backend_client.get("/list")
     assert result.status_code == 200
     assert ListResult.from_json(result.data) == ListResult(sessions=[])
@@ -22,7 +22,7 @@ def test_list_empty(backend_client, tmp_kishu_path):
     assert ListResult.from_json(result.data) == ListResult(sessions=[])
 
 
-def test_log_empty(backend_client, tmp_kishu_path):
+def test_log_empty(backend_client):
     result = backend_client.get("/log/NON_EXISTENT_NOTEBOOK_ID")
     assert result.status_code == 200
     assert LogResult.from_json(result.data) == LogResult(

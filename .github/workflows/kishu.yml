@@ -16,8 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # python-version: ["3.8", "3.9", "3.10"]
-        python-version: ["3.8"]
+        python-version: ["3.8", "3.9", "3.10"]
 
     steps:
     - uses: actions/checkout@v2
@@ -33,13 +32,8 @@ jobs:
       run: |
         cd kishu
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python -m pip install .
+        python -m pip install .[dev]
         python -c "import kishu, kishu.cli, kishu.backend, kishu.commands"
-    - name: Install development dependencies
-      run: |
-        cd kishu
-        if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
     - name: Lint with flake8
       run: |
         cd kishu
@@ -53,10 +47,10 @@ jobs:
       run: |
         cd kishu
         if [ "${{ matrix.python-version }}" == "3.8" ]; then
-          pytest -vv --cov=kishu/ --cov-report=xml;
+          pytest -vv --cov=kishu/ --cov-report=xml -n 2;
           head coverage.xml
         else
-          pytest -vv
+          pytest -vv -n 2
         fi
     - name: Upload coverage reports to Codecov
       if:  ${{ matrix.python-version == '3.8' && steps.extract_branch.outputs.branch == 'main' }}

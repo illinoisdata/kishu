@@ -361,7 +361,6 @@ class TestKishuCommand:
                               ["simple.ipynb", "numpy.ipynb"]])
     def test_list_alive_sessions(
         self,
-        tmp_kishu_path,
         tmp_nb_path,
         jupyter_server,
         notebook_names: List[str],
@@ -382,7 +381,6 @@ class TestKishuCommand:
 
     def test_list_alive_session_no_init(
         self,
-        tmp_kishu_path,
         tmp_nb_path,
         jupyter_server,
     ):
@@ -400,7 +398,6 @@ class TestKishuCommand:
     )
     def test_end_to_end_checkout(
         self,
-        tmp_kishu_path,
         tmp_nb_path,
         jupyter_server,
         notebook_name: str,
@@ -449,7 +446,6 @@ class TestKishuCommand:
 
     def test_checkout_reattach(
         self,
-        tmp_kishu_path,
         tmp_nb_path,
         jupyter_server,
     ):
@@ -502,7 +498,6 @@ class TestKishuCommand:
 
     def test_init_in_nonempty_session(
         self,
-        tmp_kishu_path,
         tmp_nb_path,
         jupyter_server,
     ):
