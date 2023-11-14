@@ -1,10 +1,3 @@
-/*
- * @Author: University of Illinois at Urbana Champaign
- * @Date: 2023-07-27 15:17:43
- * @LastEditTime: 2023-07-27 18:13:26
- * @FilePath: /src/components/HistoryPanel/ContextMenu.tsx
- * @Description:
- */
 import React, {useContext} from "react";
 import {
     AppstoreOutlined,
@@ -13,7 +6,7 @@ import {
 } from "@ant-design/icons";
 import {Menu} from "antd";
 import type {MenuProps} from "antd/es/menu";
-import {AppContext} from "../../App";
+import {AppContext, OperationModelContext} from "../../App";
 import {BackEndAPI} from "../../util/API";
 
 type MenuItem = Required<MenuProps>["items"][number];
@@ -71,61 +64,43 @@ interface ContextMenuProps {
     x: number;
     y: number;
     onClose: () => void;
-    setIsTagEditorOpen: React.Dispatch<React.SetStateAction<boolean>>; //set if the tag editor is open
-    setIsBranchNameEditorOpen: any;
-    setIsCheckoutWaitingModalOpen: any;
-    setChooseCheckoutBranchModelOpen: any;
-    setChckoutMode: any;
 }
 
 function ContextMenu({
                          x,
                          y,
-                         onClose,
-                         setIsTagEditorOpen,
-                         setIsBranchNameEditorOpen,
-                         setIsCheckoutWaitingModalOpen,
-                         setChooseCheckoutBranchModelOpen,
-                         setChckoutMode,
+                         onClose
                      }: ContextMenuProps) {
     const props = useContext(AppContext);
+    const operationModelContext = useContext(OperationModelContext)!
     const items = getItems(props!.selectedCommit?.commit.tags, props!.selectedCommit?.commit.branchIds);
     const onClickMenuItem: MenuProps["onClick"] = async ({key, domEvent}) => {
         onClose();
         domEvent.preventDefault();
         if (key === "tag") {
-            setIsTagEditorOpen(true);
+            operationModelContext.setIsTagEditorOpen(true);
         } else if (key === "both") {
             if (props!.selectedCommit!.commit.branchIds.length === 0) {
-                setIsCheckoutWaitingModalOpen(true);
-                setChckoutMode("checkout codes and data");
+                operationModelContext.setIsCheckoutWaitingModalOpen(true);
+                operationModelContext.setCheckoutMode("checkout codes and data");
             } else {
-                setChooseCheckoutBranchModelOpen(true);
-                setChckoutMode("checkout codes and data");
+                operationModelContext.setChooseCheckoutBranchModalOpen(true);
+                operationModelContext.setCheckoutMode("checkout codes and data");
             }
         } else if (key === "branch") {
-            setIsBranchNameEditorOpen(true);
+            operationModelContext.setIsBranchNameEditorOpen(true);
         } else if (key === "states") {
             if (props!.selectedCommit!.commit.branchIds.length === 0) {
-                setIsCheckoutWaitingModalOpen(true);
-                setChckoutMode("checkout variables only");
+                operationModelContext.setIsCheckoutWaitingModalOpen(true);
+                operationModelContext.setCheckoutMode("checkout variables only");
             } else {
-                setChooseCheckoutBranchModelOpen(true);
-                setChckoutMode("checkout variables only");
+                operationModelContext.setChooseCheckoutBranchModalOpen(true);
+                operationModelContext.setCheckoutMode("checkout variables only");
             }
         } else if (key.startsWith("Delete Branch")){
             let branchName = getLastWord(key);
             await BackEndAPI.deleteBranch(branchName!);
-        } else if (key.startsWith("Delete Tag")){
-            let tagName = getLastWord(key);
-            // await BackEndAPI.deleteTag(tagName!);
-        } else if (key.startsWith("Edit Branch")){
-            let branchName = getLastWord(key);
-            setIsBranchNameEditorOpen(true);
-            // props!.setBranchNameToEdit(branchName!);
-            // await BackEndAPI.editBranch(branchName!);
         }
-        // message.info(key);
     };
 
     return (

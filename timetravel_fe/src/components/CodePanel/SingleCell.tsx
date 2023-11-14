@@ -1,10 +1,3 @@
-/*
- * @Author: University of Illinois at Urbana Champaign
- * @Date: 2023-07-14 11:38:34
- * @LastEditTime: 2023-07-29 13:29:52
- * @FilePath: /src/components/CodePanel/SingleCell.tsx
- * @Description:
- */
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/theme-github";

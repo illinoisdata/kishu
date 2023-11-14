@@ -1,6 +1,6 @@
 // input PointRenderer, return a info box
 import {PointRenderInfo} from "../../util/PointRenderInfo";
-import "./commitInfo.css";
+import "./SingleCommitInfo.css";
 import {Commit} from "../../util/Commit";
 import {
     TagOutlined,
@@ -8,8 +8,7 @@ import {
     FieldTimeOutlined,
     DownOutlined
 } from "@ant-design/icons";
-import {AppContext} from "../../App";
-import React, {useContext} from "react";
+import React from "react";
 
 export interface CommitInfoProps {
     commit: Commit;
@@ -19,7 +18,7 @@ export interface CommitInfoProps {
     newDay: string;
 }
 
-function _CommitInfo(props: CommitInfoProps) {
+function _SingleCommitInfo(props: CommitInfoProps) {
 
     const _tags = props.commit.tags?.map((tag) => {
         return (
@@ -56,7 +55,7 @@ function _CommitInfo(props: CommitInfoProps) {
             ) : (
                 <div className="empty-line"></div>
             )}
-            {props.commit.branchIds.length !== 0 || props.commit.tags.length!=0 ? (
+            {props.commit.branchIds.length !== 0 || props.commit.tags.length!==0 ? (
                 <div className={"tags_container"}>{_tags}{_branches} </div>
             ) : (
                _timestamp
@@ -65,4 +64,4 @@ function _CommitInfo(props: CommitInfoProps) {
     );
 }
 
-export const CommitInfo =  React.memo(_CommitInfo);
+export const SingleCommitInfo =  React.memo(_SingleCommitInfo);
