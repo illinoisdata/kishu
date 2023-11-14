@@ -4,8 +4,8 @@ import dill as pickle
 import sys
 import types
 
-from kishu.exceptions import TypeNotSupportedError
-from kishu.watchdog.state import ContinuousPickler, Scope, State
+from watchdog.exceptions import TypeNotSupportedError
+from watchdog.state import ContinuousPickler, Scope, State
 
 
 """
