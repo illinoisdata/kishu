@@ -32,32 +32,32 @@ class BranchRow:
 
 class KishuBranch:
 
-    @staticmethod
-    def init_database(notebook_id: str):
-        dbfile = KishuPath.database_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def __init__(self, notebook_id: str):
+        self.database_path = KishuPath.database_path(notebook_id)
+        self.head_path = KishuPath.head_path(notebook_id)
+
+    def init_database(self):
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(f'create table if not exists {BRANCH_TABLE} (branch_name text primary key, commit_id text)')
         con.commit()
 
-    @staticmethod
-    def get_head(notebook_id: str) -> HeadBranch:
+    def get_head(self) -> HeadBranch:
         try:
-            with open(KishuPath.head_path(notebook_id), "r") as f:
+            with open(self.head_path, "r") as f:
                 json_str = f.read()
                 return HeadBranch.from_json(json_str)  # type: ignore
         except (FileNotFoundError, json.decoder.JSONDecodeError):
             return HeadBranch(branch_name=None, commit_id=None)
 
-    @staticmethod
     def update_head(
-        notebook_id: str,
+        self,
         branch_name: Optional[str] = None,
         commit_id: Optional[str] = None,
         is_detach: bool = False
     ) -> HeadBranch:
         # Get current head.
-        head = KishuBranch.get_head(notebook_id)
+        head = self.get_head()
         if head is None:
             head = HeadBranch(branch_name=None, commit_id=None)
 
@@ -72,23 +72,19 @@ class KishuBranch:
             head.commit_id = commit_id
 
         # Write head.
-        with open(KishuPath.head_path(notebook_id), 'w') as f:
+        with open(self.head_path, 'w') as f:
             f.write(head.to_json())  # type: ignore
         return head
 
-    @staticmethod
-    def upsert_branch(notebook_id: str, branch: str, commit_id: str) -> None:
-        dbfile = KishuPath.database_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def upsert_branch(self, branch: str, commit_id: str) -> None:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = f"insert or replace into {BRANCH_TABLE} values (?, ?)"
         cur.execute(query, (branch, commit_id))
         con.commit()
 
-    @staticmethod
-    def list_branch(notebook_id: str) -> List[BranchRow]:
-        dbfile = KishuPath.database_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def list_branch(self) -> List[BranchRow]:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = f"select branch_name, commit_id from {BRANCH_TABLE}"
         try:
@@ -103,10 +99,8 @@ class KishuBranch:
         finally:
             con.close()
 
-    @staticmethod
-    def get_branch(notebook_id: str, branch_name: str) -> List[BranchRow]:
-        dbfile = KishuPath.database_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def get_branch(self, branch_name: str) -> List[BranchRow]:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = f"select branch_name, commit_id from {BRANCH_TABLE} where branch_name = ?"
         try:
@@ -121,10 +115,8 @@ class KishuBranch:
         finally:
             con.close()
 
-    @staticmethod
-    def branches_for_commit(notebook_id: str, commit_id: str) -> List[BranchRow]:
-        dbfile = KishuPath.database_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def branches_for_commit(self, commit_id: str) -> List[BranchRow]:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = f"select branch_name, commit_id from {BRANCH_TABLE} where commit_id = ?"
         try:
@@ -139,13 +131,8 @@ class KishuBranch:
         finally:
             con.close()
 
-    @staticmethod
-    def branches_for_many_commits(
-        notebook_id: str,
-        commit_ids: List[str],
-    ) -> Dict[str, List[BranchRow]]:
-        dbfile = KishuPath.database_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def branches_for_many_commits(self, commit_ids: List[str],) -> Dict[str, List[BranchRow]]:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = "select branch_name, commit_id from {} where commit_id in ({})".format(
             BRANCH_TABLE,
@@ -168,13 +155,11 @@ class KishuBranch:
         con.close()
         return branch_by_commit
 
-    @staticmethod
-    def delete_branch(notebook_id: str, branch_name: str) -> None:
-        dbfile = KishuPath.database_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def delete_branch(self, branch_name: str) -> None:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
 
-        head = KishuBranch.get_head(notebook_id)
+        head = self.get_head()
         if branch_name == head.branch_name:
             raise BranchConflictError("Cannot delete the currently checked-out branch.")
         if not KishuBranch.contains_branch(cur, branch_name):
@@ -184,10 +169,8 @@ class KishuBranch:
         cur.execute(query, (branch_name,))
         con.commit()
 
-    @staticmethod
-    def rename_branch(notebook_id: str, old_name: str, new_name: str) -> None:
-        dbfile = KishuPath.database_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def rename_branch(self, old_name: str, new_name: str) -> None:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
 
         if not KishuBranch.contains_branch(cur, old_name):
@@ -200,9 +183,9 @@ class KishuBranch:
         con.commit()
 
         # Update HEAD branch if HEAD is on branch
-        head = KishuBranch.get_head(notebook_id)
+        head = self.get_head()
         if old_name == head.branch_name:
-            KishuBranch.update_head(notebook_id, branch_name=new_name)
+            self.update_head(branch_name=new_name)
 
     @staticmethod
     def contains_branch(cur: sqlite3.Cursor, branch_name: str) -> bool:

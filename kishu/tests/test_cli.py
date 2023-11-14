@@ -93,7 +93,7 @@ class TestKishuApp:
             " Notebook key: .*."
             " Kernel Id: .*"
         )
-        assert re.search(pattern, init_result).group(0) is not None
+        assert re.search(pattern, init_result) is not None, f"init_result: {init_result}"
 
     def test_log_empty(self, runner, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["log", "NON_EXISTENT_NOTEBOOK_ID"])
