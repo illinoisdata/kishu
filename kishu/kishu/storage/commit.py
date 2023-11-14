@@ -17,8 +17,10 @@ from typing import Dict, List, Optional
 import kishu.planning.plan
 
 from kishu.exceptions import MissingCommitEntryError
+from kishu.storage.path import KishuPath
 
-HISTORY_TABLE = 'history'
+
+COMMIT_ENTRY_TABLE = 'commit_entry'
 
 
 class CommitEntryKind(str, enum.Enum):
@@ -86,57 +88,30 @@ class CommitEntry:
 
 
 class KishuCommit:
-    def __init__(self, dbfile: str):
-        self.dbfile = dbfile
+    def __init__(self, notebook_id: str):
+        self.database_path = KishuPath.database_path(notebook_id)
 
-    def _get_from_table(self, table_name: str, commit_id: str) -> bytes:
-        con = sqlite3.connect(self.dbfile)
+    def init_database(self):
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(
-            "select data from {} where commit_id = ?".format(table_name),
-            (commit_id, )
-            )
-        res: tuple = cur.fetchone()
-        result = res[0]
+        cur.execute(f'create table if not exists {COMMIT_ENTRY_TABLE} (commit_id text primary key, data blob)')
         con.commit()
-        return result
 
-    def _save_into_table(self, table_name: str, commit_id: str, data: bytes) -> None:
-        con = sqlite3.connect(self.dbfile)
+    def store_commit(self, commit_entry: CommitEntry) -> None:
+        commit_entry_dill = dill.dumps(commit_entry)
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(
-            "insert into {} values (?, ?)".format(table_name),
-            (commit_id, memoryview(data))
+            f"insert into {COMMIT_ENTRY_TABLE} values (?, ?)",
+            (commit_entry.commit_id, memoryview(commit_entry_dill))
         )
         con.commit()
 
-    def init_database(self):
-        con = sqlite3.connect(self.dbfile)
-        cur = con.cursor()
-        cur.execute(f'create table if not exists {HISTORY_TABLE} (commit_id text primary key, data blob)')
-        con.commit()
-
-    def store_log_item(self, commit_entry: CommitEntry) -> None:
-        self._save_into_table(HISTORY_TABLE, commit_entry.commit_id, dill.dumps(commit_entry))
-
-    def get_log(self) -> Dict[str, bytes]:
-        result = {}
-        con = sqlite3.connect(self.dbfile)
+    def get_commit(self, commit_id: str) -> CommitEntry:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(
-            "select commit_id, data from {}".format(HISTORY_TABLE)
-            )
-        res = cur.fetchall()
-        for key, data in res:
-            result[key] = data
-        con.commit()
-        return result
-
-    def get_log_item(self, commit_id: str) -> CommitEntry:
-        con = sqlite3.connect(self.dbfile)
-        cur = con.cursor()
-        cur.execute(
-            "select data from {} where commit_id = ?".format(HISTORY_TABLE),
+            f"select data from {COMMIT_ENTRY_TABLE} where commit_id = ?",
             (commit_id, )
         )
         res: tuple = cur.fetchone()
@@ -146,32 +121,32 @@ class KishuCommit:
         con.commit()
         return result
 
-    def keys_like(self, commit_id_like: str) -> List[str]:
-        con = sqlite3.connect(self.dbfile)
-        cur = con.cursor()
-        cur.execute(
-            "select commit_id from {} where commit_id LIKE ?".format(HISTORY_TABLE),
-            (commit_id_like + "%", )
-        )
-        result = [commit_id for (commit_id,) in cur.fetchall()]
-        con.commit()
-        return result
-
-    def get_log_items(self, commit_ids: List[str]) -> Dict[str, CommitEntry]:
+    def get_commits(self, commit_ids: List[str]) -> Dict[str, CommitEntry]:
         """
         Returns a mapping from requested commit ID to its data. Order and completeness are not
-        guaranteed (i.e. not all commit IDs may be present). Data bytes are those from store_log_item
+        guaranteed (i.e. not all commit IDs may be present). Data bytes are those from store_commit
         """
         result = {}
-        con = sqlite3.connect(self.dbfile)
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        query = "select commit_id, data from {} where commit_id in ({})".format(
-            HISTORY_TABLE,
-            ', '.join('?' * len(commit_ids))
+        query = (
+            f"select commit_id, data from {COMMIT_ENTRY_TABLE} "
+            f"where commit_id in ({', '.join('?' * len(commit_ids))})"
         )
         cur.execute(query, commit_ids)
         res = cur.fetchall()
         for key, data in res:
             result[key] = dill.loads(data)
+        con.commit()
+        return result
+
+    def keys_like(self, commit_id_like: str) -> List[str]:
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        cur.execute(
+            f"select commit_id from {COMMIT_ENTRY_TABLE} where commit_id LIKE ?",
+            (commit_id_like + "%", )
+        )
+        result = [commit_id for (commit_id,) in cur.fetchall()]
         con.commit()
         return result

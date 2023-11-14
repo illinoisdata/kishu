@@ -287,7 +287,7 @@ class KishuCommand:
             KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
         )
-        commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
+        commit_entry = KishuCommit(notebook_id).get_commit(commit_id)
         return StatusResult(
             commit_node_info=commit_node_info,
             commit_entry=commit_entry
@@ -417,7 +417,7 @@ class KishuCommand:
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
         graph_commit_ids = [node.commit_id for node in graph]
-        commit_entries = KishuCommand._find_commit_entries(notebook_id, graph_commit_ids)
+        commit_entries = KishuCommit(notebook_id).get_commits(graph_commit_ids)
 
         # Collects list of FECommits.
         commits = []
@@ -459,7 +459,7 @@ class KishuCommand:
             KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
         )
-        current_commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
+        current_commit_entry = KishuCommit(notebook_id).get_commit(commit_id)
         branches = KishuBranch(notebook_id).branches_for_commit(commit_id)
         tags = KishuTag(notebook_id).tags_for_commit(commit_id)
         return KishuCommand._join_selected_commit(
@@ -485,7 +485,7 @@ class KishuCommand:
     @staticmethod
     def _decorate_graph(notebook_id: str, graph: List[CommitNodeInfo]) -> List[CommitSummary]:
         graph_commit_ids = [node.commit_id for node in graph]
-        commit_entries = KishuCommand._find_commit_entries(notebook_id, graph_commit_ids)
+        commit_entries = KishuCommit(notebook_id).get_commits(graph_commit_ids)
         branch_by_commit = KishuBranch(notebook_id).branches_for_many_commits(graph_commit_ids)
         tag_by_commit = KishuTag(notebook_id).tags_for_many_commits(graph_commit_ids)
         commits = KishuCommand._join_commit_summary(
@@ -496,16 +496,6 @@ class KishuCommand:
         )
         commits = sorted(commits, key=lambda commit: commit.timestamp)
         return commits
-
-    @staticmethod
-    def _find_commit_entries(notebook_id: str, commit_ids: List[str]) -> Dict[str, CommitEntry]:
-        kishu_commit = KishuCommit(KishuPath.database_path(notebook_id))
-        return kishu_commit.get_log_items(commit_ids)
-
-    @staticmethod
-    def _find_commit_entry(notebook_id: str, commit_id: str) -> CommitEntry:
-        kishu_commit = KishuCommit(KishuPath.database_path(notebook_id))
-        return kishu_commit.get_log_item(commit_id)
 
     @staticmethod
     def _join_commit_summary(
@@ -710,7 +700,7 @@ class KishuCommand:
 
     @staticmethod
     def _retrieve_all_cells(notebook_id: str, commit_id: str):
-        commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
+        commit_entry = KishuCommit(notebook_id).get_commit(commit_id)
         formatted_cells = commit_entry.formatted_cells
         if formatted_cells is None:
             raise NoFormattedCellsError(commit_id)

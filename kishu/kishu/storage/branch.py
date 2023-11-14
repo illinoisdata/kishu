@@ -162,7 +162,7 @@ class KishuBranch:
         head = self.get_head()
         if branch_name == head.branch_name:
             raise BranchConflictError("Cannot delete the currently checked-out branch.")
-        if not KishuBranch.contains_branch(cur, branch_name):
+        if not KishuBranch._contains_branch(cur, branch_name):
             raise BranchNotFoundError(branch_name)
 
         query = f"delete from {BRANCH_TABLE} where branch_name = ?"
@@ -173,9 +173,9 @@ class KishuBranch:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
 
-        if not KishuBranch.contains_branch(cur, old_name):
+        if not KishuBranch._contains_branch(cur, old_name):
             raise BranchNotFoundError(old_name)
-        if KishuBranch.contains_branch(cur, new_name):
+        if KishuBranch._contains_branch(cur, new_name):
             raise BranchConflictError("The provided new branch name already exists.")
 
         query = f"update {BRANCH_TABLE} set branch_name = ? where branch_name = ?"
@@ -188,7 +188,7 @@ class KishuBranch:
             self.update_head(branch_name=new_name)
 
     @staticmethod
-    def contains_branch(cur: sqlite3.Cursor, branch_name: str) -> bool:
+    def _contains_branch(cur: sqlite3.Cursor, branch_name: str) -> bool:
         query = f"select count(*) from {BRANCH_TABLE} where branch_name = ?"
         cur.execute(query, (branch_name,))
         return cur.fetchone()[0] == 1

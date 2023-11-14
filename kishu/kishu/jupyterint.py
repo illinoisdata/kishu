@@ -236,7 +236,7 @@ class KishuForJupyter:
     def __init__(self, notebook_id: NotebookId, ip: Optional[InteractiveShell] = None) -> None:
         # Kishu info and storages.
         self._notebook_id = notebook_id
-        self._kishu_commit = KishuCommit(self.database_path())
+        self._kishu_commit = KishuCommit(self._notebook_id.key())
         self._kishu_checkpoint = KishuCheckpoint(self.database_path())
         self._kishu_branch = KishuBranch(self._notebook_id.key())
         self._kishu_tag = KishuTag(self._notebook_id.key())
@@ -323,7 +323,7 @@ class KishuForJupyter:
         # Retrieve checkout plan.
         database_path = self.database_path()
         commit_id = KishuForJupyter.disambiguate_commit(self._notebook_id.key(), commit_id)
-        commit_entry = self._kishu_commit.get_log_item(commit_id)
+        commit_entry = self._kishu_commit.get_commit(commit_id)
         if commit_entry.restore_plan is None:
             raise ValueError("No restore plan found for commit_id = {}".format(commit_id))
 
@@ -473,8 +473,7 @@ class KishuForJupyter:
 
     @staticmethod
     def disambiguate_commit(notebook_key: str, commit_id: str) -> str:
-        database_path = KishuPath.database_path(notebook_key)
-        kishu_commit = KishuCommit(database_path)
+        kishu_commit = KishuCommit(notebook_key)
         possible_commit_ids = kishu_commit.keys_like(commit_id)
         if len(possible_commit_ids) == 0:
             raise ValueError(f"No commit with ID {repr(commit_id)}")
@@ -515,7 +514,7 @@ class KishuForJupyter:
         entry.checkpoint_runtime_s = checkpoint_runtime_s
 
         # Update other structures.
-        self._kishu_commit.store_log_item(entry)
+        self._kishu_commit.store_commit(entry)
         self._kishu_graph.step(entry.commit_id)
         self._step_branch(entry.commit_id)
 

@@ -60,7 +60,11 @@ class NotebookId:
         # Try parsing as path, if exists.
         path = Path(path_or_key)
         if path.exists():
-            return NotebookId.parse_key_from_path(path)
+            try:
+                return NotebookId.parse_key_from_path(path)
+            except (nbformat.reader.NotJSONError, UnicodeDecodeError):
+                # Ignore non-notebook file.
+                pass
 
         # Notebook path does not exist, try parsing as key.
         key = path_or_key
