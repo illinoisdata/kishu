@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import List, Set, Tuple
 
-from kishu.watchdog.state import Cells, ContinuousPickler, Execution, SerializedCells, State
+from watchdog.state import Cells, ContinuousPickler, Execution, SerializedCells, State
 
 
 """
