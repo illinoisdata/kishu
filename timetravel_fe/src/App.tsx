@@ -183,6 +183,7 @@ function App() {
         Map<string, string>
     >(new Map());
     const [inDiffMode, setInDiffMode] = useState<boolean>(false);
+    const [highlighted_commit_ids, setHighlighted_commit_ids] = useState<string[]>([]);
 
     //********status of pop-ups************************ */
     const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
@@ -285,7 +286,7 @@ function App() {
                 {/* only the history tree has been loaded */}
                 {!globalLoading && !error && !selectedCommit && (
                     <>
-                        <Toolbar setInDiffMode={setInDiffMode}/>
+                        <Toolbar setInDiffMode={setInDiffMode} setHighightedCommitIds={setHighlighted_commit_ids}/>
                         <ReactSplit
                             direction={SplitDirection.Horizontal}
                             initialSizes={splitSizes1}
@@ -295,7 +296,7 @@ function App() {
                             gutterClassName="custom_gutter"
                         >
                             <div className="tile-xy history_panel">
-                                <HistoryPanel/>
+                                <HistoryPanel highlighted_commit_ids={highlighted_commit_ids}/>
                             </div>
 
                             <ReactSplit
@@ -319,7 +320,7 @@ function App() {
 
                 {!globalLoading && !error && selectedCommit && (
                     <>
-                        <Toolbar setInDiffMode={setInDiffMode}/>
+                        <Toolbar setInDiffMode={setInDiffMode} setHighightedCommitIds={setHighlighted_commit_ids}/>
                         <ReactSplit
                             direction={SplitDirection.Horizontal}
                             initialSizes={splitSizes1}
@@ -330,7 +331,7 @@ function App() {
                         >
                             <OperationModelContext.Provider value={operationModelContext}>
                                 <div className="tile-xy  history_panel">
-                                    <HistoryPanel/>
+                                    <HistoryPanel highlighted_commit_ids={highlighted_commit_ids}/>
                                 </div>
                             </OperationModelContext.Provider>
                             <ReactSplit
