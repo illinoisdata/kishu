@@ -12,8 +12,13 @@ import "./historyPanel.css";
 import {PointRenderInfo} from "../../util/PointRenderInfo";
 import {COMMITHEIGHT} from "./GraphConsts";
 import {CommitInfos} from "./CommitInfos";
+import {FilterHighlights} from "./FilterHighlights";
 
-function HistoryPanel() {
+export interface HistoryPanelProps {
+    highlighted_commit_ids: string[];
+}
+
+function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
     const props = useContext(AppContext);
 
     //state for graph
@@ -59,8 +64,11 @@ function HistoryPanel() {
                 svgMaxX={svgMaxX}
                 svgMaxY={svgMaxY}
             />
-            <CommitInfos pointRenderInfos={pointRenderInfos} setContextMenuPosition={setContextMenuPosition} commits={props!.commits} setSelectedCommitID={props!.setSelectedCommitID} setSelectedBranchID={props?.setSelectedBranchID}/>
-            <div className={"select-highlight"} style={{top: `${highlightTop}px`}}></div>
+            <CommitInfos pointRenderInfos={pointRenderInfos} setContextMenuPosition={setContextMenuPosition}
+                         commits={props!.commits} setSelectedCommitID={props!.setSelectedCommitID}
+                         setSelectedBranchID={props?.setSelectedBranchID}/>
+            <div className={"highlight select-highlight"} style={{top: `${highlightTop}px`}}></div>
+            <FilterHighlights pointRenderInfos={pointRenderInfos} highlighted_commit_ids={highlighted_commit_ids}/>
 
             {contextMenuPosition && (
                 <ContextMenu
@@ -72,4 +80,5 @@ function HistoryPanel() {
         </div>
     );
 }
+
 export default HistoryPanel;

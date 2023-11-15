@@ -138,3 +138,8 @@ function parseDiffHunk(json: any) {
         subDiffHunks: _sub_diff_hunks?.map((item: any) => parseDiffHunk(item))
     } as DiffHunk;
 }
+
+export function parseFilteredCommitIDs(json: any): string[] {
+    logger.silly("filtered commit from backend",json)
+    return json["commit_ids"].flatMap((item: any) => item[0])
+}
