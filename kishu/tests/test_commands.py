@@ -402,7 +402,7 @@ class TestKishuCommand:
             commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
 
             # Restore to that commit
-            KishuCommand.checkout(notebook_key, commit_id)
+            KishuCommand.checkout(notebook_path, commit_id)
 
             # Get the variable value after checkout.
             var_value_after = notebook_session.run_code(f"print({var_to_compare})")

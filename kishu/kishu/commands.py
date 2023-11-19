@@ -6,7 +6,7 @@ import json
 from dataclasses import asdict, dataclass, is_dataclass
 from dataclasses_json import dataclass_json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from kishu.exceptions import (
     BranchNotFoundError,
@@ -29,6 +29,10 @@ from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag, TagRow
 
+NO_METADATA_MESSAGE = (
+    "Kishu instrumentaton not found, please double check notebook path and run kishu init NOTEBOOK_PATH"
+    " to attatch Kishu instrumentation"
+)
 
 """
 Printing dataclasses
@@ -91,6 +95,34 @@ class DetachResult:
         )
 
 
+@dataclass_json
+@dataclass
+class CheckoutResult:
+    status: str
+    message: str
+
+    @staticmethod
+    def wrap(result: JupyterCommandResult) -> CheckoutResult:
+        return CheckoutResult(
+            status=result.status,
+            message=result.message,
+        )
+
+
+@dataclass_json
+@dataclass
+class CommitResult:
+    status: str
+    message: str
+
+    @staticmethod
+    def wrap(result: JupyterCommandResult) -> CommitResult:
+        return CommitResult(
+            status=result.status,
+            message=result.message,
+        )
+
+
 @dataclass
 class CommitSummary:
     commit_id: str
@@ -120,10 +152,6 @@ class LogAllResult:
 class StatusResult:
     commit_node_info: CommitNodeInfo
     commit_entry: CommitEntry
-
-
-CheckoutResult = JupyterCommandResult
-CommitResult = JupyterCommandResult
 
 
 @dataclass_json
@@ -221,6 +249,19 @@ class KishuCommand:
         return ListResult(sessions=sessions)
 
     @staticmethod
+    def _verify_and_init(notebook_path_str: str, kernel_id: str) -> Optional[InitResult]:
+        verification_response = JupyterConnection(kernel_id).execute_one_command("_kishu")
+        if verification_response.message == "NameError: name '_kishu' is not defined":
+            response = (
+                f"Notebook {notebook_path_str} has kishu metadata but is not initialized."
+                "Initializing notebook and then proceeding with checkout"
+            )
+            print(response)
+            init_response = KishuCommand.init(notebook_path_str)
+            return init_response
+        return None
+
+    @staticmethod
     def init(notebook_path_str: str) -> InitResult:
         notebook_path = Path(notebook_path_str)
         try:
@@ -294,20 +335,69 @@ class KishuCommand:
         )
 
     @staticmethod
-    def commit(notebook_id: str, message: Optional[str] = None) -> CommitResult:
-        return JupyterConnection.from_notebook_key(notebook_id).execute_one_command(
+    def commit(notebook_path_str: str, message: Optional[str] = None) -> List[Union[CommitResult, InitResult]]:
+        notebook_path = Path(notebook_path_str)
+        results: List[Union[InitResult, CommitResult]] = []
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
+        except FileNotFoundError as e:
+            results.append(CommitResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+            ))
+            return results
+
+        if not NotebookId.verify_metadata_exists(notebook_path):
+            results.append(CommitResult(
+                status="error",
+                message=NO_METADATA_MESSAGE,
+            ))
+            return results
+
+        verification_response = KishuCommand._verify_and_init(notebook_path_str, kernel_id)
+        if verification_response is not None:
+            results.append(verification_response)
+            if verification_response.status == "error":
+                return results
+
+        results.append(CommitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
             "_kishu.commit()" if message is None else f"_kishu.commit(message=\"{message}\")",
-        )
+        )))
+        return results
 
     @staticmethod
     def checkout(
-        notebook_id: str,
+        notebook_path_str: str,
         branch_or_commit_id: str,
         skip_notebook: bool = False,
-    ) -> CheckoutResult:
-        return JupyterConnection.from_notebook_key(notebook_id).execute_one_command(
-            f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
-        )
+    ) -> List[Union[CheckoutResult, InitResult]]:
+        notebook_path = Path(notebook_path_str)
+        results: List[Union[InitResult, CheckoutResult]] = []
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
+        except FileNotFoundError as e:
+            results.append(CheckoutResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+            ))
+            return results
+
+        if not NotebookId.verify_metadata_exists(notebook_path):
+            results.append(CheckoutResult(
+                status="error",
+                message=NO_METADATA_MESSAGE,
+            ))
+            return results
+
+        verification_response = KishuCommand._verify_and_init(notebook_path_str, kernel_id)
+        if verification_response is not None:
+            results.append(verification_response)
+            if verification_response.status == "error":
+                return results
+        results.append(CheckoutResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+                f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
+            )))
+        return results
 
     @staticmethod
     def branch(
@@ -619,7 +709,19 @@ class KishuCommand:
     @staticmethod
     def _checkout_and_commit_after_branch(notebook_id: str, branch_name: str, commit_id: str) -> str:
         # Checkout to move HEAD to branch.
-        checkout_result = KishuCommand.checkout(notebook_id, branch_name)
+        checkout_results = KishuCommand.checkout(notebook_id, branch_name)
+        checkout_result = None
+        for check_res in checkout_results:
+            if isinstance(check_res, CheckoutResult):
+                checkout_result = check_res
+                break
+        if checkout_result is None:
+            print(
+                f"Checkout failed after branch (message: {checkout_results[0].message}). "
+                "Skipping commit this branch action."
+            )
+            return commit_id
+
         if checkout_result.status != "ok":
             print(
                 f"Checkout failed after branch (message: {checkout_result.message}). "
@@ -628,10 +730,22 @@ class KishuCommand:
             return commit_id
 
         # Commit branch action.
-        commit_result = KishuCommand.commit(
+        commit_results = KishuCommand.commit(
             notebook_id,
             f"Set {branch_name} branch to {commit_id} commit.",
         )
+        commit_result = None
+        for com_res in commit_results:
+            if isinstance(com_res, CommitResult):
+                commit_result = com_res
+                break
+        if commit_result is None:
+            print(
+                f"Commit failed after branch (message: {commit_results[0].message}). "
+                "Skipping commit this branch action."
+            )
+            return commit_id
+
         if commit_result.status != "ok":
             print(
                 f"Commit failed after branch (message: {commit_result.message}). "

@@ -4,10 +4,10 @@ import os
 import typer
 
 from functools import wraps
-from typing import Tuple
+from typing import List, Tuple, Union
 
 from kishu import __app_name__, __version__
-from kishu.commands import KishuCommand, into_json, DetachResult, InitResult
+from kishu.commands import CheckoutResult, CommitResult, DetachResult, InitResult, into_json, KishuCommand
 from kishu.notebook_id import NotebookId
 
 
@@ -34,7 +34,7 @@ def print_clean_errors(fn):
 
 def print_init_message(response: InitResult) -> None:
     nb_id = response.notebook_id
-    if response.status != "ok":
+    if response.status == "error":
         error = response.message.split(": ")[0]
         if error == "FileNotFoundError":
             print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
@@ -59,6 +59,34 @@ def print_detach_message(response: DetachResult, notebook_path: str) -> None:
             print(response.message)
     else:
         print(f"Successfully detached notebook {notebook_path}")
+
+
+def print_checkout_message(responses: List[Union[CheckoutResult, InitResult]]) -> None:
+    for response in responses:
+        if isinstance(response, InitResult):
+            print_init_message(response)
+        elif response.status != "ok":
+            error = response.message.split(": ")[0]
+            if error == "FileNotFoundError":
+                print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
+            else:
+                print(response.message)
+        else:
+            print(response.message)
+
+
+def print_commit_message(responses: List[Union[CommitResult, InitResult]]) -> None:
+    for response in responses:
+        if isinstance(response, InitResult):
+            print_init_message(response)
+        elif response.status != "ok":
+            error = response.message.split(": ")[0]
+            if error == "FileNotFoundError":
+                print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
+            else:
+                print(response.message)
+        else:
+            print(f"Successfully committed, id: {response.message}")
 
 
 @kishu_app.callback()
@@ -171,10 +199,11 @@ def status(
 
 
 @kishu_app.command()
+@print_clean_errors
 def commit(
-    notebook_path_or_key: str = typer.Argument(
+    notebook_path: str = typer.Argument(
         ...,
-        help="Path to the target notebook or Kishu notebook key.",
+        help="Path to the target notebook.",
         show_default=False
     ),
     message: str = typer.Option(
@@ -188,15 +217,15 @@ def commit(
     """
     Checkout a notebook to a commit.
     """
-    notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path_or_key)
-    print(into_json(KishuCommand.commit(notebook_key, message=message)))
+    print_commit_message((KishuCommand.commit(notebook_path, message=message)))
 
 
 @kishu_app.command()
+@print_clean_errors
 def checkout(
-    notebook_path_or_key: str = typer.Argument(
+    notebook_path: str = typer.Argument(
         ...,
-        help="Path to the target notebook or Kishu notebook key.",
+        help="Path to the target notebook.",
         show_default=False
     ),
     branch_or_commit_id: str = typer.Argument(
@@ -214,12 +243,11 @@ def checkout(
     """
     Checkout a notebook to a commit.
     """
-    notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path_or_key)
-    print(into_json(KishuCommand.checkout(
-        notebook_key,
+    print_checkout_message(KishuCommand.checkout(
+        notebook_path,
         branch_or_commit_id,
         skip_notebook=skip_notebook,
-    )))
+    ))
 
 
 @kishu_app.command()

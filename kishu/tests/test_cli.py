@@ -95,6 +95,23 @@ class TestKishuApp:
         )
         assert re.search(pattern, init_result) is not None, f"init_result: {init_result}"
 
+    def test_checkout_no_jupyer_server(self, runner, tmp_kishu_path):
+        result = runner.invoke(kishu_app, ["checkout", "non_existent_notebook.ipynb", "abc123"])
+        assert result.exit_code == 0
+        checkout_result = result.stdout
+        assert checkout_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
+
+    def test_checkout_no_metadata(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
+        jupyter_server.start_session(nb_simple_path)
+        result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "abcd123"])
+        assert result.exit_code == 0
+        checkout_result = result.stdout
+        no_metadata_output = (
+            "Kishu instrumentaton not found, please double check notebook path and run kishu init NOTEBOOK_PATH"
+            " to attatch Kishu instrumentation\n"
+        )
+        assert checkout_result == no_metadata_output
+
     def test_log_empty(self, runner, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["log", "NON_EXISTENT_NOTEBOOK_ID"])
         assert result.exit_code == 1

@@ -56,6 +56,15 @@ class NotebookId:
         return metadata.notebook_id
 
     @staticmethod
+    def verify_metadata_exists(path: Path) -> bool:
+        nb = JupyterRuntimeEnv.read_notebook(path)
+        try:
+            NotebookId.read_kishu_metadata(nb)
+            return True
+        except MissingNotebookMetadataError:
+            return False
+
+    @staticmethod
     def parse_key_from_path_or_key(path_or_key: str) -> str:
         # Try parsing as path, if exists.
         path = Path(path_or_key)
