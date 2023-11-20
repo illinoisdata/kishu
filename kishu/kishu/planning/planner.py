@@ -69,6 +69,8 @@ class CheckpointRestorePlanner:
         for k in self._id_graph_map.keys():
             new_idgraph = get_object_state(self._user_ns[k], {})
             if not self._id_graph_map[k] == new_idgraph:
+                if self._id_graph_map[k].is_root_equals(new_idgraph):
+                    accessed_vars.add(k)
                 self._id_graph_map[k] = new_idgraph
                 modified_vars.add(k)
 

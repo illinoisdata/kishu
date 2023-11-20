@@ -592,7 +592,7 @@ class KishuForJupyter:
         checkpoint_plan.run(self._user_ns)
 
         # Extra: generate variable version. TODO: we should avoid the extra namespace serialization.
-        var_version = hash(pickle.dumps(self._user_ns.to_dict()))
+        var_version = None
         return restore_plan, var_version
 
     @staticmethod

@@ -145,7 +145,7 @@ class LoadVariableRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).
     """
-    def __init__(self, var_names: Optional[List[str]] = None):
+    def __init__(self, var_names: Optional[List[str]] = None, cell_code: str = ""):
         """
         variable_names: The variables to restore.
         """
@@ -196,7 +196,7 @@ class RerunCellRestoreAction(RestoreAction):
             pass
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(var_names={self.cell_code})"
+        return f"{self.__class__.__name__}(cell code={self.cell_code})"
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -210,6 +210,7 @@ class RestorePlan:
     @param actions  A series of actions for restoring a state.
     """
     actions: List[RestoreAction] = field(default_factory=lambda: [])
+    shell = InteractiveShell()
 
     def add_rerun_cell_restore_action(self, cell_code: str):
         self.actions.append(RerunCellRestoreAction(cell_code))

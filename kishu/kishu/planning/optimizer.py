@@ -45,8 +45,22 @@ class Optimizer():
         # Set lookup for active VSs by name as VS objects are not hashable.
         self.active_vss_lookup = set(vs.name for vs in active_vss)
 
+        self.active_vss_lookup2 = set((vs.name, vs.version) for vs in active_vss)
+
         # CEs required to recompute a variables last modified by a given CE.
         self.req_func_mapping: Dict[int, Set[int]] = {}
+
+    def set_only_migrate(self) -> None:
+        self._only_migrate = True
+        self._only_recompute = False
+
+    def set_only_recompute(self) -> None:
+        self._only_recompute = True
+        self._only_migrate = False
+
+    def unset_cr_preferences(self) -> None:
+        self._only_migrate = False
+        self._only_recompute = False
 
     def dfs_helper(self, current: Any, visited: Set[Any], prerequisite_ces: Set[int]):
         """
@@ -64,11 +78,11 @@ class Optimizer():
                 # Else, recurse into input variables of the CE.
                 prerequisite_ces.add(current.cell_num)
                 for vs in current.src_vss:
-                    if vs.name not in self.active_vss_lookup and vs.name not in visited:
+                    if (vs.name, vs.version) not in self.active_vss_lookup2 and (vs.name, vs.version) not in visited:
                         self.dfs_helper(vs, visited, prerequisite_ces)
 
         elif isinstance(current, VariableSnapshot):
-            visited.add(current.name)
+            visited.add((current.name, current.version))
             if current.output_ce and current.output_ce.cell_num not in prerequisite_ces:
                 self.dfs_helper(current.output_ce, visited, prerequisite_ces)
 
