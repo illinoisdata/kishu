@@ -78,7 +78,7 @@ class CheckpointRestorePlanner:
         for var in created_vars:
             self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def generate_restore_plan(self) -> RestorePlan:
+    def generate_checkpoint_restore_plans(self) -> Tuple[Set[str], RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = []
         for vs_list in self._ahg.get_variable_snapshots().values():
@@ -110,7 +110,7 @@ class CheckpointRestorePlanner:
                 restore_plan.add_load_variable_restore_action(
                         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]])
 
-        return restore_plan
+        return vss_to_migrate, restore_plan
 
     def get_ahg(self) -> AHG:
         """

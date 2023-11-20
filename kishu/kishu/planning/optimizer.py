@@ -76,9 +76,9 @@ class Optimizer():
             Returns the optimal replication plan for the stored AHG consisting of
             variables to migrate and cells to rerun.
         """
-        # TODO: Remove when recomputation is supported.
-        if only_migrate:
-            return self.active_vss_lookup, set()
+        # # TODO: Remove when recomputation is supported.
+        # if only_migrate:
+        #     return self.active_vss_lookup, set()
 
         # Build prerequisite (rec) function mapping.
         self.find_prerequisites()

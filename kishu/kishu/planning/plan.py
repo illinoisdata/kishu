@@ -3,6 +3,8 @@ from __future__ import annotations
 import dill
 
 from dataclasses import dataclass, field
+from IPython.core.interactiveshell import InteractiveShell
+from IPython.utils.capture import capture_output
 from typing import Any, Dict, List, Optional
 
 from kishu.jupyter.namespace import Namespace
@@ -141,9 +143,9 @@ class RestoreAction:
     """
     A base class for any action.
     """
-    def run(self, user_ns: Namespace, checkpoint_file: str, exec_id: str):
+    def run(self, ip: InteractiveShell, checkpoint_file: str, exec_id: str):
         """
-        @param user_ns  A target space where restored variables will be set.
+        @param ip  A target space where restored variables will be set.
         """
         raise NotImplementedError("This base class must be extended.")
 
@@ -160,9 +162,9 @@ class LoadVariableRestoreAction(RestoreAction):
             raise ValueError("Unexpected type for var_names: {}".format(type(var_names)))
         self.variable_names: Optional[List[str]] = var_names
 
-    def run(self, user_ns: Namespace, database_path: str, exec_id: str):
+    def run(self, ip: InteractiveShell, database_path: str, exec_id: str):
         """
-        @param user_ns  A target space where restored variables will be set.
+        @param ip  A target space where restored variables will be set.
         """
         data: bytes = KishuCheckpoint(database_path).get_checkpoint(exec_id)
         vars: VarNamesToObjects = VarNamesToObjects.loads(data)
@@ -171,7 +173,7 @@ class LoadVariableRestoreAction(RestoreAction):
             if self.variable_names is not None:
                 if key not in self.variable_names:
                     continue
-            user_ns[key] = obj
+            ip.user_ns[key] = obj
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(var_names={self.variable_names})"
@@ -192,12 +194,17 @@ class RerunCellRestoreAction(RestoreAction):
             raise ValueError("Unexpected type for cell_code: {}".format(type(cell_code)))
         self.cell_code: Optional[str] = cell_code
 
-    def run(self, user_ns: Namespace, checkpoint_file: str, exec_id: str):
+    def run(self, ip: InteractiveShell, checkpoint_file: str, exec_id: str):
         """
-        @param user_ns  A target space where restored variables will be set.
+        @param ip  A target space where restored variables will be set.
         """
         # TODO: implement this when recomputation is required.
-        raise Exception("Restoration via cell rerunning is not supported yet.")
+        cell_capture = capture_output(stdout=True, stderr=True, display=True)
+        try:
+            with cell_capture:
+               ip.run_cell(self.cell_code)
+        except Exception as e:
+            raise e
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(var_names={self.cell_code})"
@@ -221,7 +228,7 @@ class RestorePlan:
     def add_load_variable_restore_action(self, variable_names: List[str]):
         self.actions.append(LoadVariableRestoreAction(variable_names))
 
-    def run(self, user_ns: Namespace, checkpoint_file: str, exec_id: str):
+    def run(self, ip: InteractiveShell, checkpoint_file: str, exec_id: str):
         """
         Performs a series of actions as specified in self.actions.
 
@@ -229,4 +236,4 @@ class RestorePlan:
         @param checkpoint_file  The file where information is stored.
         """
         for action in self.actions:
-            action.run(user_ns, checkpoint_file, exec_id)
+            action.run(ip, checkpoint_file, exec_id)
