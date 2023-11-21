@@ -8,7 +8,6 @@ from dataclasses import asdict, dataclass, is_dataclass
 from dataclasses_json import dataclass_json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
 from kishu.exceptions import (
     BranchNotFoundError,
     BranchConflictError,
@@ -661,17 +660,13 @@ class KishuCommand:
         vardepth: int,
     ) -> FESelectedCommit:
         # Restores variables.
-        commit_variables = Namespace({})
+        commit_ns = Namespace()
         restore_plan = commit_entry.restore_plan
         if restore_plan is not None:
-            restore_plan.run(
-                commit_variables,
-                KishuPath.database_path(notebook_id),
-                commit_id
-            )
+            commit_ns = restore_plan.run(KishuPath.database_path(notebook_id), commit_id)
         variables = [
             KishuCommand._make_selected_variable(key, value, vardepth=vardepth)
-            for key, value in commit_variables.to_dict().items()
+            for key, value in commit_ns.to_dict().items()
         ]
 
         # Compile list of executed cells.

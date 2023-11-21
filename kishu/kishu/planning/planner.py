@@ -3,14 +3,14 @@ from __future__ import annotations
 import numpy as np
 
 from collections import defaultdict
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG
 from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
-from kishu.planning.idgraph import GraphNode, compare_idgraph, get_object_state
+from kishu.planning.idgraph import GraphNode, get_object_state
 from kishu.planning.optimizer import Optimizer
-from kishu.planning.plan import RestorePlan
+from kishu.planning.plan import RestorePlan, CheckpointPlan
 from kishu.planning.profiler import profile_variable_size
 
 
@@ -27,6 +27,10 @@ class CheckpointRestorePlanner:
         self._user_ns = user_ns
         self._id_graph_map: Dict[str, GraphNode] = {}
         self._pre_run_cell_vars: Set[str] = set()
+
+        # C/R plan configs.
+        self._always_recompute = False
+        self._always_migrate = True
 
     @staticmethod
     def from_existing(user_ns: Namespace) -> CheckpointRestorePlanner:
@@ -64,7 +68,7 @@ class CheckpointRestorePlanner:
         modified_vars = set()
         for k in self._id_graph_map.keys():
             new_idgraph = get_object_state(self._user_ns[k], {})
-            if not compare_idgraph(self._id_graph_map[k], new_idgraph):
+            if not self._id_graph_map[k] == new_idgraph:
                 self._id_graph_map[k] = new_idgraph
                 modified_vars.add(k)
 
@@ -78,7 +82,8 @@ class CheckpointRestorePlanner:
         for var in created_vars:
             self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def generate_checkpoint_restore_plans(self) -> Tuple[Set[str], RestorePlan]:
+    def generate_checkpoint_restore_plans(self, database_path: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
+
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = []
         for vs_list in self._ahg.get_variable_snapshots().values():
@@ -89,9 +94,16 @@ class CheckpointRestorePlanner:
         for active_vs in active_vss:
             active_vs.size = profile_variable_size(self._user_ns[active_vs.name])
 
+        # Find pairs of linked variables.
+        linked_vs_pairs = []
+        for active_vs1 in active_vss:
+            for active_vs2 in active_vss:
+                if self._id_graph_map[active_vs1.name].is_overlap(self._id_graph_map[active_vs2.name]):
+                    linked_vs_pairs.append((active_vs1, active_vs2))
+
         # Initialize the optimizer. Migration speed is currently set to large value to prompt optimizer to store everything.
         # TODO: add overlap detection in the future.
-        optimizer = Optimizer(self._ahg, active_vss, [], np.inf)
+        optimizer = Optimizer(self._ahg, active_vss, linked_vs_pairs, np.inf, only_migrate=True)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
@@ -100,6 +112,9 @@ class CheckpointRestorePlanner:
         ce_to_vs_map = defaultdict(list)
         for vs_name in vss_to_migrate:
             ce_to_vs_map[self._ahg.get_variable_snapshots()[vs_name][-1].output_ce.cell_num].append(vs_name)
+
+        # Create checkpoint plan using optimization results.
+        checkpoint_plan = CheckpointPlan.create(self._user_ns, database_path, commit_id, list(vss_to_migrate))
 
         # Create restore plan using optimization results.
         restore_plan = RestorePlan()
@@ -110,7 +125,7 @@ class CheckpointRestorePlanner:
                 restore_plan.add_load_variable_restore_action(
                         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]])
 
-        return vss_to_migrate, restore_plan
+        return checkpoint_plan, restore_plan
 
     def get_ahg(self) -> AHG:
         """

@@ -490,3 +490,36 @@ def test_hash_seaborn_scatterplot():
 
     # Close all figures
     plt.close('all')
+
+
+def test_idgraph_overlap():
+    a, b, c = 1, 2, 3
+    list1 = [a, b]
+    list2 = [b, c]
+
+    idgraph1 = get_object_state(list1, {})
+    idgraph2 = get_object_state(list2, {})
+
+    assert idgraph1.is_overlap(idgraph2)
+
+
+def test_idgraph_no_overlap():
+    a, b, c, d = 1, 2, 3, 4
+    list1 = [a, b]
+    list2 = [c, d]
+
+    idgraph1 = get_object_state(list1, {})
+    idgraph2 = get_object_state(list2, {})
+
+    assert not idgraph1.is_overlap(idgraph2)
+
+
+def test_idgraph_nested_overlap():
+    a, b, c, d = 1, 2, 3, 4
+    list = [a, b, c]
+    nested_list = [list, d]
+
+    idgraph1 = get_object_state(list, {})
+    idgraph2 = get_object_state(nested_list, {})
+
+    assert idgraph1.is_overlap(idgraph2)

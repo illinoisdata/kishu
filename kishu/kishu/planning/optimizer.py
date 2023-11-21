@@ -12,9 +12,14 @@ class Optimizer():
         The optimizer constructs a flow graph and runs the min-cut algorithm to exactly find the best
         checkpointing configuration.
     """
-    def __init__(self, ahg: AHG, active_vss: List[VariableSnapshot],
-                 linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
-                 migration_speed_bps=1) -> None:
+    def __init__(
+        self, ahg: AHG,
+        active_vss: List[VariableSnapshot],
+        linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
+        migration_speed_bps: float = 1.0,
+        only_migrate=False,
+        only_recompute=False
+    ) -> None:
         """
             Creates an optimizer with a migration speed estimate. The AHG and active VS fields
             must be populated prior to calling select_vss.
@@ -25,10 +30,17 @@ class Optimizer():
                 or recomputed together.
             @param migration_speed_bps: network bandwidth to storage.
         """
+        if only_migrate and only_recompute:
+            raise ValueError("only_migrate and only_recompute cannot both be True.")
+
         self.ahg = ahg
         self.active_vss = active_vss
         self.linked_vs_pairs = linked_vs_pairs
         self.migration_speed_bps = migration_speed_bps
+
+        # Flags for testing.
+        self._only_recompute = only_recompute
+        self._only_migrate = only_migrate
 
         # Set lookup for active VSs by name as VS objects are not hashable.
         self.active_vss_lookup = set(vs.name for vs in active_vss)
@@ -71,14 +83,20 @@ class Optimizer():
                 self.dfs_helper(ce, set(), prerequisite_ces)
                 self.req_func_mapping[ce.cell_num] = prerequisite_ces
 
-    def compute_plan(self, only_migrate=True) -> Tuple[Set[str], Set[int]]:
+    def compute_plan(self) -> Tuple[Set[str], Set[int]]:
         """
             Returns the optimal replication plan for the stored AHG consisting of
             variables to migrate and cells to rerun.
+
+            Test parameters (mutually exclusive):
+            @param only_migrate: migrate all variables.
+            @param only_recompute: rerun all cells.
         """
-        # # TODO: Remove when recomputation is supported.
-        # if only_migrate:
-        #     return self.active_vss_lookup, set()
+        if self._only_migrate:
+            return self.active_vss_lookup, set()
+
+        if self._only_recompute:
+            return set(), set(ce.cell_num for ce in self.ahg.get_cell_executions())
 
         # Build prerequisite (rec) function mapping.
         self.find_prerequisites()

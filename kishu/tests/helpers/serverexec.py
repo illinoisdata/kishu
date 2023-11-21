@@ -40,9 +40,9 @@ class NotebookHandler:
         return self
 
     @staticmethod
-    def send_execute_request(code):
+    def send_execute_request(code: str, silent: bool):
         msg_type = 'execute_request'
-        content = {'code': code, 'silent': False}
+        content = {'code': code, 'silent': silent}
         hdr = {'msg_id': uuid.uuid1().hex,
                'username': 'test',
                'session': uuid.uuid1().hex,
@@ -54,30 +54,37 @@ class NotebookHandler:
                'content': content}
         return msg
 
-    def run_code(self, cell_code: str) -> str:
+    def _read_notebook_output(self, terminate_msg_type: str, output_msg_type: str = "") -> str:
         if self.websocket is None:
             raise RuntimeError("Websocket is not initialized")
 
-        # Execute cell code
-        self.websocket.send(json.dumps(NotebookHandler.send_execute_request(cell_code)))
-
-        # Read cell output
         output = ""
         try:
             msg_type = ""
-            while msg_type != "execute_input":
+            while msg_type != terminate_msg_type:
                 rsp = json.loads(self.websocket.recv())
                 msg_type = rsp["msg_type"]
-            msg_type = ""
-            while msg_type != "status":
-                rsp = json.loads(self.websocket.recv())
-                msg_type = rsp["msg_type"]
-                if msg_type == "stream":
+                if msg_type == output_msg_type:
                     output += rsp["content"]["text"]
         except TimeoutError:
             print("Cell execution timed out.")
 
         return output
+
+    def run_code(self, cell_code: str, silent: bool = False) -> str:
+        if self.websocket is None:
+            raise RuntimeError("Websocket is not initialized")
+
+        # Execute cell code
+        self.websocket.send(json.dumps(NotebookHandler.send_execute_request(cell_code, silent)))
+
+        # There's no output if silent is true
+        if silent:
+            return self._read_notebook_output("execute_reply")
+
+        # Read cell output. The first read_notebook_output is for ensuring that the input has been read.
+        self._read_notebook_output("execute_input")
+        return self._read_notebook_output("status", "stream")
 
     def __exit__(self, exception_type, exception_value, traceback):
         if self.websocket is not None:

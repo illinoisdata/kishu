@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pandas
 import pickle
 import xxhash
@@ -11,8 +13,63 @@ class GraphNode:
         self.check_value_only = check_value_only
         self.obj_type = obj_type
 
+    def convert_to_list(self):
+        ls = []
+        GraphNode._convert_idgraph_to_list(self, ls, set())
+        return ls
+
+    def id_set(self):
+        return set([i for i in self.convert_to_list() if isinstance(i, int)])
+
+    def is_overlap(self, other: GraphNode) -> bool:
+        if self.id_set().intersection(other.id_set()):
+            return True
+        return False
+
     def __eq__(self, other):
-        return compare_idgraph(self, other)
+        return GraphNode._compare_idgraph(self, other)
+
+    @staticmethod
+    def _convert_idgraph_to_list(node: GraphNode, ret_list, visited: set):
+        # pre oder
+
+        if not node.check_value_only:
+            ret_list.append(node.id_obj)
+
+        ret_list.append(node.obj_type)
+
+        if id(node) in visited:
+            ret_list.append("CYCLIC_REFERENCE")
+            return
+
+        visited.add(id(node))
+
+        for child in node.children:
+            if isinstance(child, GraphNode):
+                GraphNode._convert_idgraph_to_list(child, ret_list, visited)
+            else:
+                ret_list.append(child)
+
+    @staticmethod
+    def _compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode) -> bool:
+        ls1 = idGraph1.convert_to_list()
+        ls2 = idGraph2.convert_to_list()
+
+        if len(ls1) != len(ls2):
+            # print("Diff lengths of idgraph")
+            return False
+
+        for i in range(len(ls1)):
+            if pandas.isnull(ls1[i]):
+                if pandas.isnull(ls2[i]):
+                    continue
+                # print("Diff: ", ls1[i], ls2[i])
+                return False
+            if ls1[i] != ls2[i]:
+                # print("Diff: ", ls1[i], ls2[i])
+                return False
+
+        return True
 
 
 def is_pickable(obj):
@@ -307,48 +364,3 @@ def get_object_hash(obj):
     x = xxhash.xxh32()
     build_object_hash(obj, set(), True, x)
     return x
-
-
-def convert_idgraph_to_list(node: GraphNode, ret_list, visited: set):
-    # pre oder
-
-    if not node.check_value_only:
-        ret_list.append(node.id_obj)
-
-    ret_list.append(node.obj_type)
-
-    if id(node) in visited:
-        ret_list.append("CYCLIC_REFERENCE")
-        return
-
-    visited.add(id(node))
-
-    for child in node.children:
-        if isinstance(child, GraphNode):
-            convert_idgraph_to_list(child, ret_list, visited)
-        else:
-            ret_list.append(child)
-
-
-def compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode) -> bool:
-    ls1: list = []
-    ls2: list = []
-
-    convert_idgraph_to_list(idGraph1, ls1, set())
-    convert_idgraph_to_list(idGraph2, ls2, set())
-
-    if len(ls1) != len(ls2):
-        # print("Diff lengths of idgraph")
-        return False
-
-    for i in range(len(ls1)):
-        if pandas.isnull(ls1[i]):
-            if pandas.isnull(ls2[i]):
-                continue
-            # print("Diff: ", ls1[i], ls2[i])
-            return False
-        if ls1[i] != ls2[i]:
-            # print("Diff: ", ls1[i], ls2[i])
-            return False
-
-    return True
