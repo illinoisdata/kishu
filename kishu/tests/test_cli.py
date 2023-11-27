@@ -184,7 +184,7 @@ class TestKishuApp:
                              [[],
                               ["simple.ipynb"],
                               ["simple.ipynb", "numpy.ipynb"]])
-    def test_list_with_server(self, runner, tmp_kishu_path, tmp_kishu_path_os, tmp_nb_path,
+    def test_list_with_server(self, runner, tmp_kishu_path, tmp_nb_path,
                               jupyter_server, notebook_names: List[str]):
         # Start sessions and run kishu init cell in each of these sessions.
         for notebook_name in notebook_names:
@@ -202,7 +202,7 @@ class TestKishuApp:
         kishu_list_notebook_names = [Path(session["notebook_path"]).name for session in list_result["sessions"]]
         assert set(notebook_names) == set(kishu_list_notebook_names)
 
-    def test_list_with_server_no_init(self, runner, tmp_kishu_path, tmp_kishu_path_os, tmp_nb_path,
+    def test_list_with_server_no_init(self, runner, tmp_kishu_path, tmp_nb_path,
                                       jupyter_server, notebook_name="simple.ipynb"):
         # Start the session.
         jupyter_server.start_session(tmp_nb_path(notebook_name))

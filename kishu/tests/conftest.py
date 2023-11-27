@@ -23,21 +23,15 @@ Kishu Resources
 """
 
 
-# Use this fixture to mount Kishu in a temporary directory in the same process.
+# Use this fixture to mount Kishu in a temporary directory.
 @pytest.fixture()
 def tmp_kishu_path(tmp_path: Path) -> Generator[Type[KishuPath], None, None]:
+    original_root = os.environ.get(ENV_KISHU_PATH_ROOT, None)
+    os.environ[ENV_KISHU_PATH_ROOT] = str(tmp_path)
     original_root = KishuPath.ROOT
     KishuPath.ROOT = str(tmp_path)
     yield KishuPath
     KishuPath.ROOT = original_root
-
-
-# Use this fixture to mount Kishu in a temporary directory across processes.
-@pytest.fixture()
-def tmp_kishu_path_os(tmp_path: Path) -> Generator[Type[KishuPath], None, None]:
-    original_root = os.environ.get(ENV_KISHU_PATH_ROOT, None)
-    os.environ[ENV_KISHU_PATH_ROOT] = str(tmp_path)
-    yield KishuPath
     if original_root is not None:
         os.environ[ENV_KISHU_PATH_ROOT] = original_root
 

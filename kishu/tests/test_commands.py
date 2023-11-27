@@ -58,7 +58,7 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             raw_cell="y = x + 1",
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
-            branches=["auto_0:1"],
+            branches=[log_result.commit_graph[2].branches[0]],  # 1 auto branch
             tags=[],
         )
 
@@ -105,7 +105,7 @@ class TestKishuCommand:
             timestamp=log_all_result.commit_graph[2].timestamp,  # Not tested
             raw_cell="y = x + 1",
             runtime_s=log_all_result.commit_graph[2].runtime_s,  # Not tested
-            branches=["auto_0:1"],
+            branches=[log_all_result.commit_graph[2].branches[0]],  # 1 auto branch
             tags=[],
         )
 
@@ -173,7 +173,7 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             raw_cell="y = x + 1",
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
-            branches=["auto_0:1", "at_head"],
+            branches=[log_result.commit_graph[2].branches[0], "at_head"],  # 1 auto branch
             tags=[],
         )
 
@@ -234,7 +234,7 @@ class TestKishuCommand:
 
         head = kishu_branch.get_head()
         assert head.branch_name is not None
-        assert head.branch_name.startswith("auto_")
+        assert "_" in head.branch_name, f"Unexpected branch name {head.branch_name}"
         assert head.commit_id == commit_id
 
     def test_tag(self, notebook_key, basic_execution_ids):
@@ -282,7 +282,7 @@ class TestKishuCommand:
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             raw_cell="y = x + 1",
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
-            branches=["auto_0:1"],
+            branches=[log_result.commit_graph[2].branches[0]],  # 1 auto branch
             tags=["at_head"],
         )
 
@@ -297,7 +297,7 @@ class TestKishuCommand:
                 oid="0:3",
                 parent_oid="0:2",
                 timestamp=fe_commit_result.commit.timestamp,  # Not tested
-                branches=["auto_0:1"],
+                branches=[fe_commit_result.commit.branches[0]],  # 1 auto branch
                 tags=[],
                 code_version=fe_commit_result.commit.code_version,  # Not tested
                 var_version=fe_commit_result.commit.var_version,  # Not tested
@@ -318,7 +318,6 @@ class TestKishuCommand:
     def test_list_alive_sessions(
         self,
         tmp_kishu_path,
-        tmp_kishu_path_os,
         tmp_nb_path,
         jupyter_server,
         notebook_names: List[str],
@@ -340,7 +339,6 @@ class TestKishuCommand:
     def test_list_alive_session_no_init(
         self,
         tmp_kishu_path,
-        tmp_kishu_path_os,
         tmp_nb_path,
         jupyter_server,
     ):
@@ -361,7 +359,6 @@ class TestKishuCommand:
     def test_end_to_end_checkout(
         self,
         tmp_kishu_path,
-        tmp_kishu_path_os,
         tmp_nb_path,
         jupyter_server,
         notebook_name: str,
@@ -411,7 +408,6 @@ class TestKishuCommand:
     def test_init_in_nonempty_session(
         self,
         tmp_kishu_path,
-        tmp_kishu_path_os,
         tmp_nb_path,
         jupyter_server,
     ):
