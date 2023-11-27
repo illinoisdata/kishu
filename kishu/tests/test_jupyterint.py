@@ -48,14 +48,14 @@ class TestOnNotebookRunner:
 
     # Modify the test_checkout to use the new fixture.
     @pytest.mark.parametrize("set_notebook_path_env", ["test_jupyter_checkout.ipynb"], indirect=True)
-    def test_checkout(self, tmp_kishu_path_os: Path, set_notebook_path_env):
+    def test_checkout(self, tmp_kishu_path: Path, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)
         vals = ['a']
         output = notebook.execute([], vals)
         assert output['a'] == 1
 
     @pytest.mark.parametrize("set_notebook_path_env", ["test_init_kishu.ipynb"], indirect=True)
-    def test_reattatchment(self, tmp_kishu_path_os: Path, set_notebook_path_env):
+    def test_reattatchment(self, tmp_kishu_path: Path, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)
         vals = ['a']
         output = notebook.execute([], vals)
@@ -82,7 +82,7 @@ class TestOnNotebookRunner:
         ],
         indirect=["set_notebook_path_env"]
     )
-    def test_full_checkout(self, tmp_kishu_path_os: Path, set_notebook_path_env, cell_num_to_restore: int):
+    def test_full_checkout(self, tmp_kishu_path: Path, set_notebook_path_env, cell_num_to_restore: int):
         """
         Tests checkout correctness by comparing namespace contents at cell_num_to_restore in the middle of a notebook,
         and namespace contents after checking out cell_num_to_restore completely executing the notebook.
@@ -99,7 +99,7 @@ class TestOnNotebookRunner:
             assert dill.dumps(namespace_before_checkout[key]) == dill.dumps(namespace_after_checkout[key])
 
     @pytest.mark.parametrize("set_notebook_path_env", ["test_detach_kishu.ipynb"], indirect=True)
-    def test_detachment_valid(self, tmp_kishu_path_os: Path, set_notebook_path_env):
+    def test_detachment_valid(self, tmp_kishu_path: Path, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)
         notebook.execute([], [])
         with open(set_notebook_path_env, "r") as nb_file:
@@ -107,7 +107,7 @@ class TestOnNotebookRunner:
             assert "kishu" not in nb.metadata
 
     @pytest.mark.parametrize("set_notebook_path_env", ["test_detach_kishu_no_init.ipynb"], indirect=True)
-    def test_detachment_fails_gracefully(self, tmp_kishu_path_os: Path, set_notebook_path_env):
+    def test_detachment_fails_gracefully(self, tmp_kishu_path: Path, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)
         notebook.execute([], [])
         assert True  # making sure no errors were thrown
