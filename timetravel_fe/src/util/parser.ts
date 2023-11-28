@@ -12,7 +12,7 @@ export function parseList(object: any) {
     return _sessions.map(
         (item: any) => (
             {
-                NotebookID: item["notebook_id"],
+                NotebookID: item["notebook_key"],
                 kernelID: item["kernel_id"],
                 notebookPath: item["notebook_path"],
                 isAlive: item["is_alive"],
