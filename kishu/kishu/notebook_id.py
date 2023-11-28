@@ -82,6 +82,20 @@ class NotebookId:
 
         raise NotNotebookPathOrKey(path_or_key)
 
+    @staticmethod
+    def parse_path_from_path_or_key(path_or_key: str) -> Path:
+        # Try parsing as path
+        path = Path(path_or_key)
+        if path.exists():
+            return path
+        # Not a path, try parsing as key.
+        key = path_or_key
+        if KishuPath.exists(key):
+            kernel_id = JupyterRuntimeEnv.enclosing_kernel_id()
+            path = JupyterRuntimeEnv.notebook_path_from_kernel(kernel_id)
+            return path
+        raise NotNotebookPathOrKey(path_or_key)
+
     def key(self) -> str:
         return self._key
 

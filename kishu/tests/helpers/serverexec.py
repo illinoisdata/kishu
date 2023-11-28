@@ -23,9 +23,13 @@ class NotebookHandler:
     """
         Class for running notebook code in Jupyter Sessions hosted in Jupyter Notebook servers.
     """
-    def __init__(self, request_url: str, header: Dict[str, Any]):
-        self.request_url = request_url
+    def __init__(self, server_url: str, header: Dict[str, Any], kernel_id: str, session_id: str, persist: bool = False):
+        self.server_url = server_url
+        self.kernel_id = kernel_id
+        self.session_id = session_id
+        self.request_url = self.server_url.replace("http", "ws") + f"/api/kernels/{self.kernel_id}/channels"
         self.header = header
+        self.persist = persist  # Some tests require us to not kill jupyter server, so this controlls whether we do or not
         self.websocket: Optional[websocket.WebSocket] = None
 
     def __enter__(self):
@@ -81,6 +85,15 @@ class NotebookHandler:
                 self.websocket.close()
             except TimeoutError:
                 print("Connection close timed out.")
+
+        if not self.persist:
+            # Shutdown the kernel
+            kernel_delete_url = f"{self.server_url}/api/kernels/{self.kernel_id}"
+            requests.delete(kernel_delete_url, headers=self.header)
+
+            # Delete the session
+            session_delete_url = f"{self.server_url}/api/sessions/{self.session_id}"
+            requests.delete(session_delete_url, headers=self.header)
 
 
 class JupyterServerRunner:
@@ -148,7 +161,7 @@ class JupyterServerRunner:
                     return server["url"][:-1]
         raise TimeoutError("server connection timed out")
 
-    def start_session(self, notebook_path: Path, kernel_name: str = "python3") -> NotebookHandler:
+    def start_session(self, notebook_path: Path, kernel_name: str = "python3", persist: bool = False) -> NotebookHandler:
         """
         Create a notebook session backed by the specified notebook file on disk. Returns the ID of the newly
         started kernel.
@@ -170,9 +183,9 @@ class JupyterServerRunner:
             response_json = json.loads(response.text)
 
             # Extract kernel id and establish connection with the kernel.
+            session_id = response_json["id"]
             kernel_id = response_json["kernel"]["id"]
-            request_url = self.server_url.replace("http", "ws") + f"/api/kernels/{kernel_id}/channels"
-            return NotebookHandler(request_url, self.header)
+            return NotebookHandler(self.server_url, self.header, kernel_id, session_id, persist)
 
     def __exit__(self, exception_type, exception_value, traceback) -> None:
         """
