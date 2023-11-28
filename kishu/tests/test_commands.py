@@ -408,7 +408,6 @@ class TestKishuCommand:
     def test_checkout_reattach(
         self,
         tmp_kishu_path,
-        tmp_kishu_path_os,
         tmp_nb_path,
         jupyter_server,
     ):
