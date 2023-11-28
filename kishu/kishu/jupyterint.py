@@ -636,7 +636,7 @@ class KishuForJupyter:
     def _step_branch(self, commit_id: str) -> None:
         head = self._kishu_branch.update_head(commit_id=commit_id)
         if self._enable_auto_branch and head.branch_name is None:
-            new_branch_name = f"auto_{commit_id}"
+            new_branch_name = KishuBranch.random_branch_name()
             self._kishu_branch.upsert_branch(new_branch_name, commit_id)
             self._kishu_branch.update_head(new_branch_name, commit_id)
         elif head.branch_name is not None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 import sqlite3
 
 from dataclasses import dataclass
@@ -15,6 +16,134 @@ from kishu.storage.path import KishuPath
 
 
 BRANCH_TABLE = 'branch'
+
+
+BRANCH_NAME_ADJECTIVES = [
+    "agile",
+    "algebraic",
+    "analytic",
+    "atomic",
+    "biochemical",
+    "biogenic",
+    "catalytic",
+    "chaotic",
+    "chromatic",
+    "complex",
+    "convergent",
+    "cosmic",
+    "diagonal",
+    "dynamic",
+    "electrostatic",
+    "elemental",
+    "entropic",
+    "exponential",
+    "fractal",
+    "genetic",
+    "genomic",
+    "geometric",
+    "inertial",
+    "integer",
+    "intrinsic",
+    "invariant",
+    "ionic",
+    "isotopic",
+    "iterative",
+    "kinematic",
+    "kinetic",
+    "logarithmic",
+    "luminescent",
+    "luminous",
+    "molecular",
+    "nebular",
+    "nebulous",
+    "neural",
+    "numeric",
+    "orthogonal",
+    "oscillating",
+    "pulsating",
+    "quantum",
+    "radiant",
+    "radiogenic",
+    "rational",
+    "recursive",
+    "resilient",
+    "resonant",
+    "scalar",
+    "sonic",
+    "statistical",
+    "stellar",
+    "subatomic",
+    "symmetric",
+    "thermal",
+    "topological",
+    "trigonometric",
+    "vibrant",
+    "viscous",
+]
+
+
+BRANCH_NAME_NOUNS = [
+    "allele",
+    "atom",
+    "bacteria",
+    "beam",
+    "bolt",
+    "catalyst",
+    "cell",
+    "core",
+    "cytoplasm",
+    "dna",
+    "doppler",
+    "electrode",
+    "electron",
+    "enzyme",
+    "fermentation",
+    "flux",
+    "force",
+    "fuse",
+    "gene",
+    "genome",
+    "heat",
+    "heliocentric",
+    "hydrocarbon",
+    "hypothesis",
+    "ion",
+    "isotope",
+    "kinetics",
+    "lens",
+    "ligand",
+    "light",
+    "magnetism",
+    "mass",
+    "microorganism",
+    "nebula",
+    "neuron",
+    "orb",
+    "orbit",
+    "oscillation",
+    "photosynthesis",
+    "pixel",
+    "plasma",
+    "plasmid",
+    "polymer",
+    "prism",
+    "prokaryote",
+    "proton",
+    "pulse",
+    "quantum",
+    "quark",
+    "radiance",
+    "reactor",
+    "rna",
+    "spark",
+    "spin",
+    "supernova",
+    "thermodynamics",
+    "transcription",
+    "valve",
+    "vesicle",
+    "wave",
+]
 
 
 @dataclass_json
@@ -186,6 +315,12 @@ class KishuBranch:
         head = self.get_head()
         if old_name == head.branch_name:
             self.update_head(branch_name=new_name)
+
+    @staticmethod
+    def random_branch_name() -> str:
+        adj_idx = random.randint(0, len(BRANCH_NAME_ADJECTIVES) - 1)
+        noun_idx = random.randint(0, len(BRANCH_NAME_NOUNS) - 1)
+        return f"{BRANCH_NAME_ADJECTIVES[adj_idx]}_{BRANCH_NAME_NOUNS[noun_idx]}"
 
     @staticmethod
     def _contains_branch(cur: sqlite3.Cursor, branch_name: str) -> bool:
