@@ -84,13 +84,14 @@ class TestKishuApp:
         assert detach_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
 
     def test_init_simple(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
-        jupyter_server.start_session(nb_simple_path)
-        result = runner.invoke(kishu_app, ["init", str(nb_simple_path)])
+        nb_path = nb_simple_path
+        jupyter_server.start_session(nb_path)
+        result = runner.invoke(kishu_app, ["init", str(nb_path)])
         assert result.exit_code == 0
 
         init_result = result.stdout
         pattern = (
-            f"Successfully initialized notebook {re.escape(str(nb_simple_path))}."
+            f"Successfully initialized notebook {re.escape(str(nb_path))}."
             " Notebook key: .*."
             " Kernel Id: .*"
         )
