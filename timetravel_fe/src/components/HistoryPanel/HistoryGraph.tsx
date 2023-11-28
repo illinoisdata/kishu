@@ -1,7 +1,7 @@
 // input PointRenderer[], return an SVG
 import {PointRenderInfo} from "../../util/PointRenderInfo";
 import {Commit} from "../../util/Commit";
-import {COMMITHEIGHT, COMMITRADIUS, MESSAGEMARGINX, MESSAGEMARGINY} from "./GraphConsts";
+import {COMMITHEIGHT, COMMITRADIUS, CURRENTCOMMITRADUIS, MESSAGEMARGINX, MESSAGEMARGINY} from "./GraphConsts";
 import React from "react";
 import "./historyPanel.css";
 
@@ -43,6 +43,9 @@ function _HistoryGraph(props: HistoryGraphProps) {
                 return <></>;
             })}
             {Array.from(props.pointRendererInfos.values()).map((info) => {
+                if(info.folded){
+                    return <></>
+                }
                 return (
                     <>
                     <rect
@@ -66,7 +69,7 @@ function _HistoryGraph(props: HistoryGraphProps) {
             <circle
                 cx={props.pointRendererInfos.get(props!.currentCommitID!)?.cx}
                 cy={props.pointRendererInfos.get(props!.currentCommitID!)?.cy}
-                r="6"
+                r={CURRENTCOMMITRADUIS}
                 fill={"Red"}
             />
         </svg>
