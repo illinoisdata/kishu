@@ -82,7 +82,8 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
         setRenderCommits(_renderCommits)
     },[props?.commits, isDateFolded] );
 
-    const highlightTop = pointRenderInfos.get(props?.selectedCommitID!)?.cy! - COMMITHEIGHT / 2;
+    const selectTop = pointRenderInfos.get(props?.selectedCommitID!)?.cy! - COMMITHEIGHT / 2;
+    const currentTop = pointRenderInfos.get(props?.currentHeadID!)?.cy! - COMMITHEIGHT / 2;
 
 
     return (
@@ -97,8 +98,14 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
             <Infos setContextMenuPosition={setContextMenuPosition}
                    renderCommits={renderCommits} setSelectedCommitID={props!.setSelectedCommitID}
                    setSelectedBranchID={props?.setSelectedBranchID} isDateFolded={isDateFolded} setIsDateFolded={setIsDateFolded}/>
-            <div className={"highlight select-highlight"} style={{top: `${highlightTop}px`}}></div>
+            {!props?.inDiffMode && <div className={"highlight select-highlight"} style={{top: `${selectTop}px`}}></div>}
             <FilterHighlights pointRenderInfos={pointRenderInfos} highlighted_commit_ids={highlighted_commit_ids}/>
+            {props?.inDiffMode && (
+                <div className={"highlight diff-highlight-to"} style={{top: `${currentTop}px`}}></div>)}
+            {props?.inDiffMode && (
+                <div className={"highlight diff-highlight-from"} style={{top: `${selectTop}px`}}></div>)
+            }
+
 
             {contextMenuPosition && (
                 <ContextMenu
