@@ -1,13 +1,9 @@
+#include <Python.h>
 #include "hash_visitor_c.h"
 #include "xxhash.h"
-#include <Python.h>
 
-typedef struct HashVisitor {
-    Visitor base; // First member is Visitor
-    // Additional members specific to HashVisitor
-} HashVisitor;
 
-long* hash_check_visited(long *visited, long id, PyObject *include_id) {
+long* hash_check_visited(long *visited, long id, int include_id) {
     // Implementation specific to HashVisitor
 
     int* current = visited;
@@ -69,15 +65,15 @@ VisitorReturnType hash_visit_primitive(PyObject *obj, XXH32_state_t* hash_state)
     return result;
 }
 
-VisitorReturnType hash_visit_tuple(PyObject *obj, long *visited, PyObject *include_id, XXH32_state_t *hash_state) {}
-VisitorReturnType hash_visit_list(PyObject *obj, long *visited, PyObject *include_id, XXH32_state_t *hash_state) {}
-VisitorReturnType hash_visit_set(PyObject *obj, long *visited, PyObject *include_id, XXH32_state_t *hash_state) {}
-VisitorReturnType hash_visit_dict(PyObject *obj, long *visited, PyObject *include_id, XXH32_state_t *hash_state) {}
-VisitorReturnType hash_visit_byte(PyObject *obj, long *visited, PyObject *include_id, XXH32_state_t *hash_state) {}
-VisitorReturnType hash_visit_type(PyObject *obj, long *visited, PyObject *include_id, XXH32_state_t *hash_state) {}
-VisitorReturnType hash_visit_callable(PyObject *obj, long *visited, PyObject *include_id, XXH32_state_t *hash_state) {}
-VisitorReturnType hash_visit_custom_obj(PyObject *obj, long *visited, PyObject *include_id, XXH32_state_t *hash_state) {}
-VisitorReturnType hash_visit_other(PyObject *obj, long *visited, PyObject *include_id, XXH32_state_t *hash_state) {}
+VisitorReturnType hash_visit_tuple(PyObject *obj, long *visited, int include_id, XXH32_state_t *hash_state) {}
+VisitorReturnType hash_visit_list(PyObject *obj, long *visited, int include_id, XXH32_state_t *hash_state) {}
+VisitorReturnType hash_visit_set(PyObject *obj, long *visited, int include_id, XXH32_state_t *hash_state) {}
+VisitorReturnType hash_visit_dict(PyObject *obj, long *visited, int include_id, XXH32_state_t *hash_state) {}
+VisitorReturnType hash_visit_byte(PyObject *obj, long *visited, int include_id, XXH32_state_t *hash_state) {}
+VisitorReturnType hash_visit_type(PyObject *obj, long *visited, int include_id, XXH32_state_t *hash_state) {}
+VisitorReturnType hash_visit_callable(PyObject *obj, long *visited, int include_id, XXH32_state_t *hash_state) {}
+VisitorReturnType hash_visit_custom_obj(PyObject *obj, long *visited, int include_id, XXH32_state_t *hash_state) {}
+VisitorReturnType hash_visit_other(PyObject *obj, long *visited, int include_id, XXH32_state_t *hash_state) {}
 
 
 HashVisitor* create_hash_visitor() {
