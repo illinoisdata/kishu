@@ -1,9 +1,11 @@
+# regular imports
 import pandas
 import pickle
 import xxhash
-from typing import Tuple, Union
-from kishu.planning.visitor import Visitor
+
+# kishu imports
 import kishu.planning.object_state as object_state
+from kishu.planning.visitor import Visitor
 
 
 def is_pickable(obj) -> bool:
@@ -19,14 +21,14 @@ def is_pickable(obj) -> bool:
 
 class hash_vis(Visitor):
     def check_visited(self, visited: set, obj_id: int, obj_type: type, include_id: bool,
-                      hash_state: xxhash.xxh32) -> Tuple[bool, Union[xxhash.xxh32, int]]:
+                      hash_state: xxhash.xxh32) -> xxhash.xxh32:
         if obj_id in visited:
             hash_state.update(str(obj_type))
             if include_id:
                 hash_state.update(str(obj_id))
-            return True, hash_state
+            return hash_state
         else:
-            return False, 0
+            return None
 
     def visit_primitive(self, obj, hash_state: xxhash.xxh32) -> xxhash.xxh32:
         hash_state.update(str(type(obj)))

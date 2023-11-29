@@ -1,7 +1,10 @@
-from kishu.planning.visitor import Visitor
-import kishu.planning.idgraph_visitor as idgraph_visitor
-import kishu.planning.hash_visitor as hash_visitor
+# regular imports
 import xxhash
+
+# kishu imports
+import kishu.planning.hash_visitor as hash_visitor
+import kishu.planning.idgraph_visitor as idgraph_visitor
+from kishu.planning.visitor import Visitor
 
 
 def create_idgraph(obj):
@@ -29,9 +32,9 @@ def get_object_state(obj, visited, visitor: Visitor, hash_state=None, include_id
              In case of xxhash, the output is hash object which is recursively updated as it
                 traverses the object. Return value is the xxhash object
     """
-    check, ret = visitor.check_visited(
+    ret = visitor.check_visited(
         visited, id(obj), type(obj), include_id, hash_state)
-    if check:
+    if ret:
         return ret
 
     if isinstance(obj, (int, float, bool, str, type(None), type(NotImplemented), type(Ellipsis))):

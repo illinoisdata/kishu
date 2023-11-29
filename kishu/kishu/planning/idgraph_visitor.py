@@ -1,8 +1,10 @@
+# regular imports
 import pandas
 import pickle
-from typing import Tuple, Union
-from kishu.planning.visitor import Visitor
+
+# kishu imports
 import kishu.planning.object_state as object_state
+from kishu.planning.visitor import Visitor
 
 
 def is_pickable(obj) -> bool:
@@ -45,11 +47,11 @@ class GraphNode:
 
 class idgraph(Visitor):
     def check_visited(self, visited: dict, obj_id: int, obj_type: type, include_id: bool,
-                      hash_state: None) -> Tuple[bool, Union[GraphNode, int]]:
+                      hash_state: None) -> GraphNode:
         if obj_id in visited.keys():
-            return True, visited[obj_id]
+            return visited[obj_id]
         else:
-            return False, 0
+            return None
 
     def visit_primitive(self, obj, hash_state) -> GraphNode:
         node = GraphNode(obj_type=type(obj), check_value_only=True)
