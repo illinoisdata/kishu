@@ -1,150 +1,38 @@
 import "./index.css";
-import {SearchOutlined} from "@ant-design/icons";
-import Highlighter from "react-highlight-words";
-import {Button, Input} from "antd";
-import type {ColumnType, ColumnsType} from "antd/es/table";
-import type {FilterConfirmProps} from "antd/es/table/interface";
+import type {ColumnsType} from "antd/es/table";
 import {Variable} from "../../util/Variable";
 import React, {useRef, useState} from "react";
 import {InputRef, Space, Table} from "antd";
 import {DetailModal} from "./DetailModal";
 import "./index.css";
+import {getColumnSearchProps} from "./searchVariable";
 
 export interface VariablePanelProps {
     variables: Variable[];
 }
 
-type DataIndex = keyof Variable;
-
-export default function VariablePanel(props: VariablePanelProps) {
-    const [detailVariableValue, setDetailVariableValue] = useState<
-        string | undefined
-    >(undefined);
+// state and handle logic about detail modal
+function useDetailModal() {
     const [openModal, setOpenModal] = useState(false);
     const [detailVariableHtml, setDetailVariableHtml] = useState<string | undefined>(undefined);
 
-    function handleDetailClick(text: string,html?:string) {
-        setDetailVariableValue(text.replaceAll("\\n", "\n"));
+    function handleDetailClick(html?:string) {
         setOpenModal(true);
         setDetailVariableHtml(html)
     }
 
-    const [searchText, setSearchText] = useState("");
-    const [searchedColumn, setSearchedColumn] = useState("");
-    const searchInput = useRef<InputRef>(null);
+    return [openModal, setOpenModal, handleDetailClick, detailVariableHtml] as const;
+}
 
-    const handleSearch = (
-        selectedKeys: string[],
-        confirm: (param?: FilterConfirmProps) => void,
-        dataIndex: DataIndex,
-    ) => {
-        confirm();
-        setSearchText(selectedKeys[0]);
-        setSearchedColumn(dataIndex);
-    };
-
-    const handleReset = (clearFilters: () => void) => {
-        clearFilters();
-        setSearchText("");
-    };
-
-    const getColumnSearchProps = (
-        dataIndex: DataIndex,
-    ): ColumnType<Variable> => ({
-        filterDropdown: ({
-                             setSelectedKeys,
-                             selectedKeys,
-                             confirm,
-                             clearFilters,
-                             close,
-                         }) => (
-            <div style={{padding: 8}} onKeyDown={(e) => e.stopPropagation()}>
-                <Input
-                    ref={searchInput}
-                    placeholder={`Search ${dataIndex}`}
-                    value={selectedKeys[0]}
-                    onChange={(e) =>
-                        setSelectedKeys(e.target.value ? [e.target.value] : [])
-                    }
-                    onPressEnter={() =>
-                        handleSearch(selectedKeys as string[], confirm, dataIndex)
-                    }
-                    style={{marginBottom: 8, display: "block"}}
-                />
-                <Space>
-                    <Button
-                        type="primary"
-                        onClick={() =>
-                            handleSearch(selectedKeys as string[], confirm, dataIndex)
-                        }
-                        icon={<SearchOutlined/>}
-                        size="small"
-                        style={{width: 90}}
-                    >
-                        Search
-                    </Button>
-                    <Button
-                        onClick={() => clearFilters && handleReset(clearFilters)}
-                        size="small"
-                        style={{width: 90}}
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        type="link"
-                        size="small"
-                        onClick={() => {
-                            confirm({closeDropdown: false});
-                            setSearchText((selectedKeys as string[])[0]);
-                            setSearchedColumn(dataIndex);
-                        }}
-                    >
-                        Filter
-                    </Button>
-                    <Button
-                        type="link"
-                        size="small"
-                        onClick={() => {
-                            close();
-                        }}
-                    >
-                        close
-                    </Button>
-                </Space>
-            </div>
-        ),
-        filterIcon: (filtered: boolean) => (
-            <SearchOutlined style={{color: filtered ? "#1677ff" : undefined}}/>
-        ),
-        onFilter: (value, record) =>
-            record[dataIndex]!.toString()
-                .toLowerCase()
-                .includes((value as string).toLowerCase()),
-        onFilterDropdownOpenChange: (visible) => {
-            if (visible) {
-                setTimeout(() => searchInput.current?.select(), 100);
-            }
-        },
-        render: (text) =>
-            searchedColumn === dataIndex ? (
-                <Highlighter
-                    highlightStyle={{backgroundColor: "#ffc069", padding: 0}}
-                    searchWords={[searchText]}
-                    autoEscape
-                    textToHighlight={text ? text.toString() : ""}
-                />
-            ) : (
-                text
-            ),
-    });
-
+// columns of the tables
+function getTableColumns(handleDetailClick:(html?:string) => void, setSearchText:any, searchText:string, setSearchedColumn: any, searchedColumn:string, searchInput:React.RefObject<InputRef>){
     const columns: ColumnsType<Variable> = [
         {
             title: "Name",
             width: "30%",
             dataIndex: "variableName",
             key: "variableName",
-            ...getColumnSearchProps("variableName"),
+            ...getColumnSearchProps("variableName",setSearchText, searchText, setSearchedColumn, searchedColumn, searchInput),
         },
         {
             title: "Type",
@@ -164,7 +52,7 @@ export default function VariablePanel(props: VariablePanelProps) {
             ellipsis: true,
             render: (text,record) =>
                 (text as string).includes("\\n") ? (
-                    <div className="multiline-table-value" onClick={() => handleDetailClick(text,record.html)}>
+                    <div className="multiline-table-value" onClick={() => handleDetailClick(record.html)}>
                         {text}
                     </div>
                 ) : (
@@ -172,12 +60,22 @@ export default function VariablePanel(props: VariablePanelProps) {
                 ),
         },
     ];
+    return columns
+}
+
+export default function VariablePanel(props: VariablePanelProps) {
+    const [searchText, setSearchText] = useState("");
+    const [searchedColumn, setSearchedColumn] = useState("");
+    const searchInput = useRef<InputRef>(null);
+
+
+    const [isDetailModalOpen, setOpenModal, handleDetailClick, detailVariableHtml] = useDetailModal();
+
     return (
         <>
-            <Table columns={columns} dataSource={props.variables}/>
+            <Table columns={getTableColumns(handleDetailClick,setSearchText, searchText, setSearchedColumn, searchedColumn, searchInput)} dataSource={props.variables}/>
             <DetailModal
-                value={detailVariableValue}
-                isOpen={openModal}
+                isOpen={isDetailModalOpen}
                 setIsModalOpen={setOpenModal}
                 html={detailVariableHtml}
             ></DetailModal>
