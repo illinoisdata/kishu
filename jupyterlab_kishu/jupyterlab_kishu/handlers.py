@@ -10,10 +10,16 @@ from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
 
 
-def subp_kishu_init(notebook_path, queue, cookies):
+def subp_kishu_init(notebook_path, cookies, queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
         init_result = KishuCommand.init(notebook_path)
     queue.put(into_json(init_result))
+
+
+def subp_kishu_checkout(notebook_key, commit_id, cookies, queue):
+    with JupyterRuntimeEnv.context(cookies=cookies):
+        checkout_result = KishuCommand.checkout(notebook_key, commit_id)
+    queue.put(into_json(checkout_result))
 
 
 class InitHandler(APIHandler):
@@ -28,7 +34,7 @@ class InitHandler(APIHandler):
         init_queue = multiprocessing.Queue()
         init_process = multiprocessing.Process(
             target=subp_kishu_init,
-            args=(input_data["notebook_path"], init_queue, cookies)
+            args=(input_data["notebook_path"], cookies, init_queue)
         )
         init_process.start()
         while init_queue.empty():
@@ -50,12 +56,28 @@ class LogAllHandler(APIHandler):
 
 
 class CheckoutHandler(APIHandler):
+    @tornado.gen.coroutine
     @tornado.web.authenticated
     def post(self):
         input_data = self.get_json_body()
+        cookies = {morsel.key: morsel.value for _, morsel in self.cookies.items()}
         notebook_key = NotebookId.parse_key_from_path_or_key(input_data["notebook_path"])
-        checkout_result = KishuCommand.checkout(notebook_key, input_data["commit_id"])
-        self.finish(into_json(checkout_result))
+
+        # We need to run KishuCommand.checkout in a separate process to unblock Jupyter Server backend
+        # so that the frontend reload does not cause a deadlock.
+        checkout_queue = multiprocessing.Queue()
+        checkout_process = multiprocessing.Process(
+            target=subp_kishu_checkout,
+            args=(notebook_key, input_data["commit_id"], cookies, checkout_queue)
+        )
+        checkout_process.start()
+        while checkout_queue.empty():
+            # Awaiting to unblock.
+            yield asyncio.sleep(0.5)
+        checkout_result = checkout_queue.get()
+        checkout_process.join()
+
+        self.finish(checkout_result)
 
 
 def setup_handlers(web_app):
