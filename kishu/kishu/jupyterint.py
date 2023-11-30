@@ -232,6 +232,8 @@ class JupyterConnection:
 class KishuForJupyter:
     CURRENT_CELL_ID = 'current'
     SAVE_CMD = "try { IPython.notebook.save_checkpoint(); } catch { }"
+    # RELOAD_CMD = "try { IPython.notebook.load_notebook(IPython.notebook.notebook_path); } catch { }"
+    RELOAD_CMD = "try { location.reload(true); } catch { }"  # will ask confirmation
 
     def __init__(self, notebook_id: NotebookId, ip: Optional[InteractiveShell] = None) -> None:
         # Kishu info and storages.
@@ -548,6 +550,15 @@ class KishuForJupyter:
         var_version = hash(pickle.dumps(self._user_ns.to_dict()))
         return restore_plan, var_version
 
+    @staticmethod
+    def _ipylab_frontend_app() -> ipylab.JupyterFrontEnd:
+        app = ipylab.JupyterFrontEnd()
+        run_ui_poll_loop(lambda: (  # This unblocks web UI to connect with app.
+            None if app.commands.list_commands() == []
+            else app.commands.list_commands()
+        ))
+        return app
+
     def _save_notebook(self) -> None:
         # TODO re-enable notebook saving during tests when possible/supported
         if self._test_mode:
@@ -561,12 +572,7 @@ class KishuForJupyter:
         # Issue save command.
         if self._platform == "jupyterlab":
             # In JupyterLab.
-            app = ipylab.JupyterFrontEnd()
-            run_ui_poll_loop(lambda: (  # This unblocks web UI to connect with app.
-                None if app.commands.list_commands() == []
-                else app.commands.list_commands()
-            ))
-            app.commands.execute("docmanager:save")
+            KishuForJupyter._ipylab_frontend_app().commands.execute("docmanager:save")
         else:
             # In Jupyter Notebook.
             IPython.display.display(IPython.display.Javascript(KishuForJupyter.SAVE_CMD))
@@ -655,6 +661,17 @@ class KishuForJupyter:
         # Save change
         nbformat.write(nb, nb_path)
 
+        # Reload frontend to reflect checked out notebook. This may prompts a confirmation dialog.
+        self._reload_jupyter_frontend()
+
+    def _reload_jupyter_frontend(self):
+        if self._platform == "jupyterlab":
+            # In JupyterLab.
+            KishuForJupyter._ipylab_frontend_app().commands.execute("docmanager:reload")
+        else:
+            # In Jupyter Notebook.
+            IPython.display.display(IPython.display.Javascript(KishuForJupyter.RELOAD_CMD))
+
     def _checkout_namespace(self, user_ns: Namespace, target_ns: Namespace) -> None:
         user_ns.update(target_ns)
         for key in list(user_ns.keyset()):
@@ -682,6 +699,9 @@ def _install_kishu_hooks(notebook_id: NotebookId, session_id: int) -> None:
     ip.user_ns[KISHU_INSTRUMENT] = kishu
     ip.events.register('pre_run_cell', kishu.pre_run_cell)
     ip.events.register('post_run_cell', kishu.post_run_cell)
+
+    # Reload frontend to reflect the new Kishu metadata.
+    kishu._reload_jupyter_frontend()
 
 
 def _uninstall_kishu_hooks() -> None:

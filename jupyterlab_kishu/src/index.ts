@@ -241,7 +241,7 @@ function installCommands(
         } else {
           notify_manager.update({
             id: notify_id,
-            message: trans.__(`Kishu checkout to ${commit_id} succeeded!\nPlease refresh this page.`),
+            message: trans.__(`Kishu checkout to ${commit_id} succeeded!`),
             type: 'success',
             autoClose: 3000,
           });
