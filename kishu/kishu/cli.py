@@ -7,8 +7,10 @@ from functools import wraps
 from typing import Tuple
 
 from kishu import __app_name__, __version__
-from kishu.commands import CheckoutResult, CommitResult, DetachResult
-from kishu.commands import InitResult, InstrumentStatusValue, into_json, KishuCommand
+from kishu.commands import (
+    CheckoutResult, CommitResult, DetachResult, InitResult,
+    InstrumentResult, InstrumentStatus, into_json, KishuCommand
+)
 from kishu.notebook_id import NotebookId
 
 
@@ -31,6 +33,24 @@ def print_clean_errors(fn):
         except Exception as e:
             print(f"Kishu internal error ({type(e).__name__}).")
     return fn_with_clean_errors
+
+
+def print_reattachment_message(response: InstrumentResult):
+    """
+    Prints reattachment message, returns whether or not to print the actual response message
+    """
+    if response.value == InstrumentStatus.already_attached:
+        return True
+    if response.value in [InstrumentStatus.reattach_succeeded, InstrumentStatus.reattach_init_fail]:
+        print("Notebook instrumentation was present but not initialized, so attempting to re-initialize it")
+        print(response.message)
+        return True
+    if response.value == InstrumentStatus.no_kernel:
+        print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
+        return False
+    if response.value == InstrumentStatus.no_metadata:
+        print(response.message)
+        return False
 
 
 def print_init_message(response: InitResult) -> None:
@@ -63,37 +83,19 @@ def print_detach_message(response: DetachResult, notebook_path: str) -> None:
 
 
 def print_checkout_message(response: CheckoutResult) -> None:
-    if response.status == "ok":
-        if response.reattachment_status == InstrumentStatusValue.already_attached:
-            print(response.message)
-        else:
-            print("Notebook instrumentation was present but not initialized, so re-initialized it")
-            print(response.reattachment_message)
-            print(response.message)
-    else:
-        if response.reattachment_status == InstrumentStatusValue.no_kernel:
-            print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
-        elif response.reattachment_status in [InstrumentStatusValue.no_metadata, InstrumentStatusValue.reattach_init_fail]:
-            print(response.message)
-            print(response.reattachment_message)
-        else:  # error in execution of checkout
-            print(response.message)
+    if not print_reattachment_message(response.reattachment):
+        return
+    if response.message:
+        print(response.message)
 
 
 def print_commit_message(response: CommitResult) -> None:
+    if not print_reattachment_message(response.reattachment):
+        return
     if response.status == "ok":
-        if response.reattachment_status == InstrumentStatusValue.reattach_succeeded:
-            print("Notebook instrumentation was present but not initialized, so re-initialized it")
-            print(response.reattachment_message)
         print(f"Successfully committed, id: {response.message}")
     else:
-        if response.reattachment_status == InstrumentStatusValue.no_kernel:
-            print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
-        elif response.reattachment_status in [InstrumentStatusValue.no_metadata, InstrumentStatusValue.reattach_init_fail]:
-            print(response.message)
-            print(response.reattachment_message)
-        else:  # error in execution of checkout
-            print(response.message)
+        print(response.message)
 
 
 @kishu_app.callback()
@@ -210,7 +212,7 @@ def status(
 def commit(
     notebook_path_or_key: str = typer.Argument(
         ...,
-        help="Path or key of the target notebook.",
+        help="Path to the target notebook or Kishu notebook key.",
         show_default=False
     ),
     message: str = typer.Option(
@@ -224,8 +226,7 @@ def commit(
     """
     Checkout a notebook to a commit.
     """
-    notebook_path = NotebookId.parse_path_from_path_or_key(notebook_path_or_key)
-    print_commit_message(KishuCommand.commit(str(notebook_path), message=message))
+    print_commit_message(KishuCommand.commit(notebook_path_or_key, message=message))
 
 
 @kishu_app.command()
@@ -233,7 +234,7 @@ def commit(
 def checkout(
     notebook_path_or_key: str = typer.Argument(
         ...,
-        help="Path or key of the target notebook.",
+        help="Path to the target notebook or Kishu notebook key.",
         show_default=False
     ),
     branch_or_commit_id: str = typer.Argument(
@@ -251,9 +252,8 @@ def checkout(
     """
     Checkout a notebook to a commit.
     """
-    notebook_path = NotebookId.parse_path_from_path_or_key(notebook_path_or_key)
     print_checkout_message(KishuCommand.checkout(
-        str(notebook_path),
+        notebook_path_or_key,
         branch_or_commit_id,
         skip_notebook=skip_notebook,
     ))

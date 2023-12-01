@@ -87,13 +87,19 @@ class NotebookId:
         # Try parsing as path
         path = Path(path_or_key)
         if path.exists():
-            return path
+            try:
+                JupyterRuntimeEnv.read_notebook(path)
+                return path
+            except (nbformat.reader.NotJSONError, UnicodeDecodeError):
+                # Ignore non-notebook file.
+                pass
+
         # Not a path, try parsing as key.
         key = path_or_key
         if KishuPath.exists(key):
-            kernel_id = JupyterRuntimeEnv.enclosing_kernel_id()
-            path = JupyterRuntimeEnv.notebook_path_from_kernel(kernel_id)
-            return path
+            conn_info = NotebookId.try_retrieve_connection(key)
+            if conn_info:
+                return Path(conn_info.notebook_path)
         raise NotNotebookPathOrKey(path_or_key)
 
     def key(self) -> str:

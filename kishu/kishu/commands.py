@@ -55,7 +55,7 @@ def into_json(data):
     return json.dumps(data, cls=DataclassJSONEncoder, indent=2)
 
 
-class InstrumentStatusValue(str, enum.Enum):
+class InstrumentStatus(str, enum.Enum):
     no_kernel = "no_kernel"
     no_metadata = "no_metadata"
     already_attached = "already_attached"
@@ -64,9 +64,17 @@ class InstrumentStatusValue(str, enum.Enum):
 
 
 @dataclass
-class InstrumentStatus:
-    value: InstrumentStatusValue
+class InstrumentResult:
+    value: InstrumentStatus
     message: Optional[str]
+
+    def is_success(self) -> bool:
+        return (
+            self.value in [
+                InstrumentStatus.already_attached,
+                InstrumentStatus.reattach_succeeded,
+            ]
+        )
 
 
 """
@@ -115,16 +123,14 @@ class DetachResult:
 class CheckoutResult:
     status: str
     message: str
-    reattachment_status: InstrumentStatusValue
-    reattachment_message: Optional[str]
+    reattachment: InstrumentResult
 
     @staticmethod
-    def wrap(result: JupyterCommandResult, instrument_status: InstrumentStatus) -> CheckoutResult:
+    def wrap(result: JupyterCommandResult, instrument_result: InstrumentResult) -> CheckoutResult:
         return CheckoutResult(
             status=result.status,
             message=result.message,
-            reattachment_status=instrument_status.value,
-            reattachment_message=instrument_status.message,
+            reattachment=instrument_result,
         )
 
 
@@ -133,16 +139,14 @@ class CheckoutResult:
 class CommitResult:
     status: str
     message: str
-    reattachment_status: InstrumentStatusValue
-    reattachment_message: Optional[str]
+    reattachment: InstrumentResult
 
     @staticmethod
-    def wrap(result: JupyterCommandResult, instrument_status: InstrumentStatus) -> CommitResult:
+    def wrap(result: JupyterCommandResult, instrument_result: InstrumentResult) -> CommitResult:
         return CommitResult(
             status=result.status,
             message=result.message,
-            reattachment_status=instrument_status.value,
-            reattachment_message=instrument_status.message,
+            reattachment=instrument_result,
         )
 
 
@@ -353,19 +357,20 @@ class KishuCommand:
             return CommitResult(
                 status="error",
                 message=f"{type(e).__name__}: {str(e)}",
-                reattachment_status=InstrumentStatusValue.no_kernel,
-                reattachment_message=None,
+                reattachment=InstrumentResult(
+                    value=InstrumentStatus.no_kernel,
+                    message=None,
+                )
             )
-        instrument_status = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
-        if (instrument_status.value in [InstrumentStatusValue.already_attached, InstrumentStatusValue.reattach_succeeded]):
+        instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
+        if (instrument_result.is_success()):
             return CommitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
                 "_kishu.commit()" if message is None else f"_kishu.commit(message=\"{message}\")",
-            ), instrument_status)
+            ), instrument_result)
         return CommitResult(
             status="error",
             message="Error re-attaching kishu instrumentation to notebook",
-            reattachment_status=instrument_status.value,
-            reattachment_message=instrument_status.message,
+            reattachment=instrument_result
         )
 
     @staticmethod
@@ -381,20 +386,21 @@ class KishuCommand:
             return CheckoutResult(
                 status="error",
                 message=f"{type(e).__name__}: {str(e)}",
-                reattachment_status=InstrumentStatusValue.no_kernel,
-                reattachment_message=None,
+                reattachment=InstrumentResult(
+                    value=InstrumentStatus.no_kernel,
+                    message=None,
+                )
             )
 
-        instrument_status = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
-        if (instrument_status.value in [InstrumentStatusValue.already_attached, InstrumentStatusValue.reattach_succeeded]):
+        instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
+        if (instrument_result.is_success()):
             return CheckoutResult.wrap(JupyterConnection(kernel_id).execute_one_command(
                 f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
-            ), instrument_status)
+            ), instrument_result)
         return CheckoutResult(
             status="error",
             message="Error re-attaching kishu instrumentation to notebook",
-            reattachment_status=instrument_status.value,
-            reattachment_message=instrument_status.message,
+            reattachment=instrument_result,
         )
 
     @staticmethod
@@ -570,21 +576,21 @@ class KishuCommand:
 
     """Helpers"""
     @staticmethod
-    def _try_reattach_if_not(notebook_path: Path, kernel_id: str) -> InstrumentStatus:
+    def _try_reattach_if_not(notebook_path: Path, kernel_id: str) -> InstrumentResult:
         if not NotebookId.verify_metadata_exists(notebook_path):
-            return InstrumentStatus(
-                value=InstrumentStatusValue.no_metadata,
+            return InstrumentResult(
+                value=InstrumentStatus.no_metadata,
                 message=NO_METADATA_MESSAGE,
             )
         if KishuCommand._is_notebook_attached(kernel_id):
-            return InstrumentStatus(
-                value=InstrumentStatusValue.already_attached,
+            return InstrumentResult(
+                value=InstrumentStatus.already_attached,
                 message=None,
             )
-        reattach_result = KishuCommand._reattach(notebook_path)
+        reattach_result = KishuCommand.init(str(notebook_path))
         if reattach_result.status != "ok":
-            return InstrumentStatus(
-                value=InstrumentStatusValue.reattach_init_fail,
+            return InstrumentResult(
+                value=InstrumentStatus.reattach_init_fail,
                 message=reattach_result.message,
             )
         assert reattach_result.notebook_id is not None
@@ -593,8 +599,8 @@ class KishuCommand:
             f" Notebook key: {reattach_result.notebook_id.key()}."
             f" Kernel Id: {reattach_result.notebook_id.kernel_id()}"
         )
-        return InstrumentStatus(
-            value=InstrumentStatusValue.reattach_succeeded,
+        return InstrumentResult(
+            value=InstrumentStatus.reattach_succeeded,
             message=reattach_message,
         )
 
@@ -602,10 +608,6 @@ class KishuCommand:
     def _is_notebook_attached(kernel_id: str) -> bool:
         verification_response = JupyterConnection(kernel_id).execute_one_command("'_kishu' in globals()")
         return verification_response.message == "True"
-
-    @staticmethod
-    def _reattach(notebook_path: Path) -> InitResult:
-        return KishuCommand.init(str(notebook_path))
 
     @staticmethod
     def _decorate_graph(notebook_id: str, graph: List[CommitNodeInfo]) -> List[CommitSummary]:
