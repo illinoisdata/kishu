@@ -50,15 +50,13 @@ class TestOnNotebookRunner:
     @pytest.mark.parametrize("set_notebook_path_env", ["test_jupyter_checkout.ipynb"], indirect=True)
     def test_checkout(self, tmp_kishu_path: Path, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)
-        vals = ['a']
-        output = notebook.execute([], vals)
+        output = notebook.execute([])
         assert output['a'] == 1
 
     @pytest.mark.parametrize("set_notebook_path_env", ["test_init_kishu.ipynb"], indirect=True)
     def test_reattatchment(self, tmp_kishu_path: Path, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)
-        vals = ['a']
-        output = notebook.execute([], vals)
+        output = notebook.execute([])
         assert output['a'] == 1
 
         with open(set_notebook_path_env, "r") as temp_file:
@@ -101,7 +99,7 @@ class TestOnNotebookRunner:
     @pytest.mark.parametrize("set_notebook_path_env", ["test_detach_kishu.ipynb"], indirect=True)
     def test_detachment_valid(self, tmp_kishu_path: Path, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)
-        notebook.execute([], [])
+        notebook.execute([])
         with open(set_notebook_path_env, "r") as nb_file:
             nb = nbformat.read(nb_file, 4)
             assert "kishu" not in nb.metadata
@@ -109,5 +107,5 @@ class TestOnNotebookRunner:
     @pytest.mark.parametrize("set_notebook_path_env", ["test_detach_kishu_no_init.ipynb"], indirect=True)
     def test_detachment_fails_gracefully(self, tmp_kishu_path: Path, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)
-        notebook.execute([], [])
+        notebook.execute([])
         assert True  # making sure no errors were thrown

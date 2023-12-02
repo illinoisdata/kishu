@@ -35,10 +35,11 @@ def test_checkpoint_restore_planner():
     # Assert ID graphs are creaated.
     assert len(planner.get_id_graph_map().keys()) == 2
 
-    # Create a checkpoint plan.
-    restore_plan = planner.generate_restore_plan()
+    # Create checkpoint and restore plans.
+    checkpoint_plan, restore_plan = planner.generate_checkpoint_restore_plans("fake_path", "fake_commit_id")
 
-    # Assert that the restore plan has two actions in it.
+    # Assert the plans have appropriate actions.
+    assert len(checkpoint_plan.actions) == 1
     assert len(restore_plan.actions) == 2
 
 

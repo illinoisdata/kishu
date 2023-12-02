@@ -69,7 +69,7 @@ from kishu.exceptions import (
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
-from kishu.planning.plan import RestorePlan, StoreEverythingCheckpointPlan
+from kishu.planning.plan import RestorePlan
 from kishu.planning.planner import CheckpointRestorePlanner
 from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint import KishuCheckpoint
@@ -341,15 +341,13 @@ class KishuForJupyter:
                 current_executed_cells[:] = commit_entry.executed_cells[:]
 
         # Restore user-namespace variables.
-        user_ns = Namespace(self._ip.user_ns)   # will restore to global namespace
-        target_ns = Namespace({})         # temp location
-        commit_entry.restore_plan.run(target_ns, database_path, commit_id)
-        self._checkout_namespace(user_ns, target_ns)
+        commit_ns = commit_entry.restore_plan.run(database_path, commit_id)
+        self._checkout_namespace(self._user_ns, commit_ns)
 
         # Update C/R planner with AHG from checkpoint file and new namespace.
         if commit_entry.ahg_string is None:
             raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
-        self._cr_planner.replace_state(commit_entry.ahg_string, user_ns)
+        self._cr_planner.replace_state(commit_entry.ahg_string, self._user_ns)
 
         # Update Kishu heads.
         self._kishu_graph.jump(commit_id)
@@ -532,20 +530,12 @@ class KishuForJupyter:
 
         TODO: Perform more intelligent checkpointing.
         """
-        # Step 1: checkpoint
-        database_path = self.database_path()
-        commit_id = cell_info.commit_id
-        cell_info.checkpoint_vars = list(self._user_ns.keyset())
-        checkpoint = StoreEverythingCheckpointPlan.create(
-            self._user_ns,
-            database_path,
-            commit_id,
-            cell_info.checkpoint_vars,
-        )
-        checkpoint.run(self._user_ns)
+        # Step 1: prepare a restoration plan using results from the optimizer.
+        checkpoint_plan, restore_plan = self._cr_planner.generate_checkpoint_restore_plans(
+            self.database_path(), cell_info.commit_id)
 
-        # Step 2: prepare a restoration plan using results from the optimizer.
-        restore_plan = self._cr_planner.generate_restore_plan()
+        # Step 2: checkpoint
+        checkpoint_plan.run(self._user_ns)
 
         # Extra: generate variable version. TODO: we should avoid the extra namespace serialization.
         var_version = hash(pickle.dumps(self._user_ns.to_dict()))

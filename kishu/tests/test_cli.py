@@ -257,7 +257,7 @@ class TestKishuApp:
         # Start sessions and run kishu init cell in each of these sessions.
         for notebook_name in notebook_names:
             with jupyter_server.start_session(tmp_nb_path(notebook_name), persist=True) as notebook_session:
-                notebook_session.run_code(KISHU_INIT_STR)
+                notebook_session.run_code(KISHU_INIT_STR, silent=True)
 
         # Kishu should be able to see these sessions.
         # json.loads is used here instead of ListResult.from_json as mypy complains ListResult has no from_json.

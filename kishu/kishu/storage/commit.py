@@ -60,7 +60,6 @@ class CommitEntry:
     kind: CommitEntryKind = CommitEntryKind.unspecified
 
     checkpoint_runtime_s: Optional[float] = None
-    checkpoint_vars: Optional[List[str]] = None
     executed_cells: Optional[List[str]] = None
     raw_nb: Optional[str] = None
     formatted_cells: Optional[List[FormattedCell]] = None
