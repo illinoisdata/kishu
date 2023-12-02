@@ -1,6 +1,7 @@
 from setuptools import setup, Extension
 
-module = Extension('VisitorModule', sources=['visitor_c.c', 'hash_visitor_c.c'])
+module = Extension('VisitorModule', sources=['visitor_c.c', 'hash_visitor_c.c', 'xxhash.c'], include_dirs=[
+                   '/xxhash.h'], extra_compile_args=['-g'])
 
 setup(
     name='ObjectState',

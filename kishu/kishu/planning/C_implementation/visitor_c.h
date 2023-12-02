@@ -2,6 +2,7 @@
 #define _VISITOR_C_H
 
 #include <Python.h>
+#include "xxhash.h"
 
 // Global type identifiers
 extern const int TYPE_NONE;
@@ -23,12 +24,13 @@ typedef union {
 typedef struct Visited {
     PyObject *pyObject;
     struct Visited *next;
-} Visited
+    // maybe have a pointer here to the VisitorReturnType as well
+} Visited;
 
 // function pointer for visitor pattern
 
 typedef struct Visitor {
-    Visited* (*has_visited)(Visited *visited, PyObject *obj, int include_id);
+    VisitorReturnType* (*has_visited)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
     VisitorReturnType* (*visit_primitive)(PyObject *obj, VisitorReturnType* state);
     VisitorReturnType* (*visit_tuple)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
     VisitorReturnType* (*visit_list)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
@@ -43,7 +45,7 @@ typedef struct Visitor {
     VisitorReturnType* state;
 } Visitor;
 
-static PyObject* get_object_hash_wrapper(PyObject* self, PyObject* args);
+// static PyObject* get_object_hash_wrapper(PyObject* self, PyObject* args);
 
 VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include_id, VisitorReturnType* state);
 VisitorReturnType* get_object_hash(PyObject *obj);

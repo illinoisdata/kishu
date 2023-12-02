@@ -21,19 +21,22 @@ VisitorReturnType* get_object_hash(PyObject *obj) {
 }
 
 VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include_id, VisitorReturnType* state) {
-    Visited* visited_obj;
-    if (NULL != (visited_obj = (visitor -> has_visited(visitor -> visited, obj, include_id))))
-        return visited_obj;
+    VisitorReturnType* ret_state;
+    if (NULL != (ret_state = (visitor -> has_visited(obj, visitor -> visited, include_id, state))))
+        return ret_state;
     else {
         /* Not been visited yet */
         if (is_primitive(obj))
             return visitor -> visit_primitive(obj, state);
-
+        else {
+            PyErr_SetString(PyExc_TypeError, "Unsupported object type for ObjectStare");
+            return NULL;
+        }
     } 
 }
 
 int is_primitive(PyObject *obj) {
-    if ( (obj == PyNone) || (obj == Py_NotImplemented) || (obj == Py_Ellipsis) || PyLong_Check(obj) || PyFloat_Check(obj) || PyBool_Check(obj) || PyUnicode_Check(obj) )
+    if ( (obj == Py_None) || (obj == Py_NotImplemented) || (obj == Py_Ellipsis) || PyLong_Check(obj) || PyFloat_Check(obj) || PyBool_Check(obj) || PyUnicode_Check(obj) )
         return 1;
     else
         return 0;
@@ -58,9 +61,30 @@ static PyObject* get_object_hash_wrapper(PyObject* self, PyObject* args) {
     return state_capsule;
 }
 
+static PyObject *get_digest_hash_wrapper(PyObject *self, PyObject *args) {
+    if (self == NULL) {
+        return NULL;
+    }
+
+    PyObject *obj;
+    if (!PyArg_ParseTuple(args, "O", &obj)) {
+        return NULL;
+    }
+    VisitorReturnType* result = (VisitorReturnType *)PyCapsule_GetPointer(obj, "XXH32_hash");
+
+    if (result == NULL)
+        return NULL;
+
+    unsigned int digest_hash = XXH32_digest(result -> hashed_state);
+
+    return PyLong_FromUnsignedLong(digest_hash);
+}
+
 static PyMethodDef VisitorMethods[] = {
     {"get_object_hash_wrapper", get_object_hash_wrapper, METH_VARARGS,
      "Python interface for the get_object_hash C library function."},
+    {"get_digest_hash_wrapper", get_digest_hash_wrapper, METH_VARARGS,
+     "Python interface for the get_digest_hash_wrapper C library function."},
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef VisitorModule = {

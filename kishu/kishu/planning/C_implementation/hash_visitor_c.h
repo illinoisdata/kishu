@@ -10,7 +10,7 @@
 
 Visitor* create_hash_visitor();
 
-Visited* hash_has_visited(Visited *visited, PyObject *obj, int include_id);
+VisitorReturnType* hash_has_visited(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
 VisitorReturnType* hash_visit_primitive(PyObject *obj, VisitorReturnType* state);
 VisitorReturnType* hash_visit_tuple(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
 VisitorReturnType* hash_visit_list(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
