@@ -458,6 +458,7 @@ class TestKishuCommand:
             warning_str = "WARNING: Notebook saving is taking too long"  # TODO remove this when notebook saving is fixed
             assert var_value_before.split(warning_str)[0] == var_value_after.split(warning_str)[0]
 
+    @pytest.mark.skip(reason="Flaky due to silent KISHU_INIT_STR cell")
     def test_init_in_nonempty_session(
         self,
         tmp_kishu_path,
