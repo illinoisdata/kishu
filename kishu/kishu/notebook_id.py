@@ -56,6 +56,15 @@ class NotebookId:
         return metadata.notebook_id
 
     @staticmethod
+    def verify_metadata_exists(path: Path) -> bool:
+        nb = JupyterRuntimeEnv.read_notebook(path)
+        try:
+            NotebookId.read_kishu_metadata(nb)
+            return True
+        except MissingNotebookMetadataError:
+            return False
+
+    @staticmethod
     def parse_key_from_path_or_key(path_or_key: str) -> str:
         # Try parsing as path, if exists.
         path = Path(path_or_key)
@@ -71,6 +80,26 @@ class NotebookId:
         if KishuPath.exists(key):
             return key
 
+        raise NotNotebookPathOrKey(path_or_key)
+
+    @staticmethod
+    def parse_path_from_path_or_key(path_or_key: str) -> Path:
+        # Try parsing as path
+        path = Path(path_or_key)
+        if path.exists():
+            try:
+                JupyterRuntimeEnv.read_notebook(path)
+                return path
+            except (nbformat.reader.NotJSONError, UnicodeDecodeError):
+                # Ignore non-notebook file.
+                pass
+
+        # Not a path, try parsing as key.
+        key = path_or_key
+        if KishuPath.exists(key):
+            conn_info = NotebookId.try_retrieve_connection(key)
+            if conn_info:
+                return Path(conn_info.notebook_path)
         raise NotNotebookPathOrKey(path_or_key)
 
     def key(self) -> str:

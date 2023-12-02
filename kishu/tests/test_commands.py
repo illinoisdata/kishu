@@ -6,7 +6,7 @@ from typing import List
 
 from tests.helpers.nbexec import KISHU_INIT_STR
 
-from kishu.commands import CommitSummary, FECommit, FESelectedCommit, KishuCommand, KishuSession
+from kishu.commands import CommitSummary, FECommit, FESelectedCommit, InstrumentStatus, KishuCommand, KishuSession
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import CommitEntryKind, CommitEntry
 from kishu.storage.branch import KishuBranch
@@ -324,7 +324,7 @@ class TestKishuCommand:
     ):
         # Start sessions and run kishu init cell in each of these sessions.
         for notebook_name in notebook_names:
-            with jupyter_server.start_session(tmp_nb_path(notebook_name)) as notebook_session:
+            with jupyter_server.start_session(tmp_nb_path(notebook_name), persist=True) as notebook_session:
                 notebook_session.run_code(KISHU_INIT_STR)
 
         # Kishu should be able to see these sessions.
@@ -387,7 +387,7 @@ class TestKishuCommand:
                 notebook_session.run_code(contents[i])
 
             # Get the notebook key of the session.
-            list_result = KishuCommand.list(list_all=True)
+            list_result = KishuCommand.list()
             assert len(list_result.sessions) == 1
             assert list_result.sessions[0].notebook_path is not None
             assert Path(list_result.sessions[0].notebook_path).name == notebook_name
@@ -399,11 +399,65 @@ class TestKishuCommand:
             commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
 
             # Restore to that commit
-            KishuCommand.checkout(notebook_key, commit_id)
+            KishuCommand.checkout(notebook_path, commit_id)
 
             # Get the variable value after checkout.
             var_value_after = notebook_session.run_code(f"print({var_to_compare})")
             assert var_value_before == var_value_after
+
+    def test_checkout_reattach(
+        self,
+        tmp_kishu_path,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        cell_num_to_restore = 4
+        var_to_compare = "b"
+
+        # Start the initial notebook session.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR)
+
+            # Run some notebook cells.
+            for i in range(cell_num_to_restore):
+                notebook_session.run_code(contents[i])
+
+            var_value_before = notebook_session.run_code(f"print({var_to_compare})")
+
+            # Run the rest of the notebook cells.
+            for i in range(cell_num_to_restore, len(contents)):
+                notebook_session.run_code(contents[i])
+
+            # Get notebook key
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 1
+            assert list_result.sessions[0].notebook_path is not None
+            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
+            notebook_key = list_result.sessions[0].notebook_key
+
+        # Starting second notebook session
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run all notebook cells, note no init cell ran
+            for i in range(len(contents)):
+                notebook_session.run_code(contents[i])
+
+            # Get commit id of commit which we want to restore
+            log_result = KishuCommand.log_all(notebook_key)
+            assert len(log_result.commit_graph) == len(contents)+1  # Nothing on this session should have been tracked
+
+            commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
+
+            # Restore to that commit
+            checkout_result = KishuCommand.checkout(notebook_path, commit_id)
+            assert checkout_result.reattachment.value == InstrumentStatus.reattach_succeeded
+
+            # Get the variable value after checkout.
+            var_value_after = notebook_session.run_code(f"print({var_to_compare})")
+            warning_str = "WARNING: Notebook saving is taking too long"  # TODO remove this when notebook saving is fixed
+            assert var_value_before.split(warning_str)[0] == var_value_after.split(warning_str)[0]
 
     def test_init_in_nonempty_session(
         self,
@@ -426,7 +480,7 @@ class TestKishuCommand:
             notebook_session.run_code(KISHU_INIT_STR)
 
             # Kishu should be able to see the notebook session now.
-            list_result = KishuCommand.list(list_all=True)
+            list_result = KishuCommand.list()
             assert len(list_result.sessions) == 1
             assert list_result.sessions[0].notebook_path is not None
             assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import enum
 import json
 
 from dataclasses import asdict, dataclass, is_dataclass
@@ -29,6 +30,10 @@ from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag, TagRow
 
+NO_METADATA_MESSAGE = (
+    "Kishu instrumentaton not found, please double check notebook path and run kishu init NOTEBOOK_PATH"
+    " to attatch Kishu instrumentation"
+)
 
 """
 Printing dataclasses
@@ -48,6 +53,28 @@ class DataclassJSONEncoder(json.JSONEncoder):
 
 def into_json(data):
     return json.dumps(data, cls=DataclassJSONEncoder, indent=2)
+
+
+class InstrumentStatus(str, enum.Enum):
+    no_kernel = "no_kernel"
+    no_metadata = "no_metadata"
+    already_attached = "already_attached"
+    reattach_succeeded = "reattached"
+    reattach_init_fail = "reattach_init_fail"
+
+
+@dataclass
+class InstrumentResult:
+    value: InstrumentStatus
+    message: Optional[str]
+
+    def is_success(self) -> bool:
+        return (
+            self.value in [
+                InstrumentStatus.already_attached,
+                InstrumentStatus.reattach_succeeded,
+            ]
+        )
 
 
 """
@@ -91,6 +118,38 @@ class DetachResult:
         )
 
 
+@dataclass_json
+@dataclass
+class CheckoutResult:
+    status: str
+    message: str
+    reattachment: InstrumentResult
+
+    @staticmethod
+    def wrap(result: JupyterCommandResult, instrument_result: InstrumentResult) -> CheckoutResult:
+        return CheckoutResult(
+            status=result.status,
+            message=result.message,
+            reattachment=instrument_result,
+        )
+
+
+@dataclass_json
+@dataclass
+class CommitResult:
+    status: str
+    message: str
+    reattachment: InstrumentResult
+
+    @staticmethod
+    def wrap(result: JupyterCommandResult, instrument_result: InstrumentResult) -> CommitResult:
+        return CommitResult(
+            status=result.status,
+            message=result.message,
+            reattachment=instrument_result,
+        )
+
+
 @dataclass
 class CommitSummary:
     commit_id: str
@@ -120,10 +179,6 @@ class LogAllResult:
 class StatusResult:
     commit_node_info: CommitNodeInfo
     commit_entry: CommitEntry
-
-
-CheckoutResult = JupyterCommandResult
-CommitResult = JupyterCommandResult
 
 
 @dataclass_json
@@ -294,19 +349,58 @@ class KishuCommand:
         )
 
     @staticmethod
-    def commit(notebook_id: str, message: Optional[str] = None) -> CommitResult:
-        return JupyterConnection.from_notebook_key(notebook_id).execute_one_command(
-            "_kishu.commit()" if message is None else f"_kishu.commit(message=\"{message}\")",
+    def commit(notebook_path_or_key: str, message: Optional[str] = None) -> CommitResult:
+        notebook_path = NotebookId.parse_path_from_path_or_key(notebook_path_or_key)
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
+        except FileNotFoundError as e:
+            return CommitResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+                reattachment=InstrumentResult(
+                    value=InstrumentStatus.no_kernel,
+                    message=None,
+                )
+            )
+        instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
+        if (instrument_result.is_success()):
+            return CommitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+                "_kishu.commit()" if message is None else f"_kishu.commit(message=\"{message}\")",
+            ), instrument_result)
+        return CommitResult(
+            status="error",
+            message="Error re-attaching kishu instrumentation to notebook",
+            reattachment=instrument_result
         )
 
     @staticmethod
     def checkout(
-        notebook_id: str,
+        notebook_path_or_key: str,
         branch_or_commit_id: str,
         skip_notebook: bool = False,
     ) -> CheckoutResult:
-        return JupyterConnection.from_notebook_key(notebook_id).execute_one_command(
-            f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
+        notebook_path = NotebookId.parse_path_from_path_or_key(notebook_path_or_key)
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
+        except FileNotFoundError as e:
+            return CheckoutResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+                reattachment=InstrumentResult(
+                    value=InstrumentStatus.no_kernel,
+                    message=None,
+                )
+            )
+
+        instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
+        if (instrument_result.is_success()):
+            return CheckoutResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+                f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
+            ), instrument_result)
+        return CheckoutResult(
+            status="error",
+            message="Error re-attaching kishu instrumentation to notebook",
+            reattachment=instrument_result,
         )
 
     @staticmethod
@@ -481,6 +575,39 @@ class KishuCommand:
         return FECodeDiffResult(cell_diff, executed_cell_diff)
 
     """Helpers"""
+    @staticmethod
+    def _try_reattach_if_not(notebook_path: Path, kernel_id: str) -> InstrumentResult:
+        if not NotebookId.verify_metadata_exists(notebook_path):
+            return InstrumentResult(
+                value=InstrumentStatus.no_metadata,
+                message=NO_METADATA_MESSAGE,
+            )
+        if KishuCommand._is_notebook_attached(kernel_id):
+            return InstrumentResult(
+                value=InstrumentStatus.already_attached,
+                message=None,
+            )
+        reattach_result = KishuCommand.init(str(notebook_path))
+        if reattach_result.status != "ok":
+            return InstrumentResult(
+                value=InstrumentStatus.reattach_init_fail,
+                message=reattach_result.message,
+            )
+        assert reattach_result.notebook_id is not None
+        reattach_message = (
+            f"Successfully initialized notebook {reattach_result.notebook_id.path()}."
+            f" Notebook key: {reattach_result.notebook_id.key()}."
+            f" Kernel Id: {reattach_result.notebook_id.kernel_id()}"
+        )
+        return InstrumentResult(
+            value=InstrumentStatus.reattach_succeeded,
+            message=reattach_message,
+        )
+
+    @staticmethod
+    def _is_notebook_attached(kernel_id: str) -> bool:
+        verification_response = JupyterConnection(kernel_id).execute_one_command("'_kishu' in globals()")
+        return verification_response.message == "True"
 
     @staticmethod
     def _decorate_graph(notebook_id: str, graph: List[CommitNodeInfo]) -> List[CommitSummary]:

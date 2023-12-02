@@ -19,6 +19,7 @@ from kishu.commands import (
 )
 
 from tests.helpers.nbexec import KISHU_INIT_STR
+from kishu.jupyter.runtime import JupyterRuntimeEnv
 
 
 NB_DIR: Path = Path(".") / "tests" / "notebooks"
@@ -67,33 +68,100 @@ class TestKishuApp:
         assert detach_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
 
     def test_detach_simple(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
-        jupyter_server.start_session(nb_simple_path)
-        init_result_raw = runner.invoke(kishu_app, ["init", str(nb_simple_path)])
+        nb_path = nb_simple_path
+        jupyter_server.start_session(nb_path)
+        init_result_raw = runner.invoke(kishu_app, ["init", str(nb_path)])
         assert init_result_raw.exit_code == 0
-        detach_result_raw = runner.invoke(kishu_app, ["detach", str(nb_simple_path)])
+        detach_result_raw = runner.invoke(kishu_app, ["detach", str(nb_path)])
         assert detach_result_raw.exit_code == 0
 
         detach_result = detach_result_raw.stdout
-        assert detach_result == f"Successfully detached notebook {nb_simple_path}\n"
+        assert detach_result == f"Successfully detached notebook {nb_path}\n"
 
-    def test_init_no_jupyer_server(self, runner, tmp_kishu_path):
+    def test_init_no_jupyter_server(self, runner, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["init", "non_existent_notebook.ipynb"])
         assert result.exit_code == 0
         detach_result = result.stdout
         assert detach_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
 
     def test_init_simple(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
-        jupyter_server.start_session(nb_simple_path)
-        result = runner.invoke(kishu_app, ["init", str(nb_simple_path)])
+        nb_path = nb_simple_path
+        jupyter_server.start_session(nb_path)
+        result = runner.invoke(kishu_app, ["init", str(nb_path)])
         assert result.exit_code == 0
 
         init_result = result.stdout
+        pattern = (
+            f"Successfully initialized notebook {re.escape(str(nb_path))}."
+            " Notebook key: .*."
+            " Kernel Id: .*"
+        )
+        assert re.search(pattern, init_result) is not None, f"init_result: {init_result}"
+
+    def test_checkout_no_jupyter_server(self, runner, nb_simple_path, tmp_kishu_path):
+        result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "abc123"])
+        assert result.exit_code == 0
+        checkout_result = result.stdout
+        assert checkout_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
+
+    def test_checkout_simple(self, runner, nb_simple_path, jupyter_server, tmp_kishu_path):
+        # Start the notebook session.
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(nb_simple_path)
+        with jupyter_server.start_session(nb_simple_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR)
+
+            # Run some notebook cells.
+            for i in range(len(contents)):
+                notebook_session.run_code(contents[i])
+
+            result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "1:2"])
+        assert result.exit_code == 0
+        checkout_result = result.stdout
+        assert checkout_result == "Checkout 1:2 in detach mode.\n"
+
+    def test_checkout_reattach(self, runner, nb_simple_path, jupyter_server, tmp_kishu_path):
+        # Start the notebook session.
+        notebook_path = nb_simple_path
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR)
+
+            # Run some notebook cells.
+            for i in range(len(contents)):
+                notebook_session.run_code(contents[i])
+
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run some notebook cells, not running init.
+            for i in range(len(contents)):
+                notebook_session.run_code(contents[i])
+            result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "1:2"])
+
+        assert result.exit_code == 0
+        checkout_result = result.stdout
+        segments = checkout_result.split("\n")
+        assert len(segments) == 4 and segments[-1] == ""
+        reattach_message = "Notebook instrumentation was present but not initialized, so attempting to re-initialize it"
+        assert segments[0] == reattach_message
         pattern = (
             f"Successfully initialized notebook {re.escape(str(nb_simple_path))}."
             " Notebook key: .*."
             " Kernel Id: .*"
         )
-        assert re.search(pattern, init_result) is not None, f"init_result: {init_result}"
+        assert re.search(pattern, segments[1]) is not None
+        assert segments[2] == "Checkout 1:2 in detach mode."
+
+    def test_checkout_no_metadata(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
+        jupyter_server.start_session(nb_simple_path)
+        result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "abcd123"])
+        assert result.exit_code == 0
+        checkout_result = result.stdout
+        no_metadata_output = (
+            "Kishu instrumentaton not found, please double check notebook path and run kishu init NOTEBOOK_PATH"
+            " to attatch Kishu instrumentation\n"
+        )
+        assert checkout_result == no_metadata_output
 
     def test_log_empty(self, runner, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["log", "NON_EXISTENT_NOTEBOOK_ID"])
@@ -188,7 +256,7 @@ class TestKishuApp:
                               jupyter_server, notebook_names: List[str]):
         # Start sessions and run kishu init cell in each of these sessions.
         for notebook_name in notebook_names:
-            with jupyter_server.start_session(tmp_nb_path(notebook_name)) as notebook_session:
+            with jupyter_server.start_session(tmp_nb_path(notebook_name), persist=True) as notebook_session:
                 notebook_session.run_code(KISHU_INIT_STR)
 
         # Kishu should be able to see these sessions.

@@ -52,6 +52,7 @@ import uuid
 
 from dataclasses import dataclass
 from IPython.core.interactiveshell import InteractiveShell
+from IPython.utils.capture import capture_output
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -665,12 +666,15 @@ class KishuForJupyter:
         self._reload_jupyter_frontend()
 
     def _reload_jupyter_frontend(self):
+        if self._test_mode:  # TODO always enable after unit test jupyter has frontend component
+            return
         if self._platform == "jupyterlab":
             # In JupyterLab.
             KishuForJupyter._ipylab_frontend_app().commands.execute("docmanager:reload")
         else:
             # In Jupyter Notebook.
-            IPython.display.display(IPython.display.Javascript(KishuForJupyter.RELOAD_CMD))
+            with capture_output():
+                IPython.display.display(IPython.display.Javascript(KishuForJupyter.RELOAD_CMD))
 
     def _checkout_namespace(self, user_ns: Namespace, target_ns: Namespace) -> None:
         user_ns.update(target_ns)
