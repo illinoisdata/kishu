@@ -1,12 +1,16 @@
 import dataclasses
 import json
+import matplotlib.pyplot
+import numpy
 import os
+import pandas
 import pytest
 import requests
+import seaborn
 import shutil
 
 from pathlib import Path, PurePath
-from typing import Callable, Generator, List, Optional, Type
+from typing import Any, Callable, Generator, List, Optional, Tuple, Type
 from unittest.mock import patch
 
 from kishu.backend import app as kishu_app
@@ -63,7 +67,8 @@ KISHU_TEST_NOTEBOOKS_DIR = "notebooks"
 @pytest.fixture()
 def tmp_nb_path(tmp_path: Path, kishu_test_dir: Path) -> Callable[[str], Path]:
     def _tmp_nb_path(notebook_name: str) -> Path:
-        real_nb_path = kishu_test_dir / PurePath(KISHU_TEST_NOTEBOOKS_DIR, notebook_name)
+        real_nb_path = kishu_test_dir / \
+            PurePath(KISHU_TEST_NOTEBOOKS_DIR, notebook_name)
         tmp_nb_path = tmp_path / PurePath(notebook_name)
         shutil.copy(real_nb_path, tmp_nb_path)
         return tmp_nb_path
@@ -73,6 +78,49 @@ def tmp_nb_path(tmp_path: Path, kishu_test_dir: Path) -> Callable[[str], Path]:
 @pytest.fixture()
 def nb_simple_path(tmp_nb_path: Callable[[str], Path]) -> Path:
     return tmp_nb_path("simple.ipynb")
+
+
+@pytest.fixture()
+def matplotlib_plot() -> Generator[Tuple[Any, List[matplotlib.lines.Line2D]], None, None]:
+    # Setup code
+    matplotlib.pyplot.close('all')
+    df = pandas.DataFrame(
+        numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+    a = matplotlib.pyplot.plot(df['a'], df['b'])
+    matplotlib.pyplot.xlabel("XLABEL_1")
+    yield matplotlib.pyplot, a
+
+    # Teardown code
+    matplotlib.pyplot.close('all')
+
+
+@pytest.fixture()
+def seaborn_distplot() -> Generator[seaborn.axisgrid.FacetGrid, None, None]:
+    # Setup code
+    df = seaborn.load_dataset('penguins')
+    plot1 = seaborn.displot(data=df, x="flipper_length_mm",
+                            y="bill_length_mm", kind="kde")
+    plot1.set(xlabel="flipper_length_mm")
+
+    yield plot1
+
+    # Teardown code
+    matplotlib.pyplot.close('all')
+
+
+@pytest.fixture()
+def seaborn_scatterplot() -> Generator[matplotlib.axes._axes.Axes, None, None]:
+    # Setup code
+    df = seaborn.load_dataset('penguins')
+    plot1 = seaborn.scatterplot(
+        data=df, x="flipper_length_mm", y="bill_length_mm")
+    plot1.set_xlabel('flipper_length_mm')
+    plot1.set_facecolor('white')
+
+    yield plot1
+
+    # Teardown code
+    matplotlib.pyplot.close('all')
 
 
 """
@@ -116,10 +164,10 @@ def mock_servers(mock_server_header, mock_session_header):
     resp.status_code = 200
     resp._content = json.dumps([mock_session_header])
     with patch('kishu.jupyter.runtime.Path.read_bytes', return_value=json.dumps(mock_server_header).encode()), \
-         patch('kishu.jupyter.runtime.psutil.pid_exists', return_value=True), \
-         patch('kishu.jupyter.runtime.Path.glob', side_effect=glob_side_effect), \
-         patch("kishu.jupyter.runtime.jupyter_core.paths.jupyter_runtime_dir", return_value=Path("/")), \
-         patch('kishu.jupyter.runtime.requests.get', return_value=resp):
+            patch('kishu.jupyter.runtime.psutil.pid_exists', return_value=True), \
+            patch('kishu.jupyter.runtime.Path.glob', side_effect=glob_side_effect), \
+            patch("kishu.jupyter.runtime.jupyter_core.paths.jupyter_runtime_dir", return_value=Path("/")), \
+            patch('kishu.jupyter.runtime.requests.get', return_value=resp):
         yield [mock_server_header]
 
 
@@ -135,7 +183,8 @@ def set_notebook_path_env(tmp_path, request):
     notebook_name = getattr(request, "param", "simple.ipynb")
     path_to_notebook = os.getcwd()
     notebook_full_path = os.path.join(path_to_notebook, NB_DIR, notebook_name)
-    temp_path = create_temporary_copy(notebook_full_path, notebook_name, tmp_path)
+    temp_path = create_temporary_copy(
+        notebook_full_path, notebook_name, tmp_path)
 
     os.environ["TEST_NOTEBOOK_PATH"] = temp_path
 
@@ -170,7 +219,8 @@ def notebook_key() -> Generator[str, None, None]:
 
 @pytest.fixture()
 def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
-    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
+    kishu_jupyter = KishuForJupyter(
+        notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
     kishu_jupyter.set_test_mode()
     yield kishu_jupyter
 
@@ -180,15 +230,18 @@ def basic_execution_ids(kishu_jupyter) -> Generator[List[str], None, None]:
     execution_count = 1
     info = JupyterInfoMock(raw_cell="x = 1")
     kishu_jupyter.pre_run_cell(info)
-    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+    kishu_jupyter.post_run_cell(JupyterResultMock(
+        info=info, execution_count=execution_count))
     execution_count = 2
     info = JupyterInfoMock(raw_cell="y = 2")
     kishu_jupyter.pre_run_cell(info)
-    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+    kishu_jupyter.post_run_cell(JupyterResultMock(
+        info=info, execution_count=execution_count))
     execution_count = 3
     info = JupyterInfoMock(raw_cell="y = x + 1")
     kishu_jupyter.pre_run_cell(info)
-    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
+    kishu_jupyter.post_run_cell(JupyterResultMock(
+        info=info, execution_count=execution_count))
 
     yield ["0:1", "0:2", "0:3"]  # List of commit IDs
 

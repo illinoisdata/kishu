@@ -2,7 +2,6 @@ from kishu.planning import object_state
 import pandas as pd
 import numpy as np
 import seaborn as sns
-import matplotlib.pyplot as plt
 import pickle
 
 
@@ -187,14 +186,12 @@ def test_hash_pandas_df():
     assert hash1.digest() != hash5.digest()
 
 
-def test_idgraph_matplotlib():
+def test_idgraph_matplotlib(matplotlib_plot):
     """
         Test if idgraph is accurately generated for matplotlib objects
     """
-    df = pd.DataFrame(
-        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
-    a = plt.plot(df['a'], df['b'])
-    plt.xlabel("XLABEL_1")
+    plt = matplotlib_plot[0]
+    a = matplotlib_plot[1]
 
     idgraph1 = object_state.create_idgraph(a)
     idgraph2 = object_state.create_idgraph(a)
@@ -234,19 +231,13 @@ def test_idgraph_matplotlib():
     # Assert that the original id graph is restored when the original object state is restored if pickle binaries were the same
     assert (pick1 == pick2) == (idgraph1 == idgraph6)
 
-    # Close all figures
-    plt.close('all')
 
-
-def test_hash_matplotlib():
+def test_hash_matplotlib(matplotlib_plot):
     """
         Test if hash is accurately generated for matplotlib objects
     """
-    plt.close('all')
-    df = pd.DataFrame(
-        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
-    a = plt.plot(df['a'], df['b'])
-    plt.xlabel("XLABEL_1")
+    plt = matplotlib_plot[0]
+    a = matplotlib_plot[1]
 
     hash1 = object_state.create_hash(a)
     hash2 = object_state.create_hash(a)
@@ -283,18 +274,12 @@ def test_hash_matplotlib():
     # Assert that the original hash is restored when the original object state is restored if pickle binaries were the same
     assert (pick1 == pick2) == (hash1.digest() == hash6.digest())
 
-    # Close all figures
-    plt.close('all')
 
-
-def test_idgraph_seaborn_displot():
+def test_idgraph_seaborn_displot(seaborn_distplot):
     """
         Test if idgraph is accurately generated for seaborn displot objects (figure-level object)
     """
-    df = sns.load_dataset('penguins')
-    plot1 = sns.displot(data=df, x="flipper_length_mm",
-                        y="bill_length_mm", kind="kde")
-    plot1.set(xlabel="flipper_length_mm")
+    plot1 = seaborn_distplot
 
     idgraph1 = object_state.create_idgraph(plot1)
     idgraph2 = object_state.create_idgraph(plot1)
@@ -319,19 +304,12 @@ def test_idgraph_seaborn_displot():
     # Assert that the original id graph is restored when the original object state is restored if pickle binaries were same
     assert (pick1 == pick2) == (idgraph1 == idgraph4)
 
-    # Close all figures
-    plt.close('all')
 
-
-def test_hash_seaborn_displot():
+def test_hash_seaborn_displot(seaborn_distplot):
     """
         Test if hash is accurately generated for seaborn displot objects (figure-level object)
     """
-    plt.close('all')
-    df = sns.load_dataset('penguins')
-    plot1 = sns.displot(data=df, x="flipper_length_mm",
-                        y="bill_length_mm", kind="kde")
-    plot1.set(xlabel="flipper_length_mm")
+    plot1 = seaborn_distplot
 
     hash1 = object_state.create_hash(plot1)
     hash2 = object_state.create_hash(plot1)
@@ -354,19 +332,12 @@ def test_hash_seaborn_displot():
     # Assert that the original hash is restored when the original object state is restored if pickle binaries were same
     assert (pick1 == pick2) == (hash1.digest() == hash4.digest())
 
-    # Close all figures
-    plt.close('all')
 
-
-def test_idgraph_seaborn_scatterplot():
+def test_idgraph_seaborn_scatterplot(seaborn_scatterplot):
     """
         Test if idgraph is accurately generated for seaborn scatterplot objects (axes-level object)
     """
-
-    df = sns.load_dataset('penguins')
-    plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
-    plot1.set_xlabel('flipper_length_mm')
-    plot1.set_facecolor('white')
+    plot1 = seaborn_scatterplot
 
     idgraph1 = object_state.create_idgraph(plot1)
     idgraph2 = object_state.create_idgraph(plot1)
@@ -398,19 +369,12 @@ def test_idgraph_seaborn_scatterplot():
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph5
 
-    # Close all figures
-    plt.close('all')
 
-
-def test_hash_seaborn_scatterplot():
+def test_hash_seaborn_scatterplot(seaborn_scatterplot):
     """
         Test if hash is accurately generated for seaborn scatterplot objects (axes-level object)
     """
-    plt.close('all')
-    df = sns.load_dataset('penguins')
-    plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
-    plot1.set_xlabel('flipper_length_mm')
-    plot1.set_facecolor('white')
+    plot1 = seaborn_scatterplot
 
     hash1 = object_state.create_hash(plot1)
     hash2 = object_state.create_hash(plot1)
@@ -438,6 +402,3 @@ def test_hash_seaborn_scatterplot():
 
     # Assert that the hash changes when the object changes
     assert hash1.digest() != hash5.digest()
-
-    # Close all figures
-    plt.close('all')
