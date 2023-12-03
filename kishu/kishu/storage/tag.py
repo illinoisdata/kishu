@@ -5,6 +5,7 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Dict, List
 
+from kishu.exceptions import TagNotFoundError
 from kishu.storage.path import KishuPath
 
 
@@ -36,7 +37,7 @@ class KishuTag:
         cur.execute(query, (tag.tag_name, tag.commit_id, tag.message))
         con.commit()
 
-    def list_tag(self, ) -> List[TagRow]:
+    def list_tag(self) -> List[TagRow]:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = f"select tag_name, commit_id, message from {TAG_TABLE}"
@@ -93,3 +94,20 @@ class KishuTag:
             return {}
         finally:
             con.close()
+
+    def delete_tag(self, tag_name: str) -> None:
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+
+        if not KishuTag._contains_tag(cur, tag_name):
+            raise TagNotFoundError(tag_name)
+
+        query = f"delete from {TAG_TABLE} where tag_name = ?"
+        cur.execute(query, (tag_name,))
+        con.commit()
+
+    @staticmethod
+    def _contains_tag(cur: sqlite3.Cursor, tag_name: str) -> bool:
+        query = f"select count(*) from {TAG_TABLE} where tag_name = ?"
+        cur.execute(query, (tag_name,))
+        return cur.fetchone()[0] == 1

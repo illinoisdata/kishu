@@ -16,6 +16,9 @@ from kishu.commands import (
     BranchResult,
     DeleteBranchResult,
     RenameBranchResult,
+    TagResult,
+    DeleteTagResult,
+    ListTagResult,
 )
 
 from tests.helpers.nbexec import KISHU_INIT_STR
@@ -246,6 +249,78 @@ class TestKishuApp:
             status="error",
             branch_name="",
             message="The provided new branch name already exists.",
+        )
+
+    def test_create_tag_head(self, runner, tmp_kishu_path, kishu_jupyter, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1"])
+        assert result.exit_code == 0
+        tag_result = TagResult.from_json(result.stdout)
+        assert tag_result == TagResult(
+            status="ok",
+            tag_name="tag_1",
+            commit_id=basic_execution_ids[-1],
+            message="",
+        )
+
+    def test_create_tag_specific(self, runner, tmp_kishu_path, kishu_jupyter, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1", basic_execution_ids[1]])
+        assert result.exit_code == 0
+        tag_result = TagResult.from_json(result.stdout)
+        assert tag_result == TagResult(
+            status="ok",
+            tag_name="tag_1",
+            commit_id=basic_execution_ids[1],
+            message="",
+        )
+
+    def test_create_tag_message(self, runner, tmp_kishu_path, kishu_jupyter, basic_execution_ids):
+        tag_message = "Tagging for test_create_tag_message"
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1", "-m", tag_message])
+        assert result.exit_code == 0
+        tag_result = TagResult.from_json(result.stdout)
+        assert tag_result == TagResult(
+            status="ok",
+            tag_name="tag_1",
+            commit_id=basic_execution_ids[-1],
+            message=tag_message,
+        )
+
+    def test_tag_list(self, runner, tmp_kishu_path, kishu_jupyter, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1"])
+        assert result.exit_code == 0
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_2"])
+        assert result.exit_code == 0
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_3"])
+        assert result.exit_code == 0
+
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "-l"])
+        assert result.exit_code == 0
+        list_tag_result = ListTagResult.from_json(result.stdout)
+        assert len(list_tag_result.tags) == 3
+        assert set(tag.tag_name for tag in list_tag_result.tags) == {"tag_1", "tag_2", "tag_3"}
+
+    def test_delete_tag(self, runner, tmp_kishu_path, kishu_jupyter, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1"])
+        assert result.exit_code == 0
+
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "-d", "tag_1"])
+        assert result.exit_code == 0
+        delete_tag_result = DeleteTagResult.from_json(result.stdout)
+        assert delete_tag_result == DeleteTagResult(
+            status="ok",
+            message="Tag tag_1 deleted.",
+        )
+
+    def test_delete_tag_nonexisting(self, runner, tmp_kishu_path, kishu_jupyter, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1"])
+        assert result.exit_code == 0
+
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "-d", "NON_EXISTENT_TAG"])
+        assert result.exit_code == 0
+        delete_tag_result = DeleteTagResult.from_json(result.stdout)
+        assert delete_tag_result == DeleteTagResult(
+            status="error",
+            message="The provided tag 'NON_EXISTENT_TAG' does not exist.",
         )
 
     @pytest.mark.parametrize("notebook_names",

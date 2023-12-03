@@ -319,7 +319,7 @@ def tag(
         show_default=False
     ),
     tag_name: str = typer.Argument(
-        ...,
+        None,
         help="Tag name.",
         show_default=False,
     ),
@@ -333,12 +333,32 @@ def tag(
         "-m",
         help="Message to annotate the tag with.",
     ),
+    delete_tag_name: str = typer.Option(
+        None,
+        "-d",
+        "--delete-tag-name",
+        "--delete_tag_name",
+        help="Delete tag with this name.",
+        show_default=False,
+    ),
+    list_tag: bool = typer.Option(
+        False,
+        "-l",
+        "--list",
+        help="List tags.",
+        show_default=False,
+    ),
 ) -> None:
     """
     Create or edit tags.
     """
     notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path_or_key)
-    print(into_json(KishuCommand.tag(notebook_key, tag_name, commit_id, message)))
+    if list_tag:
+        print(into_json(KishuCommand.list_tag(notebook_key)))
+    if tag_name is not None:
+        print(into_json(KishuCommand.tag(notebook_key, tag_name, commit_id, message)))
+    if delete_tag_name is not None:
+        print(into_json(KishuCommand.delete_tag(notebook_key, delete_tag_name)))
 
 
 """

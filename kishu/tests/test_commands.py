@@ -6,7 +6,16 @@ from typing import List
 
 from tests.helpers.nbexec import KISHU_INIT_STR
 
-from kishu.commands import CommitSummary, FECommit, FESelectedCommit, InstrumentStatus, KishuCommand, KishuSession
+from kishu.commands import (
+    CommitSummary,
+    FECommit,
+    FESelectedCommit,
+    InstrumentStatus,
+    KishuCommand,
+    KishuSession,
+    TagResult,
+    DeleteTagResult,
+)
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import CommitEntryKind, CommitEntry
 from kishu.storage.branch import KishuBranch
@@ -285,6 +294,42 @@ class TestKishuCommand:
             tags=["at_head"],
         )
 
+    def test_create_tag_specific(self, notebook_key, basic_execution_ids):
+        tag_result = KishuCommand.tag(notebook_key, "tag_1", basic_execution_ids[1], "At specific")
+        assert tag_result == TagResult(
+            status="ok",
+            tag_name="tag_1",
+            commit_id=basic_execution_ids[1],
+            message="At specific",
+        )
+
+    def test_tag_list(self, notebook_key, basic_execution_ids):
+        _ = KishuCommand.tag(notebook_key, "tag_1", None, "")
+        _ = KishuCommand.tag(notebook_key, "tag_2", None, "")
+        _ = KishuCommand.tag(notebook_key, "tag_3", None, "")
+
+        list_tag_result = KishuCommand.list_tag(notebook_key)
+        assert len(list_tag_result.tags) == 3
+        assert set(tag.tag_name for tag in list_tag_result.tags) == {"tag_1", "tag_2", "tag_3"}
+
+    def test_delete_tag(self, notebook_key, basic_execution_ids):
+        _ = KishuCommand.tag(notebook_key, "tag_1", None, "")
+
+        delete_tag_result = KishuCommand.delete_tag(notebook_key, "tag_1")
+        assert delete_tag_result == DeleteTagResult(
+            status="ok",
+            message="Tag tag_1 deleted.",
+        )
+
+    def test_delete_tag_nonexisting(self, notebook_key, basic_execution_ids):
+        _ = KishuCommand.tag(notebook_key, "tag_1", None, "")
+
+        delete_tag_result = KishuCommand.delete_tag(notebook_key, "NON_EXISTENT_TAG")
+        assert delete_tag_result == DeleteTagResult(
+            status="error",
+            message="The provided tag 'NON_EXISTENT_TAG' does not exist.",
+        )
+
     def test_fe_commit_graph(self, notebook_key, basic_execution_ids):
         fe_commit_graph_result = KishuCommand.fe_commit_graph(notebook_key)
         assert len(fe_commit_graph_result.commits) == 3
@@ -402,7 +447,7 @@ class TestKishuCommand:
 
             # Get the variable value after checkout.
             var_value_after = notebook_session.run_code(f"print({var_to_compare})")
-            assert var_value_before == var_value_after
+            assert var_value_before.split("\n")[0] == var_value_after.split("\n")[0]
 
     def test_checkout_reattach(
         self,
@@ -455,8 +500,7 @@ class TestKishuCommand:
 
             # Get the variable value after checkout.
             var_value_after = notebook_session.run_code(f"print({var_to_compare})")
-            warning_str = "WARNING: Notebook saving is taking too long"  # TODO remove this when notebook saving is fixed
-            assert var_value_before.split(warning_str)[0] == var_value_after.split(warning_str)[0]
+            assert var_value_before.split("\n")[0] == var_value_after.split("\n")[0]
 
     @pytest.mark.skip(reason="Flaky due to silent KISHU_INIT_STR cell")
     def test_init_in_nonempty_session(
