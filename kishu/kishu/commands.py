@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from kishu.exceptions import (
     BranchNotFoundError,
     BranchConflictError,
+    TagNotFoundError,
 )
 from kishu.diff import DiffHunk, KishuDiff
 from kishu.exceptions import NoExecutedCellsError, NoFormattedCellsError
@@ -204,12 +205,26 @@ class RenameBranchResult:
     message: str
 
 
+@dataclass_json
 @dataclass
 class TagResult:
     status: str
     tag_name: Optional[str] = None
     commit_id: Optional[str] = None
     message: Optional[str] = None
+
+
+@dataclass_json
+@dataclass
+class DeleteTagResult:
+    status: str
+    message: str
+
+
+@dataclass_json
+@dataclass
+class ListTagResult:
+    tags: List[TagRow]
 
 
 @dataclass
@@ -504,6 +519,27 @@ class KishuCommand:
             commit_id=commit_id,
             message=message,
         )
+
+    @staticmethod
+    def delete_tag(
+        notebook_id: str,
+        tag_name: str,
+    ) -> DeleteTagResult:
+        try:
+            KishuTag(notebook_id).delete_tag(tag_name)
+            return DeleteTagResult(
+                status="ok",
+                message=f"Tag {tag_name} deleted.",
+            )
+        except TagNotFoundError as e:
+            return DeleteTagResult(
+                status="error",
+                message=str(e),
+            )
+
+    @staticmethod
+    def list_tag(notebook_id: str) -> ListTagResult:
+        return ListTagResult(tags=KishuTag(notebook_id).list_tag())
 
     @staticmethod
     def fe_commit_graph(notebook_id: str) -> FEInitializeResult:
