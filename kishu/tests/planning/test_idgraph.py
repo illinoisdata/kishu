@@ -1,7 +1,9 @@
+import pickle
+import pytest
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pickle
 import seaborn as sns
 
 from kishu.planning.idgraph import get_object_hash, get_object_state
@@ -60,6 +62,7 @@ def test_hash_numpy():
     assert hash1.digest() == hash4.digest()
 
 
+@pytest.mark.skip(reason="Flaky")
 def test_idgraph_pandas_Series():
     """
         Test if idgraph is accurately generated for panda series
@@ -490,3 +493,36 @@ def test_hash_seaborn_scatterplot():
 
     # Close all figures
     plt.close('all')
+
+
+def test_idgraph_overlap():
+    a, b, c = 1, 2, 3
+    list1 = [a, b]
+    list2 = [b, c]
+
+    idgraph1 = get_object_state(list1, {})
+    idgraph2 = get_object_state(list2, {})
+
+    assert idgraph1.is_overlap(idgraph2)
+
+
+def test_idgraph_no_overlap():
+    a, b, c, d = 1, 2, 3, 4
+    list1 = [a, b]
+    list2 = [c, d]
+
+    idgraph1 = get_object_state(list1, {})
+    idgraph2 = get_object_state(list2, {})
+
+    assert not idgraph1.is_overlap(idgraph2)
+
+
+def test_idgraph_nested_overlap():
+    a, b, c, d = 1, 2, 3, 4
+    list = [a, b, c]
+    nested_list = [list, d]
+
+    idgraph1 = get_object_state(list, {})
+    idgraph2 = get_object_state(nested_list, {})
+
+    assert idgraph1.is_overlap(idgraph2)

@@ -5,8 +5,11 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Dict, List
 
-from kishu.storage.checkpoint_io import TAG_TABLE
+from kishu.exceptions import TagNotFoundError
 from kishu.storage.path import KishuPath
+
+
+TAG_TABLE = 'tag'
 
 
 @dataclass
@@ -18,19 +21,24 @@ class TagRow:
 
 class KishuTag:
 
-    @staticmethod
-    def upsert_tag(notebook_id: str, tag: TagRow) -> None:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def __init__(self, notebook_id: str):
+        self.database_path = KishuPath.database_path(notebook_id)
+
+    def init_database(self):
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        cur.execute(f'create table if not exists {TAG_TABLE} (tag_name text primary key, commit_id text, message text)')
+        con.commit()
+
+    def upsert_tag(self, tag: TagRow) -> None:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = f"insert or replace into {TAG_TABLE} values (?, ?, ?)"
         cur.execute(query, (tag.tag_name, tag.commit_id, tag.message))
         con.commit()
 
-    @staticmethod
-    def list_tag(notebook_id: str) -> List[TagRow]:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def list_tag(self) -> List[TagRow]:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = f"select tag_name, commit_id, message from {TAG_TABLE}"
         try:
@@ -45,10 +53,8 @@ class KishuTag:
         finally:
             con.close()
 
-    @staticmethod
-    def tags_for_commit(notebook_id: str, commit_id: str) -> List[TagRow]:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def tags_for_commit(self, commit_id: str) -> List[TagRow]:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = f"select tag_name, commit_id, message from {TAG_TABLE} where commit_id = ?"
         try:
@@ -63,10 +69,8 @@ class KishuTag:
         finally:
             con.close()
 
-    @staticmethod
-    def tags_for_many_commits(notebook_id: str, commit_ids: List[str]) -> Dict[str, List[TagRow]]:
-        dbfile = KishuPath.checkpoint_path(notebook_id)
-        con = sqlite3.connect(dbfile)
+    def tags_for_many_commits(self, commit_ids: List[str]) -> Dict[str, List[TagRow]]:
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = "select tag_name, commit_id, message from {} where commit_id in ({})".format(
             TAG_TABLE,
@@ -90,3 +94,20 @@ class KishuTag:
             return {}
         finally:
             con.close()
+
+    def delete_tag(self, tag_name: str) -> None:
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+
+        if not KishuTag._contains_tag(cur, tag_name):
+            raise TagNotFoundError(tag_name)
+
+        query = f"delete from {TAG_TABLE} where tag_name = ?"
+        cur.execute(query, (tag_name,))
+        con.commit()
+
+    @staticmethod
+    def _contains_tag(cur: sqlite3.Cursor, tag_name: str) -> bool:
+        query = f"select count(*) from {TAG_TABLE} where tag_name = ?"
+        cur.execute(query, (tag_name,))
+        return cur.fetchone()[0] == 1

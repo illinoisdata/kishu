@@ -2,15 +2,15 @@
 Capture Python state.
 
 To use the watchdog on target program:
-    python kishu/capture.py [watchdog_args] [target_program [args]]
+    python watchdog/capture.py [watchdog_args] [target_program [args]]
 
 Help:
-    python kishu/capture.py -h
+    python watchdog/capture.py -h
 
 Examples:
-    python kishu/capture.py examples/target_longrunning.py
-    python kishu/capture.py --verbosity=2 examples/target_longrunning.py
-    python kishu/capture.py --cpu-sampling-rate=10.0 examples/target_longrunning.py
+    python watchdog/capture.py examples/target_longrunning.py
+    python watchdog/capture.py --verbosity=2 examples/target_longrunning.py
+    python watchdog/capture.py --cpu-sampling-rate=10.0 examples/target_longrunning.py
 """
 import argparse
 import atexit
@@ -42,9 +42,9 @@ from typing import (
     cast,
 )
 
-from kishu.watchdog.delta import StateDelta
-from kishu.exceptions import TypeNotSupportedError
-from kishu.watchdog.state import State
+from watchdog.delta import StateDelta
+from watchdog.exceptions import TypeNotSupportedError
+from watchdog.state import State
 
 
 """
@@ -667,5 +667,9 @@ class Watchdog:
         Watchdog.launch_exec_capture(watchdog_args, target_args)
 
 
-if __name__ == "__main__":
+def main():
     Watchdog.main(sys.argv)
+
+
+if __name__ == "__main__":
+    main()

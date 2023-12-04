@@ -2,7 +2,7 @@ import pytest
 
 import sys
 
-from kishu.watchdog.capture import StandardPythonCapture
+from watchdog.capture import StandardPythonCapture
 
 
 """

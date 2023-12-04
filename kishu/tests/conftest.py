@@ -18,7 +18,6 @@ from kishu.jupyterint import KishuForJupyter
 from kishu.notebook_id import NotebookId
 from kishu.storage.path import ENV_KISHU_PATH_ROOT, KishuPath
 
-from tests.helpers.nbexec import NB_DIR
 from tests.helpers.serverexec import JupyterServerRunner
 
 
@@ -27,23 +26,30 @@ Kishu Resources
 """
 
 
-# Use this fixture to mount Kishu in a temporary directory in the same process.
+@pytest.fixture(autouse=True)
+def set_test_mode() -> Generator[None, None, None]:
+    original_test_mode = os.environ.get(KishuForJupyter.ENV_KISHU_TEST_MODE, None)
+    os.environ[KishuForJupyter.ENV_KISHU_TEST_MODE] = "true"
+    yield None
+    if original_test_mode is not None:
+        os.environ[KishuForJupyter.ENV_KISHU_TEST_MODE] = original_test_mode
+    else:
+        del os.environ[KishuForJupyter.ENV_KISHU_TEST_MODE]
+
+
+# Use this fixture to mount Kishu in a temporary directory.
 @pytest.fixture()
 def tmp_kishu_path(tmp_path: Path) -> Generator[Type[KishuPath], None, None]:
+    original_root = os.environ.get(ENV_KISHU_PATH_ROOT, None)
+    os.environ[ENV_KISHU_PATH_ROOT] = str(tmp_path)
     original_root = KishuPath.ROOT
     KishuPath.ROOT = str(tmp_path)
     yield KishuPath
     KishuPath.ROOT = original_root
-
-
-# Use this fixture to mount Kishu in a temporary directory across processes.
-@pytest.fixture()
-def tmp_kishu_path_os(tmp_path: Path) -> Generator[Type[KishuPath], None, None]:
-    original_root = os.environ.get(ENV_KISHU_PATH_ROOT, None)
-    os.environ[ENV_KISHU_PATH_ROOT] = str(tmp_path)
-    yield KishuPath
     if original_root is not None:
         os.environ[ENV_KISHU_PATH_ROOT] = original_root
+    else:
+        del os.environ[ENV_KISHU_PATH_ROOT]
 
 
 @pytest.fixture()
@@ -65,10 +71,14 @@ KISHU_TEST_NOTEBOOKS_DIR = "notebooks"
 
 
 @pytest.fixture()
-def tmp_nb_path(tmp_path: Path, kishu_test_dir: Path) -> Callable[[str], Path]:
+def kishu_test_notebook_dir(kishu_test_dir) -> Path:
+    return kishu_test_dir / PurePath(KISHU_TEST_NOTEBOOKS_DIR)
+
+
+@pytest.fixture()
+def tmp_nb_path(tmp_path: Path, kishu_test_notebook_dir: Path) -> Callable[[str], Path]:
     def _tmp_nb_path(notebook_name: str) -> Path:
-        real_nb_path = kishu_test_dir / \
-            PurePath(KISHU_TEST_NOTEBOOKS_DIR, notebook_name)
+        real_nb_path = kishu_test_notebook_dir / PurePath(notebook_name)
         tmp_nb_path = tmp_path / PurePath(notebook_name)
         shutil.copy(real_nb_path, tmp_nb_path)
         return tmp_nb_path
@@ -179,16 +189,15 @@ def create_temporary_copy(path: str, filename: str, temp_dir: str):
 
 # Sets TEST_NOTEBOOK_PATH environment variable to be the path to a temporary copy of a notebook
 @pytest.fixture
-def set_notebook_path_env(tmp_path, request):
+def set_notebook_path_env(tmp_path, kishu_test_notebook_dir, request):
     notebook_name = getattr(request, "param", "simple.ipynb")
-    path_to_notebook = os.getcwd()
-    notebook_full_path = os.path.join(path_to_notebook, NB_DIR, notebook_name)
-    temp_path = create_temporary_copy(
-        notebook_full_path, notebook_name, tmp_path)
+    real_nb_path = kishu_test_notebook_dir / PurePath(notebook_name)
+    tmp_nb_path = tmp_path / PurePath(notebook_name)
+    shutil.copy(real_nb_path, tmp_nb_path)
 
-    os.environ["TEST_NOTEBOOK_PATH"] = temp_path
+    os.environ["TEST_NOTEBOOK_PATH"] = str(tmp_nb_path)
 
-    yield temp_path
+    yield str(tmp_nb_path)
 
     del os.environ["TEST_NOTEBOOK_PATH"]
 
@@ -219,9 +228,7 @@ def notebook_key() -> Generator[str, None, None]:
 
 @pytest.fixture()
 def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
-    kishu_jupyter = KishuForJupyter(
-        notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
-    kishu_jupyter.set_test_mode()
+    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
     yield kishu_jupyter
 
 

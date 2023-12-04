@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import sys
 
@@ -50,3 +51,19 @@ def test_recursive_list_size():
     b.append(a)
 
     assert profile_variable_size(a) >= 0
+
+
+def test_numpy_array():
+    arr = np.array([1, 2, 3])
+    assert profile_variable_size(arr) < np.inf
+
+
+def test_pandas_dataframe():
+    df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+                      columns=['a', 'b', 'c'])
+    assert profile_variable_size(df) < np.inf
+
+
+def test_generator():
+    gen = (i for i in range(10))
+    assert profile_variable_size(gen) == np.inf

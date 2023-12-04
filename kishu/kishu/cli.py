@@ -3,10 +3,14 @@ from __future__ import annotations
 import os
 import typer
 
+from functools import wraps
 from typing import Tuple
 
 from kishu import __app_name__, __version__
-from kishu.commands import KishuCommand, into_json
+from kishu.commands import (
+    CheckoutResult, CommitResult, DetachResult, InitResult,
+    InstrumentResult, InstrumentStatus, into_json, KishuCommand
+)
 from kishu.notebook_id import NotebookId
 
 
@@ -17,6 +21,81 @@ def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"{__app_name__} v{__version__}")
         raise typer.Exit()
+
+
+def print_clean_errors(fn):
+    @wraps(fn)
+    def fn_with_clean_errors(*args, **kwargs):
+        if os.environ.get("KISHU_VERBOSE") == "true":
+            return fn(*args, **kwargs)
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            print(f"Kishu internal error ({type(e).__name__}).")
+    return fn_with_clean_errors
+
+
+def print_reattachment_message(response: InstrumentResult):
+    """
+    Prints reattachment message, returns whether or not to print the actual response message
+    """
+    if response.status == InstrumentStatus.already_attached:
+        return True
+    if response.status in [InstrumentStatus.reattach_succeeded, InstrumentStatus.reattach_init_fail]:
+        print("Notebook instrumentation was present but not initialized, so attempting to re-initialize it")
+        print(response.message)
+        return True
+    if response.status == InstrumentStatus.no_kernel:
+        print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
+        return False
+    if response.status == InstrumentStatus.no_metadata:
+        print(response.message)
+        return False
+
+
+def print_init_message(response: InitResult) -> None:
+    nb_id = response.notebook_id
+    if response.status != "ok":
+        error = response.message.split(": ")[0]
+        if error == "FileNotFoundError":
+            print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
+        else:
+            print(response.message)
+    else:
+        assert nb_id is not None
+        output_str = (
+            f"Successfully initialized notebook {nb_id.path()}."
+            f" Notebook key: {nb_id.key()}."
+            f" Kernel Id: {nb_id.kernel_id()}"
+        )
+        print(output_str)
+
+
+def print_detach_message(response: DetachResult, notebook_path: str) -> None:
+    if response.status != "ok":
+        error = response.message.split(": ")[0]
+        if error == "FileNotFoundError":
+            print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
+        else:
+            print(response.message)
+    else:
+        print(f"Successfully detached notebook {notebook_path}")
+
+
+def print_checkout_message(response: CheckoutResult) -> None:
+    if not print_reattachment_message(response.reattachment):
+        return
+    if response.message:
+        print(response.message)
+
+
+def print_commit_message(response: CommitResult) -> None:
+    if not print_reattachment_message(response.reattachment):
+        return
+    if response.status == "ok":
+        print(f"Successfully committed, id: {response.message}")
+    else:
+        print(response.message)
 
 
 @kishu_app.callback()
@@ -54,6 +133,7 @@ def list(
 
 
 @kishu_app.command()
+@print_clean_errors
 def init(
     notebook_path: str = typer.Argument(
         ...,
@@ -64,10 +144,11 @@ def init(
     """
     Initialize Kishu instrumentation in a notebook.
     """
-    print(into_json(KishuCommand.init(notebook_path)))
+    print_init_message(KishuCommand.init(notebook_path))
 
 
 @kishu_app.command()
+@print_clean_errors
 def detach(
     notebook_path: str = typer.Argument(
         ...,
@@ -78,7 +159,7 @@ def detach(
     """
     Detach Kishu instrumentation from notebook
     """
-    print(into_json(KishuCommand.detach(notebook_path)))
+    print_detach_message(KishuCommand.detach(notebook_path), notebook_path)
 
 
 @kishu_app.command()
@@ -127,6 +208,7 @@ def status(
 
 
 @kishu_app.command()
+@print_clean_errors
 def commit(
     notebook_path_or_key: str = typer.Argument(
         ...,
@@ -144,11 +226,11 @@ def commit(
     """
     Checkout a notebook to a commit.
     """
-    notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path_or_key)
-    print(into_json(KishuCommand.commit(notebook_key, message=message)))
+    print_commit_message(KishuCommand.commit(notebook_path_or_key, message=message))
 
 
 @kishu_app.command()
+@print_clean_errors
 def checkout(
     notebook_path_or_key: str = typer.Argument(
         ...,
@@ -170,12 +252,11 @@ def checkout(
     """
     Checkout a notebook to a commit.
     """
-    notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path_or_key)
-    print(into_json(KishuCommand.checkout(
-        notebook_key,
+    print_checkout_message(KishuCommand.checkout(
+        notebook_path_or_key,
         branch_or_commit_id,
         skip_notebook=skip_notebook,
-    )))
+    ))
 
 
 @kishu_app.command()
@@ -238,7 +319,7 @@ def tag(
         show_default=False
     ),
     tag_name: str = typer.Argument(
-        ...,
+        None,
         help="Tag name.",
         show_default=False,
     ),
@@ -252,12 +333,32 @@ def tag(
         "-m",
         help="Message to annotate the tag with.",
     ),
+    delete_tag_name: str = typer.Option(
+        None,
+        "-d",
+        "--delete-tag-name",
+        "--delete_tag_name",
+        help="Delete tag with this name.",
+        show_default=False,
+    ),
+    list_tag: bool = typer.Option(
+        False,
+        "-l",
+        "--list",
+        help="List tags.",
+        show_default=False,
+    ),
 ) -> None:
     """
     Create or edit tags.
     """
     notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path_or_key)
-    print(into_json(KishuCommand.tag(notebook_key, tag_name, commit_id, message)))
+    if list_tag:
+        print(into_json(KishuCommand.list_tag(notebook_key)))
+    if tag_name is not None:
+        print(into_json(KishuCommand.tag(notebook_key, tag_name, commit_id, message)))
+    if delete_tag_name is not None:
+        print(into_json(KishuCommand.delete_tag(notebook_key, delete_tag_name)))
 
 
 """

@@ -2,8 +2,8 @@ import pytest
 
 import sys
 
-from kishu.watchdog.delta import StateDelta
-from kishu.watchdog.state import State
+from watchdog.delta import StateDelta
+from watchdog.state import State
 
 
 """

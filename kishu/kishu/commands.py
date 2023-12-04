@@ -1,22 +1,21 @@
 from __future__ import annotations
 
 import datetime
+import enum
 import json
 
 from dataclasses import asdict, dataclass, is_dataclass
 from dataclasses_json import dataclass_json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
-
+from typing import Any, Dict, List, Optional
 from kishu.exceptions import (
     BranchNotFoundError,
     BranchConflictError,
+    TagNotFoundError,
 )
 from kishu.diff import DiffHunk, KishuDiff
 from kishu.exceptions import NoExecutedCellsError, NoFormattedCellsError
 from kishu.jupyterint import (
-    CommitEntry,
-    FormattedCell,
     JupyterCommandResult,
     JupyterConnection,
     KishuForJupyter,
@@ -24,12 +23,17 @@ from kishu.jupyterint import (
 )
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
-from kishu.planning.plan import UnitExecution
+from kishu.notebook_id import NotebookId
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
+from kishu.storage.commit import CommitEntry, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag, TagRow
 
+NO_METADATA_MESSAGE = (
+    "Kishu instrumentaton not found, please double check notebook path and run kishu init NOTEBOOK_PATH"
+    " to attatch Kishu instrumentation"
+)
 
 """
 Printing dataclasses
@@ -51,6 +55,28 @@ def into_json(data):
     return json.dumps(data, cls=DataclassJSONEncoder, indent=2)
 
 
+class InstrumentStatus(str, enum.Enum):
+    no_kernel = "no_kernel"
+    no_metadata = "no_metadata"
+    already_attached = "already_attached"
+    reattach_succeeded = "reattached"
+    reattach_init_fail = "reattach_init_fail"
+
+
+@dataclass
+class InstrumentResult:
+    status: InstrumentStatus
+    message: Optional[str]
+
+    def is_success(self) -> bool:
+        return (
+            self.status in [
+                InstrumentStatus.already_attached,
+                InstrumentStatus.reattach_succeeded,
+            ]
+        )
+
+
 """
 KishuCommand
 """
@@ -67,12 +93,14 @@ class ListResult:
 class InitResult:
     status: str
     message: str
+    notebook_id: Optional[NotebookId]  # Field must be filled if status is OK
 
     @staticmethod
-    def wrap(result: JupyterCommandResult) -> InitResult:
+    def wrap(result: JupyterCommandResult, nb_id: Optional[NotebookId]) -> InitResult:
         return InitResult(
             status=result.status,
             message=result.message,
+            notebook_id=nb_id
         )
 
 
@@ -90,13 +118,45 @@ class DetachResult:
         )
 
 
+@dataclass_json
+@dataclass
+class CheckoutResult:
+    status: str
+    message: str
+    reattachment: InstrumentResult
+
+    @staticmethod
+    def wrap(result: JupyterCommandResult, instrument_result: InstrumentResult) -> CheckoutResult:
+        return CheckoutResult(
+            status=result.status,
+            message=result.message,
+            reattachment=instrument_result,
+        )
+
+
+@dataclass_json
+@dataclass
+class CommitResult:
+    status: str
+    message: str
+    reattachment: InstrumentResult
+
+    @staticmethod
+    def wrap(result: JupyterCommandResult, instrument_result: InstrumentResult) -> CommitResult:
+        return CommitResult(
+            status=result.status,
+            message=result.message,
+            reattachment=instrument_result,
+        )
+
+
 @dataclass
 class CommitSummary:
     commit_id: str
     parent_id: str
     message: str
     timestamp: str
-    code_block: Optional[str]
+    raw_cell: Optional[str]
     runtime_s: Optional[float]
     branches: List[str]
     tags: List[str]
@@ -119,10 +179,6 @@ class LogAllResult:
 class StatusResult:
     commit_node_info: CommitNodeInfo
     commit_entry: CommitEntry
-
-
-CheckoutResult = JupyterCommandResult
-CommitResult = JupyterCommandResult
 
 
 @dataclass_json
@@ -149,12 +205,26 @@ class RenameBranchResult:
     message: str
 
 
+@dataclass_json
 @dataclass
 class TagResult:
     status: str
     tag_name: Optional[str] = None
     commit_id: Optional[str] = None
     message: Optional[str] = None
+
+
+@dataclass_json
+@dataclass
+class DeleteTagResult:
+    status: str
+    message: str
+
+
+@dataclass_json
+@dataclass
+class ListTagResult:
+    tags: List[TagRow]
 
 
 @dataclass
@@ -226,13 +296,16 @@ class KishuCommand:
             kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
             return InitResult(
+                notebook_id=None,
                 status="error",
                 message=f"{type(e).__name__}: {str(e)}",
             )
-        return InitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+        init_result = JupyterConnection(kernel_id).execute_one_command(
             pre_command=f"from kishu import init_kishu; init_kishu(\"{notebook_path.resolve()}\")",
             command="str(_kishu)",
-        ))
+        )
+        notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path_str)
+        return InitResult.wrap(init_result, NotebookId(notebook_key, notebook_path, kernel_id))
 
     @staticmethod
     def detach(notebook_path_str: str) -> DetachResult:
@@ -251,19 +324,20 @@ class KishuCommand:
 
     @staticmethod
     def log(notebook_id: str, commit_id: Optional[str] = None) -> LogResult:
+        kishu_branch = KishuBranch(notebook_id)
         if commit_id is None:
-            head = KishuBranch.get_head(notebook_id)
+            head = kishu_branch.get_head()
             commit_id = head.commit_id
 
         if commit_id is None:
-            return LogResult(commit_graph=[], head=KishuBranch.get_head(notebook_id))
+            return LogResult(commit_graph=[], head=kishu_branch.get_head())
 
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_history(commit_id)
         return LogResult(
             commit_graph=KishuCommand._decorate_graph(notebook_id, graph),
-            head=KishuBranch.get_head(notebook_id),
+            head=kishu_branch.get_head(),
         )
 
     @staticmethod
@@ -272,7 +346,7 @@ class KishuCommand:
         graph = store.list_all_history()
         return LogAllResult(
             commit_graph=KishuCommand._decorate_graph(notebook_id, graph),
-            head=KishuBranch.get_head(notebook_id),
+            head=KishuBranch(notebook_id).get_head(),
         )
 
     @staticmethod
@@ -282,26 +356,65 @@ class KishuCommand:
             KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
         )
-        commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
+        commit_entry = KishuCommit(notebook_id).get_commit(commit_id)
         return StatusResult(
             commit_node_info=commit_node_info,
             commit_entry=commit_entry
         )
 
     @staticmethod
-    def commit(notebook_id: str, message: Optional[str] = None) -> CommitResult:
-        return JupyterConnection.from_notebook_key(notebook_id).execute_one_command(
-            "_kishu.commit()" if message is None else f"_kishu.commit(message=\"{message}\")",
+    def commit(notebook_path_or_key: str, message: Optional[str] = None) -> CommitResult:
+        notebook_path = NotebookId.parse_path_from_path_or_key(notebook_path_or_key)
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
+        except FileNotFoundError as e:
+            return CommitResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+                reattachment=InstrumentResult(
+                    status=InstrumentStatus.no_kernel,
+                    message=None,
+                )
+            )
+        instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
+        if (instrument_result.is_success()):
+            return CommitResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+                "_kishu.commit()" if message is None else f"_kishu.commit(message=\"{message}\")",
+            ), instrument_result)
+        return CommitResult(
+            status="error",
+            message="Error re-attaching kishu instrumentation to notebook",
+            reattachment=instrument_result
         )
 
     @staticmethod
     def checkout(
-        notebook_id: str,
+        notebook_path_or_key: str,
         branch_or_commit_id: str,
         skip_notebook: bool = False,
     ) -> CheckoutResult:
-        return JupyterConnection.from_notebook_key(notebook_id).execute_one_command(
-            f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
+        notebook_path = NotebookId.parse_path_from_path_or_key(notebook_path_or_key)
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
+        except FileNotFoundError as e:
+            return CheckoutResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+                reattachment=InstrumentResult(
+                    status=InstrumentStatus.no_kernel,
+                    message=None,
+                )
+            )
+
+        instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
+        if (instrument_result.is_success()):
+            return CheckoutResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+                f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
+            ), instrument_result)
+        return CheckoutResult(
+            status="error",
+            message="Error re-attaching kishu instrumentation to notebook",
+            reattachment=instrument_result,
         )
 
     @staticmethod
@@ -311,15 +424,16 @@ class KishuCommand:
         commit_id: Optional[str],
         do_commit: bool = False,
     ) -> BranchResult:
-        head = KishuBranch.get_head(notebook_id)
+        kishu_branch = KishuBranch(notebook_id)
+        head = kishu_branch.get_head()
 
         if commit_id is None:
             # If no commit ID, create branch pointing to the commit ID at HEAD.
-            head = KishuBranch.update_head(notebook_id, branch_name=branch_name)
+            head = kishu_branch.update_head(branch_name=branch_name)
             commit_id = head.commit_id
         elif branch_name == head.branch_name and commit_id != head.commit_id:
             # Moving head branch somewhere else.
-            head = KishuBranch.update_head(notebook_id, is_detach=True)
+            head = kishu_branch.update_head(is_detach=True)
             print(f"detaching {head}")
 
         # Fail to determine commit ID, possibly because no commit does not exist.
@@ -328,7 +442,7 @@ class KishuCommand:
 
         # Now add this branch.
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
-        KishuBranch.upsert_branch(notebook_id, branch_name, commit_id)
+        kishu_branch.upsert_branch(branch_name, commit_id)
 
         # Create new commit for this branch action.
         if do_commit:
@@ -347,7 +461,7 @@ class KishuCommand:
         branch_name: str,
     ) -> DeleteBranchResult:
         try:
-            KishuBranch.delete_branch(notebook_id, branch_name)
+            KishuBranch(notebook_id).delete_branch(branch_name)
             return DeleteBranchResult(
                 status="ok",
                 message=f"Branch {branch_name} deleted.",
@@ -365,7 +479,7 @@ class KishuCommand:
         new_name: str,
     ) -> RenameBranchResult:
         try:
-            KishuBranch.rename_branch(notebook_id, old_name, new_name)
+            KishuBranch(notebook_id).rename_branch(old_name, new_name)
             return RenameBranchResult(
                 status="ok",
                 branch_name=new_name,
@@ -388,7 +502,7 @@ class KishuCommand:
         # Attempt to fill in omitted commit ID.
         if commit_id is None:
             # Try creating tag pointing to the commit ID at HEAD.
-            head = KishuBranch.get_head(notebook_id)
+            head = KishuBranch(notebook_id).get_head()
             commit_id = head.commit_id
 
         # Fail to determine commit ID, possibly because a commit does not exist.
@@ -398,7 +512,7 @@ class KishuCommand:
         # Now add this tag.
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
         tag = TagRow(tag_name=tag_name, commit_id=commit_id, message=message)
-        KishuTag.upsert_tag(notebook_id, tag)
+        KishuTag(notebook_id).upsert_tag(tag)
         return TagResult(
             status="ok",
             tag_name=tag_name,
@@ -407,11 +521,32 @@ class KishuCommand:
         )
 
     @staticmethod
+    def delete_tag(
+        notebook_id: str,
+        tag_name: str,
+    ) -> DeleteTagResult:
+        try:
+            KishuTag(notebook_id).delete_tag(tag_name)
+            return DeleteTagResult(
+                status="ok",
+                message=f"Tag {tag_name} deleted.",
+            )
+        except TagNotFoundError as e:
+            return DeleteTagResult(
+                status="error",
+                message=str(e),
+            )
+
+    @staticmethod
+    def list_tag(notebook_id: str) -> ListTagResult:
+        return ListTagResult(tags=KishuTag(notebook_id).list_tag())
+
+    @staticmethod
     def fe_commit_graph(notebook_id: str) -> FEInitializeResult:
         store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
         graph = store.list_all_history()
         graph_commit_ids = [node.commit_id for node in graph]
-        commit_entries = KishuCommand._find_commit_entries(notebook_id, graph_commit_ids)
+        commit_entries = KishuCommit(notebook_id).get_commits(graph_commit_ids)
 
         # Collects list of FECommits.
         commits = []
@@ -428,12 +563,13 @@ class KishuCommand:
             ))
 
         # Retreives and joins branches.
-        head = KishuBranch.get_head(notebook_id)
-        branches = KishuBranch.list_branch(notebook_id)
+        kishu_branch = KishuBranch(notebook_id)
+        head = kishu_branch.get_head()
+        branches = kishu_branch.list_branch()
         commits = KishuCommand._branch_commit(commits, branches)
 
         # Joins with tag list.
-        tags = KishuTag.list_tag(notebook_id)
+        tags = KishuTag(notebook_id).list_tag()
         commits = KishuCommand._tag_commit(commits, tags)
 
         # Sort commits by timestamp.
@@ -452,9 +588,9 @@ class KishuCommand:
             KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
         )
-        current_commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
-        branches = KishuBranch.branches_for_commit(notebook_id, commit_id)
-        tags = KishuTag.tags_for_commit(notebook_id, commit_id)
+        current_commit_entry = KishuCommit(notebook_id).get_commit(commit_id)
+        branches = KishuBranch(notebook_id).branches_for_commit(commit_id)
+        tags = KishuTag(notebook_id).tags_for_commit(commit_id)
         return KishuCommand._join_selected_commit(
             notebook_id,
             commit_id,
@@ -476,11 +612,45 @@ class KishuCommand:
     """Helpers"""
 
     @staticmethod
+    def _try_reattach_if_not(notebook_path: Path, kernel_id: str) -> InstrumentResult:
+        if not NotebookId.verify_metadata_exists(notebook_path):
+            return InstrumentResult(
+                status=InstrumentStatus.no_metadata,
+                message=NO_METADATA_MESSAGE,
+            )
+        if KishuCommand._is_notebook_attached(kernel_id):
+            return InstrumentResult(
+                status=InstrumentStatus.already_attached,
+                message=None,
+            )
+        reattach_result = KishuCommand.init(str(notebook_path))
+        if reattach_result.status != "ok":
+            return InstrumentResult(
+                status=InstrumentStatus.reattach_init_fail,
+                message=reattach_result.message,
+            )
+        assert reattach_result.notebook_id is not None
+        reattach_message = (
+            f"Successfully reattached notebook {reattach_result.notebook_id.path()}."
+            f" Notebook key: {reattach_result.notebook_id.key()}."
+            f" Kernel Id: {reattach_result.notebook_id.kernel_id()}"
+        )
+        return InstrumentResult(
+            status=InstrumentStatus.reattach_succeeded,
+            message=reattach_message,
+        )
+
+    @staticmethod
+    def _is_notebook_attached(kernel_id: str) -> bool:
+        verification_response = JupyterConnection(kernel_id).execute_one_command("'_kishu' in globals()")
+        return verification_response.message == "True"
+
+    @staticmethod
     def _decorate_graph(notebook_id: str, graph: List[CommitNodeInfo]) -> List[CommitSummary]:
         graph_commit_ids = [node.commit_id for node in graph]
-        commit_entries = KishuCommand._find_commit_entries(notebook_id, graph_commit_ids)
-        branch_by_commit = KishuBranch.branches_for_many_commits(notebook_id, graph_commit_ids)
-        tag_by_commit = KishuTag.tags_for_many_commits(notebook_id, graph_commit_ids)
+        commit_entries = KishuCommit(notebook_id).get_commits(graph_commit_ids)
+        branch_by_commit = KishuBranch(notebook_id).branches_for_many_commits(graph_commit_ids)
+        tag_by_commit = KishuTag(notebook_id).tags_for_many_commits(graph_commit_ids)
         commits = KishuCommand._join_commit_summary(
             graph,
             commit_entries,
@@ -489,25 +659,6 @@ class KishuCommand:
         )
         commits = sorted(commits, key=lambda commit: commit.timestamp)
         return commits
-
-    @staticmethod
-    def _find_commit_entries(notebook_id: str, commit_ids: List[str]) -> Dict[str, CommitEntry]:
-        unit_execs = UnitExecution.get_commits(
-            KishuPath.checkpoint_path(notebook_id),
-            commit_ids,
-        )
-        return {key: cast(CommitEntry, unit_exec) for key, unit_exec in unit_execs.items()}
-
-    @staticmethod
-    def _find_commit_entry(notebook_id: str, commit_id: str) -> CommitEntry:
-        # TODO: Pull CommitEntry logic out of jupyterint2 to avoid this cast.
-        return cast(
-            CommitEntry,
-            UnitExecution.get_from_db(
-                KishuPath.checkpoint_path(notebook_id),
-                commit_id,
-            )
-        )
 
     @staticmethod
     def _join_commit_summary(
@@ -528,7 +679,7 @@ class KishuCommand:
                 parent_id=node.parent_id,
                 message=commit_entry.message,
                 timestamp=KishuCommand._to_datetime(commit_entry.timestamp),
-                code_block=commit_entry.code_block,
+                raw_cell=commit_entry.raw_cell,
                 runtime_s=commit_entry.runtime_s,
                 branches=branch_names,
                 tags=tag_names,
@@ -546,17 +697,13 @@ class KishuCommand:
         vardepth: int,
     ) -> FESelectedCommit:
         # Restores variables.
-        commit_variables = Namespace({})
+        commit_ns = Namespace()
         restore_plan = commit_entry.restore_plan
         if restore_plan is not None:
-            restore_plan.run(
-                commit_variables,
-                KishuPath.checkpoint_path(notebook_id),
-                commit_id
-            )
+            commit_ns = restore_plan.run(KishuPath.database_path(notebook_id), commit_id)
         variables = [
             KishuCommand._make_selected_variable(key, value, vardepth=vardepth)
-            for key, value in commit_variables.to_dict().items()
+            for key, value in commit_ns.to_dict().items()
         ]
 
         # Compile list of executed cells.
@@ -712,7 +859,7 @@ class KishuCommand:
 
     @staticmethod
     def _retrieve_all_cells(notebook_id: str, commit_id: str):
-        commit_entry = KishuCommand._find_commit_entry(notebook_id, commit_id)
+        commit_entry = KishuCommit(notebook_id).get_commit(commit_id)
         formatted_cells = commit_entry.formatted_cells
         if formatted_cells is None:
             raise NoFormattedCellsError(commit_id)

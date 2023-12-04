@@ -6,7 +6,16 @@ from typing import List
 
 from tests.helpers.nbexec import KISHU_INIT_STR
 
-from kishu.commands import CommitSummary, FECommit, FESelectedCommit, KishuCommand, KishuSession
+from kishu.commands import (
+    CommitSummary,
+    FECommit,
+    FESelectedCommit,
+    InstrumentStatus,
+    KishuCommand,
+    KishuSession,
+    TagResult,
+    DeleteTagResult,
+)
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import CommitEntryKind, CommitEntry
 from kishu.storage.branch import KishuBranch
@@ -36,7 +45,7 @@ class TestKishuCommand:
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
-            code_block="x = 1",
+            raw_cell="x = 1",
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -46,7 +55,7 @@ class TestKishuCommand:
             parent_id="0:1",
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
-            code_block="y = 2",
+            raw_cell="y = 2",
             runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -56,9 +65,9 @@ class TestKishuCommand:
             parent_id="0:2",
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
-            code_block="y = x + 1",
+            raw_cell="y = x + 1",
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
-            branches=["auto_0:1"],
+            branches=[log_result.commit_graph[2].branches[0]],  # 1 auto branch
             tags=[],
         )
 
@@ -69,7 +78,7 @@ class TestKishuCommand:
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
-            code_block="x = 1",
+            raw_cell="x = 1",
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -83,7 +92,7 @@ class TestKishuCommand:
             parent_id="",
             message=log_all_result.commit_graph[0].message,  # Not tested
             timestamp=log_all_result.commit_graph[0].timestamp,  # Not tested
-            code_block="x = 1",
+            raw_cell="x = 1",
             runtime_s=log_all_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -93,7 +102,7 @@ class TestKishuCommand:
             parent_id="0:1",
             message=log_all_result.commit_graph[1].message,  # Not tested
             timestamp=log_all_result.commit_graph[1].timestamp,  # Not tested
-            code_block="y = 2",
+            raw_cell="y = 2",
             runtime_s=log_all_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -103,9 +112,9 @@ class TestKishuCommand:
             parent_id="0:2",
             message=log_all_result.commit_graph[2].message,  # Not tested
             timestamp=log_all_result.commit_graph[2].timestamp,  # Not tested
-            code_block="y = x + 1",
+            raw_cell="y = x + 1",
             runtime_s=log_all_result.commit_graph[2].runtime_s,  # Not tested
-            branches=["auto_0:1"],
+            branches=[log_all_result.commit_graph[2].branches[0]],  # 1 auto branch
             tags=[],
         )
 
@@ -117,10 +126,9 @@ class TestKishuCommand:
         )
         assert status_result.commit_entry == CommitEntry(
             kind=CommitEntryKind.jupyter,
-            exec_id="0:3",
+            commit_id="0:3",
             execution_count=3,
-            code_block="y = x + 1",
-            checkpoint_vars=[],
+            raw_cell="y = x + 1",
             message=status_result.commit_entry.message,  # Not tested,
             timestamp=status_result.commit_entry.timestamp,  # Not tested
             ahg_string=status_result.commit_entry.ahg_string,  # Not tested
@@ -129,7 +137,6 @@ class TestKishuCommand:
             start_time=status_result.commit_entry.start_time,  # Not tested
             end_time=status_result.commit_entry.end_time,  # Not tested
             checkpoint_runtime_s=status_result.commit_entry.checkpoint_runtime_s,  # Not tested
-            runtime_s=status_result.commit_entry.runtime_s,  # Not tested
             raw_nb=status_result.commit_entry.raw_nb,  # Not tested
             formatted_cells=status_result.commit_entry.formatted_cells,  # Not tested
             restore_plan=status_result.commit_entry.restore_plan,  # Not tested
@@ -152,7 +159,7 @@ class TestKishuCommand:
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
-            code_block="x = 1",
+            raw_cell="x = 1",
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -162,7 +169,7 @@ class TestKishuCommand:
             parent_id="0:1",
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
-            code_block="y = 2",
+            raw_cell="y = 2",
             runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=["historical"],
             tags=[],
@@ -172,9 +179,9 @@ class TestKishuCommand:
             parent_id="0:2",
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
-            code_block="y = x + 1",
+            raw_cell="y = x + 1",
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
-            branches=["auto_0:1", "at_head"],
+            branches=[log_result.commit_graph[2].branches[0], "at_head"],  # 1 auto branch
             tags=[],
         )
 
@@ -208,7 +215,7 @@ class TestKishuCommand:
 
         rename_branch_result = KishuCommand.rename_branch(
             notebook_key, branch_1, "new_branch")
-        head = KishuBranch.get_head(notebook_key)
+        head = KishuBranch(notebook_key).get_head()
         assert rename_branch_result.status == "ok"
         assert head.branch_name == "new_branch"
 
@@ -228,13 +235,14 @@ class TestKishuCommand:
         assert rename_branch_result.status == "error"
 
     def test_auto_detach_commit_branch(self, kishu_jupyter):
-        KishuBranch.update_head(kishu_jupyter._notebook_id.key(), branch_name=None, commit_id="0:1", is_detach=True)
-        commit = CommitEntry(kind=CommitEntryKind.manual, execution_count=1, code_block="x = 1")
+        kishu_branch = KishuBranch(kishu_jupyter._notebook_id.key())
+        kishu_branch.update_head(branch_name=None, commit_id="0:1", is_detach=True)
+        commit = CommitEntry(kind=CommitEntryKind.manual, execution_count=1, raw_cell="x = 1")
         commit_id = kishu_jupyter.commit(commit)
 
-        head = KishuBranch.get_head(kishu_jupyter._notebook_id.key())
+        head = kishu_branch.get_head()
         assert head.branch_name is not None
-        assert head.branch_name.startswith("auto_")
+        assert "_" in head.branch_name, f"Unexpected branch name {head.branch_name}"
         assert head.commit_id == commit_id
 
     def test_tag(self, notebook_key, basic_execution_ids):
@@ -260,7 +268,7 @@ class TestKishuCommand:
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
-            code_block="x = 1",
+            raw_cell="x = 1",
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
@@ -270,7 +278,7 @@ class TestKishuCommand:
             parent_id="0:1",
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
-            code_block="y = 2",
+            raw_cell="y = 2",
             runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=["historical"],
@@ -280,10 +288,46 @@ class TestKishuCommand:
             parent_id="0:2",
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
-            code_block="y = x + 1",
+            raw_cell="y = x + 1",
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
-            branches=["auto_0:1"],
+            branches=[log_result.commit_graph[2].branches[0]],  # 1 auto branch
             tags=["at_head"],
+        )
+
+    def test_create_tag_specific(self, notebook_key, basic_execution_ids):
+        tag_result = KishuCommand.tag(notebook_key, "tag_1", basic_execution_ids[1], "At specific")
+        assert tag_result == TagResult(
+            status="ok",
+            tag_name="tag_1",
+            commit_id=basic_execution_ids[1],
+            message="At specific",
+        )
+
+    def test_tag_list(self, notebook_key, basic_execution_ids):
+        _ = KishuCommand.tag(notebook_key, "tag_1", None, "")
+        _ = KishuCommand.tag(notebook_key, "tag_2", None, "")
+        _ = KishuCommand.tag(notebook_key, "tag_3", None, "")
+
+        list_tag_result = KishuCommand.list_tag(notebook_key)
+        assert len(list_tag_result.tags) == 3
+        assert set(tag.tag_name for tag in list_tag_result.tags) == {"tag_1", "tag_2", "tag_3"}
+
+    def test_delete_tag(self, notebook_key, basic_execution_ids):
+        _ = KishuCommand.tag(notebook_key, "tag_1", None, "")
+
+        delete_tag_result = KishuCommand.delete_tag(notebook_key, "tag_1")
+        assert delete_tag_result == DeleteTagResult(
+            status="ok",
+            message="Tag tag_1 deleted.",
+        )
+
+    def test_delete_tag_nonexisting(self, notebook_key, basic_execution_ids):
+        _ = KishuCommand.tag(notebook_key, "tag_1", None, "")
+
+        delete_tag_result = KishuCommand.delete_tag(notebook_key, "NON_EXISTENT_TAG")
+        assert delete_tag_result == DeleteTagResult(
+            status="error",
+            message="The provided tag 'NON_EXISTENT_TAG' does not exist.",
         )
 
     def test_fe_commit_graph(self, notebook_key, basic_execution_ids):
@@ -297,7 +341,7 @@ class TestKishuCommand:
                 oid="0:3",
                 parent_oid="0:2",
                 timestamp=fe_commit_result.commit.timestamp,  # Not tested
-                branches=["auto_0:1"],
+                branches=[fe_commit_result.commit.branches[0]],  # 1 auto branch
                 tags=[],
                 code_version=fe_commit_result.commit.code_version,  # Not tested
                 var_version=fe_commit_result.commit.var_version,  # Not tested
@@ -318,15 +362,14 @@ class TestKishuCommand:
     def test_list_alive_sessions(
         self,
         tmp_kishu_path,
-        tmp_kishu_path_os,
         tmp_nb_path,
         jupyter_server,
         notebook_names: List[str],
     ):
         # Start sessions and run kishu init cell in each of these sessions.
         for notebook_name in notebook_names:
-            with jupyter_server.start_session(tmp_nb_path(notebook_name)) as notebook_session:
-                notebook_session.run_code(KISHU_INIT_STR)
+            with jupyter_server.start_session(tmp_nb_path(notebook_name), persist=True) as notebook_session:
+                notebook_session.run_code(KISHU_INIT_STR, silent=True)
 
         # Kishu should be able to see these sessions.
         list_result = KishuCommand.list()
@@ -340,16 +383,13 @@ class TestKishuCommand:
     def test_list_alive_session_no_init(
         self,
         tmp_kishu_path,
-        tmp_kishu_path_os,
         tmp_nb_path,
         jupyter_server,
     ):
-        # Start the session.
-        jupyter_server.start_session(tmp_nb_path("simple.ipynb"))
-
-        # Kishu should not be able to see this session as "kishu init" was not executed.
-        list_result = KishuCommand.list()
-        assert len(list_result.sessions) == 0
+        with jupyter_server.start_session(tmp_nb_path("simple.ipynb")):
+            # Kishu should not be able to see this session as "kishu init" was not executed.
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 0
 
     @pytest.mark.parametrize(
         ("notebook_name", "cell_num_to_restore", "var_to_compare"),
@@ -361,7 +401,6 @@ class TestKishuCommand:
     def test_end_to_end_checkout(
         self,
         tmp_kishu_path,
-        tmp_kishu_path_os,
         tmp_nb_path,
         jupyter_server,
         notebook_name: str,
@@ -376,21 +415,21 @@ class TestKishuCommand:
         # Start the notebook session.
         with jupyter_server.start_session(notebook_path) as notebook_session:
             # Run the kishu init cell.
-            notebook_session.run_code(KISHU_INIT_STR)
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
 
             # Run some notebook cells.
             for i in range(cell_num_to_restore):
                 notebook_session.run_code(contents[i])
 
             # Get the variable value before checkout.
-            var_value_before = notebook_session.run_code(f"print({var_to_compare})")
+            _, var_value_before = notebook_session.run_code(var_to_compare)
 
             # Run the rest of the notebook cells.
             for i in range(cell_num_to_restore, len(contents)):
                 notebook_session.run_code(contents[i])
 
             # Get the notebook key of the session.
-            list_result = KishuCommand.list(list_all=True)
+            list_result = KishuCommand.list()
             assert len(list_result.sessions) == 1
             assert list_result.sessions[0].notebook_path is not None
             assert Path(list_result.sessions[0].notebook_path).name == notebook_name
@@ -398,20 +437,72 @@ class TestKishuCommand:
 
             # Get commit id of commit which we want to restore
             log_result = KishuCommand.log_all(notebook_key)
-            assert len(log_result.commit_graph) == len(contents) + 2  # all cells + init cell + print variable cell
+            assert len(log_result.commit_graph) == len(contents) + 1  # all cells + init cell + print variable cell
             commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
 
             # Restore to that commit
-            KishuCommand.checkout(notebook_key, commit_id)
+            KishuCommand.checkout(notebook_path, commit_id)
 
             # Get the variable value after checkout.
-            var_value_after = notebook_session.run_code(f"print({var_to_compare})")
+            _, var_value_after = notebook_session.run_code(var_to_compare)
+            assert var_value_before == var_value_after
+
+    def test_checkout_reattach(
+        self,
+        tmp_kishu_path,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        cell_num_to_restore = 4
+        var_to_compare = "b"
+
+        # Start the initial notebook session.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+
+            # Run some notebook cells.
+            for i in range(cell_num_to_restore):
+                notebook_session.run_code(contents[i])
+
+            _, var_value_before = notebook_session.run_code(var_to_compare)
+
+            # Run the rest of the notebook cells.
+            for i in range(cell_num_to_restore, len(contents)):
+                notebook_session.run_code(contents[i])
+
+            # Get notebook key
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 1
+            assert list_result.sessions[0].notebook_path is not None
+            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
+            notebook_key = list_result.sessions[0].notebook_key
+
+        # Starting second notebook session
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run all notebook cells, note no init cell ran
+            for i in range(len(contents)):
+                notebook_session.run_code(contents[i])
+
+            # Get commit id of commit which we want to restore
+            log_result = KishuCommand.log_all(notebook_key)
+            assert len(log_result.commit_graph) == len(contents)+1  # Nothing on this session should have been tracked
+
+            commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
+
+            # Restore to that commit
+            checkout_result = KishuCommand.checkout(notebook_path, commit_id)
+            assert checkout_result.reattachment.status == InstrumentStatus.reattach_succeeded
+
+            # Get the variable value after checkout.
+            _, var_value_after = notebook_session.run_code(var_to_compare)
             assert var_value_before == var_value_after
 
     def test_init_in_nonempty_session(
         self,
         tmp_kishu_path,
-        tmp_kishu_path_os,
         tmp_nb_path,
         jupyter_server,
     ):
@@ -427,14 +518,14 @@ class TestKishuCommand:
             notebook_session.run_code("x += 1")
 
             # Run the kishu init cell.
-            notebook_session.run_code(KISHU_INIT_STR)
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
 
             # Kishu should be able to see the notebook session now.
-            list_result = KishuCommand.list(list_all=True)
+            list_result = KishuCommand.list()
             assert len(list_result.sessions) == 1
             assert list_result.sessions[0].notebook_path is not None
             assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
 
             # Run one more cell.
-            x_value = notebook_session.run_code("print(x)")
-            assert x_value.strip("\n") == "2"
+            _, x_value = notebook_session.run_code("x")
+            assert x_value == "2"
