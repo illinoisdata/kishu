@@ -27,9 +27,7 @@ from typing import Dict, List, Optional, Tuple
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyterint import KISHU_VARS
 
-NB_DIR: str = os.path.join("tests", "notebooks")
-
-KISHU_INIT_STR: str = "from kishu import init_kishu; init_kishu(); _kishu.set_test_mode()"
+KISHU_INIT_STR: str = "from kishu import init_kishu; init_kishu()"
 
 
 def get_kishu_checkout_str(cell_num: int, session_num: int = 1) -> str:
@@ -65,7 +63,7 @@ class NotebookRunner:
         """
         self.test_notebook = test_notebook
         self.path_to_notebook = os.path.dirname(self.test_notebook)
-        self.pickle_file = "/tmp/pickle_" + os.path.basename(self.test_notebook)
+        self.pickle_file = test_notebook + ".pickle_file"
 
     def execute(self, cell_indices: List[int], var_names: Optional[List[str]] = None):
         """

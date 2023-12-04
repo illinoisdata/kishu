@@ -52,7 +52,6 @@ import uuid
 
 from dataclasses import dataclass
 from IPython.core.interactiveshell import InteractiveShell
-from IPython.utils.capture import capture_output
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -235,6 +234,7 @@ class KishuForJupyter:
     SAVE_CMD = "try { IPython.notebook.save_checkpoint(); } catch { }"
     # RELOAD_CMD = "try { IPython.notebook.load_notebook(IPython.notebook.notebook_path); } catch { }"
     RELOAD_CMD = "try { location.reload(true); } catch { }"  # will ask confirmation
+    ENV_KISHU_TEST_MODE = "ENV_KISHU_TEST_MODE"
 
     def __init__(self, notebook_id: NotebookId, ip: Optional[InteractiveShell] = None) -> None:
         # Kishu info and storages.
@@ -274,10 +274,10 @@ class KishuForJupyter:
         except Exception as e:
             print(f"WARNING: Skipped retrieving connection info due to {repr(e)}.")
 
-    def set_test_mode(self):
-        # Configure this object for testing.
-        self._test_mode = True
-        self._commit_id_mode = "counter"
+        # For unit tests.
+        if os.environ.get(KishuForJupyter.ENV_KISHU_TEST_MODE, False):
+            self._test_mode = True
+            self._commit_id_mode = "counter"
 
     def set_session_id(self, session_id):
         self._session_id = session_id
@@ -551,8 +551,7 @@ class KishuForJupyter:
         return app
 
     def _save_notebook(self) -> None:
-        # TODO re-enable notebook saving during tests when possible/supported
-        if self._test_mode:
+        if self._test_mode:  # TODO: re-enable notebook saving during tests when possible/supported.
             return
         nb_path = self._notebook_id.path()
 
@@ -656,15 +655,14 @@ class KishuForJupyter:
         self._reload_jupyter_frontend()
 
     def _reload_jupyter_frontend(self):
-        if self._test_mode:  # TODO always enable after unit test jupyter has frontend component
+        if self._test_mode:  # TODO: enable after unit test jupyter has frontend component.
             return
         if self._platform == "jupyterlab":
             # In JupyterLab.
             KishuForJupyter._ipylab_frontend_app().commands.execute("docmanager:reload")
         else:
             # In Jupyter Notebook.
-            with capture_output():
-                IPython.display.display(IPython.display.Javascript(KishuForJupyter.RELOAD_CMD))
+            IPython.display.display(IPython.display.Javascript(KishuForJupyter.RELOAD_CMD))
 
     def _checkout_namespace(self, user_ns: Namespace, target_ns: Namespace) -> None:
         user_ns.update(target_ns)

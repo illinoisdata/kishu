@@ -386,12 +386,10 @@ class TestKishuCommand:
         tmp_nb_path,
         jupyter_server,
     ):
-        # Start the session.
-        jupyter_server.start_session(tmp_nb_path("simple.ipynb"))
-
-        # Kishu should not be able to see this session as "kishu init" was not executed.
-        list_result = KishuCommand.list()
-        assert len(list_result.sessions) == 0
+        with jupyter_server.start_session(tmp_nb_path("simple.ipynb")):
+            # Kishu should not be able to see this session as "kishu init" was not executed.
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 0
 
     @pytest.mark.parametrize(
         ("notebook_name", "cell_num_to_restore", "var_to_compare"),
@@ -424,7 +422,7 @@ class TestKishuCommand:
                 notebook_session.run_code(contents[i])
 
             # Get the variable value before checkout.
-            var_value_before = notebook_session.run_code(f"print({var_to_compare})")
+            _, var_value_before = notebook_session.run_code(var_to_compare)
 
             # Run the rest of the notebook cells.
             for i in range(cell_num_to_restore, len(contents)):
@@ -446,8 +444,8 @@ class TestKishuCommand:
             KishuCommand.checkout(notebook_path, commit_id)
 
             # Get the variable value after checkout.
-            var_value_after = notebook_session.run_code(f"print({var_to_compare})")
-            assert var_value_before.split("\n")[0] == var_value_after.split("\n")[0]
+            _, var_value_after = notebook_session.run_code(var_to_compare)
+            assert var_value_before == var_value_after
 
     def test_checkout_reattach(
         self,
@@ -463,13 +461,13 @@ class TestKishuCommand:
         # Start the initial notebook session.
         with jupyter_server.start_session(notebook_path) as notebook_session:
             # Run the kishu init cell.
-            notebook_session.run_code(KISHU_INIT_STR)
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
 
             # Run some notebook cells.
             for i in range(cell_num_to_restore):
                 notebook_session.run_code(contents[i])
 
-            var_value_before = notebook_session.run_code(f"print({var_to_compare})")
+            _, var_value_before = notebook_session.run_code(var_to_compare)
 
             # Run the rest of the notebook cells.
             for i in range(cell_num_to_restore, len(contents)):
@@ -496,13 +494,12 @@ class TestKishuCommand:
 
             # Restore to that commit
             checkout_result = KishuCommand.checkout(notebook_path, commit_id)
-            assert checkout_result.reattachment.value == InstrumentStatus.reattach_succeeded
+            assert checkout_result.reattachment.status == InstrumentStatus.reattach_succeeded
 
             # Get the variable value after checkout.
-            var_value_after = notebook_session.run_code(f"print({var_to_compare})")
-            assert var_value_before.split("\n")[0] == var_value_after.split("\n")[0]
+            _, var_value_after = notebook_session.run_code(var_to_compare)
+            assert var_value_before == var_value_after
 
-    @pytest.mark.skip(reason="Flaky due to silent KISHU_INIT_STR cell")
     def test_init_in_nonempty_session(
         self,
         tmp_kishu_path,
@@ -530,5 +527,5 @@ class TestKishuCommand:
             assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
 
             # Run one more cell.
-            x_value = notebook_session.run_code("print(x)")
-            assert x_value.strip("\n") == "2"
+            _, x_value = notebook_session.run_code("x")
+            assert x_value == "2"

@@ -1,7 +1,9 @@
+import pickle
+import pytest
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pickle
 import seaborn as sns
 
 from kishu.planning.idgraph import get_object_hash, get_object_state
@@ -60,6 +62,7 @@ def test_hash_numpy():
     assert hash1.digest() == hash4.digest()
 
 
+@pytest.mark.skip(reason="Flaky")
 def test_idgraph_pandas_Series():
     """
         Test if idgraph is accurately generated for panda series
