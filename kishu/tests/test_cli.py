@@ -25,9 +25,6 @@ from tests.helpers.nbexec import KISHU_INIT_STR
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 
 
-NB_DIR: Path = Path(".") / "tests" / "notebooks"
-
-
 @pytest.fixture()
 def runner() -> Generator[CliRunner, None, None]:
     yield CliRunner(mix_stderr=False)
@@ -72,14 +69,13 @@ class TestKishuApp:
 
     def test_detach_simple(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
         nb_path = nb_simple_path
-        jupyter_server.start_session(nb_path)
-        init_result_raw = runner.invoke(kishu_app, ["init", str(nb_path)])
-        assert init_result_raw.exit_code == 0
-        detach_result_raw = runner.invoke(kishu_app, ["detach", str(nb_path)])
-        assert detach_result_raw.exit_code == 0
-
-        detach_result = detach_result_raw.stdout
-        assert detach_result == f"Successfully detached notebook {nb_path}\n"
+        with jupyter_server.start_session(nb_path):
+            init_result_raw = runner.invoke(kishu_app, ["init", str(nb_path)])
+            assert init_result_raw.exit_code == 0
+            detach_result_raw = runner.invoke(kishu_app, ["detach", str(nb_path)])
+            assert detach_result_raw.exit_code == 0
+            detach_result = detach_result_raw.stdout
+            assert detach_result == f"Successfully detached notebook {nb_path}\n"
 
     def test_init_no_jupyter_server(self, runner, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["init", "non_existent_notebook.ipynb"])
@@ -89,17 +85,17 @@ class TestKishuApp:
 
     def test_init_simple(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
         nb_path = nb_simple_path
-        jupyter_server.start_session(nb_path)
-        result = runner.invoke(kishu_app, ["init", str(nb_path)])
-        assert result.exit_code == 0
+        with jupyter_server.start_session(nb_path):
+            result = runner.invoke(kishu_app, ["init", str(nb_path)])
+            assert result.exit_code == 0
 
-        init_result = result.stdout
-        pattern = (
-            f"Successfully initialized notebook {re.escape(str(nb_path))}."
-            " Notebook key: .*."
-            " Kernel Id: .*"
-        )
-        assert re.search(pattern, init_result) is not None, f"init_result: {init_result}"
+            init_result = result.stdout
+            pattern = (
+                f"Successfully initialized notebook {re.escape(str(nb_path))}."
+                " Notebook key: .*."
+                " Kernel Id: .*"
+            )
+            assert re.search(pattern, init_result) is not None, f"init_result: {init_result}"
 
     def test_checkout_no_jupyter_server(self, runner, nb_simple_path, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "abc123"])
@@ -112,7 +108,7 @@ class TestKishuApp:
         contents = JupyterRuntimeEnv.read_notebook_cell_source(nb_simple_path)
         with jupyter_server.start_session(nb_simple_path) as notebook_session:
             # Run the kishu init cell.
-            notebook_session.run_code(KISHU_INIT_STR)
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
 
             # Run some notebook cells.
             for i in range(len(contents)):
@@ -129,7 +125,7 @@ class TestKishuApp:
         contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
         with jupyter_server.start_session(notebook_path) as notebook_session:
             # Run the kishu init cell.
-            notebook_session.run_code(KISHU_INIT_STR)
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
 
             # Run some notebook cells.
             for i in range(len(contents)):
@@ -148,7 +144,7 @@ class TestKishuApp:
         reattach_message = "Notebook instrumentation was present but not initialized, so attempting to re-initialize it"
         assert segments[0] == reattach_message
         pattern = (
-            f"Successfully initialized notebook {re.escape(str(nb_simple_path))}."
+            f"Successfully reattached notebook {re.escape(str(nb_simple_path))}."
             " Notebook key: .*."
             " Kernel Id: .*"
         )
@@ -156,15 +152,15 @@ class TestKishuApp:
         assert segments[2] == "Checkout 1:2 in detach mode."
 
     def test_checkout_no_metadata(self, runner, tmp_kishu_path, nb_simple_path, jupyter_server):
-        jupyter_server.start_session(nb_simple_path)
-        result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "abcd123"])
-        assert result.exit_code == 0
-        checkout_result = result.stdout
-        no_metadata_output = (
-            "Kishu instrumentaton not found, please double check notebook path and run kishu init NOTEBOOK_PATH"
-            " to attatch Kishu instrumentation\n"
-        )
-        assert checkout_result == no_metadata_output
+        with jupyter_server.start_session(nb_simple_path):
+            result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "abcd123"])
+            assert result.exit_code == 0
+            checkout_result = result.stdout
+            no_metadata_output = (
+                "Kishu instrumentaton not found, please double check notebook path and run kishu init NOTEBOOK_PATH"
+                " to attatch Kishu instrumentation\n"
+            )
+            assert checkout_result == no_metadata_output
 
     def test_log_empty(self, runner, tmp_kishu_path):
         result = runner.invoke(kishu_app, ["log", "NON_EXISTENT_NOTEBOOK_ID"])
@@ -347,10 +343,8 @@ class TestKishuApp:
 
     def test_list_with_server_no_init(self, runner, tmp_kishu_path, tmp_nb_path,
                                       jupyter_server, notebook_name="simple.ipynb"):
-        # Start the session.
-        jupyter_server.start_session(tmp_nb_path(notebook_name))
-
-        # Kishu should not be able to see this session as "kishu init" was not executed.
-        result = runner.invoke(kishu_app, ["list"])
-        assert result.exit_code == 0
-        assert ListResult.from_json(result.stdout) == ListResult(sessions=[])
+        with jupyter_server.start_session(tmp_nb_path(notebook_name)):
+            # Kishu should not be able to see this session as "kishu init" was not executed.
+            result = runner.invoke(kishu_app, ["list"])
+            assert result.exit_code == 0
+            assert ListResult.from_json(result.stdout) == ListResult(sessions=[])

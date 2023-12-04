@@ -1,26 +1,21 @@
 import pytest
 
-import os
 import numpy as np
 
-from tests.helpers.nbexec import NB_DIR, NotebookRunner
+from tests.helpers.nbexec import NotebookRunner
 
 
-def test_notebookrunner_basic():
+def test_notebookrunner_basic(tmp_nb_path):
     cell_indices = [0, 1, 2]
-    path_to_notebook = os.getcwd()
-    notebook_name = "nbexec_test_case_1.ipynb"
     objects = ["z", "b", "a"]
-    notebook = NotebookRunner(os.path.join(path_to_notebook, NB_DIR, notebook_name))
+    notebook = NotebookRunner(str(tmp_nb_path("nbexec_test_case_1.ipynb")))
     output = notebook.execute(cell_indices, objects)
     assert output == {"z": 2, "b": 9, "a": 1}
 
 
-def test_notebookrunner_no_cells():
-    path_to_notebook = os.getcwd()
-    notebook_name = "nbexec_test_case_1.ipynb"
+def test_notebookrunner_no_cells(tmp_nb_path):
     objects = ["a", "b", "x", "y", "z"]
-    notebook = NotebookRunner(os.path.join(path_to_notebook, NB_DIR, notebook_name))
+    notebook = NotebookRunner(str(tmp_nb_path("nbexec_test_case_1.ipynb")))
     output = notebook.execute(None, objects)
     assert output == {
         "a": 1,
@@ -31,12 +26,10 @@ def test_notebookrunner_no_cells():
     }
 
 
-def test_notebookrunner_empty_cell_list():
+def test_notebookrunner_empty_cell_list(tmp_nb_path):
     cell_indices = []
-    path_to_notebook = os.getcwd()
-    notebook_name = "nbexec_test_case_1.ipynb"
     objects = ["a", "b", "x", "y", "z"]
-    notebook = NotebookRunner(os.path.join(path_to_notebook, NB_DIR, notebook_name))
+    notebook = NotebookRunner(str(tmp_nb_path("nbexec_test_case_1.ipynb")))
     output = notebook.execute(cell_indices, objects)
     assert output == {
         "a": 1,
@@ -48,12 +41,10 @@ def test_notebookrunner_empty_cell_list():
 
 
 @pytest.mark.skip(reason="Too expensive to run (~21s)")
-def test_notebookrunner_case_two():
+def test_notebookrunner_case_two(tmp_nb_path):
     cell_indices = [i for i in range(27)]
-    path_to_notebook = os.getcwd()
-    notebook_name = "nbexec_test_case_2.ipynb"
     objects = ["stable_forest", "stable_loop"]
-    notebook = NotebookRunner(os.path.join(path_to_notebook, NB_DIR, notebook_name))
+    notebook = NotebookRunner(str(tmp_nb_path("nbexec_test_case_2.ipynb")))
     output = notebook.execute(cell_indices, objects)
     expected = {
         "stable_forest": np.array(
@@ -78,22 +69,18 @@ def test_notebookrunner_case_two():
 
 
 @pytest.mark.skip(reason="Too expensive to run (~3s)")
-def test_notebookrunner_case_three():
-    path_to_notebook = os.getcwd()
-    notebook_name = "nbexec_test_case_3.ipynb"
+def test_notebookrunner_case_three(tmp_nb_path):
     objects = ["mse", "intercept"]
-    notebook = NotebookRunner(os.path.join(path_to_notebook, NB_DIR, notebook_name))
+    notebook = NotebookRunner(str(tmp_nb_path("nbexec_test_case_3.ipynb")))
     output = notebook.execute(None, objects)
     expected = {"mse": 0.04, "intercept": 0.25}
 
     assert output == expected
 
 
-def test_notebookrunner_case_four():
-    path_to_notebook = os.getcwd()
-    notebook_name = "nbexec_test_case_4.ipynb"
+def test_notebookrunner_case_four(tmp_nb_path):
     objects = ["mse", "intercept", "estimated_value"]
-    notebook = NotebookRunner(os.path.join(path_to_notebook, NB_DIR, notebook_name))
+    notebook = NotebookRunner(str(tmp_nb_path("nbexec_test_case_4.ipynb")))
     output = notebook.execute(None, objects)
     expected = {
         "mse": 0.56,

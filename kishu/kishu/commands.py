@@ -65,12 +65,12 @@ class InstrumentStatus(str, enum.Enum):
 
 @dataclass
 class InstrumentResult:
-    value: InstrumentStatus
+    status: InstrumentStatus
     message: Optional[str]
 
     def is_success(self) -> bool:
         return (
-            self.value in [
+            self.status in [
                 InstrumentStatus.already_attached,
                 InstrumentStatus.reattach_succeeded,
             ]
@@ -372,7 +372,7 @@ class KishuCommand:
                 status="error",
                 message=f"{type(e).__name__}: {str(e)}",
                 reattachment=InstrumentResult(
-                    value=InstrumentStatus.no_kernel,
+                    status=InstrumentStatus.no_kernel,
                     message=None,
                 )
             )
@@ -401,7 +401,7 @@ class KishuCommand:
                 status="error",
                 message=f"{type(e).__name__}: {str(e)}",
                 reattachment=InstrumentResult(
-                    value=InstrumentStatus.no_kernel,
+                    status=InstrumentStatus.no_kernel,
                     message=None,
                 )
             )
@@ -610,32 +610,33 @@ class KishuCommand:
         return FECodeDiffResult(cell_diff, executed_cell_diff)
 
     """Helpers"""
+
     @staticmethod
     def _try_reattach_if_not(notebook_path: Path, kernel_id: str) -> InstrumentResult:
         if not NotebookId.verify_metadata_exists(notebook_path):
             return InstrumentResult(
-                value=InstrumentStatus.no_metadata,
+                status=InstrumentStatus.no_metadata,
                 message=NO_METADATA_MESSAGE,
             )
         if KishuCommand._is_notebook_attached(kernel_id):
             return InstrumentResult(
-                value=InstrumentStatus.already_attached,
+                status=InstrumentStatus.already_attached,
                 message=None,
             )
         reattach_result = KishuCommand.init(str(notebook_path))
         if reattach_result.status != "ok":
             return InstrumentResult(
-                value=InstrumentStatus.reattach_init_fail,
+                status=InstrumentStatus.reattach_init_fail,
                 message=reattach_result.message,
             )
         assert reattach_result.notebook_id is not None
         reattach_message = (
-            f"Successfully initialized notebook {reattach_result.notebook_id.path()}."
+            f"Successfully reattached notebook {reattach_result.notebook_id.path()}."
             f" Notebook key: {reattach_result.notebook_id.key()}."
             f" Kernel Id: {reattach_result.notebook_id.kernel_id()}"
         )
         return InstrumentResult(
-            value=InstrumentStatus.reattach_succeeded,
+            status=InstrumentStatus.reattach_succeeded,
             message=reattach_message,
         )
 

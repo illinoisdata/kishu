@@ -39,16 +39,16 @@ def print_reattachment_message(response: InstrumentResult):
     """
     Prints reattachment message, returns whether or not to print the actual response message
     """
-    if response.value == InstrumentStatus.already_attached:
+    if response.status == InstrumentStatus.already_attached:
         return True
-    if response.value in [InstrumentStatus.reattach_succeeded, InstrumentStatus.reattach_init_fail]:
+    if response.status in [InstrumentStatus.reattach_succeeded, InstrumentStatus.reattach_init_fail]:
         print("Notebook instrumentation was present but not initialized, so attempting to re-initialize it")
         print(response.message)
         return True
-    if response.value == InstrumentStatus.no_kernel:
+    if response.status == InstrumentStatus.no_kernel:
         print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
         return False
-    if response.value == InstrumentStatus.no_metadata:
+    if response.status == InstrumentStatus.no_metadata:
         print(response.message)
         return False
 
