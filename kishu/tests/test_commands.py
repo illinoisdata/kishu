@@ -129,6 +129,12 @@ class TestKishuCommand:
             commit_id="0:3",
             execution_count=3,
             raw_cell="y = x + 1",
+            executed_cells=[  # TODO: Missing due to missing IPython kernel.
+                "",
+                # "x = 1",
+                # "y = 2",
+                # "y = x + 1",
+            ],
             message=status_result.commit_entry.message,  # Not tested,
             timestamp=status_result.commit_entry.timestamp,  # Not tested
             ahg_string=status_result.commit_entry.ahg_string,  # Not tested
@@ -347,6 +353,7 @@ class TestKishuCommand:
                 var_version=fe_commit_result.commit.var_version,  # Not tested
             ),
             executed_cells=[  # TODO: Missing due to missing IPython kernel.
+                "",
                 # "x = 1",
                 # "y = 2",
                 # "y = x + 1",
