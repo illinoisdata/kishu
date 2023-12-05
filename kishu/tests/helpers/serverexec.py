@@ -105,13 +105,17 @@ class NotebookHandler:
                 print("Connection close timed out.")
 
         if not self.persist:
-            # Shutdown the kernel
-            kernel_delete_url = f"{self.server_url}/api/kernels/{self.kernel_id}"
-            requests.delete(kernel_delete_url, headers=self.header)
-
-            # Delete the session
-            session_delete_url = f"{self.server_url}/api/sessions/{self.session_id}"
-            requests.delete(session_delete_url, headers=self.header)
+            # Shutdown the kernel and session
+            with requests.Session() as session:
+                session.mount("http://", JupyterServerRunner.ADAPTER)
+                requests.delete(
+                    f"{self.server_url}/api/kernels/{self.kernel_id}",
+                    headers=self.header,
+                )
+                requests.delete(
+                    f"{self.server_url}/api/sessions/{self.session_id}",
+                    headers=self.header,
+                )
 
 
 class JupyterServerRunner:
@@ -132,9 +136,8 @@ class JupyterServerRunner:
                                             backoff_factor=SLEEP_TIME,
                                             allowed_methods=frozenset(["GET", "POST"])))
 
-    def __init__(self, server_ip: str = "127.0.0.1", port: str = "10000", server_token: str = "abcdefg"):
+    def __init__(self, server_ip: str = "127.0.0.1", server_token: str = "abcdefg"):
         self.server_ip = server_ip
-        self.port = port
         self.server_token = server_token
 
         # Header for sending requests to the server.
@@ -143,8 +146,7 @@ class JupyterServerRunner:
         # Server process for communication with the server.
         self.server_process: Optional[subprocess.Popen] = None
 
-        # The URL of the Jupyter Notebook Server. Note that the actual port may be different from the specified port
-        # as the latter may be in use.
+        # The URL of the Jupyter Notebook Server.
         self.server_url: str = ""
 
     def __enter__(self):
@@ -153,11 +155,10 @@ class JupyterServerRunner:
 
         Args:
             server_ip (str): IP address to start the server at.
-            port (str): port to connect to the server with.
             server_token (str): token to connect to the server with for user authentication.
         """
         command = (
-            f"jupyter notebook --allow-root --no-browser --ip={self.server_ip} --port={self.port} "
+            f"jupyter notebook --allow-root --no-browser --ip={self.server_ip} "
             f"--ServerApp.disable_check_xsrf=True --NotebookApp.token='{self.server_token}'"
         )
 
