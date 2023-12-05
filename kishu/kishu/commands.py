@@ -29,6 +29,7 @@ from kishu.storage.commit import CommitEntry, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag, TagRow
+from kishu.storage.variable_version import VariableVersion
 
 NO_METADATA_MESSAGE = (
     "Kishu instrumentaton not found, please double check notebook path and run kishu init NOTEBOOK_PATH"
@@ -273,6 +274,11 @@ class FEInitializeResult:
 class FECodeDiffResult:
     notebook_cells_diff: List[DiffHunk]
     executed_cells_diff: List[DiffHunk]
+
+
+@dataclass
+class FECommitFilterResult:
+    commit_ids: List[str]
 
 
 class KishuCommand:
@@ -559,7 +565,7 @@ class KishuCommand:
                 branches=[],  # To be set in _branch_commit.
                 tags=[],  # To be set in _tag_commit.
                 code_version=commit_entry.code_version,
-                var_version=commit_entry.var_version,
+                var_version=commit_entry.data_version,
             ))
 
         # Retreives and joins branches.
@@ -732,7 +738,7 @@ class KishuCommand:
             branches=branch_names,
             tags=tag_names,
             code_version=commit_entry.code_version,
-            var_version=commit_entry.var_version,
+            var_version=commit_entry.data_version,
         )
         return FESelectedCommit(
             commit=commit_summary,
@@ -868,3 +874,10 @@ class KishuCommand:
             raise NoExecutedCellsError(commit_id)
         cells = KishuCommand._get_cells_as_strings(formatted_cells)
         return cells, executed_cells
+
+    @staticmethod
+    def commit_filter(notebook_id: str, variable_name: str):
+        """
+        Returns a list of commits that have changed the variable.
+        """
+        return FECommitFilterResult(VariableVersion(notebook_id).get_commit_ids_by_variable_name(variable_name))

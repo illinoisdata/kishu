@@ -54,7 +54,7 @@ from dataclasses import dataclass
 from IPython.core.interactiveshell import InteractiveShell
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Set
 
 from kishu.exceptions import (
     JupyterConnectionError,
@@ -70,13 +70,14 @@ from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
 from kishu.planning.plan import RestorePlan
 from kishu.planning.planner import CheckpointRestorePlanner
+from kishu.planning.variable_version_tracker import VariableVersionTracker
 from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import KishuCommitGraph
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag
-
+from kishu.storage.variable_version import VariableVersion
 
 """
 Functions to find enclosing notebook name, distilled From ipynbname.
@@ -250,6 +251,7 @@ class KishuForJupyter:
         self._kishu_graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
             KishuPath.commit_graph_directory(self._notebook_id.key())
         )
+        self._kishu_variable_version = VariableVersion(self._notebook_id.key())
 
         # Enclosing environment.
         self._ip = ip
@@ -259,6 +261,7 @@ class KishuForJupyter:
 
         # Stateful trackers.
         self._cr_planner = CheckpointRestorePlanner.from_existing(self._user_ns)
+        self._variable_version_tracker = VariableVersionTracker({})
         self._start_time: Optional[float] = None
         self._last_execution_count = 0
 
@@ -273,6 +276,7 @@ class KishuForJupyter:
         self._kishu_checkpoint.init_database()
         self._kishu_branch.init_database()
         self._kishu_tag.init_database()
+        self._kishu_variable_version.init_database()
         self._notebook_id.record_connection()
 
         # For unit tests.
@@ -402,6 +406,7 @@ class KishuForJupyter:
         if commit_entry.ahg_string is None:
             raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
         self._cr_planner.replace_state(commit_entry.ahg_string, self._user_ns)
+        self._variable_version_tracker.replace_state(VariableVersion(self._notebook_id.key()).get_variable_version_by_commit_id(commit_id))
 
         # Update Kishu heads.
         self._kishu_graph.jump(commit_id)
@@ -463,13 +468,15 @@ class KishuForJupyter:
         entry.result = repr_if_not_none(result.result)
 
         # Update optimization items.
-        self._cr_planner.post_run_cell_update(entry.raw_cell, entry.end_time - entry.start_time)
+        changed_vars = self._cr_planner.post_run_cell_update(entry.raw_cell, entry.end_time - entry.start_time)
+        self._variable_version_tracker.update_variable_version(entry.commit_id, changed_vars.created_vars | changed_vars.modified_vars, changed_vars.deleted_vars)
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count
         self._start_time = None
 
         self._commit_entry(entry)
+        self._commit_variable_version(entry.commit_id, changed_vars.modified_vars | changed_vars.created_vars, self._variable_version_tracker.get_variable_versions())
 
     @staticmethod
     def kishu_sessions() -> List[KishuSession]:
@@ -543,6 +550,7 @@ class KishuForJupyter:
         entry.execution_count = self._last_execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
         self._commit_entry(entry)
+        self._commit_variable_version(entry.commit_id,set(),self._variable_version_tracker.get_variable_versions())
         return BareReprStr(entry.commit_id)
 
     def _commit_entry(self, entry: CommitEntry) -> None:
@@ -573,6 +581,11 @@ class KishuForJupyter:
         self._kishu_graph.step(entry.commit_id)
         self._step_branch(entry.commit_id)
 
+    def _commit_variable_version(self, commit_id: str, changed_vars: Set[str], variable_versions: Dict[str, str]) -> None:
+        io_manager = VariableVersion(self._notebook_id.key())
+        io_manager.store_commit_variable_version_table(commit_id, variable_versions)
+        io_manager.store_variable_version_table(changed_vars, commit_id)
+
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":
             return str(self._session_id) + ":" + str(self._last_execution_count)
@@ -592,8 +605,8 @@ class KishuForJupyter:
         checkpoint_plan.run(self._user_ns)
 
         # Extra: generate variable version. TODO: we should avoid the extra namespace serialization.
-        var_version = hash(pickle.dumps(self._user_ns.to_dict()))
-        return restore_plan, var_version
+        data_version = hash(pickle.dumps(self._user_ns.to_dict()))
+        return restore_plan, data_version
 
     @staticmethod
     def _ipylab_frontend_app() -> ipylab.JupyterFrontEnd:

@@ -102,3 +102,9 @@ def fe_commit(notebook_id: str, commit_id: str):
 def fe_commit_diff(notebook_id: str, from_commit_id: str, to_commit_id: str):
     fe_commit_diff_result = KishuCommand.fe_commit_diff(notebook_id, from_commit_id, to_commit_id)
     return into_json(fe_commit_diff_result)
+
+
+@app.get("/fe/commit_filter/<notebook_id>/<variable_name>")
+def fe_commit_filter(notebook_id: str, variable_name: str):
+    fe_commit_filter_result = KishuCommand.commit_filter(notebook_id, variable_name)
+    return into_json(fe_commit_filter_result)
