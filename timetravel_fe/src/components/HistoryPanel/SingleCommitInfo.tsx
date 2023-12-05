@@ -9,6 +9,7 @@ import {
     DownOutlined
 } from "@ant-design/icons";
 import React from "react";
+import {extractTimeFromString} from "../../util/ExtractDateFromString";
 
 export interface SingleCommitInfoProps {
     commit: Commit;
@@ -37,7 +38,7 @@ function _SingleCommitInfo(props: SingleCommitInfoProps) {
 
     const _timestamp =
         <div>
-            <FieldTimeOutlined/> {props.commit.timestamp.substring(0, 19)}
+            <FieldTimeOutlined/> {extractTimeFromString(props.commit.timestamp)}
         </div>
 
     return (

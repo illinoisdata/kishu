@@ -3,6 +3,7 @@ import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 import "./Cell.css";
+import {useEffect, useRef} from "react";
 
 
 export interface SingleCellProps {
@@ -18,12 +19,21 @@ function countLines(text: string) {
 }
 
 function SingleCell(props: SingleCellProps) {
+    const aceRef = useRef<AceEditor | null>(null);
+    // useEffect{
+    //     () => {
+    //         if(aceRef){
+    //             aceRef.current?.editor.renderer.hideCursor()
+    //         }
+    //     }
+    // }
     return (
         <div className="singleCellLayout">
-      <span className="executionOrder">
-        &#91;{props.execNumber === "-1" ? " " : props.execNumber}&#93; :
-      </span>
+      {!props.execNumber ? <span className="executionOrder">
+          [&nbsp;&nbsp;]
+      </span>: <span className="executionOrder">[{props.execNumber}]</span>}
             <AceEditor
+                ref = {aceRef}
                 className={"cell-code"}
                 // className={!props.execNumber ? "code unexcecuted" : "code executed"}
                 placeholder="Placeholder Text"
@@ -46,6 +56,7 @@ function SingleCell(props: SingleCellProps) {
                     showLineNumbers: true,
                     useWorker: false,
                     tabSize: 2,
+                    dragEnabled: false
                 }}
             />
         </div>

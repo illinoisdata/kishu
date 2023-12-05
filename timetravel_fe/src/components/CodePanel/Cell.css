@@ -1,6 +1,6 @@
 .singleCellLayout {
     display: flex;
-    justify-content: space-between;
+    /*justify-content: space-between;*/
     align-items: flex-start; /* Align items to the start of the cross axis (top) */
 }
 
@@ -9,6 +9,9 @@
     margin-right: 4px;
     margin-left: 10px;
     padding: 0;
+    width: 40px;
+    white-space: pre;
+    word-break: break-all;
 }
 
 .cell-code {
@@ -16,6 +19,9 @@
     padding: 0.5em;
     resize: vertical;
     background-color: #f3f3f3;
+    .ace_hidden-cursors {
+        opacity: 0;
+    }
 }
 
 .add-row-marker {

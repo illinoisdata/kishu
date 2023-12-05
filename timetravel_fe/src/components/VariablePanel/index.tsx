@@ -28,7 +28,7 @@ function useDetailModal() {
 function getTableColumns(handleDetailClick:(html?:string) => void, setSearchText:any, searchText:string, setSearchedColumn: any, searchedColumn:string, searchInput:React.RefObject<InputRef>){
     const columns: ColumnsType<Variable> = [
         {
-            title: "Name",
+            title: "Variable Name",
             width: "30%",
             dataIndex: "variableName",
             key: "variableName",

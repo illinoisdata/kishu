@@ -294,6 +294,7 @@ function App() {
                                 setSplitSizes1(newSizes);
                             }}
                             gutterClassName="custom_gutter"
+
                         >
                             <div className="tile-xy history_panel">
                                 <HistoryPanel highlighted_commit_ids={highlighted_commit_ids}/>

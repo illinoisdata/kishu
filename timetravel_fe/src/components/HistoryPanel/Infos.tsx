@@ -6,7 +6,7 @@ import "./CommitInfos.css"
 import {RenderCommit} from "./index";
 import {SingleNewDateHeaderInfo} from "./SingleNewDateHeaderInfo";
 import {extractDateFromString} from "../../util/ExtractDateFromString";
-import {COMMITHEIGHT} from "./GraphConsts";
+import {COMMITHEIGHT, DATEHEADERHEIGHT} from "./GraphConsts";
 
 export interface CommitInfoPanelProps {
     setContextMenuPosition: any;
@@ -14,6 +14,7 @@ export interface CommitInfoPanelProps {
     setSelectedCommitID: any;
     setSelectedBranchID: any;
     setIsDateFolded: any;
+    dateCommitNumber: Map<string,number> | undefined
     isDateFolded?: Map<string, boolean>;
 }
 
@@ -42,18 +43,39 @@ function _CommitInfos(props: CommitInfoPanelProps) {
 
         );
     })
-    const headerInfos = props.renderCommits.map((renderCommit, index) => {
+    let dateHeaderPositions: [string, number][] = [];
+    let dummyNumber = 0;
+    let commitNumber = 0;
+    props.renderCommits.forEach((renderCommit) => {
         if (renderCommit.isDummy) {
-            return (
-                <SingleNewDateHeaderInfo
-                    newDate={extractDateFromString(renderCommit.commit.timestamp)}
-                    setIsDateFolded={props.setIsDateFolded}
-                    isDateFolded={props.isDateFolded}
-                    y_position={index * COMMITHEIGHT}
-                />
-            )
+            dateHeaderPositions.push([extractDateFromString(renderCommit.commit.timestamp), dummyNumber * DATEHEADERHEIGHT + commitNumber * COMMITHEIGHT + DATEHEADERHEIGHT / 2]);
+            dummyNumber++;
+        } else {
+            commitNumber++;
         }
-        return null;
+    })
+    // const headerInfos = props.renderCommits.map((renderCommit, index) => {
+    //     if (renderCommit.isDummy) {
+    //         return (
+    //             <SingleNewDateHeaderInfo
+    //                 newDate={extractDateFromString(renderCommit.commit.timestamp)}
+    //                 setIsDateFolded={props.setIsDateFolded}
+    //                 isDateFolded={props.isDateFolded}
+    //                 y_position={index * COMMITHEIGHT}
+    //             />
+    //         )
+    //     }
+    //     return null;
+    // })
+    const headerInfos = dateHeaderPositions.map((value) => {
+        return (
+            <SingleNewDateHeaderInfo
+                newDate={value[0]}
+                commitNumber = {props.dateCommitNumber!.get(value[0])!}
+                setIsDateFolded={props.setIsDateFolded}
+                isDateFolded={props.isDateFolded}
+                y_position={value[1] - DATEHEADERHEIGHT / 2}
+            />)
     })
     return (
         <>

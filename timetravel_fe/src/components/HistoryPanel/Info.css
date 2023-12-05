@@ -1,10 +1,11 @@
 :root {
     --COMMIT-HEIGHT: 68px;
+    --DATE-HEADER-HEIGHT: 30px;
 }
 
 
 .commitInfo {
-    height: 68px;
+    height: var(--COMMIT-HEIGHT);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -40,11 +41,16 @@
 .new_date{
     position:absolute;
     width:100%;
-    height: 68px;
+    height: var(--DATE-HEADER-HEIGHT);
     z-index: 999;
     background-color: rgb(195, 200, 205);
+    border-bottom-color: #dedede;
+    border-width: 2px;
+    border-bottom-style:solid;
+    display: flex;
+    justify-content: space-between;
 }
 
 .empty_info{
-    height: var(--COMMIT-HEIGHT);
+    height: var(--DATE-HEADER-HEIGHT);
 }

@@ -1,6 +1,6 @@
 import {Commit} from "../../util/Commit";
 import React, {
-    useContext,
+    useContext, useEffect,
     useMemo,
     useState,
 } from "react";
@@ -14,6 +14,7 @@ import {COMMITHEIGHT} from "./GraphConsts";
 import {Infos} from "./Infos";
 import {FilterHighlights} from "./FilterHighlights";
 import {extractDateFromString} from "../../util/ExtractDateFromString";
+import {DoubleLeftOutlined} from "@ant-design/icons";
 
 export interface HistoryPanelProps {
     highlighted_commit_ids: string[];
@@ -37,6 +38,7 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
 
     //state for fold
     const [isDateFolded, setIsDateFolded] = useState<Map<string, boolean> | undefined>(undefined);
+    const [dateCommitNumebr, setDateCommitNumber] = useState<Map<string, number> | undefined>(undefined)
 
     //state for info panel
     const [renderCommits, setRenderCommits] = useState<RenderCommit[]>([]);
@@ -51,6 +53,37 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
     function handleCloseContextMenu() {
         setContextMenuPosition(null);
     }
+
+    useMemo(() => {
+        let newDateCommitNumer: Map<string,number> = new Map()
+        props!.commits.forEach(
+            commit => {
+                let date = extractDateFromString(commit.timestamp)
+                if (newDateCommitNumer.has(date)){
+                    newDateCommitNumer.set(date,newDateCommitNumer.get(date)! + 1)
+                }else{
+                    newDateCommitNumer.set(date,1)
+                }
+            }
+
+                // let date = extractDateFromString(commit.timestamp)
+                // if (newDateCommitNumer.has(key)) {
+                //     // If the key exists, increment the value
+                //     const currentValue = map.get(key);
+                //     if (currentValue !== undefined) {
+                //         map.set(key, currentValue + 1);
+                //     }
+                // } else {
+                //     // If the key doesn't exist, set the value to 1
+                //     map.set(key, 1);
+                // }
+                // newDateCommitNumer.get(extractDateFromString(commit.timestamp))
+                // newDateCommitNumer.set(extractDateFromString(commit.timestamp))
+        );
+        setDateCommitNumber(newDateCommitNumer)
+        },[props?.commits]
+
+    )
 
 
     //update display information of the graph and highlight
@@ -97,13 +130,13 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
             />
             <Infos setContextMenuPosition={setContextMenuPosition}
                    renderCommits={renderCommits} setSelectedCommitID={props!.setSelectedCommitID}
-                   setSelectedBranchID={props?.setSelectedBranchID} isDateFolded={isDateFolded} setIsDateFolded={setIsDateFolded}/>
+                   setSelectedBranchID={props?.setSelectedBranchID} isDateFolded={isDateFolded} setIsDateFolded={setIsDateFolded} dateCommitNumber={dateCommitNumebr}/>
             {!props?.inDiffMode && <div className={"highlight select-highlight"} style={{top: `${selectTop}px`}}></div>}
             <FilterHighlights pointRenderInfos={pointRenderInfos} highlighted_commit_ids={highlighted_commit_ids}/>
             {props?.inDiffMode && (
-                <div className={"highlight diff-highlight-to"} style={{top: `${currentTop}px`}}></div>)}
+                <div className={"highlight select-highlight "} style={{top: `${currentTop}px`}}> <div className={"diff-notation"}> <DoubleLeftOutlined/>Destination</div>  </div>)}
             {props?.inDiffMode && (
-                <div className={"highlight diff-highlight-from"} style={{top: `${selectTop}px`}}></div>)
+                <div className={"highlight select-highlight "} style={{top: `${selectTop}px`}}> <div className={"diff-notation"}> <DoubleLeftOutlined/>Source</div> </div>)
             }
 
 

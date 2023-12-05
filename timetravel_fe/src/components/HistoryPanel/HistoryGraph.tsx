@@ -17,7 +17,7 @@ function _HistoryGraph(props: HistoryGraphProps) {
     return (
         <svg
             overflow={"visible"}
-            style={{zIndex: 2}}
+            style={{zIndex: 2, marginLeft: 8}}
             width={props.svgMaxX}
             height={props.svgMaxY}
         >
@@ -28,7 +28,7 @@ function _HistoryGraph(props: HistoryGraphProps) {
                 let parentCX = props.pointRendererInfos.get(parentOid!)?.cx;
                 let parentCY = props.pointRendererInfos.get(parentOid!)?.cy;
                 let dashLine = parent?.variableVersion === me?.variableVersion;
-                if (parentCX && parentCY) {
+                if (parentCX && parentCY && (parentCY !== commitID_info[1].cy)) {
                     return (
                         <path
                             strokeDasharray={dashLine ? "3,3" : ""}
@@ -42,7 +42,9 @@ function _HistoryGraph(props: HistoryGraphProps) {
                 }
                 return <></>;
             })}
-            {Array.from(props.pointRendererInfos.values()).map((info) => {
+            {Array.from(props.pointRendererInfos).map((commitIDInfo) => {
+                let info = commitIDInfo[1];
+                let id = commitIDInfo[0];
                 if(info.folded){
                     return <></>
                 }
@@ -59,19 +61,15 @@ function _HistoryGraph(props: HistoryGraphProps) {
                     />
                     <text
                         x={info.cx - COMMITRADIUS + MESSAGEMARGINX}
-                        y={info.cy - COMMITRADIUS - MESSAGEMARGINY}>
+                        y={info.cy - COMMITRADIUS - MESSAGEMARGINY}
+                        fontWeight={id == props.currentCommitID ? "bold" : "normal"}
+                    >
                         try text
                     </text>
                     </>
                 );
             })}
 
-            <circle
-                cx={props.pointRendererInfos.get(props!.currentCommitID!)?.cx}
-                cy={props.pointRendererInfos.get(props!.currentCommitID!)?.cy}
-                r={CURRENTCOMMITRADUIS}
-                fill={"Red"}
-            />
         </svg>
     );
 }
