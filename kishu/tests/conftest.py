@@ -5,6 +5,7 @@ import pytest
 import requests
 import shutil
 
+from IPython.core.interactiveshell import InteractiveShell
 from pathlib import Path, PurePath
 from typing import Callable, Generator, List, Optional, Type
 from unittest.mock import patch
@@ -181,7 +182,8 @@ def notebook_key() -> Generator[str, None, None]:
 
 @pytest.fixture()
 def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
-    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key))
+    ip = InteractiveShell()
+    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key), ip=ip)
     yield kishu_jupyter
 
 
