@@ -26,6 +26,14 @@ class GraphNode:
             return True
         return False
 
+    def is_root_equals(self, other):
+        """
+            Compare only the root notes of 2 ID graphs.
+        """
+        if other is None:
+            return False
+        return self.id_obj == other.id_obj and self.obj_type == other.obj_type
+
     def __eq__(self, other):
         return GraphNode._compare_idgraph(self, other)
 

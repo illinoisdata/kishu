@@ -130,15 +130,12 @@ class TestKishuCommand:
             commit_id="0:3",
             execution_count=3,
             raw_cell="y = x + 1",
-<<<<<<< HEAD
             executed_cells=[  # TODO: Missing due to missing IPython kernel.
                 "",
                 # "x = 1",
                 # "y = 2",
                 # "y = x + 1",
             ],
-=======
->>>>>>> b5f753b (recomputationd draft)
             message=status_result.commit_entry.message,  # Not tested,
             timestamp=status_result.commit_entry.timestamp,  # Not tested
             ahg_string=status_result.commit_entry.ahg_string,  # Not tested
@@ -378,11 +375,7 @@ class TestKishuCommand:
     ):
         # Start sessions and run kishu init cell in each of these sessions.
         for notebook_name in notebook_names:
-<<<<<<< HEAD
             with jupyter_server.start_session(tmp_nb_path(notebook_name), persist=True) as notebook_session:
-=======
-            with jupyter_server.start_session(tmp_nb_path(notebook_name)) as notebook_session:
->>>>>>> b5f753b (recomputationd draft)
                 notebook_session.run_code(KISHU_INIT_STR, silent=True)
 
         # Kishu should be able to see these sessions.
@@ -436,11 +429,10 @@ class TestKishuCommand:
                 notebook_session.run_code(contents[i])
 
             # Get the variable value before checkout.
-            _, var_value_before = notebook_session.run_code(var_to_compare)
+            _, var_value_before = notebook_session.run_code(f"print({var_to_compare})")
 
             # Run the rest of the notebook cells.
             for i in range(cell_num_to_restore, len(contents)):
-                print("cell: ", i)
                 notebook_session.run_code(contents[i])
 
             # Get the notebook key of the session.
@@ -459,7 +451,7 @@ class TestKishuCommand:
             KishuCommand.checkout(notebook_path, commit_id)
 
             # Get the variable value after checkout.
-            _, var_value_after = notebook_session.run_code(var_to_compare)
+            _, var_value_after = notebook_session.run_code(f"print({var_to_compare})")
             assert var_value_before == var_value_after
 
     def test_checkout_reattach(

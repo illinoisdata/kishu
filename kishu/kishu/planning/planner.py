@@ -105,7 +105,7 @@ class CheckpointRestorePlanner:
 
         # Initialize the optimizer. Migration speed is currently set to large value to prompt optimizer to store everything.
         # TODO: add overlap detection in the future.
-        optimizer = Optimizer(self._ahg, active_vss, linked_vs_pairs, np.inf, only_migrate=True)
+        optimizer = Optimizer(self._ahg, active_vss, linked_vs_pairs, 100000000)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
