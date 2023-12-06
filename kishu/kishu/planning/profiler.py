@@ -4,7 +4,6 @@ import pickle
 import sys
 import types
 
-import qiskit
 
 def _is_picklable(obj):
     """
@@ -34,7 +33,8 @@ def is_exception(obj):
     """
         List of objects which _is_picklable_dill returns false (or crashes) but are picklable.
     """
-    if hasattr(obj, '__module__') and getattr(obj, '__module__', None).split(".")[0] in {qiskit.__name__}:
+    # TODO: replace this with a config file
+    if hasattr(obj, '__module__') and getattr(obj, '__module__', None).split(".")[0] in {"qiskit"}:
         return True
     return False
 

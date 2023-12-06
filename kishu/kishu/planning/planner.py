@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
-
 from collections import defaultdict
 from typing import Dict, Optional, Set, Tuple
 
@@ -103,9 +101,9 @@ class CheckpointRestorePlanner:
                 if self._id_graph_map[active_vs1.name].is_overlap(self._id_graph_map[active_vs2.name]):
                     linked_vs_pairs.append((active_vs1, active_vs2))
 
-        # Initialize the optimizer. Migration speed is currently set to large value to prompt optimizer to store everything.
-        # TODO: add overlap detection in the future.
-        optimizer = Optimizer(self._ahg, active_vss, linked_vs_pairs, 100000000)
+        # Initialize optimizer. Migration speed is set to (finite) large value to prompt optimizer to store everything.
+        # TODO: add config file for specifying migration speed.
+        optimizer = Optimizer(self._ahg, active_vss, linked_vs_pairs, 10000000000)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()

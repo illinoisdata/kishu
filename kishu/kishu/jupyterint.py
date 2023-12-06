@@ -40,7 +40,6 @@ Reference
 """
 from __future__ import annotations
 
-import dill as pickle
 import IPython
 import ipylab
 import json
@@ -592,7 +591,8 @@ class KishuForJupyter:
         checkpoint_plan.run(self._user_ns)
 
         # Extra: generate variable version. TODO: we should avoid the extra namespace serialization.
-        var_version = None
+        # Original hash implementation doesn't work when there are unserializable variables.
+        var_version = 0
         return restore_plan, var_version
 
     @staticmethod

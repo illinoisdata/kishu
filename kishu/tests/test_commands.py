@@ -1,5 +1,4 @@
 import os
-import time
 import pytest
 
 from pathlib import Path
@@ -425,7 +424,6 @@ class TestKishuCommand:
 
             # Run some notebook cells.
             for i in range(cell_num_to_restore):
-                print("cell: ", i)
                 notebook_session.run_code(contents[i])
 
             # Get the variable value before checkout.
@@ -517,7 +515,6 @@ class TestKishuCommand:
         with jupyter_server.start_session(tmp_nb_path("simple.ipynb")) as notebook_session:
             # Kishu should not be able to see this session as "kishu init" has not yet been executed.
             list_result = KishuCommand.list()
-            print("aaa")
             assert len(list_result.sessions) == 0
 
             # Run some notebook cells.
