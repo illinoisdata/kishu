@@ -469,13 +469,15 @@ class KishuForJupyter:
 
         # Update optimization items.
         changed_vars = self._cr_planner.post_run_cell_update(entry.raw_cell, entry.end_time - entry.start_time)
-        self._variable_version_tracker.update_variable_version(entry.commit_id, changed_vars.created_vars | changed_vars.modified_vars, changed_vars.deleted_vars)
 
         # Step forward internal data.
         self._last_execution_count = result.execution_count
         self._start_time = None
 
         self._commit_entry(entry)
+        self._variable_version_tracker.update_variable_version(entry.commit_id,
+                                                               changed_vars.created_vars | changed_vars.modified_vars,
+                                                               changed_vars.deleted_vars)
         self._commit_variable_version(entry.commit_id, changed_vars.modified_vars | changed_vars.created_vars, self._variable_version_tracker.get_variable_versions())
 
     @staticmethod

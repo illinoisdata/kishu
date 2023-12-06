@@ -1,39 +1,35 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 
 
 @dataclass
-class DiffHunk:
+class CodeDiffHunk:
     option: str  # origin_only, destination_only, both
     content: str  # if option is both, but contents of origin and destination is similar but not same, then it will
     # show the content of the origin
     sub_diff_hunks: Optional[List[
-        DiffHunk]]  # if two similar cells are matched, then sub_diff_hunks will be the line-level Diff-hunk list
+        CodeDiffHunk]]  # if two similar cells are matched, then sub_diff_hunks will be the line-level Diff-hunk list
     # inside the matched cell
 
+@dataclass
+class VariableDiffHunk:
+    variable_name: str
+    option: str  # origin_only, destination_only, both_same_version, both_different_version
 
 @dataclass
-class DiffAlgorithmResult:
+class CodeDiffAlgorithmResult:
     origin_same_idx: List[int]  # origin_same_idx[3] = 5 means origin[3] matches destination[5]
     destination_same_idx: List[int]
-    diff_hunks: List[DiffHunk]
+    diff_hunks: List[CodeDiffHunk]
     similarity: float  # the similarity score between the two series
-
-
-@dataclass
-class Frontier:
-    x: int
-    history: List[DiffHunk]
-    same_idxs: List[Tuple[int, int]]
-    matched_num: int
 
 
 class DiffAlgorithms:
 
     @staticmethod
-    def myre_diff(origin: List[str], destination: List[str]) -> DiffAlgorithmResult:
+    def myre_diff(origin: List[str], destination: List[str]) -> CodeDiffAlgorithmResult:
         """
            An implementation of the Myers diff algorithm.
            See http://www.xmailserver.org/diff2.pdf
@@ -41,6 +37,13 @@ class DiffAlgorithms:
            @return : list1[3] = 5, means that series1[0] = series2[5],
                         list2[3] = 5, means that series2[3] = series1[5]
         """
+
+        @dataclass
+        class Frontier:
+            x: int
+            history: List[CodeDiffHunk]
+            same_idxs: List[Tuple[int, int]]
+            matched_num: int
 
         def one(idx):
             """
@@ -54,7 +57,7 @@ class DiffAlgorithms:
         # This marks the farthest-right point along each diagonal in the edit
         # graph, along with the history that got it there
         frontier = {1: Frontier(0, [], [], 0)}
-        final_result = DiffAlgorithmResult([], [], [], 0)
+        final_result = CodeDiffAlgorithmResult([], [], [], 0)
         end_flag = False
         for d in range(0, a_max + b_max + 1):
             for k in range(-d, d + 1, 2):
@@ -93,9 +96,9 @@ class DiffAlgorithms:
                 # We start at the invalid point (0, 0) - we should only start building
                 # up history when we move off of it.
                 if 1 <= y <= b_max and go_down:
-                    history.append(DiffHunk("Destination_only", destination[one(y)], sub_diff_hunks=None))
+                    history.append(CodeDiffHunk("Destination_only", destination[one(y)], sub_diff_hunks=None))
                 elif 1 <= x <= a_max:
-                    history.append(DiffHunk("Origin_only", origin[one(x)], sub_diff_hunks=None))
+                    history.append(CodeDiffHunk("Origin_only", origin[one(x)], sub_diff_hunks=None))
 
                 # Chew up as many diagonal moves as we can - these correspond to common lines,
                 # and they're considered "free" by the algorithm because we want to maximize
@@ -103,7 +106,7 @@ class DiffAlgorithms:
                 while x < a_max and y < b_max and origin[one(x + 1)] == destination[one(y + 1)]:
                     x += 1
                     y += 1
-                    history.append(DiffHunk("Both", origin[one(x)], sub_diff_hunks=None))
+                    history.append(CodeDiffHunk("Both", origin[one(x)], sub_diff_hunks=None))
                     same_idxs.append((one(x), one(y)))
                     matched_num += 1
 
@@ -116,7 +119,7 @@ class DiffAlgorithms:
                         series1_common[item[0]] = item[1]
                         series2_common[item[1]] = item[0]
                     similarity = matched_num / max(a_max, b_max)
-                    final_result = DiffAlgorithmResult(series1_common, series2_common, history, similarity)
+                    final_result = CodeDiffAlgorithmResult(series1_common, series2_common, history, similarity)
                     end_flag = True
                     break
 
@@ -127,7 +130,7 @@ class DiffAlgorithms:
         return final_result
 
     @staticmethod
-    def edr_diff(origin: List[str], destination: List[str], threshold=0.5) -> DiffAlgorithmResult:
+    def edr_diff(origin: List[str], destination: List[str], threshold=0.5) -> CodeDiffAlgorithmResult:
         """
            Used to find the similar cells between two series of cells
            An implementation of the EDR diff algorithm. It considers both order and numeric distance between elements.
@@ -195,28 +198,28 @@ class DiffAlgorithms:
         j = 0
         for i in range(m):
             if origin_same_idx[i] == -1:
-                diff_hunks.append(DiffHunk("Origin_only", origin[i], sub_diff_hunks=None))
+                diff_hunks.append(CodeDiffHunk("Origin_only", origin[i], sub_diff_hunks=None))
             else:
                 to = origin_same_idx[i]
                 for k in range(j, to):
-                    diff_hunks.append(DiffHunk("Destination_only", destination[k], sub_diff_hunks=None))
+                    diff_hunks.append(CodeDiffHunk("Destination_only", destination[k], sub_diff_hunks=None))
                 line_level_myre = DiffAlgorithms.myre_diff(origin[i].split("\n"), destination[to].split("\n"))
                 if abs(line_level_myre.similarity - 1) < 1e-9:
                     line_diff_hunks = None
                 else:
                     line_diff_hunks = line_level_myre.diff_hunks
-                diff_hunks.append(DiffHunk("Both", origin[i], sub_diff_hunks=line_diff_hunks))
+                diff_hunks.append(CodeDiffHunk("Both", origin[i], sub_diff_hunks=line_diff_hunks))
                 # if line level diff only contains both, then we should not add this diff hunk, meaning they are the
                 # same
                 j = to + 1
         for k in range(j, n):
-            diff_hunks.append(DiffHunk("Destination_only", destination[k], sub_diff_hunks=None))
-        return DiffAlgorithmResult(origin_same_idx, destination_same_idx, diff_hunks, similarity)
+            diff_hunks.append(CodeDiffHunk("Destination_only", destination[k], sub_diff_hunks=None))
+        return CodeDiffAlgorithmResult(origin_same_idx, destination_same_idx, diff_hunks, similarity)
 
 
 class KishuDiff:
     @staticmethod
-    def diff_cells(origin: List[str], destination: List[str]) -> List[DiffHunk]:
+    def diff_cells(origin: List[str], destination: List[str]) -> List[CodeDiffHunk]:
         offset_diff = 0
 
         def _get_new_index(origin_index):
@@ -263,3 +266,25 @@ class KishuDiff:
             offset_diff += len(refined_hunks) - (to_idx - from_idx + 1)
 
         return diff_hunks
+
+    @staticmethod
+    def diff_variables(origin: Dict[str, str], destination: Dict[str, str]) -> List[VariableDiffHunk]:
+        result: List[VariableDiffHunk] = []
+        for variable_name in origin:
+            origin_version = origin[variable_name]
+            if variable_name in destination:
+                destination_version = destination[variable_name]
+                if origin_version == destination_version:
+                    result.append(VariableDiffHunk(variable_name,"both_same_version"))
+                else:
+                    result.append(VariableDiffHunk(variable_name, "both_different_version"))
+            else:
+                result.append(VariableDiffHunk(variable_name, "origin_only"))
+
+        for variable_name in destination:
+            if not (variable_name in origin):
+                result.append(VariableDiffHunk(variable_name,"destination_only"))
+
+        return result
+
+

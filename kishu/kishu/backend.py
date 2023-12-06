@@ -106,5 +106,5 @@ def fe_commit_diff(notebook_id: str, from_commit_id: str, to_commit_id: str):
 
 @app.get("/fe/commit_filter/<notebook_id>/<variable_name>")
 def fe_commit_filter(notebook_id: str, variable_name: str):
-    fe_commit_filter_result = KishuCommand.commit_filter(notebook_id, variable_name)
+    fe_commit_filter_result = KishuCommand.variable_filter(notebook_id, variable_name)
     return into_json(fe_commit_filter_result)

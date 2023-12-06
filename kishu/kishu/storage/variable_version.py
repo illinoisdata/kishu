@@ -28,7 +28,7 @@ class VariableVersion:
 
         con.commit()
 
-    def store_variable_version_table(self,var_names: set[str], commit_id: str):
+    def store_variable_version_table(self, var_names: set[str], commit_id: str):
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         for var_name in var_names:
@@ -73,9 +73,6 @@ class VariableVersion:
             (variable_name,)
         )
         res = cur.fetchall()
-        result = []
-        for var_commit_id in res:
-            result.append(var_commit_id)
+        result = [item[0] for item in res]  # by default, sqlite fetchall is returning tuple as [('1:4',),('1:5',)]
         con.commit()
         return result
-
