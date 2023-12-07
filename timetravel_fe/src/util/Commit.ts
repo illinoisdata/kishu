@@ -15,6 +15,7 @@ export interface Commit {
   variableVersion: string;
   branchIds: string[];
   tags: string[];
+  message:string;
 }
 
 export interface CommitDetail {

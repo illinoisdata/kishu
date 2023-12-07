@@ -139,7 +139,7 @@ function SingleDiffCell(props: SingleDiffCellProps) {
             <AceEditor
                 // key = {objectHash(props.diffHunk)}
                 ref={aceRef}
-                className={props.cssClassNames ? props.cssClassNames : "notebook"}
+                className={"cell-code"}
                 // className={!props.execNumber ? "code unexcecuted" : "code executed"}
                 placeholder="Placeholder Text"
                 mode="python"

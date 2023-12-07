@@ -1,6 +1,5 @@
 import React from "react";
 import {Modal} from "antd";
-import "./DetailModal.css";
 
 export interface detailModalProps {
     value?: string;
@@ -25,9 +24,7 @@ export function DetailModal(props: detailModalProps) {
                 open={props.isOpen}
                 onOk={handleOk}
                 onCancel={handleCancel}
-                // className="newline"
                 width={"80%"}
-                // className={"newline"}
             >
                 {props.html ? <div dangerouslySetInnerHTML={{__html: props.html || ''}}/> : <p>props.value</p>}
                 <div>.....</div>

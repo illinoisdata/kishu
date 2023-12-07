@@ -1,18 +1,7 @@
 .singleCellLayout {
     display: flex;
-    /* flex-direction: row; */
-    /* justify-content: center; */
-    /* text-align: center; */
     justify-content: space-between;
     align-items: flex-start; /* Align items to the start of the cross axis (top) */
-}
-
-.left {
-    text-align: left;
-}
-
-.right {
-    text-align: right;
 }
 
 .executionOrder {
@@ -22,26 +11,11 @@
     padding: 0;
 }
 
-.notebook {
+.cell-code {
     border: 2px solid #dedede;
     padding: 0.5em;
     resize: vertical;
     background-color: #f3f3f3;
-}
-
-/* created but unexcecuted code cell*/
-.code.unexcecuted {
-    border-color: #989696;
-}
-
-/* newly successfully excecuted code cell */
-.code.executed {
-    border-color: green;
-}
-
-/* newly unsuccessfully excecuted code cell */
-.code.current {
-    border-color: red;
 }
 
 .add-row-marker {

@@ -1,10 +1,3 @@
-/*
- * @Author: University of Illinois at Urbana Champaign
- * @Date: 2023-07-14 11:38:34
- * @LastEditTime: 2023-07-29 13:29:52
- * @FilePath: /src/components/CodePanel/SingleCell.tsx
- * @Description:
- */
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/theme-github";
@@ -27,11 +20,11 @@ function countLines(text: string) {
 function SingleCell(props: SingleCellProps) {
     return (
         <div className="singleCellLayout">
-      <span className="executionOrder left">
+      <span className="executionOrder">
         &#91;{props.execNumber === "-1" ? " " : props.execNumber}&#93; :
       </span>
             <AceEditor
-                className={props.cssClassNames ? props.cssClassNames : "notebook"}
+                className={"cell-code"}
                 // className={!props.execNumber ? "code unexcecuted" : "code executed"}
                 placeholder="Placeholder Text"
                 mode="python"

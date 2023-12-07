@@ -12,7 +12,7 @@ export function parseList(object: any) {
     return _sessions.map(
         (item: any) => (
             {
-                NotebookID: item["notebook_id"],
+                NotebookID: item["notebook_key"],
                 kernelID: item["kernel_id"],
                 notebookPath: item["notebook_path"],
                 isAlive: item["is_alive"],
@@ -36,6 +36,7 @@ export function parseCommitGraph(object: any) {
                 tags: item["tags"],
                 codeVersion: item["code_version"],
                 variableVersion: item["var_version"],
+                message: item["message"],
             }) as Commit,
     );
     const currentHead = object["head"]["commit_id"];
@@ -67,6 +68,7 @@ export function parseCommitDetail(json: any) {
             parentOid: item["parent_oid"],
             branchIds: item["branches"],
             tags: item["tags"],
+            message: item["message"],
         },
         codes: json["cells"].map(
             (item: any) =>
@@ -135,4 +137,9 @@ function parseDiffHunk(json: any) {
         content: _content,
         subDiffHunks: _sub_diff_hunks?.map((item: any) => parseDiffHunk(item))
     } as DiffHunk;
+}
+
+export function parseFilteredCommitIDs(json: any): string[] {
+    logger.silly("filtered commit from backend",json)
+    return json["commit_ids"].flatMap((item: any) => item[0])
 }

@@ -1,4 +1,4 @@
-import {parseCommitGraph, parseCommitDetail, parseList, parseDiff} from "./parser";
+import {parseCommitGraph, parseCommitDetail, parseList, parseDiff, parseFilteredCommitIDs} from "./parser";
 import logger from "../log/logger";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
@@ -83,6 +83,19 @@ const BackEndAPI = {
         }
     },
 
+    async deleteBranch(branchID: string) {
+        // message.info(`rollback succeeds`);
+        const res = await fetch(
+            BACKEND_URL + "/delete_branch/" +
+            globalThis.NotebookID! +
+            "/" +
+            branchID,
+        );
+        if (res.status !== 200) {
+            throw new Error("delete branch error, status != 200");
+        }
+    },
+
     async getNotebookList() {
         const res = await fetch(BACKEND_URL + "/list");
         if (res.status !== 200) {
@@ -102,7 +115,18 @@ const BackEndAPI = {
         }
         const data = await res.json();
         return parseDiff(data);
+    },
 
+    async getFilteredCommit(varName: string){
+        // /fe/commit_filter/<notebook_id>/<variable_name>
+        const res = await fetch(
+            BACKEND_URL + "/fe/commit_filter/" + globalThis.NotebookID! + "/" + varName,
+        );
+        if (res.status !== 200) {
+            throw new Error("get filtered commit error, status != 200");
+        }
+        const data = await res.json();
+        return parseFilteredCommitIDs(data);
     }
 };
 
