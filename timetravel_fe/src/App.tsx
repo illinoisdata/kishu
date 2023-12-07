@@ -45,6 +45,8 @@ interface appContextType {
     setInDiffMode: any;
     DiffCommitDetail: DiffCommitDetail | undefined;
     setDiffCommitDetail: any;
+    diffDestCommitID: string | undefined
+    setDiffDestCommitID: any
 }
 
 interface operationModalContextType {
@@ -184,6 +186,8 @@ function App() {
     >(new Map());
     const [inDiffMode, setInDiffMode] = useState<boolean>(false);
     const [highlighted_commit_ids, setHighlighted_commit_ids] = useState<string[]>([]);
+    //for diff
+    const [diffDestCommitID, setDiffDestCommitID] = useState<string | undefined>(undefined)
 
     //********status of pop-ups************************ */
     const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
@@ -213,7 +217,9 @@ function App() {
         inDiffMode,
         setInDiffMode,
         DiffCommitDetail,
-        setDiffCommitDetail
+        setDiffCommitDetail,
+        diffDestCommitID,
+        setDiffDestCommitID
     };
 
     const operationModelContext: operationModalContextType = {
