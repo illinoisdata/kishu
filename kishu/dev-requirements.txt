@@ -6,6 +6,7 @@ flake8
 mypy
 pytest
 pytest-cov
+pytest-xdist
 
 # Test cases
 matplotlib

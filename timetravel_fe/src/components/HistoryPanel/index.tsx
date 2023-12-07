@@ -19,6 +19,7 @@ export interface HistoryPanelProps {
     highlighted_commit_ids: string[];
 }
 
+
 export interface RenderCommit {
     commit: Commit;
     isDummy: boolean;
@@ -35,17 +36,21 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
     const [svgMaxX, setsvgMaxX] = useState<number>(0);
     const [svgMaxY, setsvgMaxY] = useState<number>(0);
 
+
     //state for fold
     const [isDateFolded, setIsDateFolded] = useState<Map<string, boolean> | undefined>(undefined);
 
     //state for info panel
     const [renderCommits, setRenderCommits] = useState<RenderCommit[]>([]);
 
+
     //status of pop-ups
     const [contextMenuPosition, setContextMenuPosition] = useState<{
         x: number;
         y: number;
     } | null>(null);
+
+
 
 
     function handleCloseContextMenu() {
@@ -59,7 +64,6 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
         setPointRenderInfos(infos["info"]);
         setsvgMaxX(infos["maxX"]);
         setsvgMaxY(infos["maxY"]);
-
         let _commitIDMap = new Map<string, Commit>();
         props?.commits.forEach((commit) => _commitIDMap.set(commit.oid, commit));
         setCommitIDMap(_commitIDMap)

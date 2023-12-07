@@ -8,10 +8,15 @@ import websocket
 
 from pathlib import Path
 from requests.adapters import HTTPAdapter
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 from urllib3.util import Retry
 
-from kishu.runtime import JupyterRuntimeEnv
+from kishu.jupyter.runtime import JupyterRuntimeEnv
+
+
+class CellExecutionError(Exception):
+    def __init__(self, cell_code: str, traceback: str):
+        super().__init__(f"Error while executing...\n\n{cell_code}\n\n...with traceback:\n\n{traceback}")
 
 
 class NotebookHandler:
@@ -23,9 +28,13 @@ class NotebookHandler:
     """
         Class for running notebook code in Jupyter Sessions hosted in Jupyter Notebook servers.
     """
-    def __init__(self, request_url: str, header: Dict[str, Any]):
-        self.request_url = request_url
+    def __init__(self, server_url: str, header: Dict[str, Any], kernel_id: str, session_id: str, persist: bool = False):
+        self.server_url = server_url
+        self.kernel_id = kernel_id
+        self.session_id = session_id
+        self.request_url = self.server_url.replace("http", "ws") + f"/api/kernels/{self.kernel_id}/channels"
         self.header = header
+        self.persist = persist  # Some tests require us to not kill jupyter server, so this controlls whether we do or not
         self.websocket: Optional[websocket.WebSocket] = None
 
     def __enter__(self):
@@ -36,44 +45,57 @@ class NotebookHandler:
         return self
 
     @staticmethod
-    def send_execute_request(code):
-        msg_type = 'execute_request'
-        content = {'code': code, 'silent': False}
-        hdr = {'msg_id': uuid.uuid1().hex,
-               'username': 'test',
-               'session': uuid.uuid1().hex,
-               'data': datetime.datetime.now().isoformat(),
-               'msg_type': msg_type,
-               'version': '5.0'}
-        msg = {'header': hdr, 'parent_header': hdr,
-               'metadata': {},
-               'content': content}
-        return msg
+    def make_execute_request(code: str, silent: bool):
+        msg_id = str(uuid.uuid4())
+        msg_type = "execute_request"
+        content = {"code": code, "silent": silent}
+        hdr = {"msg_id": msg_id,
+               "username": "test",
+               "session": str(uuid.uuid4()),
+               "data": datetime.datetime.now().isoformat(),
+               "msg_type": msg_type,
+               "version": "5.0"}
+        req = {"header": hdr, "parent_header": hdr,
+               "metadata": {},
+               "content": content}
+        return req, msg_id
 
-    def run_code(self, cell_code: str) -> str:
+    def run_code(self, cell_code: str, silent: bool = False) -> Tuple[str, str]:
         if self.websocket is None:
             raise RuntimeError("Websocket is not initialized")
 
-        # Execute cell code
-        self.websocket.send(json.dumps(NotebookHandler.send_execute_request(cell_code)))
+        # Execute cell code.
+        req, msg_id = NotebookHandler.make_execute_request(cell_code, silent)
+        self.websocket.send(json.dumps(req))
 
-        # Read cell output
-        output = ""
+        # Read output.
+        stream_output = ""
+        data_output = ""
         try:
-            msg_type = ""
-            while msg_type != "execute_input":
-                rsp = json.loads(self.websocket.recv())
-                msg_type = rsp["msg_type"]
-            msg_type = ""
-            while msg_type != "status":
-                rsp = json.loads(self.websocket.recv())
-                msg_type = rsp["msg_type"]
+            while True:
+                # Only listen to relevant message.
+                msg = json.loads(self.websocket.recv())
+                if msg["parent_header"].get("msg_id") != msg_id:
+                    continue
+
+                # Accumulate output.
+                msg_type = msg["header"]["msg_type"]
+                content = msg["content"]
                 if msg_type == "stream":
-                    output += rsp["content"]["text"]
+                    stream_output += content["text"]
+                elif msg_type in ("display_data", "execute_result"):
+                    data_output += content["data"].get("text/plain", "")
+                elif msg_type == "error":
+                    traceback = "\n".join(content["traceback"])
+                    raise CellExecutionError(cell_code, traceback)
+
+                # Stopping criteria.
+                if msg_type == "status" and content["execution_state"] == "idle":
+                    break
         except TimeoutError:
             print("Cell execution timed out.")
 
-        return output
+        return stream_output, data_output
 
     def __exit__(self, exception_type, exception_value, traceback):
         if self.websocket is not None:
@@ -81,6 +103,19 @@ class NotebookHandler:
                 self.websocket.close()
             except TimeoutError:
                 print("Connection close timed out.")
+
+        if not self.persist:
+            # Shutdown the kernel and session
+            with requests.Session() as session:
+                session.mount("http://", JupyterServerRunner.ADAPTER)
+                requests.delete(
+                    f"{self.server_url}/api/kernels/{self.kernel_id}",
+                    headers=self.header,
+                )
+                requests.delete(
+                    f"{self.server_url}/api/sessions/{self.session_id}",
+                    headers=self.header,
+                )
 
 
 class JupyterServerRunner:
@@ -91,7 +126,7 @@ class JupyterServerRunner:
     """
 
     # Maximum number of retries each connection is attempted.
-    MAX_RETRIES = 100
+    MAX_RETRIES = 200
 
     # Base sleep time between consecutive retries.
     SLEEP_TIME = 0.1
@@ -99,21 +134,19 @@ class JupyterServerRunner:
     # Adapter defining retry strategy for get/post requests.
     ADAPTER = HTTPAdapter(max_retries=Retry(total=MAX_RETRIES,
                                             backoff_factor=SLEEP_TIME,
-                                            allowed_methods=frozenset(['GET', 'POST'])))
+                                            allowed_methods=frozenset(["GET", "POST"])))
 
-    def __init__(self, server_ip: str = "127.0.0.1", port: str = "10000", server_token: str = "abcdefg"):
+    def __init__(self, server_ip: str = "127.0.0.1", server_token: str = "abcdefg"):
         self.server_ip = server_ip
-        self.port = port
         self.server_token = server_token
 
         # Header for sending requests to the server.
-        self.header: Dict[str, Any] = {'Authorization': f"Token {server_token}"}
+        self.header: Dict[str, Any] = {"Authorization": f"Token {server_token}"}
 
         # Server process for communication with the server.
         self.server_process: Optional[subprocess.Popen] = None
 
-        # The URL of the Jupyter Notebook Server. Note that the actual port may be different from the specified port
-        # as the latter may be in use.
+        # The URL of the Jupyter Notebook Server.
         self.server_url: str = ""
 
     def __enter__(self):
@@ -122,11 +155,10 @@ class JupyterServerRunner:
 
         Args:
             server_ip (str): IP address to start the server at.
-            port (str): port to connect to the server with.
             server_token (str): token to connect to the server with for user authentication.
         """
         command = (
-            f"jupyter notebook --allow-root --no-browser --ip={self.server_ip} --port={self.port} "
+            f"jupyter notebook --allow-root --no-browser --ip={self.server_ip} "
             f"--ServerApp.disable_check_xsrf=True --NotebookApp.token='{self.server_token}'"
         )
 
@@ -148,7 +180,7 @@ class JupyterServerRunner:
                     return server["url"][:-1]
         raise TimeoutError("server connection timed out")
 
-    def start_session(self, notebook_path: Path, kernel_name: str = "python3") -> NotebookHandler:
+    def start_session(self, notebook_path: Path, kernel_name: str = "python3", persist: bool = False) -> NotebookHandler:
         """
         Create a notebook session backed by the specified notebook file on disk. Returns the ID of the newly
         started kernel.
@@ -165,14 +197,14 @@ class JupyterServerRunner:
                                "path": str(notebook_path)}
 
         with requests.Session() as session:
-            session.mount('http://', JupyterServerRunner.ADAPTER)
+            session.mount("http://", JupyterServerRunner.ADAPTER)
             response = requests.post(request_url, headers=self.header, data=json.dumps(create_session_data))
             response_json = json.loads(response.text)
 
             # Extract kernel id and establish connection with the kernel.
+            session_id = response_json["id"]
             kernel_id = response_json["kernel"]["id"]
-            request_url = self.server_url.replace("http", "ws") + f"/api/kernels/{kernel_id}/channels"
-            return NotebookHandler(request_url, self.header)
+            return NotebookHandler(self.server_url, self.header, kernel_id, session_id, persist)
 
     def __exit__(self, exception_type, exception_value, traceback) -> None:
         """

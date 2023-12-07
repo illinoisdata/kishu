@@ -23,14 +23,14 @@ def test_optimizer():
     active_vss = [vs1, vs2]
 
     # Cell executions
-    ahg.add_cell_execution("", 3, 0, [], [vs3])
-    ahg.add_cell_execution("", 0.1, 0, [vs3], [vs1])
-    ahg.add_cell_execution("", 0.1, 0, [vs3], [vs2])
+    ahg.add_cell_execution("", 3, [], [vs3])
+    ahg.add_cell_execution("", 0.1, [vs3], [vs1])
+    ahg.add_cell_execution("", 0.1, [vs3], [vs2])
 
     # Setup optimizer
     opt = Optimizer(ahg, active_vss, [], migration_speed_bps=1)
 
     # Tests that the exact optimizer correctly escapes the local minimum by recomputing both x and y.
-    vss_to_migrate, ces_to_recompute = opt.compute_plan(only_migrate=False)
+    vss_to_migrate, ces_to_recompute = opt.compute_plan()
     assert vss_to_migrate == set()
     assert ces_to_recompute == {0, 1, 2}

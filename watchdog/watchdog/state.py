@@ -7,7 +7,7 @@ from io import BytesIO
 from types import CodeType, FrameType
 from typing import Any, Dict, List
 
-from kishu.exceptions import TypeNotSupportedError
+from watchdog.exceptions import TypeNotSupportedError
 
 
 """

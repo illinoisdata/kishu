@@ -71,6 +71,7 @@ dev = [  # README: Keep in sync with dev-requirements.txt
     "mypy",
     "pytest",
     "pytest-cov",
+    "pytest-xdist",
 
     # Test cases
     "matplotlib",

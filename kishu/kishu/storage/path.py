@@ -25,7 +25,7 @@ class KishuPath:
         return KishuPath._create_dir(os.path.join(KishuPath.kishu_directory(), notebook_key))
 
     @staticmethod
-    def checkpoint_path(notebook_key: str) -> str:
+    def database_path(notebook_key: str) -> str:
         return os.path.join(KishuPath.notebook_directory(notebook_key), "ckpt.sqlite")
 
     @staticmethod

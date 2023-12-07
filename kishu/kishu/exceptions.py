@@ -1,14 +1,4 @@
 """
-Raised by state
-"""
-
-
-class TypeNotSupportedError(Exception):
-    def __init__(self, type_name, var_name, var_value):
-        super().__init__(f'{type_name} not yet supported ({var_name, var_value}).')
-
-
-"""
 Raised by notebook_id
 """
 
@@ -36,6 +26,16 @@ class BranchNotFoundError(Exception):
 class BranchConflictError(Exception):
     def __init__(self, message):
         super().__init__(message)
+
+
+"""
+Raised by tag
+"""
+
+
+class TagNotFoundError(Exception):
+    def __init__(self, tag_name):
+        super().__init__(f"The provided tag '{tag_name}' does not exist.")
 
 
 """
@@ -82,3 +82,28 @@ class NoExecutedCellsError(Exception):
         if commit_id:
             message += f" for commitID: {commit_id}"
         super().__init__(message)
+
+
+class PostWithoutPreError(Exception):
+    def __init__(self):
+        super().__init__("Called post_run_cell without calling pre_run_cell")
+
+
+"""
+Raised by planner
+"""
+
+
+class MissingHistoryError(Exception):
+    def __init__(self):
+        super().__init__("Missing cell execution history.")
+
+
+"""
+Raised by commit
+"""
+
+
+class MissingCommitEntryError(Exception):
+    def __init__(self, commit_id):
+        super().__init__(f"Missing commit entry for commit ID: {commit_id}.")

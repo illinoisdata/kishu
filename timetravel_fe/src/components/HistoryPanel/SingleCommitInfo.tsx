@@ -17,7 +17,6 @@ export interface SingleCommitInfoProps {
 }
 
 function _SingleCommitInfo(props: SingleCommitInfoProps) {
-
     const _tags = props.commit.tags?.map((tag) => {
         return (
             <span className={"tag_name"}>
