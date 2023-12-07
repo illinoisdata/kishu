@@ -15,7 +15,7 @@ class CodeDiffHunk:
 
 
 @dataclass
-class VariableDiffHunk:
+class VariableVersionCompare:
     variable_name: str
     option: str  # origin_only, destination_only, both_same_version, both_different_version
 
@@ -82,11 +82,13 @@ class DiffAlgorithms:
                 # diagonal is higher.
                 if go_down:
                     old_x, history, same_idxs, matched_num = \
-                        (frontier[k + 1].x, frontier[k + 1].history, frontier[k + 1].same_idxs, frontier[k + 1].matched_num)
+                        (frontier[k + 1].x, frontier[k + 1].history, frontier[k + 1].same_idxs,
+                         frontier[k + 1].matched_num)
                     x = old_x
                 else:
                     old_x, history, same_idxs, matched_num = \
-                        (frontier[k - 1].x, frontier[k - 1].history, frontier[k - 1].same_idxs, frontier[k - 1].matched_num)
+                        (frontier[k - 1].x, frontier[k - 1].history, frontier[k - 1].same_idxs,
+                         frontier[k - 1].matched_num)
                     x = old_x + 1
 
                 # We want to avoid modifying the old history, since some other step
@@ -270,21 +272,21 @@ class KishuDiff:
         return diff_hunks
 
     @staticmethod
-    def diff_variables(origin: Dict[str, str], destination: Dict[str, str]) -> List[VariableDiffHunk]:
-        result: List[VariableDiffHunk] = []
+    def diff_variables(origin: Dict[str, str], destination: Dict[str, str]) -> List[VariableVersionCompare]:
+        result: List[VariableVersionCompare] = []
         for variable_name in origin:
             origin_version = origin[variable_name]
             if variable_name in destination:
                 destination_version = destination[variable_name]
                 if origin_version == destination_version:
-                    result.append(VariableDiffHunk(variable_name, "both_same_version"))
+                    result.append(VariableVersionCompare(variable_name, "both_same_version"))
                 else:
-                    result.append(VariableDiffHunk(variable_name, "both_different_version"))
+                    result.append(VariableVersionCompare(variable_name, "both_different_version"))
             else:
-                result.append(VariableDiffHunk(variable_name, "origin_only"))
+                result.append(VariableVersionCompare(variable_name, "origin_only"))
 
         for variable_name in destination:
             if not (variable_name in origin):
-                result.append(VariableDiffHunk(variable_name, "destination_only"))
+                result.append(VariableVersionCompare(variable_name, "destination_only"))
 
         return result
