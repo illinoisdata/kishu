@@ -406,7 +406,8 @@ class KishuForJupyter:
         if commit_entry.ahg_string is None:
             raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
         self._cr_planner.replace_state(commit_entry.ahg_string, self._user_ns)
-        self._variable_version_tracker.replace_state(VariableVersion(self._notebook_id.key()).get_variable_version_by_commit_id(commit_id))
+        self._variable_version_tracker.replace_state(VariableVersion(self._notebook_id.key()).
+                                                     get_variable_version_by_commit_id(commit_id))
 
         # Update Kishu heads.
         self._kishu_graph.jump(commit_id)
@@ -478,7 +479,8 @@ class KishuForJupyter:
         self._variable_version_tracker.update_variable_version(entry.commit_id,
                                                                changed_vars.created_vars | changed_vars.modified_vars,
                                                                changed_vars.deleted_vars)
-        self._commit_variable_version(entry.commit_id, changed_vars.modified_vars | changed_vars.created_vars, self._variable_version_tracker.get_variable_versions())
+        self._commit_variable_version(entry.commit_id, changed_vars.modified_vars | changed_vars.created_vars,
+                                      self._variable_version_tracker.get_variable_versions())
 
     @staticmethod
     def kishu_sessions() -> List[KishuSession]:
@@ -552,7 +554,7 @@ class KishuForJupyter:
         entry.execution_count = self._last_execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
         self._commit_entry(entry)
-        self._commit_variable_version(entry.commit_id,set(),self._variable_version_tracker.get_variable_versions())
+        self._commit_variable_version(entry.commit_id, set(), self._variable_version_tracker.get_variable_versions())
         return BareReprStr(entry.commit_id)
 
     def _commit_entry(self, entry: CommitEntry) -> None:
@@ -573,7 +575,7 @@ class KishuForJupyter:
 
         # Plan for checkpointing and restoration.
         checkpoint_start_time = time.time()
-        entry.restore_plan, entry.var_version = self._checkpoint(entry)
+        entry.restore_plan, entry.data_version = self._checkpoint(entry)
         entry.ahg_string = self._cr_planner.serialize_ahg()
         checkpoint_runtime_s = time.time() - checkpoint_start_time
         entry.checkpoint_runtime_s = checkpoint_runtime_s

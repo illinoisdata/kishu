@@ -13,10 +13,12 @@ class CodeDiffHunk:
         CodeDiffHunk]]  # if two similar cells are matched, then sub_diff_hunks will be the line-level Diff-hunk list
     # inside the matched cell
 
+
 @dataclass
 class VariableDiffHunk:
     variable_name: str
     option: str  # origin_only, destination_only, both_same_version, both_different_version
+
 
 @dataclass
 class CodeDiffAlgorithmResult:
@@ -275,7 +277,7 @@ class KishuDiff:
             if variable_name in destination:
                 destination_version = destination[variable_name]
                 if origin_version == destination_version:
-                    result.append(VariableDiffHunk(variable_name,"both_same_version"))
+                    result.append(VariableDiffHunk(variable_name, "both_same_version"))
                 else:
                     result.append(VariableDiffHunk(variable_name, "both_different_version"))
             else:
@@ -283,8 +285,6 @@ class KishuDiff:
 
         for variable_name in destination:
             if not (variable_name in origin):
-                result.append(VariableDiffHunk(variable_name,"destination_only"))
+                result.append(VariableDiffHunk(variable_name, "destination_only"))
 
         return result
-
-

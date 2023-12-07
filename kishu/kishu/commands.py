@@ -72,9 +72,9 @@ class InstrumentResult:
     def is_success(self) -> bool:
         return (
                 self.status in [
-            InstrumentStatus.already_attached,
-            InstrumentStatus.reattach_succeeded,
-        ]
+                    InstrumentStatus.already_attached,
+                    InstrumentStatus.reattach_succeeded,
+                ]
         )
 
 
@@ -608,7 +608,7 @@ class KishuCommand:
         )
 
     @staticmethod
-    def fe_commit_diff(notebook_id: str, from_commit_id: str, to_commit_id: str) -> FECodeDiffResult:
+    def fe_code_diff(notebook_id: str, from_commit_id: str, to_commit_id: str) -> FECodeDiffResult:
         to_cells, to_executed_cells = KishuCommand._retrieve_all_cells(notebook_id, to_commit_id)
         from_cells, from_executed_cells = KishuCommand._retrieve_all_cells(notebook_id, from_commit_id)
         cell_diff = KishuDiff.diff_cells(from_cells, to_cells)
@@ -886,4 +886,4 @@ class KishuCommand:
     def variable_diff(notebook_id: str, from_commit_id: str, to_commit_id: str) -> List[VariableDiffHunk]:
         origin_variable_versions = VariableVersion(notebook_id).get_variable_version_by_commit_id(from_commit_id)
         destination_variable_versions = VariableVersion(notebook_id).get_variable_version_by_commit_id(to_commit_id)
-        return KishuDiff.diff_variables(origin_variable_versions,destination_variable_versions)
+        return KishuDiff.diff_variables(origin_variable_versions, destination_variable_versions)

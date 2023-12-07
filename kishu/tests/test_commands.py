@@ -532,7 +532,7 @@ class TestKishuCommand:
             _, x_value = notebook_session.run_code("x")
             assert x_value == "2"
 
-    def test_variable_diff(self, jupyter_server,tmp_nb_path):
+    def test_variable_diff(self, jupyter_server, tmp_nb_path):
         notebook_path = tmp_nb_path("simple.ipynb")
         contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
         with jupyter_server.start_session(notebook_path) as notebook_session:
@@ -549,19 +549,19 @@ class TestKishuCommand:
             assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
             notebook_key = list_result.sessions[0].notebook_key
 
-            #get the commit ids
+            # get the commit ids
             commits = KishuCommand.log_all(notebook_key).commit_graph
             source_commit_id = commits[0].commit_id
             dest_commit_id = commits[-1].commit_id
 
-            diff_result = KishuCommand.variable_diff(notebook_key,source_commit_id,dest_commit_id)
+            diff_result = KishuCommand.variable_diff(notebook_key, source_commit_id, dest_commit_id)
             result_dict = {}
             for item in diff_result:
                 result_dict[item.variable_name] = item.option
             assert result_dict['x'] == 'both_different_version'
             assert result_dict['b'] == 'destination_only'
 
-    def test_variable_filter(self, jupyter_server,tmp_nb_path):
+    def test_variable_filter(self, jupyter_server, tmp_nb_path):
         notebook_path = tmp_nb_path("simple.ipynb")
         contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
         with jupyter_server.start_session(notebook_path) as notebook_session:
@@ -580,8 +580,8 @@ class TestKishuCommand:
 
             commits = KishuCommand.log_all(notebook_key).commit_graph
 
-            diff_result = KishuCommand.variable_filter(notebook_key,'b')
-            assert diff_result.commit_ids == [commits[3].commit_id,commits[4].commit_id]
+            diff_result = KishuCommand.variable_filter(notebook_key, 'b')
+            assert diff_result.commit_ids == [commits[3].commit_id, commits[4].commit_id]
 
-            diff_result = KishuCommand.variable_filter(notebook_key,'y')
+            diff_result = KishuCommand.variable_filter(notebook_key, 'y')
             assert diff_result.commit_ids == [commits[1].commit_id]

@@ -15,6 +15,7 @@ from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import RestorePlan, CheckpointPlan
 from kishu.planning.profiler import profile_variable_size
 
+
 @dataclass
 class ChangedVariables:
     created_vars: Set[str]

@@ -18,13 +18,17 @@ class VariableVersion:
         cur = con.cursor()
 
         cur.execute(
-            f'create table if not exists {VARIABLE_VERSION_TABLE} (var_name text, var_commit_id text, primary key (var_name, var_commit_id))')
-        cur.execute(f'create index if not exists var_name_index on {VARIABLE_VERSION_TABLE} (var_name)')
+            f'create table if not exists {VARIABLE_VERSION_TABLE}'
+            f' (var_name text, var_commit_id text, primary key (var_name, var_commit_id))')
+        cur.execute(f'create index if not exists var_name_index '
+                    f'on {VARIABLE_VERSION_TABLE} (var_name)')
 
         # every variable for every commit will be stored in the commit_variable table
         cur.execute(
-            f'create table if not exists {COMMIT_VARIABLE_VERSION_TABLE} (commit_id text, var_name text, var_commit_id text, primary key (var_name, commit_id))')
-        cur.execute(f'create index if not exists commit_id_index on {COMMIT_VARIABLE_VERSION_TABLE} (commit_id)')
+            f'create table if not exists {COMMIT_VARIABLE_VERSION_TABLE} '
+            f'(commit_id text, var_name text, var_commit_id text, primary key (var_name, commit_id))')
+        cur.execute(f'create index if not exists commit_id_index on '
+                    f'{COMMIT_VARIABLE_VERSION_TABLE} (commit_id)')
 
         con.commit()
 
