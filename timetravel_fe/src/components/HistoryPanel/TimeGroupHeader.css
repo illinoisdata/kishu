@@ -1,0 +1,11 @@
+.timeGroupHeaderContainer {
+    height: 68px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+}
+
+.timeGroupHead{
+    background-color: #fff677;
+}
