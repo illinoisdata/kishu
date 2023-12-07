@@ -1,15 +1,13 @@
-import React from "react";
+import React, {useContext} from "react";
 import "./toolbar.css";
 import "../utility.css";
 import {SearchOutlined} from "@ant-design/icons";
 import {Button, Input, ConfigProvider, Checkbox} from "antd";
 import DropdownBranch from "./DropDownBranch";
 import {CheckboxChangeEvent} from "antd/es/checkbox";
-import {SearchBar} from "./SearchBar";
 
 export interface toolBarProps{
     setInDiffMode: any;
-    setHighightedCommitIds: any;
 }
 
 function _Toolbar(props: toolBarProps) {
@@ -49,8 +47,16 @@ function _Toolbar(props: toolBarProps) {
                         disabled={true}
                         style={{width: "20%"}}
                     />
+                    <div className="searchBar">
+                        <Input
+                            placeholder="input search text"
+                            // disabled={true}
 
-                    <SearchBar setHighlightedCommitIds={props.setHighightedCommitIds}/>
+                        />
+                        <Button
+                            type="primary" shape={"round"} icon={<SearchOutlined/>}
+                        />
+                    </div>
 
                     <Checkbox onChange={onDiffModeChange}>DiffMode</Checkbox>
 

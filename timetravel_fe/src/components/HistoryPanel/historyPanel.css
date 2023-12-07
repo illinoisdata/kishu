@@ -9,6 +9,10 @@
     height: 100%;
 }
 
+.commitInfosContainer {
+    flex-grow: 1;
+}
+
 .svg {
     display: flex;
     justify-content: center;
@@ -18,21 +22,6 @@
     height: 100%;
     z-index: 2;
 
-}
-
-.highlight{
-    position:absolute;
-    width:100%;
-    height: 68px;
-    z-index: 1;
-}
-
-.select-highlight {
-    background-color: rgba(207, 223, 237,0.6);
-}
-
-.filter-highlight{
-    background-color: rgba(253, 135, 237, 0.6);
 }
 
 .select-highlight {

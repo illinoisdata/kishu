@@ -14,7 +14,7 @@ import React, {
 import "./App.css";
 import ReactSplit, {SplitDirection} from "@devbookhq/splitter";
 import {Toolbar} from "./components/Toolbar";
-import HistoryPanel from "./components/HistoryPanel";
+import HistoryTree from "./components/HistoryPanel";
 import NotebookFilePanel from "./components/CodePanel/NotebookFilePanel";
 import {BackEndAPI} from "./util/API";
 import {Commit, CommitDetail} from "./util/Commit";
@@ -26,7 +26,6 @@ import NotebookFileDiffPanel from "./components/CodePanel/NotebookFileDiffPanel"
 import ExecutedCodeDiffPanel from "./components/CodePanel/ExecutedCodeDiffPanel";
 import {DiffCommitDetail} from "./util/DiffCommitDetail";
 import logger from "./log/logger";
-import OperationModals from "./components/OperationModals";
 
 interface appContextType {
     commits: Commit[];
@@ -45,24 +44,6 @@ interface appContextType {
     setInDiffMode: any;
     DiffCommitDetail: DiffCommitDetail | undefined;
     setDiffCommitDetail: any;
-}
-
-interface operationModalContextType {
-    //control model render or not
-    isTagEditorOpen: boolean;
-    setIsTagEditorOpen: any;
-    isBranchNameEditorOpen: boolean;
-    setIsBranchNameEditorOpen: any;
-    isCheckoutWaitingModalOpen: boolean;
-    setIsCheckoutWaitingModalOpen: any;
-    chooseCheckoutBranchModalOpen: boolean;
-    setChooseCheckoutBranchModalOpen: any;
-
-    //control model content
-    checkoutMode: string;
-    setCheckoutMode: any;
-    checkoutBranchID: string | undefined;
-    setCheckoutBranchID: any;
 }
 
 const cells_loading: TabsProps['items'] = [
@@ -158,7 +139,7 @@ async function loadDiffCommitDetail(selectedCommitID: string, currentHeadID: str
         return;
     }
     try {
-        const data = await BackEndAPI.getDiff(selectedCommitID, currentHeadID!);
+        const data = await BackEndAPI.getDiff(selectedCommitID,currentHeadID!);
         console.log("commit detail diff after parse:");
         console.log(data);
         setDiffCommitDetail(data!)
@@ -170,7 +151,6 @@ async function loadDiffCommitDetail(selectedCommitID: string, currentHeadID: str
 }
 
 export const AppContext = createContext<appContextType | undefined>(undefined);
-export const OperationModelContext = createContext<operationModalContextType | undefined>(undefined);
 
 function App() {
     const [commits, setCommits] = useState<Commit[]>([]);
@@ -183,20 +163,6 @@ function App() {
         Map<string, string>
     >(new Map());
     const [inDiffMode, setInDiffMode] = useState<boolean>(false);
-    const [highlighted_commit_ids, setHighlighted_commit_ids] = useState<string[]>([]);
-
-    //********status of pop-ups************************ */
-    const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
-    const [isBranchNameEditorOpen, setIsBranchNameEditorOpen] = useState(false);
-    const [isCheckoutWaitingModalOpen, setIsCheckoutWaitingModalOpen] =
-        useState(false);
-    const [chooseCheckoutBranchModalOpen, setChooseCheckoutBranchModalOpen] =
-        useState(false);
-    const [checkoutMode, setCheckoutMode] = useState(""); //wait for what, like tag, checkout or XXX
-    const [checkoutBranchID, setCheckoutBranchID] = useState<string | undefined>(
-        undefined,
-    );
-
     const appContext: appContextType = {
         commits,
         setCommits,
@@ -216,21 +182,6 @@ function App() {
         setDiffCommitDetail
     };
 
-    const operationModelContext: operationModalContextType = {
-        isTagEditorOpen,
-        setIsTagEditorOpen,
-        isBranchNameEditorOpen,
-        setIsBranchNameEditorOpen,
-        isCheckoutWaitingModalOpen,
-        setIsCheckoutWaitingModalOpen,
-        chooseCheckoutBranchModalOpen,
-        setChooseCheckoutBranchModalOpen,
-        checkoutMode,
-        setCheckoutMode,
-        checkoutBranchID,
-        setCheckoutBranchID,
-    }
-
     const [globalLoading, setGlobalLoading] = useState(true);
     const [error, setError] = useState<string | undefined>(undefined);
 
@@ -249,27 +200,13 @@ function App() {
         if (inDiffMode && currentHeadID) {
             loadDiffCommitDetail(selectedCommitID!, currentHeadID, setDiffCommitDetail, setError)
         }
-    }, [selectedCommitID, currentHeadID, inDiffMode]);
+    }, [selectedCommitID,currentHeadID,inDiffMode]);
 
     useMemo(() => {
         if (inDiffMode) {
             loadDiffCommitDetail(selectedCommitID!, currentHeadID, setDiffCommitDetail, setError)
         }
-    }, [inDiffMode, currentHeadID, selectedCommitID]);
-
-    async function refreshGraph(){
-        const newGraph = await BackEndAPI.getCommitGraph();
-        logger.silly("checkout submit, git graph after parse:", newGraph);
-        setCommits(newGraph.commits);
-        const newSetBranchID2CommitMap = new Map<string, string>();
-        commits.forEach((commit) => {
-            commit.branchIds.forEach((branchID) => {
-                newSetBranchID2CommitMap.set(branchID, commit.oid);
-            });
-        });
-        setBranchID2CommitMap(newSetBranchID2CommitMap);
-        setCurrentHeadID(newGraph.currentHead);
-    }
+    }, [inDiffMode,currentHeadID,selectedCommitID]);
 
 
     return (
@@ -286,7 +223,7 @@ function App() {
                 {/* only the history tree has been loaded */}
                 {!globalLoading && !error && !selectedCommit && (
                     <>
-                        <Toolbar setInDiffMode={setInDiffMode} setHighightedCommitIds={setHighlighted_commit_ids}/>
+                        <Toolbar setInDiffMode={setInDiffMode}/>
                         <ReactSplit
                             direction={SplitDirection.Horizontal}
                             initialSizes={splitSizes1}
@@ -296,7 +233,7 @@ function App() {
                             gutterClassName="custom_gutter"
                         >
                             <div className="tile-xy history_panel">
-                                <HistoryPanel highlighted_commit_ids={highlighted_commit_ids}/>
+                                <HistoryTree/>
                             </div>
 
                             <ReactSplit
@@ -320,7 +257,7 @@ function App() {
 
                 {!globalLoading && !error && selectedCommit && (
                     <>
-                        <Toolbar setInDiffMode={setInDiffMode} setHighightedCommitIds={setHighlighted_commit_ids}/>
+                        <Toolbar setInDiffMode={setInDiffMode}/>
                         <ReactSplit
                             direction={SplitDirection.Horizontal}
                             initialSizes={splitSizes1}
@@ -329,11 +266,9 @@ function App() {
                             }}
                             gutterClassName="custom_gutter"
                         >
-                            <OperationModelContext.Provider value={operationModelContext}>
-                                <div className="tile-xy  history_panel">
-                                    <HistoryPanel highlighted_commit_ids={highlighted_commit_ids}/>
-                                </div>
-                            </OperationModelContext.Provider>
+                            <div className="tile-xy  history_panel">
+                                <HistoryTree/>
+                            </div>
                             <ReactSplit
                                 direction={SplitDirection.Vertical}
                                 initialSizes={splitSizes2}
@@ -351,9 +286,6 @@ function App() {
                                 </div>
                             </ReactSplit>
                         </ReactSplit>
-                        <OperationModelContext.Provider value={operationModelContext}>
-                            <OperationModals selectedCommitID={selectedCommitID!} refreshGraphHandler={refreshGraph} selectedCommit={selectedCommit!}/>
-                        </OperationModelContext.Provider>
                     </>
                 )}
 

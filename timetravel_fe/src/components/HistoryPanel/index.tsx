@@ -24,7 +24,7 @@ import {CommitInfo} from "./CommitInfo";
 import {PointRenderInfo} from "../../util/PointRenderInfo";
 import {CheckoutBranchModel} from "./CheckoutBranchModel";
 import logger from "../../log/logger";
-import {TimeGroupHeader} from "./TimeGroupHeader";
+import {COMMITHEIGHT} from "./GraphConsts";
 
 function HistoryTree() {
     const props = useContext(AppContext);
@@ -150,8 +150,8 @@ function HistoryTree() {
         setsvgMaxY(infos["maxY"]);
     }, [props?.commits]);
 
-    const commitInfos = props?.commits.map((commit,index) => {
-        let newDay:string
+    const commitInfos = props?.commits.map((commit, index) => {
+        let newDay: string
         if (index === 0 || commit.timestamp.substring(0, 10) !== props?.commits[index - 1].timestamp.substring(0, 10)) {
             newDay = commit.timestamp.substring(0, 10);
         } else {
@@ -176,20 +176,19 @@ function HistoryTree() {
         );
     });
 
-    const highlightTop = pointRenderInfos.get(props?.selectedCommitID!)?.cy! - 34;
+    const highlightTop = pointRenderInfos.get(props?.selectedCommitID!)?.cy! - COMMITHEIGHT / 2;
 
     return (
         <div className="historyPanel" onClick={handleCloseContextMenu}>
             <HistoryGraph
                 Commits={commitIDMap}
                 pointRendererInfos={pointRenderInfos}
-                selectedCommitID={props?.selectedCommitID!}
                 currentCommitID={props?.currentHeadID!}
                 svgMaxX={svgMaxX}
                 svgMaxY={svgMaxY}
             />
-            <div className={"commitInfos"} style={{zIndex: 2}}>{commitInfos}</div>
-            <div className={"select-highlight"} style={{ top: `${highlightTop}px` }}></div>
+            <div className={"commitInfosContainer"} style={{zIndex: 2}}>{commitInfos}</div>
+            <div className={"select-highlight"} style={{top: `${highlightTop}px`}}></div>
 
             {/****************************pop-ups ***********************/}
             {contextMenuPosition && (
@@ -204,26 +203,26 @@ function HistoryTree() {
                     setChooseCheckoutBranchModelOpen={setChooseCheckoutBranchModelOpen}
                 />
             )}
-            <TagEditor
+            {isTagEditorOpen && (<TagEditor
                 isModalOpen={isTagEditorOpen}
                 setIsModalOpen={setIsTagEditorOpen}
                 submitHandler={handleTagSubmit}
                 selectedHistoryID={props!.selectedCommitID!}
-            ></TagEditor>
-            <BranchNameEditor
+            ></TagEditor>)}
+            {isBranchNameEditorOpen && <BranchNameEditor
                 isModalOpen={isBranchNameEditorOpen}
                 setIsModalOpen={setIsBranchNameEditorOpen}
                 submitHandler={handleBranchNameSubmit}
                 selectedHistoryID={props!.selectedCommitID!}
-            ></BranchNameEditor>
-            <CheckoutBranchModel
+            ></BranchNameEditor>}
+            {chooseCheckoutBranchModelOpen && <CheckoutBranchModel
                 branchIDOptions={props?.selectedCommit?.commit.branchIds}
                 isModalOpen={chooseCheckoutBranchModelOpen}
                 setCheckoutBranchID={setCheckoutBranchID}
                 setIsCheckoutWaitingModalOpen={setIsCheckoutWaitingModelOpen}
                 setIsModalOpen={setChooseCheckoutBranchModelOpen}
-            ></CheckoutBranchModel>
-            <CheckoutWaitingModal
+            ></CheckoutBranchModel>}
+            {isCheckoutWaitingModelOpen && <CheckoutWaitingModal
                 checkoutMode={checkoutMode}
                 isWaitingModalOpen={isCheckoutWaitingModelOpen}
                 setIsWaitingModalOpen={setIsCheckoutWaitingModelOpen}
@@ -231,7 +230,7 @@ function HistoryTree() {
                 checkoutVariableHandler={handleCheckoutVariable}
                 checkoutBranchID={checkoutBranchID}
                 setCheckoutBranchID={setCheckoutBranchID} //after checkout succeed, the checkoutBranchID will be set to undefined
-            ></CheckoutWaitingModal>
+            ></CheckoutWaitingModal>}
         </div>
     );
 }

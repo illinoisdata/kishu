@@ -4,10 +4,9 @@ import {PointRenderInfo} from "./PointRenderInfo";
 import {Commit} from "./Commit";
 import MinHeap from "heap-js";
 import {COLORSPAN, COMMITHEIGHT, LINESPACING} from "../components/HistoryPanel/GraphConsts";
-import {extractDateFromString} from "./ExtractDateFromString";
 
 //input Commits[], return a map of commit ID to PointRenderer(cx,cy, color)
-export function getPointRenderInfos(commits: Commit[], isDateFolded: Map<string, boolean> | undefined): {
+export function getPointRenderInfos(commits: Commit[]): {
     info: Map<string, PointRenderInfo>;
     maxX: number;
     maxY: number;
@@ -22,9 +21,6 @@ export function getPointRenderInfos(commits: Commit[], isDateFolded: Map<string,
     let cx: number[] = new Array(commits.length).fill(-1);
     let cy: number[] = new Array(commits.length).fill(-1);
 
-    //whether the commit is folded
-    let isCommitFolded: boolean[] = new Array(commits.length).fill(false);
-
     //recycled x coordinates
     const recycleXs = new MinHeap<[number, number]>(); //[x, min_y], means when x is recycled and the y of the to-be-put commit is less than or equal to min_y, then you can put the commit here.
 
@@ -35,23 +31,10 @@ export function getPointRenderInfos(commits: Commit[], isDateFolded: Map<string,
     //result
     let pointRenderers = new Map<string, PointRenderInfo>();
 
-    //traverse commits to assign y coordinates without considering folding
+    //traverse commits to assign y coordinates
     for (let i = 0; i < commits.length; i++) {
-        //if commits[i] start a new day, increase y to give the time header a slot
-        if (i == 0 || extractDateFromString(commits[i].timestamp) !== extractDateFromString(commits[i - 1].timestamp)) {
-            y += COMMITHEIGHT;
-        }
-        if(!isDateFolded || !isDateFolded.get(extractDateFromString(commits[i].timestamp))){
-            // if the current commit is not folded
-            cy[i] = y;
-            y += COMMITHEIGHT;
-            isCommitFolded[i] = false;
-        }
-        else{
-            // if the current commit is not folded, assign its y coordinate to the previous y slot(the time header's y slot)
-            cy[i] = y - COMMITHEIGHT;
-            isCommitFolded[i] = true;
-        }
+        cy[i] = y;
+        y += COMMITHEIGHT;
     }
 
     //helper variables
@@ -106,7 +89,6 @@ export function getPointRenderInfos(commits: Commit[], isDateFolded: Map<string,
             color: COLORSPAN[getXaxisIndex(cx[i]) % COLORSPAN.length],
             cx: cx[i],
             cy: cy[i],
-            folded: isCommitFolded[i],
         });
     }
     return {info: pointRenderers, maxX: maxX, maxY: y};
