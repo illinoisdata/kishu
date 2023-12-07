@@ -9,10 +9,6 @@
     height: 100%;
 }
 
-.commitInfosContainer {
-    flex-grow: 1;
-}
-
 .svg {
     display: flex;
     justify-content: center;

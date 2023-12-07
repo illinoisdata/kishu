@@ -1,6 +1,6 @@
 // input PointRenderer, return a info box
 import {PointRenderInfo} from "../../util/PointRenderInfo";
-import "./Info.css";
+import "./SingleCommitInfo.css";
 import {Commit} from "../../util/Commit";
 import {
     TagOutlined,
@@ -10,13 +10,16 @@ import {
 } from "@ant-design/icons";
 import React from "react";
 
-export interface SingleCommitInfoProps {
+export interface CommitInfoProps {
     commit: Commit;
+    pointRendererInfo: PointRenderInfo;
     onclick: any;
     onContextMenu: any;
+    newDay: string;
 }
 
-function _SingleCommitInfo(props: SingleCommitInfoProps) {
+function _SingleCommitInfo(props: CommitInfoProps) {
+
     const _tags = props.commit.tags?.map((tag) => {
         return (
             <span className={"tag_name"}>
@@ -45,14 +48,20 @@ function _SingleCommitInfo(props: SingleCommitInfoProps) {
             onClick={props.onclick}
             onContextMenu={props.onContextMenu}
         >
-            <div className={"empty-line"}></div>
-            {props.commit.branchIds.length !== 0 || props.commit.tags.length !== 0 ? (
+            {props.newDay !== "" ? (
+                <div className={"newDay"}>
+                    <DownOutlined />  {props.newDay}
+                </div>
+            ) : (
+                <div className="empty-line"></div>
+            )}
+            {props.commit.branchIds.length !== 0 || props.commit.tags.length!==0 ? (
                 <div className={"tags_container"}>{_tags}{_branches} </div>
             ) : (
-                _timestamp
+               _timestamp
             )}
         </div>
     );
 }
 
-export const SingleCommitInfo = React.memo(_SingleCommitInfo);
+export const SingleCommitInfo =  React.memo(_SingleCommitInfo);

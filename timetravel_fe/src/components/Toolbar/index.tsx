@@ -1,4 +1,4 @@
-import React, {useContext} from "react";
+import React from "react";
 import "./toolbar.css";
 import "../utility.css";
 import {SearchOutlined} from "@ant-design/icons";
