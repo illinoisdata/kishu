@@ -88,6 +88,8 @@ class CheckpointRestorePlanner:
         active_vss = []
         for vs_list in self._ahg.get_variable_snapshots().values():
             if not vs_list[-1].deleted:
+                if vs_list[-1].name not in self._id_graph_map:
+                    self._id_graph_map[vs_list[-1].name] = get_object_state(self._user_ns[vs_list[-1].name], {})
                 active_vss.append(vs_list[-1])
 
         # Profile the size of each variable defined in the current session.
@@ -117,6 +119,11 @@ class CheckpointRestorePlanner:
         checkpoint_plan = CheckpointPlan.create(self._user_ns, database_path, commit_id, list(vss_to_migrate))
 
         # Create restore plan using optimization results.
+        restore_plan = self._generate_restore_plan(ces_to_recompute, ce_to_vs_map)
+
+        return checkpoint_plan, restore_plan
+
+    def _generate_restore_plan(self, ces_to_recompute, ce_to_vs_map) -> RestorePlan:
         restore_plan = RestorePlan()
         for ce in self._ahg.get_cell_executions():
             if ce.cell_num in ces_to_recompute:
@@ -124,8 +131,7 @@ class CheckpointRestorePlanner:
             if len(ce_to_vs_map[ce.cell_num]) > 0:
                 restore_plan.add_load_variable_restore_action(
                         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]])
-
-        return checkpoint_plan, restore_plan
+        return restore_plan
 
     def get_ahg(self) -> AHG:
         """

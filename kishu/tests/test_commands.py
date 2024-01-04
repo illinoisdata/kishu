@@ -503,6 +503,64 @@ class TestKishuCommand:
             _, var_value_after = notebook_session.run_code(var_to_compare)
             assert var_value_before == var_value_after
 
+    def test_commit_checkout_reattach_new_cells(
+        self,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        num_original_cells_to_run = 4
+        cell_num_to_restore = 5
+        var_to_compare = "test_success"
+        value_of_var = "1"
+
+        # Start the initial notebook session.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+
+            # Run some notebook cells.
+            for i in range(num_original_cells_to_run):
+                notebook_session.run_code(contents[i])
+
+            # Run the rest of the notebook cells.
+            for i in range(num_original_cells_to_run, len(contents)):
+                notebook_session.run_code(contents[i])
+
+            # Get notebook key
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 1
+            assert list_result.sessions[0].notebook_path is not None
+            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
+            notebook_key = list_result.sessions[0].notebook_key
+
+        # Starting second notebook session
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run all notebook cells, note no init cell ran
+            notebook_session.run_code(f"{var_to_compare} = {value_of_var}")
+
+            # Get commit id of commit which we want to restore
+            log_result = KishuCommand.log_all(notebook_key)
+            assert len(log_result.commit_graph) == len(contents)  # Nothing on this session should have been tracked
+
+            # Make the commit
+            commit_result = KishuCommand.commit(notebook_path, "Reattatch_commit")
+            assert commit_result.reattachment.status == InstrumentStatus.reattach_succeeded
+
+            log_result = KishuCommand.log_all(notebook_key)
+            assert len(log_result.commit_graph) == len(contents)+1  # Addition of the new cell
+
+            commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
+
+            # Restore to the commit (testing if the commit included the new cell)
+            checkout_result = KishuCommand.checkout(notebook_path, commit_id)
+            assert checkout_result.reattachment.status == InstrumentStatus.already_attached
+
+            # Get the variable value after checkout.
+            _, var_value_after = notebook_session.run_code(var_to_compare)
+            assert var_value_after == value_of_var
+
     def test_init_in_nonempty_session(
         self,
         tmp_nb_path,
