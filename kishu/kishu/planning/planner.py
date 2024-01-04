@@ -86,11 +86,13 @@ class CheckpointRestorePlanner:
 
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = []
-        for vs_list in self._ahg.get_variable_snapshots().values():
-            if not vs_list[-1].deleted:
-                if vs_list[-1].name not in self._id_graph_map:
-                    self._id_graph_map[vs_list[-1].name] = get_object_state(self._user_ns[vs_list[-1].name], {})
-                active_vss.append(vs_list[-1])
+        for *_, latest_vs in self._ahg.get_variable_snapshots().values():
+            if not latest_vs.deleted:
+                """If manual commit made before init, pre-run cell update doesn't happen for new variables
+                so we need to add them to self._id_graph_map"""
+                if latest_vs.name not in self._id_graph_map:
+                    self._id_graph_map[latest_vs.name] = get_object_state(self._user_ns[latest_vs.name], {})
+                active_vss.append(latest_vs)
 
         # Profile the size of each variable defined in the current session.
         for active_vs in active_vss:
