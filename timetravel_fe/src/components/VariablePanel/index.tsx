@@ -29,7 +29,7 @@ function useDetailModal() {
 }
 
 // columns of the tables
-function getTableColumns(handleDetailClick:(html?:string) => void, setSearchText:any, searchText:string, setSearchedColumn: any, searchedColumn:string, searchInput:React.RefObject<InputRef>, diffMode: boolean = false) {
+function getTableColumns(handleDetailClick:(html?:string) => void, setSearchText:any, searchText:string, setSearchedColumn: any, searchedColumn:string, searchInput:React.RefObject<InputRef>,) {
         const columns: ColumnsType<any> = [
             {
                 title: "Variable Name",
@@ -86,10 +86,10 @@ export function VariablePanel(props: VariablePanelProps) {
     let table:JSX.Element
     if(props.diffMode){
         const data = (props.variables as DiffVarHunk[]).map((hunk) => GetTableRowDiff(hunk.content, hunk.option))
-        table = <Table columns={getTableColumns(handleDetailClick,setSearchText, searchText, setSearchedColumn, searchedColumn, searchInput,true) as ColumnsType<TableRowDiff>} dataSource={data} rowClassName={getRowClassName}/>
+        table = <Table columns={getTableColumns(handleDetailClick,setSearchText, searchText, setSearchedColumn, searchedColumn, searchInput) as ColumnsType<TableRowDiff>} dataSource={data} rowClassName={getRowClassName}/>
     }else{
         const data = (props.variables as Variable[]).map((variable) => GetTableRowNonDiff(variable))
-        table = <Table columns={getTableColumns(handleDetailClick,setSearchText, searchText, setSearchedColumn, searchedColumn, searchInput, false) as ColumnsType<TableRowNonDiff>} dataSource={data}/>
+        table = <Table columns={getTableColumns(handleDetailClick,setSearchText, searchText, setSearchedColumn, searchedColumn, searchInput) as ColumnsType<TableRowNonDiff>} dataSource={data}/>
     }
 
     return (

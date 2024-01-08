@@ -1,6 +1,6 @@
 import {Commit} from "../../util/Commit";
 import React, {
-    useContext, useEffect,
+    useContext,
     useMemo,
     useState,
 } from "react";

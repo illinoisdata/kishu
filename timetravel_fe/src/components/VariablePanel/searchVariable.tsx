@@ -4,7 +4,7 @@ import {Variable} from "../../util/Variable";
 import {Button, Input, InputRef, Space} from "antd";
 import {SearchOutlined} from "@ant-design/icons";
 import Highlighter from "react-highlight-words";
-import React, {useRef, useState} from "react";
+import React from "react";
 
 type DataIndex = keyof Variable;
 

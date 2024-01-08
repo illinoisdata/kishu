@@ -1,4 +1,4 @@
-import {DiffCodeHunk, DiffVarHunk} from "./DiffHunk";
+import {DiffCodeHunk} from "./DiffHunk";
 
 
 export interface DiffCodeDetail {

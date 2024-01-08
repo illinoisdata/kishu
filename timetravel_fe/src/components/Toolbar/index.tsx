@@ -1,8 +1,7 @@
 import React from "react";
 import "./toolbar.css";
 import "../utility.css";
-import {SearchOutlined} from "@ant-design/icons";
-import {Button, Input, ConfigProvider, Checkbox} from "antd";
+import {Input, ConfigProvider, Checkbox} from "antd";
 import DropdownBranch from "./DropDownBranch";
 import {CheckboxChangeEvent} from "antd/es/checkbox";
 import {SearchBar} from "./SearchBar";

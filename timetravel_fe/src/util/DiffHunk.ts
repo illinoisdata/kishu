@@ -1,5 +1,3 @@
-
-import {VersionChange} from "./VariableVersionCompare";
 import {Variable} from "./Variable";
 
 export interface DiffCodeHunk {

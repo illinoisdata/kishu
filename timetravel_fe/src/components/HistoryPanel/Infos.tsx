@@ -1,6 +1,5 @@
-import {Commit} from "../../util/Commit";
+
 import React, {useContext} from "react";
-import {PointRenderInfo} from "../../util/PointRenderInfo";
 import {SingleCommitInfo} from "./SingleCommitInfo";
 import "./CommitInfos.css"
 import {RenderCommit} from "./index";
