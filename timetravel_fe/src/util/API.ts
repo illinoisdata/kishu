@@ -1,5 +1,12 @@
-import {parseCommitGraph, parseCommitDetail, parseList, parseDiff, parseFilteredCommitIDs} from "./parser";
-import logger from "../log/logger";
+import {
+    parseCommitGraph,
+    parseCommitDetail,
+    parseList,
+    parseCodeDiff,
+    parseFilteredCommitIDs,
+    parseVarDiff
+} from "./parser";
+import {logger} from "../log/logger";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 const BackEndAPI = {
@@ -106,21 +113,31 @@ const BackEndAPI = {
 
     },
 
-    async getDiff(originID: string, destID: string) {
+    async getCodeDiff(originID: string, destID: string) {
         const res = await fetch(
-            BACKEND_URL + "/fe/diff/" + globalThis.NotebookID! + "/" + originID + "/" + destID,
+            BACKEND_URL + "/fe/code_diff/" + globalThis.NotebookID! + "/" + originID + "/" + destID,
         );
         if (res.status !== 200) {
-            throw new Error("get diff error, status != 200");
+            throw new Error("get code diff error, status != 200");
         }
         const data = await res.json();
-        return parseDiff(data);
+        return parseCodeDiff(data);
+    },
+
+    async getDataDiff(originID: string, destID: string){
+        const res = await fetch(
+            BACKEND_URL + "/fe/var_diff/" + globalThis.NotebookID! + "/" + originID + "/" + destID,
+        );
+        if (res.status !== 200) {
+            throw new Error("get variable diff error, status != 200");
+        }
+        const data = await res.json();
+        return parseVarDiff(data);
     },
 
     async getFilteredCommit(varName: string){
-        // /fe/commit_filter/<notebook_id>/<variable_name>
         const res = await fetch(
-            BACKEND_URL + "/fe/commit_filter/" + globalThis.NotebookID! + "/" + varName,
+            BACKEND_URL + "/fe/find_var_change/" + globalThis.NotebookID! + "/" + varName,
         );
         if (res.status !== 200) {
             throw new Error("get filtered commit error, status != 200");

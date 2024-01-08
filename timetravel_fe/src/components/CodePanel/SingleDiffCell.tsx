@@ -3,14 +3,14 @@ import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 import "./Cell.css";
-import {DiffHunk} from "../../util/DiffHunk";
+import {DiffCodeHunk} from "../../util/DiffHunk";
 import {useEffect, useMemo, useRef, useState} from "react";
 import "ace-builds"
 import {Range} from "ace-builds";
 
 
 export interface SingleDiffCellProps {
-    diffHunk: DiffHunk
+    diffHunk: DiffCodeHunk
     cssClassNames?: string;
 }
 
@@ -20,7 +20,7 @@ function countLines(text: string) {
     return lines.length;
 }
 
-function updateMarkers(diffHunk:DiffHunk, setMarkers:any) {
+function updateMarkers(diffHunk:DiffCodeHunk, setMarkers:any) {
     if (diffHunk.option === "Origin_only") {
         setMarkers([{
             startRow: 0,
@@ -69,7 +69,7 @@ function updateMarkers(diffHunk:DiffHunk, setMarkers:any) {
 
 }
 
-function updateContent(diffHunk:DiffHunk,setContent:any) {
+function updateContent(diffHunk:DiffCodeHunk, setContent:any) {
     if (diffHunk.option === "Origin_only") {
         setContent(diffHunk.content)
     } else if (diffHunk.option === "Destination_only") {

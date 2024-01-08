@@ -1,10 +1,3 @@
-/*
- * @Author: University of Illinois at Urbana Champaign
- * @Date: 2023-07-14 10:34:27
- * @LastEditTime: 2023-08-01 10:51:15
- * @FilePath: /src/App.tsx
- * @Description:
- */
 import React, {
     createContext,
     useEffect,
@@ -14,43 +7,53 @@ import React, {
 import "./App.css";
 import ReactSplit, {SplitDirection} from "@devbookhq/splitter";
 import {Toolbar} from "./components/Toolbar";
-import HistoryPanel from "./components/HistoryPanel";
-import NotebookFilePanel from "./components/CodePanel/NotebookFilePanel";
+import {HistoryPanel} from "./components/HistoryPanel";
+import {NotebookFilePanel} from "./components/CodePanel/NotebookFilePanel";
 import {BackEndAPI} from "./util/API";
 import {Commit, CommitDetail} from "./util/Commit";
-import VariablePanel from "./components/VariablePanel";
+import {VariablePanel} from "./components/VariablePanel";
 import {useParams} from "react-router-dom";
-import ExecutedCodePanel from "./components/CodePanel/ExecutedCodePanel";
+import {ExecutedCodePanel} from "./components/CodePanel/ExecutedCodePanel";
 import {Tabs, TabsProps} from "antd";
-import NotebookFileDiffPanel from "./components/CodePanel/NotebookFileDiffPanel";
-import ExecutedCodeDiffPanel from "./components/CodePanel/ExecutedCodeDiffPanel";
-import {DiffCommitDetail} from "./util/DiffCommitDetail";
-import logger from "./log/logger";
-import OperationModals from "./components/OperationModals";
+import {NotebookFileDiffPanel} from "./components/CodePanel/NotebookFileDiffPanel";
+import {ExecutedCodeDiffPanel} from "./components/CodePanel/ExecutedCodeDiffPanel";
+import {DiffCodeDetail} from "./util/DiffCommitDetail";
+import {logger} from "./log/logger";
+import {OperationModals} from "./components/OperationModals";
+import {DiffVarHunk} from "./util/DiffHunk";
+import {VersionChange} from "./util/VariableVersionCompare";
+import {Variable} from "./util/Variable";
 
 interface appContextType {
+    //control git graph
     commits: Commit[];
     setCommits: any;
     branchID2CommitMap: Map<string, string>;
     setBranchID2CommitMap: any;
+    currentHeadID: string | undefined;
+    setCurrentHeadID: any;
+
+    //control commit detail (non-diff)
     selectedCommit: CommitDetail | undefined;
     setSelectedCommit: any;
     selectedCommitID: string | undefined;
     setSelectedCommitID: any;
     selectedBranchID: string | undefined;
     setSelectedBranchID: any;
-    currentHeadID: string | undefined;
-    setCurrentHeadID: any;
+
+    //control diff. For diff, the origin commit id is selectedCommitID, the destination commit id is diffDestCommitID below
     inDiffMode: boolean
     setInDiffMode: any;
-    DiffCommitDetail: DiffCommitDetail | undefined;
-    setDiffCommitDetail: any;
+    diffCodeDetail: DiffCodeDetail | undefined;
+    setDiffCodeDetail: any;
+    diffVarDetail: DiffVarHunk[] | undefined;
+    setDiffVarDetail: any;
     diffDestCommitID: string | undefined
     setDiffDestCommitID: any
 }
 
 interface operationModalContextType {
-    //control model render or not
+    //control modal render or not
     isTagEditorOpen: boolean;
     setIsTagEditorOpen: any;
     isBranchNameEditorOpen: boolean;
@@ -60,7 +63,7 @@ interface operationModalContextType {
     chooseCheckoutBranchModalOpen: boolean;
     setChooseCheckoutBranchModalOpen: any;
 
-    //control model content
+    //control modal content
     checkoutMode: string;
     setCheckoutMode: any;
     checkoutBranchID: string | undefined;
@@ -155,18 +158,58 @@ async function loadCommitDetail(selectedCommitID: string, setSelectedCommit: any
     }
 }
 
-async function loadDiffCommitDetail(selectedCommitID: string, currentHeadID: string | undefined, setDiffCommitDetail: any, setError: any) {
-    if (!selectedCommitID) {
-        return;
-    }
+async function loadDiffCommitDetail(originCommitID: string, destinationCommitID: string, setDiffCodeDetail: any, setDiffVarDetail:any, setError: any) {
     try {
-        const data = await BackEndAPI.getDiff(selectedCommitID, currentHeadID!);
-        console.log("commit detail diff after parse:");
-        console.log(data);
-        setDiffCommitDetail(data!)
+        const diffCodeDetail = await BackEndAPI.getCodeDiff(originCommitID, destinationCommitID);
+        const variableCompares = await BackEndAPI.getDataDiff(originCommitID, destinationCommitID)
+        console.log(variableCompares)
+        const originCommitDetail = await BackEndAPI.getCommitDetail(originCommitID);
+        const destinationCommitDetail = await BackEndAPI.getCommitDetail(destinationCommitID);
+        //convert to maps
+        let originVariableDetail:Map<string,Variable> = new Map<string, Variable>()
+        originCommitDetail.variables.forEach((variableDetail)=>{
+            originVariableDetail.set(variableDetail.variableName, variableDetail)
+        })
+        let destinationVariableDetail:Map<string,Variable> = new Map<string, Variable>()
+        destinationCommitDetail.variables.forEach((variableDetail)=>{
+            destinationVariableDetail.set(variableDetail.variableName, variableDetail)
+        })
+        const diffVarDetail: DiffVarHunk[] = []
+        variableCompares.forEach((versionCompare)=>{
+            if(versionCompare.option === "origin_only"){
+                diffVarDetail.push({
+                    option: 0,
+                    content: originVariableDetail.get(versionCompare.variableName)!
+                } as DiffVarHunk)
+            }else if(versionCompare.option == "destination_only"){
+                diffVarDetail.push({
+                    option: VersionChange.destination_only,
+                    content: destinationVariableDetail.get(versionCompare.variableName)!
+                } as DiffVarHunk)
+            }else if(versionCompare.option == "both_different_version"){
+                diffVarDetail.push({
+                    option: VersionChange.origin_only,
+                    content: originVariableDetail.get(versionCompare.variableName)!,
+                } as DiffVarHunk)
+                diffVarDetail.push({
+                    option: VersionChange.destination_only,
+                    content: destinationVariableDetail.get(versionCompare.variableName)!,
+                } as DiffVarHunk)
+            }else if(versionCompare.option == "both_same_version"){
+                diffVarDetail.push({
+                    option: VersionChange.both_same_version,
+                    content: originVariableDetail.get(versionCompare.variableName)!,
+                } as DiffVarHunk)
+            }
+        })
+        console.log("diff var detail")
+        console.log(diffVarDetail)
+        setDiffCodeDetail(diffCodeDetail!)
+        setDiffVarDetail(diffVarDetail)
     } catch (e) {
         if (e instanceof Error) {
             setError(e.message);
+            logger.error(e.message)
         }
     }
 }
@@ -177,7 +220,8 @@ export const OperationModelContext = createContext<operationModalContextType | u
 function App() {
     const [commits, setCommits] = useState<Commit[]>([]);
     const [selectedCommit, setSelectedCommit] = useState<CommitDetail>();
-    const [DiffCommitDetail, setDiffCommitDetail] = useState<DiffCommitDetail>();
+    const [diffCodeDetail, setDiffCodeDetail] = useState<DiffCodeDetail>();
+    const [diffVarDetail, setDiffVarDetail] = useState<DiffVarHunk[]>([]);
     const [selectedCommitID, setSelectedCommitID] = useState<string>();
     const [selectedBranchID, setSelectedBranchID] = useState<string>();
     const [currentHeadID, setCurrentHeadID] = useState<string>();
@@ -185,9 +229,8 @@ function App() {
         Map<string, string>
     >(new Map());
     const [inDiffMode, setInDiffMode] = useState<boolean>(false);
-    const [highlighted_commit_ids, setHighlighted_commit_ids] = useState<string[]>([]);
-    //for diff
     const [diffDestCommitID, setDiffDestCommitID] = useState<string | undefined>(undefined)
+    const [searchResultIds, setSearchResultIds] = useState<string[]>([]);
 
     //********status of pop-ups************************ */
     const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
@@ -206,20 +249,24 @@ function App() {
         setCommits,
         branchID2CommitMap,
         setBranchID2CommitMap,
+        currentHeadID,
+        setCurrentHeadID,
+
         selectedCommit,
         setSelectedCommit,
         selectedCommitID,
         setSelectedCommitID,
         selectedBranchID,
         setSelectedBranchID,
-        currentHeadID,
-        setCurrentHeadID,
+
         inDiffMode,
         setInDiffMode,
-        DiffCommitDetail,
-        setDiffCommitDetail,
+        diffCodeDetail,
+        setDiffCodeDetail,
+        diffVarDetail,
+        setDiffVarDetail,
         diffDestCommitID,
-        setDiffDestCommitID
+        setDiffDestCommitID,
     };
 
     const operationModelContext: operationModalContextType = {
@@ -253,13 +300,13 @@ function App() {
     useMemo(() => {
         loadCommitDetail(selectedCommitID!, setSelectedCommit, setError);
         if (inDiffMode && currentHeadID) {
-            loadDiffCommitDetail(selectedCommitID!, currentHeadID, setDiffCommitDetail, setError)
+            loadDiffCommitDetail(selectedCommitID!, diffDestCommitID?diffDestCommitID:currentHeadID!, setDiffCodeDetail, setDiffVarDetail, setError)
         }
-    }, [selectedCommitID, currentHeadID, inDiffMode]);
+    }, [selectedCommitID, currentHeadID, inDiffMode, diffDestCommitID]);
 
     useMemo(() => {
         if (inDiffMode) {
-            loadDiffCommitDetail(selectedCommitID!, currentHeadID, setDiffCommitDetail, setError)
+            loadDiffCommitDetail(selectedCommitID!, diffDestCommitID?diffDestCommitID:currentHeadID!, setDiffCodeDetail, setDiffVarDetail, setError)
         }
     }, [inDiffMode, currentHeadID, selectedCommitID]);
 
@@ -292,7 +339,7 @@ function App() {
                 {/* only the history tree has been loaded */}
                 {!globalLoading && !error && !selectedCommit && (
                     <>
-                        <Toolbar setInDiffMode={setInDiffMode} setHighightedCommitIds={setHighlighted_commit_ids}/>
+                        <Toolbar setInDiffMode={setInDiffMode} setSearchResultIds={setSearchResultIds}/>
                         <ReactSplit
                             direction={SplitDirection.Horizontal}
                             initialSizes={splitSizes1}
@@ -303,7 +350,7 @@ function App() {
 
                         >
                             <div className="tile-xy history_panel">
-                                <HistoryPanel highlighted_commit_ids={highlighted_commit_ids}/>
+                                <HistoryPanel highlighted_commit_ids={searchResultIds}/>
                             </div>
 
                             <ReactSplit
@@ -327,7 +374,7 @@ function App() {
 
                 {!globalLoading && !error && selectedCommit && (
                     <>
-                        <Toolbar setInDiffMode={setInDiffMode} setHighightedCommitIds={setHighlighted_commit_ids}/>
+                        <Toolbar setInDiffMode={setInDiffMode} setSearchResultIds={searchResultIds}/>
                         <ReactSplit
                             direction={SplitDirection.Horizontal}
                             initialSizes={splitSizes1}
@@ -338,7 +385,7 @@ function App() {
                         >
                             <OperationModelContext.Provider value={operationModelContext}>
                                 <div className="tile-xy  history_panel">
-                                    <HistoryPanel highlighted_commit_ids={highlighted_commit_ids}/>
+                                    <HistoryPanel highlighted_commit_ids={searchResultIds}/>
                                 </div>
                             </OperationModelContext.Provider>
                             <ReactSplit
@@ -354,7 +401,7 @@ function App() {
                                         <Tabs defaultActiveKey="1" items={cells}/>}
                                 </div>
                                 <div className="tile-xy">
-                                    <VariablePanel variables={selectedCommit!.variables!}/>
+                                    <VariablePanel variables={inDiffMode?diffVarDetail!:selectedCommit!.variables!} diffMode={inDiffMode}/>
                                 </div>
                             </ReactSplit>
                         </ReactSplit>

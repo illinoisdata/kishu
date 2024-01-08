@@ -13,7 +13,7 @@ export interface OperationModalProps {
     selectedCommit: CommitDetail
 }
 
-function _OperationModal(props: OperationModalProps) {
+export function OperationModals(props: OperationModalProps) {
     const modelOpenContext = useContext(OperationModelContext)!
 
     async function handleTagSubmit(newTag: string) {
@@ -83,6 +83,4 @@ function _OperationModal(props: OperationModalProps) {
         ></CheckoutWaitingModal>}
     </>;
 }
-
-export default React.memo(_OperationModal);
 

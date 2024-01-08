@@ -10,7 +10,7 @@ type DataIndex = keyof Variable;
 
 
 
-export function getColumnSearchProps(dataIndex: DataIndex,setSearchText:any, searchText:string, setSearchedColumn: any, searchedColumn:string, searchInput:React.RefObject<InputRef>): ColumnType<Variable> {
+export function getColumnSearchProps(dataIndex: DataIndex,setSearchText:any, searchText:string, setSearchedColumn: any, searchedColumn:string, searchInput:React.RefObject<InputRef>): ColumnType<any> {
 
 
     const handleSearch = (

@@ -25,7 +25,7 @@ export interface RenderCommit {
     isDummy: boolean;
 }
 
-function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
+export function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
     const props = useContext(AppContext);
 
     //state for graph
@@ -116,7 +116,7 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
     },[props?.commits, isDateFolded] );
 
     const selectTop = pointRenderInfos.get(props?.selectedCommitID!)?.cy! - COMMITHEIGHT / 2;
-    const currentTop = pointRenderInfos.get(props?.currentHeadID!)?.cy! - COMMITHEIGHT / 2;
+    const currentTop = pointRenderInfos.get(props?.diffDestCommitID?props?.diffDestCommitID:props?.currentHeadID!)?.cy! - COMMITHEIGHT / 2;
 
 
     return (
@@ -150,5 +150,3 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
         </div>
     );
 }
-
-export default HistoryPanel;

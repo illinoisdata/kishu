@@ -1,5 +1,5 @@
 import {Commit} from "../../util/Commit";
-import React from "react";
+import React, {useContext} from "react";
 import {PointRenderInfo} from "../../util/PointRenderInfo";
 import {SingleCommitInfo} from "./SingleCommitInfo";
 import "./CommitInfos.css"
@@ -7,6 +7,7 @@ import {RenderCommit} from "./index";
 import {SingleNewDateHeaderInfo} from "./SingleNewDateHeaderInfo";
 import {extractDateFromString} from "../../util/ExtractDateFromString";
 import {COMMITHEIGHT, DATEHEADERHEIGHT} from "./GraphConsts";
+import {AppContext} from "../../App";
 
 export interface CommitInfoPanelProps {
     setContextMenuPosition: any;
@@ -19,14 +20,26 @@ export interface CommitInfoPanelProps {
 }
 
 function _CommitInfos(props: CommitInfoPanelProps) {
+    const appProps = useContext(AppContext);
+    const handleClick = (commitId: string, ctrlPressed: boolean) => {
+        console.log(ctrlPressed)
+        if(ctrlPressed && appProps?.selectedCommit){
+            appProps?.setDiffDestCommitID(commitId);
+        }else{
+            appProps?.setSelectedCommitID(commitId);
+            appProps?.setDiffDestCommitID(undefined);
+            props.setSelectedBranchID("");
+        }
+    }
+
     const commitInfos = props.renderCommits.map((renderCommit, index) => {
         return (
             <>
                 {!renderCommit.isDummy && <SingleCommitInfo
                     commit={renderCommit.commit}
-                    onclick={() => {
-                        props.setSelectedCommitID(renderCommit.commit.oid);
-                        props.setSelectedBranchID("");
+                    onclick={(e: React.MouseEvent) => {
+                        e.preventDefault()
+                        handleClick(renderCommit.commit.oid, e.metaKey || e.ctrlKey)
                     }}
                     onContextMenu={(event: React.MouseEvent) => {
                         event.preventDefault();

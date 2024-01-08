@@ -1,5 +1,6 @@
 import { Logger,ILogObj } from "tslog";
+const logLevel = process.env.LOG_LEVEL
 
-const logger: Logger<ILogObj>= new Logger();
-
-export default logger;
+export const logger: Logger<ILogObj>= new Logger({
+    minLevel: 4
+});

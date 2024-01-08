@@ -9,7 +9,7 @@ import {SearchBar} from "./SearchBar";
 
 export interface toolBarProps{
     setInDiffMode: any;
-    setHighightedCommitIds: any;
+    setSearchResultIds: any;
 }
 
 function _Toolbar(props: toolBarProps) {
@@ -50,7 +50,7 @@ function _Toolbar(props: toolBarProps) {
                         style={{width: "20%"}}
                     />
 
-                    <SearchBar setHighlightedCommitIds={props.setHighightedCommitIds}/>
+                    <SearchBar setHighlightedCommitIds={props.setSearchResultIds}/>
 
                     <Checkbox onChange={onDiffModeChange}>DiffMode</Checkbox>
 

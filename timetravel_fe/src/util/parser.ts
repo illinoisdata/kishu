@@ -2,9 +2,10 @@ import {Cell} from "./Cell";
 import {Commit, CommitDetail} from "./Commit";
 import {Variable} from "./Variable";
 import {Session} from "./Session";
-import {DiffHunk} from "./DiffHunk";
-import {DiffCommitDetail} from "./DiffCommitDetail";
-import logger from "../log/logger";
+import {DiffCodeHunk} from "./DiffHunk";
+import {DiffCodeDetail} from "./DiffCommitDetail";
+import {logger} from "../log/logger";
+import {VariableVersionCompare} from "./VariableVersionCompare";
 
 export function parseList(object: any) {
     logger.silly("session list from backend",object)
@@ -116,16 +117,33 @@ function recursiveGetVariable(item: any): Variable {
     }
 }
 
-export function parseDiff(json: any) {
+export function parseCodeDiff(json: any) {
     logger.silly("diff from backend",json)
     const _notebook_cells_diff = json["notebook_cells_diff"];
     const _executed_cells_diff = json["executed_cells_diff"];
-    let notebookCellDiffHunks: DiffHunk[] = _notebook_cells_diff.map((item: any) => parseDiffHunk(item));
-    let executedCellDiffHunks: DiffHunk[] = _executed_cells_diff.map((item: any) => parseDiffHunk(item)).reverse();
+    let notebookCellDiffHunks: DiffCodeHunk[] = _notebook_cells_diff.map((item: any) => parseDiffHunk(item));
+    let executedCellDiffHunks: DiffCodeHunk[] = _executed_cells_diff.map((item: any) => parseDiffHunk(item)).reverse();
     return {
         notebookCellDiffHunks: notebookCellDiffHunks,
         executedCellDiffHunks: executedCellDiffHunks
-    } as DiffCommitDetail;
+    } as DiffCodeDetail;
+}
+
+export function parseVarDiff(json: any): VariableVersionCompare[]{
+    //variable will be sorted by priority, the smaller the priority, the higher the priority
+    let priorityMap: Map<string, number> = new Map([
+        ["both_different_version", 0],
+        ["destination_only", 1],
+        ["origin_only", 2],
+        ["both_same_version", 3],
+    ]);
+    let variable_version_compares = json["var_diff_compares"];
+    variable_version_compares.sort((a: any,b: any) => {return priorityMap.get(a["option"])!
+    - priorityMap.get(b["option"])!})
+    return variable_version_compares.map((item: any) => {
+        return {variableName: item["variable_name"],
+            option: item["option"]} as VariableVersionCompare
+    })
 }
 
 function parseDiffHunk(json: any) {
@@ -136,7 +154,7 @@ function parseDiffHunk(json: any) {
         option: _option,
         content: _content,
         subDiffHunks: _sub_diff_hunks?.map((item: any) => parseDiffHunk(item))
-    } as DiffHunk;
+    } as DiffCodeHunk;
 }
 
 export function parseFilteredCommitIDs(json: any): string[] {
