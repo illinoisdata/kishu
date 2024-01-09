@@ -2,7 +2,6 @@ import React from "react";
 import {Modal} from "antd";
 
 export interface detailModalProps {
-    value?: string;
     isOpen: boolean;
     html?: string;
     setIsModalOpen: any;

@@ -3,7 +3,7 @@
 import {PointRenderInfo} from "./PointRenderInfo";
 import {Commit} from "./Commit";
 import MinHeap from "heap-js";
-import {COLORSPAN, COMMITHEIGHT, LINESPACING} from "../components/HistoryPanel/GraphConsts";
+import {COLORSPAN, COMMITHEIGHT, DATEHEADERHEIGHT, LINESPACING} from "../components/HistoryPanel/GraphConsts";
 import {extractDateFromString} from "./ExtractDateFromString";
 
 //input Commits[], return a map of commit ID to PointRenderer(cx,cy, color)
@@ -39,7 +39,7 @@ export function getPointRenderInfos(commits: Commit[], isDateFolded: Map<string,
     for (let i = 0; i < commits.length; i++) {
         //if commits[i] start a new day, increase y to give the time header a slot
         if (i == 0 || extractDateFromString(commits[i].timestamp) !== extractDateFromString(commits[i - 1].timestamp)) {
-            y += COMMITHEIGHT;
+            y += DATEHEADERHEIGHT;
         }
         if(!isDateFolded || !isDateFolded.get(extractDateFromString(commits[i].timestamp))){
             // if the current commit is not folded
@@ -48,8 +48,8 @@ export function getPointRenderInfos(commits: Commit[], isDateFolded: Map<string,
             isCommitFolded[i] = false;
         }
         else{
-            // if the current commit is not folded, assign its y coordinate to the previous y slot(the time header's y slot)
-            cy[i] = y - COMMITHEIGHT;
+            // if the current commit is folded, assign its y coordinate to the previous y slot(the time header's y slot)
+            cy[i] = y - COMMITHEIGHT/2 - DATEHEADERHEIGHT/2;
             isCommitFolded[i] = true;
         }
     }

@@ -1,8 +1,10 @@
 import {DownOutlined, RightOutlined} from "@ant-design/icons";
 import React from "react";
 import "./Info.css";
+import {formatDate} from "../../util/ExtractDateFromString";
 export interface SingleNewDateHeaderProps {
     newDate: string;
+    commitNumber:number;
     setIsDateFolded: any;
     isDateFolded?:Map<string,boolean>;
     y_position: number;
@@ -29,7 +31,7 @@ function _SingleNewDateHeader(props: SingleNewDateHeaderProps) {
             }}
             style={{top: props.y_position}}
         >
-            {isFolded?<RightOutlined/>:<DownOutlined/>} {props.newDate}
+            <span>{isFolded?<RightOutlined/>:<DownOutlined/>} {formatDate(props.newDate)}</span> {isFolded?props.commitNumber + " commits collapsed":""}
         </div>
     );
 }

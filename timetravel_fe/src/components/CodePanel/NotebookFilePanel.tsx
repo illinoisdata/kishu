@@ -3,7 +3,7 @@ import SingleCell from "./SingleCell";
 import {AppContext} from "../../App";
 
 
-function NotebookFilePanel() {
+export function NotebookFilePanel() {
     const props = useContext(AppContext);
     return (
         <div>
@@ -19,4 +19,3 @@ function NotebookFilePanel() {
     );
 }
 
-export default NotebookFilePanel;

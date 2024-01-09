@@ -1,7 +1,7 @@
-import {DiffHunk} from "./DiffHunk";
+import {DiffCodeHunk} from "./DiffHunk";
 
 
-export interface DiffCommitDetail {
-    notebookCellDiffHunks: DiffHunk[];
-    executedCellDiffHunks: DiffHunk[];
+export interface DiffCodeDetail {
+    notebookCellDiffHunks: DiffCodeHunk[];
+    executedCellDiffHunks: DiffCodeHunk[];
 }

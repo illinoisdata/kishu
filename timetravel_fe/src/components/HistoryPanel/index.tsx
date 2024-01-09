@@ -14,18 +14,18 @@ import {COMMITHEIGHT} from "./GraphConsts";
 import {Infos} from "./Infos";
 import {FilterHighlights} from "./FilterHighlights";
 import {extractDateFromString} from "../../util/ExtractDateFromString";
+import {DoubleLeftOutlined} from "@ant-design/icons";
 
 export interface HistoryPanelProps {
     highlighted_commit_ids: string[];
 }
-
 
 export interface RenderCommit {
     commit: Commit;
     isDummy: boolean;
 }
 
-function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
+export function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
     const props = useContext(AppContext);
 
     //state for graph
@@ -36,13 +36,12 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
     const [svgMaxX, setsvgMaxX] = useState<number>(0);
     const [svgMaxY, setsvgMaxY] = useState<number>(0);
 
-
     //state for fold
     const [isDateFolded, setIsDateFolded] = useState<Map<string, boolean> | undefined>(undefined);
+    const [dateCommitNumebr, setDateCommitNumber] = useState<Map<string, number> | undefined>(undefined)
 
     //state for info panel
     const [renderCommits, setRenderCommits] = useState<RenderCommit[]>([]);
-
 
     //status of pop-ups
     const [contextMenuPosition, setContextMenuPosition] = useState<{
@@ -51,11 +50,40 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
     } | null>(null);
 
 
-
-
     function handleCloseContextMenu() {
         setContextMenuPosition(null);
     }
+
+    useMemo(() => {
+        let newDateCommitNumer: Map<string,number> = new Map()
+        props!.commits.forEach(
+            commit => {
+                let date = extractDateFromString(commit.timestamp)
+                if (newDateCommitNumer.has(date)){
+                    newDateCommitNumer.set(date,newDateCommitNumer.get(date)! + 1)
+                }else{
+                    newDateCommitNumer.set(date,1)
+                }
+            }
+
+                // let date = extractDateFromString(commit.timestamp)
+                // if (newDateCommitNumer.has(key)) {
+                //     // If the key exists, increment the value
+                //     const currentValue = map.get(key);
+                //     if (currentValue !== undefined) {
+                //         map.set(key, currentValue + 1);
+                //     }
+                // } else {
+                //     // If the key doesn't exist, set the value to 1
+                //     map.set(key, 1);
+                // }
+                // newDateCommitNumer.get(extractDateFromString(commit.timestamp))
+                // newDateCommitNumer.set(extractDateFromString(commit.timestamp))
+        );
+        setDateCommitNumber(newDateCommitNumer)
+        },[props?.commits]
+
+    )
 
 
     //update display information of the graph and highlight
@@ -64,6 +92,7 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
         setPointRenderInfos(infos["info"]);
         setsvgMaxX(infos["maxX"]);
         setsvgMaxY(infos["maxY"]);
+
         let _commitIDMap = new Map<string, Commit>();
         props?.commits.forEach((commit) => _commitIDMap.set(commit.oid, commit));
         setCommitIDMap(_commitIDMap)
@@ -86,7 +115,8 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
         setRenderCommits(_renderCommits)
     },[props?.commits, isDateFolded] );
 
-    const highlightTop = pointRenderInfos.get(props?.selectedCommitID!)?.cy! - COMMITHEIGHT / 2;
+    const selectTop = pointRenderInfos.get(props?.selectedCommitID!)?.cy! - COMMITHEIGHT / 2;
+    const currentTop = pointRenderInfos.get(props?.diffDestCommitID?props?.diffDestCommitID:props?.currentHeadID!)?.cy! - COMMITHEIGHT / 2;
 
 
     return (
@@ -100,9 +130,15 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
             />
             <Infos setContextMenuPosition={setContextMenuPosition}
                    renderCommits={renderCommits} setSelectedCommitID={props!.setSelectedCommitID}
-                   setSelectedBranchID={props?.setSelectedBranchID} isDateFolded={isDateFolded} setIsDateFolded={setIsDateFolded}/>
-            <div className={"highlight select-highlight"} style={{top: `${highlightTop}px`}}></div>
+                   setSelectedBranchID={props?.setSelectedBranchID} isDateFolded={isDateFolded} setIsDateFolded={setIsDateFolded} dateCommitNumber={dateCommitNumebr}/>
+            {!props?.inDiffMode && <div className={"highlight select-highlight"} style={{top: `${selectTop}px`}}></div>}
             <FilterHighlights pointRenderInfos={pointRenderInfos} highlighted_commit_ids={highlighted_commit_ids}/>
+            {props?.inDiffMode && (
+                <div className={"highlight select-highlight "} style={{top: `${currentTop}px`}}> <div className={"diff-notation"}> <DoubleLeftOutlined/>Destination</div>  </div>)}
+            {props?.inDiffMode && (
+                <div className={"highlight select-highlight "} style={{top: `${selectTop}px`}}> <div className={"diff-notation"}> <DoubleLeftOutlined/>Source</div> </div>)
+            }
+
 
             {contextMenuPosition && (
                 <ContextMenu
@@ -114,5 +150,3 @@ function HistoryPanel({highlighted_commit_ids}: HistoryPanelProps) {
         </div>
     );
 }
-
-export default HistoryPanel;

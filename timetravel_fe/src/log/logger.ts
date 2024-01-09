@@ -1,5 +1,5 @@
 import { Logger,ILogObj } from "tslog";
 
-const logger: Logger<ILogObj>= new Logger();
-
-export default logger;
+export const logger: Logger<ILogObj>= new Logger({
+    minLevel: 4
+});

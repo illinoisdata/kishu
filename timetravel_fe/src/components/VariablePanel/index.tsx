@@ -1,183 +1,102 @@
 import "./index.css";
-import {SearchOutlined} from "@ant-design/icons";
-import Highlighter from "react-highlight-words";
-import {Button, Input} from "antd";
-import type {ColumnType, ColumnsType} from "antd/es/table";
-import type {FilterConfirmProps} from "antd/es/table/interface";
-import {Variable} from "../../util/Variable";
+import type {ColumnsType} from "antd/es/table";
 import React, {useRef, useState} from "react";
-import {InputRef, Space, Table} from "antd";
+import {InputRef, Table} from "antd";
 import {DetailModal} from "./DetailModal";
 import "./index.css";
+import {getColumnSearchProps} from "./searchVariable";
+import {DiffVarHunk} from "../../util/DiffHunk";
+import {VersionChange} from "../../util/VariableVersionCompare";
+import {GetTableRowDiff, GetTableRowNonDiff, TableRowDiff, TableRowNonDiff} from "./TableRow";
+import {Variable} from "../../util/Variable";
 
 export interface VariablePanelProps {
-    variables: Variable[];
+    variables: Variable[] | DiffVarHunk[];
+    diffMode: boolean
 }
 
-type DataIndex = keyof Variable;
-
-export default function VariablePanel(props: VariablePanelProps) {
-    const [detailVariableValue, setDetailVariableValue] = useState<
-        string | undefined
-    >(undefined);
+// state and handle logic about detail modal
+function useDetailModal() {
     const [openModal, setOpenModal] = useState(false);
     const [detailVariableHtml, setDetailVariableHtml] = useState<string | undefined>(undefined);
 
-    function handleDetailClick(text: string,html?:string) {
-        setDetailVariableValue(text.replaceAll("\\n", "\n"));
+    function handleDetailClick(html?:string) {
         setOpenModal(true);
         setDetailVariableHtml(html)
     }
 
+    return [openModal, setOpenModal, handleDetailClick, detailVariableHtml] as const;
+}
+
+// columns of the tables
+function getTableColumns(handleDetailClick:(html?:string) => void, setSearchText:any, searchText:string, setSearchedColumn: any, searchedColumn:string, searchInput:React.RefObject<InputRef>,) {
+        const columns: ColumnsType<any> = [
+            {
+                title: "Variable Name",
+                width: "30%",
+                dataIndex: "variableName",
+                key: "variableName",
+                ...getColumnSearchProps("variableName",setSearchText, searchText, setSearchedColumn, searchedColumn, searchInput),
+            },
+            {
+                title: "Type",
+                dataIndex: "type",
+                key: "type",
+            },
+            {
+                title: "Size",
+                dataIndex: "size",
+                key: "size",
+            },
+            {
+                title: "Value",
+                dataIndex: "state",
+                width: "30%",
+                key: "state",
+                ellipsis: true,
+                render: (text,record) =>
+                    (text as string).includes("\\n") ? (
+                        <div className="multiline-table-value" onClick={() => handleDetailClick(record.html)}>
+                            {text}
+                        </div>
+                    ) : (
+                        text
+                    ),
+            },
+        ];
+        return columns
+}
+
+export function VariablePanel(props: VariablePanelProps) {
     const [searchText, setSearchText] = useState("");
     const [searchedColumn, setSearchedColumn] = useState("");
     const searchInput = useRef<InputRef>(null);
 
-    const handleSearch = (
-        selectedKeys: string[],
-        confirm: (param?: FilterConfirmProps) => void,
-        dataIndex: DataIndex,
-    ) => {
-        confirm();
-        setSearchText(selectedKeys[0]);
-        setSearchedColumn(dataIndex);
-    };
 
-    const handleReset = (clearFilters: () => void) => {
-        clearFilters();
-        setSearchText("");
-    };
+    const [isDetailModalOpen, setOpenModal, handleDetailClick, detailVariableHtml] = useDetailModal();
 
-    const getColumnSearchProps = (
-        dataIndex: DataIndex,
-    ): ColumnType<Variable> => ({
-        filterDropdown: ({
-                             setSelectedKeys,
-                             selectedKeys,
-                             confirm,
-                             clearFilters,
-                             close,
-                         }) => (
-            <div style={{padding: 8}} onKeyDown={(e) => e.stopPropagation()}>
-                <Input
-                    ref={searchInput}
-                    placeholder={`Search ${dataIndex}`}
-                    value={selectedKeys[0]}
-                    onChange={(e) =>
-                        setSelectedKeys(e.target.value ? [e.target.value] : [])
-                    }
-                    onPressEnter={() =>
-                        handleSearch(selectedKeys as string[], confirm, dataIndex)
-                    }
-                    style={{marginBottom: 8, display: "block"}}
-                />
-                <Space>
-                    <Button
-                        type="primary"
-                        onClick={() =>
-                            handleSearch(selectedKeys as string[], confirm, dataIndex)
-                        }
-                        icon={<SearchOutlined/>}
-                        size="small"
-                        style={{width: 90}}
-                    >
-                        Search
-                    </Button>
-                    <Button
-                        onClick={() => clearFilters && handleReset(clearFilters)}
-                        size="small"
-                        style={{width: 90}}
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        type="link"
-                        size="small"
-                        onClick={() => {
-                            confirm({closeDropdown: false});
-                            setSearchText((selectedKeys as string[])[0]);
-                            setSearchedColumn(dataIndex);
-                        }}
-                    >
-                        Filter
-                    </Button>
-                    <Button
-                        type="link"
-                        size="small"
-                        onClick={() => {
-                            close();
-                        }}
-                    >
-                        close
-                    </Button>
-                </Space>
-            </div>
-        ),
-        filterIcon: (filtered: boolean) => (
-            <SearchOutlined style={{color: filtered ? "#1677ff" : undefined}}/>
-        ),
-        onFilter: (value, record) =>
-            record[dataIndex]!.toString()
-                .toLowerCase()
-                .includes((value as string).toLowerCase()),
-        onFilterDropdownOpenChange: (visible) => {
-            if (visible) {
-                setTimeout(() => searchInput.current?.select(), 100);
-            }
-        },
-        render: (text) =>
-            searchedColumn === dataIndex ? (
-                <Highlighter
-                    highlightStyle={{backgroundColor: "#ffc069", padding: 0}}
-                    searchWords={[searchText]}
-                    autoEscape
-                    textToHighlight={text ? text.toString() : ""}
-                />
-            ) : (
-                text
-            ),
-    });
+    const getRowClassName = (record:TableRowDiff) => {
+        if(record.option === VersionChange.origin_only){
+            return "origin-only-row"}
+        if(record.option === VersionChange.destination_only){
+            return "destination-only-row"}
+        return ""
+    }
 
-    const columns: ColumnsType<Variable> = [
-        {
-            title: "Name",
-            width: "30%",
-            dataIndex: "variableName",
-            key: "variableName",
-            ...getColumnSearchProps("variableName"),
-        },
-        {
-            title: "Type",
-            dataIndex: "type",
-            key: "type",
-        },
-        {
-            title: "Size",
-            dataIndex: "size",
-            key: "size",
-        },
-        {
-            title: "Value",
-            dataIndex: "state",
-            width: "30%",
-            key: "state",
-            ellipsis: true,
-            render: (text,record) =>
-                (text as string).includes("\\n") ? (
-                    <div className="multiline-table-value" onClick={() => handleDetailClick(text,record.html)}>
-                        {text}
-                    </div>
-                ) : (
-                    text
-                ),
-        },
-    ];
+    let table:JSX.Element
+    if(props.diffMode){
+        const data = (props.variables as DiffVarHunk[]).map((hunk) => GetTableRowDiff(hunk.content, hunk.option))
+        table = <Table columns={getTableColumns(handleDetailClick,setSearchText, searchText, setSearchedColumn, searchedColumn, searchInput) as ColumnsType<TableRowDiff>} dataSource={data} rowClassName={getRowClassName}/>
+    }else{
+        const data = (props.variables as Variable[]).map((variable) => GetTableRowNonDiff(variable))
+        table = <Table columns={getTableColumns(handleDetailClick,setSearchText, searchText, setSearchedColumn, searchedColumn, searchInput) as ColumnsType<TableRowNonDiff>} dataSource={data}/>
+    }
+
     return (
         <>
-            <Table columns={columns} dataSource={props.variables}/>
+            {table}
             <DetailModal
-                value={detailVariableValue}
-                isOpen={openModal}
+                isOpen={isDetailModalOpen}
                 setIsModalOpen={setOpenModal}
                 html={detailVariableHtml}
             ></DetailModal>

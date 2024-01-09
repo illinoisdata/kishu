@@ -2,7 +2,7 @@ import {useContext} from "react";
 import {AppContext} from "../../App";
 import SingleCell from "./SingleCell";
 
-function ExecutedCodePanel() {
+export function ExecutedCodePanel() {
     const props = useContext(AppContext);
 
     const length = props!.selectedCommit!.historyExecCells.length;
@@ -18,5 +18,3 @@ function ExecutedCodePanel() {
         </div>
     );
 }
-
-export default ExecutedCodePanel;

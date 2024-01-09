@@ -3,10 +3,10 @@ import {AppContext} from "../../App";
 import SingleDiffCell from "./SingleDiffCell";
 
 
-function NotebookFileDiffPanel() {
+export function NotebookFileDiffPanel() {
     const props = useContext(AppContext);
 
-    let result = props!.DiffCommitDetail?.notebookCellDiffHunks.map((hunk, i) => {
+    let result = props!.diffCodeDetail?.notebookCellDiffHunks.map((hunk, i) => {
         return <div
             key={i}
         ><SingleDiffCell diffHunk={hunk}/><br/></div>
@@ -17,5 +17,3 @@ function NotebookFileDiffPanel() {
         </div>
     );
 }
-
-export default NotebookFileDiffPanel;
