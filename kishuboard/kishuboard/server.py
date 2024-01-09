@@ -1,6 +1,7 @@
 import json
+import os
 
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 from typing import Optional
 
@@ -10,9 +11,23 @@ from kishu.commands import KishuCommand, into_json
 def is_true(s: str) -> bool:
     return s.lower() == "true"
 
+# Determine the directory of the current file (app.py)
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
-app = Flask("kishu_server")
+# Build the path to the static directory
+static_dir = os.path.join(current_dir, 'build')
+
+app = Flask("kishu_server", static_folder=static_dir)
 CORS(app)
+
+# Serve React App
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(app.static_folder + '/' + path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 @app.get("/health")
@@ -114,3 +129,8 @@ def fe_find_var_change(notebook_id: str, variable_name: str):
 def fe_var_diff(notebook_id: str, from_commit_id: str, to_commit_id: str):
     fe_var_diff_result = KishuCommand.fe_variable_diff(notebook_id, from_commit_id, to_commit_id)
     return into_json(fe_var_diff_result)
+
+
+def run():
+    app.run()
+

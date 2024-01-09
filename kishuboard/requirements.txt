@@ -1,0 +1,4 @@
+kishu
+flask
+Flask-CORS
+typer

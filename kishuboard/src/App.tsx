@@ -304,12 +304,6 @@ function App() {
         }
     }, [selectedCommitID, currentHeadID, inDiffMode, diffDestCommitID]);
 
-    useMemo(() => {
-        if (inDiffMode) {
-            loadDiffCommitDetail(selectedCommitID!, diffDestCommitID?diffDestCommitID:currentHeadID!, setDiffCodeDetail, setDiffVarDetail, setError)
-        }
-    }, [inDiffMode, currentHeadID, selectedCommitID]);
-
     async function refreshGraph(){
         const newGraph = await BackEndAPI.getCommitGraph();
         logger.silly("checkout submit, git graph after parse:", newGraph);
