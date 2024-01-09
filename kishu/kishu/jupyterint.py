@@ -54,7 +54,7 @@ from dataclasses import dataclass
 from IPython.core.interactiveshell import InteractiveShell
 from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Set
+from typing import Any, Dict, List, Optional, Tuple
 
 from kishu.exceptions import (
     JupyterConnectionError,
@@ -69,7 +69,7 @@ from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
 from kishu.planning.plan import RestorePlan
-from kishu.planning.planner import CheckpointRestorePlanner
+from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
 from kishu.planning.variable_version_tracker import VariableVersionTracker
 from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint import KishuCheckpoint
@@ -406,8 +406,8 @@ class KishuForJupyter:
         if commit_entry.ahg_string is None:
             raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
         self._cr_planner.replace_state(commit_entry.ahg_string, self._user_ns)
-        self._variable_version_tracker.replace_state(VariableVersion(self._notebook_id.key()).
-                                                     get_variable_version_by_commit_id(commit_id))
+        self._variable_version_tracker.set_current(self._kishu_variable_version.
+                                                   get_variable_version_by_commit_id(commit_id))
 
         # Update Kishu heads.
         self._kishu_graph.jump(commit_id)
@@ -475,12 +475,7 @@ class KishuForJupyter:
         self._last_execution_count = result.execution_count
         self._start_time = None
 
-        self._commit_entry(entry)
-        self._variable_version_tracker.update_variable_version(entry.commit_id,
-                                                               changed_vars.created_vars | changed_vars.modified_vars,
-                                                               changed_vars.deleted_vars)
-        self._commit_variable_version(entry.commit_id, changed_vars.modified_vars | changed_vars.created_vars,
-                                      self._variable_version_tracker.get_variable_versions())
+        self._commit_entry(entry, changed_vars)
 
     @staticmethod
     def kishu_sessions() -> List[KishuSession]:
@@ -554,10 +549,9 @@ class KishuForJupyter:
         entry.execution_count = self._last_execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
         self._commit_entry(entry)
-        self._commit_variable_version(entry.commit_id, set(), self._variable_version_tracker.get_variable_versions())
         return BareReprStr(entry.commit_id)
 
-    def _commit_entry(self, entry: CommitEntry) -> None:
+    def _commit_entry(self, entry: CommitEntry, changed_vars: Optional[ChangedVariables] = None) -> None:
         # Generate commit ID.
         entry.commit_id = self._commit_id()
         entry.timestamp = time.time()
@@ -575,7 +569,7 @@ class KishuForJupyter:
 
         # Plan for checkpointing and restoration.
         checkpoint_start_time = time.time()
-        entry.restore_plan, entry.data_version = self._checkpoint(entry)
+        entry.restore_plan, entry.varset_version = self._checkpoint(entry)
         entry.ahg_string = self._cr_planner.serialize_ahg()
         checkpoint_runtime_s = time.time() - checkpoint_start_time
         entry.checkpoint_runtime_s = checkpoint_runtime_s
@@ -585,10 +579,14 @@ class KishuForJupyter:
         self._kishu_graph.step(entry.commit_id)
         self._step_branch(entry.commit_id)
 
-    def _commit_variable_version(self, commit_id: str, changed_vars: Set[str], variable_versions: Dict[str, str]) -> None:
-        io_manager = VariableVersion(self._notebook_id.key())
-        io_manager.store_commit_variable_version_table(commit_id, variable_versions)
-        io_manager.store_variable_version_table(changed_vars, commit_id)
+        # Update variable version tracker.
+        self._variable_version_tracker.update_variable_version(entry.commit_id,
+                                                               set() if changed_vars is None else changed_vars.added(),
+                                                               set() if changed_vars is None else changed_vars.deleted())
+        # store variable version and commit-variable-version into database
+        self._kishu_variable_version.store_commit_variable_version_table(entry.commit_id, self._variable_version_tracker.get_variable_versions())
+        if changed_vars is not None:
+            self._kishu_variable_version.store_variable_version_table(changed_vars.added(), entry.commit_id)
 
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":

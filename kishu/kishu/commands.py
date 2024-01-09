@@ -236,7 +236,7 @@ class FECommit:
     branches: List[str]
     tags: List[str]
     code_version: int
-    var_version: int
+    varset_version: int
 
 
 @dataclass
@@ -282,8 +282,11 @@ class FEVarDiffResult:
 
 
 @dataclass
-class FECommitFilterResult:
+class FEFindVarChangeResult:
     commit_ids: List[str]
+
+    def __eq__(self, other):
+        return set(self.commit_ids) == set(other.commit_ids)
 
 
 class KishuCommand:
@@ -570,7 +573,7 @@ class KishuCommand:
                 branches=[],  # To be set in _branch_commit.
                 tags=[],  # To be set in _tag_commit.
                 code_version=commit_entry.code_version,
-                var_version=commit_entry.data_version,
+                varset_version=commit_entry.varset_version,
             ))
 
         # Retreives and joins branches.
@@ -748,7 +751,7 @@ class KishuCommand:
             branches=branch_names,
             tags=tag_names,
             code_version=commit_entry.code_version,
-            var_version=commit_entry.data_version,
+            varset_version=commit_entry.varset_version,
         )
         return FESelectedCommit(
             commit=commit_summary,
@@ -886,11 +889,11 @@ class KishuCommand:
         return cells, executed_cells
 
     @staticmethod
-    def variable_filter(notebook_id: str, variable_name: str):
+    def find_var_change(notebook_id: str, variable_name: str) -> FEFindVarChangeResult:
         """
         Returns a list of commits that have changed the variable.
         """
-        return FECommitFilterResult(VariableVersion(notebook_id).get_commit_ids_by_variable_name(variable_name))
+        return FEFindVarChangeResult(VariableVersion(notebook_id).get_commit_ids_by_variable_name(variable_name))
 
     @staticmethod
     def variable_diff(notebook_id: str, from_commit_id: str, to_commit_id: str) -> List[VariableVersionCompare]:

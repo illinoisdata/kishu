@@ -19,6 +19,11 @@ class VariableVersionCompare:
     variable_name: str
     option: str  # origin_only, destination_only, both_same_version, both_different_version
 
+    def __hash__(self):
+        return hash((self.variable_name, self.option))
+
+
+
 
 @dataclass
 class CodeDiffAlgorithmResult:
@@ -273,20 +278,16 @@ class KishuDiff:
 
     @staticmethod
     def diff_variables(origin: Dict[str, str], destination: Dict[str, str]) -> List[VariableVersionCompare]:
-        result: List[VariableVersionCompare] = []
-        for variable_name in origin:
-            origin_version = origin[variable_name]
-            if variable_name in destination:
-                destination_version = destination[variable_name]
-                if origin_version == destination_version:
-                    result.append(VariableVersionCompare(variable_name, "both_same_version"))
-                else:
-                    result.append(VariableVersionCompare(variable_name, "both_different_version"))
-            else:
-                result.append(VariableVersionCompare(variable_name, "origin_only"))
+        return [KishuDiff._compare_variable_value(name, origin.get(name, None), destination.get(name, None))
+                for name in set(origin.keys()) | set(destination.keys())]
 
-        for variable_name in destination:
-            if not (variable_name in origin):
-                result.append(VariableVersionCompare(variable_name, "destination_only"))
-
-        return result
+    @staticmethod
+    def _compare_variable_value(var_name: str, origin_val: Optional[str], destination_val: Optional[str]) -> VariableVersionCompare:
+        if origin_val is None:
+            return VariableVersionCompare(var_name, "destination_only")
+        if destination_val is None:
+            return VariableVersionCompare(var_name, "origin_only")
+        if origin_val == destination_val:
+            return VariableVersionCompare(var_name, "both_same_version")
+        else:
+            return VariableVersionCompare(var_name, "both_different_version")

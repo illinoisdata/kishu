@@ -4,17 +4,19 @@ import pytest
 from pathlib import Path
 from typing import List
 
+from kishu.diff import VariableVersionCompare
 from tests.helpers.nbexec import KISHU_INIT_STR
 
 from kishu.commands import (
     CommitSummary,
+    DeleteTagResult,
     FECommit,
+    FEFindVarChangeResult,
     FESelectedCommit,
     InstrumentStatus,
     KishuCommand,
     KishuSession,
     TagResult,
-    DeleteTagResult,
 )
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import CommitEntryKind, CommitEntry
@@ -350,7 +352,7 @@ class TestKishuCommand:
                 branches=[fe_commit_result.commit.branches[0]],  # 1 auto branch
                 tags=[],
                 code_version=fe_commit_result.commit.code_version,  # Not tested
-                var_version=fe_commit_result.commit.var_version,  # Not tested
+                varset_version=fe_commit_result.commit.varset_version,  # Not tested
             ),
             executed_cells=[  # TODO: Missing due to missing IPython kernel.
                 "",
@@ -538,8 +540,7 @@ class TestKishuCommand:
         with jupyter_server.start_session(notebook_path) as notebook_session:
             # Run the kishu init cell.
             notebook_session.run_code(KISHU_INIT_STR, silent=True)
-            for content in contents:
-                print(content)
+            for content in contents[0:2]:
                 notebook_session.run_code(content)
 
             # Get notebook key
@@ -555,11 +556,10 @@ class TestKishuCommand:
             dest_commit_id = commits[-1].commit_id
 
             diff_result = KishuCommand.variable_diff(notebook_key, source_commit_id, dest_commit_id)
-            result_dict = {}
-            for item in diff_result:
-                result_dict[item.variable_name] = item.option
-            assert result_dict['x'] == 'both_different_version'
-            assert result_dict['b'] == 'destination_only'
+            assert set(diff_result) == {VariableVersionCompare('a', 'destination_only'),
+                                        VariableVersionCompare('z', 'destination_only'),
+                                        VariableVersionCompare('y', 'destination_only'),
+                                        VariableVersionCompare('x', 'both_different_version')}
 
     def test_variable_filter(self, jupyter_server, tmp_nb_path):
         notebook_path = tmp_nb_path("simple.ipynb")
@@ -568,7 +568,6 @@ class TestKishuCommand:
             # Run the kishu init cell.
             notebook_session.run_code(KISHU_INIT_STR, silent=True)
             for content in contents:
-                print(content)
                 notebook_session.run_code(content)
 
             # Get notebook key
@@ -580,8 +579,7 @@ class TestKishuCommand:
 
             commits = KishuCommand.log_all(notebook_key).commit_graph
 
-            diff_result = KishuCommand.variable_filter(notebook_key, 'b')
-            assert diff_result.commit_ids == [commits[3].commit_id, commits[4].commit_id]
-
-            diff_result = KishuCommand.variable_filter(notebook_key, 'y')
-            assert diff_result.commit_ids == [commits[1].commit_id]
+            diff_result = KishuCommand.find_var_change(notebook_key, 'b')
+            assert diff_result == FEFindVarChangeResult([commits[3].commit_id, commits[4].commit_id])
+            diff_result = KishuCommand.find_var_change(notebook_key, 'y')
+            assert diff_result == FEFindVarChangeResult([commits[1].commit_id])

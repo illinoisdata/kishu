@@ -104,9 +104,9 @@ def fe_code_diff(notebook_id: str, from_commit_id: str, to_commit_id: str):
     return into_json(fe_code_diff_result)
 
 
-@app.get("/fe/commit_filter/<notebook_id>/<variable_name>")
-def fe_commit_filter(notebook_id: str, variable_name: str):
-    fe_commit_filter_result = KishuCommand.variable_filter(notebook_id, variable_name)
+@app.get("/fe/find_var_change/<notebook_id>/<variable_name>")
+def fe_find_var_change(notebook_id: str, variable_name: str):
+    fe_commit_filter_result = KishuCommand.find_var_change(notebook_id, variable_name)
     return into_json(fe_commit_filter_result)
 
 

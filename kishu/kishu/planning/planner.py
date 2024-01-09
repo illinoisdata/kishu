@@ -22,6 +22,12 @@ class ChangedVariables:
     modified_vars: Set[str]
     deleted_vars: Set[str]
 
+    def added(self):
+        return self.created_vars | self.modified_vars
+
+    def deleted(self):
+        return self.deleted_vars
+
 
 class CheckpointRestorePlanner:
     """

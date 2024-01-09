@@ -63,7 +63,7 @@ class Visitor(ast.NodeVisitor):
         self.is_local = False
 
 
-def find_input_vars(cell: str, existing_variables: set, user_ns, shell_udfs: set) -> Set[str]:
+def find_input_vars(cell: str, existing_variables: Set, user_ns, shell_udfs: set) -> Set[str]:
     """
         Capture the input variables of the cell via AST analysis.
         Args:
