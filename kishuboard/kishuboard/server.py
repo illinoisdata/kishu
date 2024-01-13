@@ -87,6 +87,13 @@ def delete_branch(notebook_id: str, branch_name: str) -> str:
     return into_json(delete_branch_result)
 
 
+@app.get("/api/rename_branch/<notebook_id>/<old_branch_name>/<new_branch_name>")
+def rename_branch(notebook_id: str, old_branch_name: str, new_branch_name: str) -> str:
+    rename_branch_result = KishuCommand.rename_branch(notebook_id, old_branch_name, new_branch_name)
+    return into_json(rename_branch_result)
+
+
+
 @app.get("/api/tag/<notebook_id>/<tag_name>")
 def tag(notebook_id: str, tag_name: str) -> str:
     commit_id: Optional[str] = request.args.get("commit_id", default=None, type=str)
@@ -132,8 +139,14 @@ def fe_var_diff(notebook_id: str, from_commit_id: str, to_commit_id: str):
     return into_json(fe_var_diff_result)
 
 
+@app.get("/api/fe/edit_message/<notebook_id>/<commit_id>/<new_message>")
+def fe_edit_message(notebook_id: str, commit_id: str, new_message: str):
+    fe_edit_message_result = KishuCommand.edit_commit(notebook_id, commit_id, new_message)
+    return into_json(fe_edit_message_result)
+
+
 def main() -> None:
-    app.run()
+    app.run(port=4999)
 
 if __name__ == "__main__":
     main()

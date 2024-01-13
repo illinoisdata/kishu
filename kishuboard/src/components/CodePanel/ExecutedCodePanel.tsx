@@ -1,6 +1,7 @@
 import {useContext} from "react";
 import {AppContext} from "../../App";
 import SingleCell from "./SingleCell";
+import "./Cell.css"
 
 export function ExecutedCodePanel() {
     const props = useContext(AppContext);
@@ -8,7 +9,7 @@ export function ExecutedCodePanel() {
     const length = props!.selectedCommit!.historyExecCells.length;
 
     return (
-        <div>
+        <div className="executed-code">
             {props!.selectedCommit!.historyExecCells.map((code, i) => (
                 <div key={i}>
                     <SingleCell execNumber={(length - i).toString()} content={code.content} cssClassNames={"notebook"}/>

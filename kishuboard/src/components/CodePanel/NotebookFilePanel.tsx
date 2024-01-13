@@ -11,7 +11,7 @@ export function NotebookFilePanel() {
                 <div
                     key={i}
                 >
-                    <SingleCell execNumber={code.execNum} content={code.content} cssClassNames={"notebook"}/>
+                    <SingleCell execNumber={code.execNum} content={code.content} cssClassNames={"notebook"} isMarkdown={code.type === "markdown"}/>
                     <br/>
                 </div>
             ))}

@@ -355,6 +355,7 @@ class TestKishuCommand:
                 tags=[],
                 code_version=fe_commit_result.commit.code_version,  # Not tested
                 varset_version=fe_commit_result.commit.varset_version,  # Not tested
+                message='[3] y = x + 1'
             ),
             executed_cells=[  # TODO: Missing due to missing IPython kernel.
                 "",

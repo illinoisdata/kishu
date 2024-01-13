@@ -6,6 +6,7 @@ import {CheckoutBranchModel} from "./CheckoutBranchModel";
 import {CheckoutWaitingModal} from "./CheckoutWaitingForModal";
 import {BackEndAPI} from "../../util/API";
 import {CommitDetail} from "../../util/Commit";
+import MessageEditor from "./MessageEditor";
 
 export interface OperationModalProps {
     refreshGraphHandler: any;
@@ -16,9 +17,18 @@ export interface OperationModalProps {
 export function OperationModals(props: OperationModalProps) {
     const modelOpenContext = useContext(OperationModelContext)!
 
-    async function handleTagSubmit(newTag: string) {
+    async function handleTagSubmit(newTag: string, oldTag: string | undefined) {
         try {
-            await BackEndAPI.setTag(props.selectedCommitID!!, newTag);
+            await BackEndAPI.setTag(props.selectedCommitID!!, newTag,oldTag);
+            props.refreshGraphHandler();
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async function handleMessageSubmit(newMessage: string) {
+        try {
+            await BackEndAPI.setMessage(props.selectedCommitID!!, newMessage);
             props.refreshGraphHandler();
         } catch (error) {
             throw error;
@@ -26,9 +36,9 @@ export function OperationModals(props: OperationModalProps) {
     }
     //metadata, tracing, visitor,attach, detach?
 
-    async function handleBranchNameSubmit(newBranchName: string) {
+    async function handleBranchNameSubmit(newBranchName: string, oldBranchName: string | undefined) {
         try {
-            await BackEndAPI.createBranch(props!.selectedCommitID!, newBranchName);
+            await BackEndAPI.editBranch(props!.selectedCommitID!, newBranchName, oldBranchName);
             props.refreshGraphHandler();
         } catch (error) {
             throw error;
@@ -58,12 +68,16 @@ export function OperationModals(props: OperationModalProps) {
             setIsModalOpen={modelOpenContext.setIsTagEditorOpen}
             submitHandler={handleTagSubmit}
             selectedHistoryID={props!.selectedCommitID!}
+            tagToBeEdit={modelOpenContext.tagNameToBeEdit}
+            setTagToBeEdit={modelOpenContext.setTagNameToBeEdit}
         ></TagEditor>)}
         {modelOpenContext.isBranchNameEditorOpen && <BranchNameEditor
             isModalOpen={modelOpenContext.isBranchNameEditorOpen}
             setIsModalOpen={modelOpenContext.setIsBranchNameEditorOpen}
             submitHandler={handleBranchNameSubmit}
             selectedHistoryID={props!.selectedCommitID!}
+            branchNameToBeEdit={modelOpenContext.branchNameToBeEdit}
+            setBranchNameToBeEdit={modelOpenContext.setBranchNameToBeEdit}
         ></BranchNameEditor>}
         {modelOpenContext.chooseCheckoutBranchModalOpen && <CheckoutBranchModel
             branchIDOptions={props.selectedCommit?.commit.branchIds}
@@ -81,6 +95,13 @@ export function OperationModals(props: OperationModalProps) {
             checkoutBranchID={modelOpenContext.checkoutBranchID}
             setCheckoutBranchID={modelOpenContext.setCheckoutBranchID} //after checkout succeed, the checkoutBranchID will be set to undefined
         ></CheckoutWaitingModal>}
+        {modelOpenContext.isMessageEditorOpen && (<MessageEditor
+                isModalOpen={modelOpenContext.isMessageEditorOpen}
+                setIsModalOpen={modelOpenContext.setIsMessageEditorOpen}
+                submitHandler={handleMessageSubmit}
+                selectedHistoryID={props!.selectedCommitID!}
+                currentMessage={props.selectedCommit?.commit.message}
+        />)}
     </>;
 }
 

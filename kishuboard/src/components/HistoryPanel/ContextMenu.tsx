@@ -4,7 +4,7 @@ import {
     CalendarOutlined,
     EditOutlined,
 } from "@ant-design/icons";
-import {Menu} from "antd";
+import {Menu, message} from "antd";
 import type {MenuProps} from "antd/es/menu";
 import {AppContext, OperationModelContext} from "../../App";
 import {BackEndAPI} from "../../util/API";
@@ -47,6 +47,7 @@ function getItems(tags: string[]|undefined, branches: string[]|undefined): MenuI
         getItem("Checkout Codes&Variables", "both"),
         getItem("Rollback Executions", "states"),
     ]))
+    items.push(getItem("Edit Commit Message", "message", <EditOutlined/>))
     if(tags){
         for (let tag of tags) {
             items.push(getItem("Tag " + tag, "Tag " + tag, <EditOutlined/>, getTagChildrenItem(tag)));
@@ -64,12 +65,14 @@ interface ContextMenuProps {
     x: number;
     y: number;
     onClose: () => void;
+    refreshGraphHandler: any;
 }
 
 function ContextMenu({
                          x,
                          y,
-                         onClose
+                         onClose,
+                            refreshGraphHandler,
                      }: ContextMenuProps) {
     const props = useContext(AppContext);
     const operationModelContext = useContext(OperationModelContext)!
@@ -79,6 +82,8 @@ function ContextMenu({
         domEvent.preventDefault();
         if (key === "tag") {
             operationModelContext.setIsTagEditorOpen(true);
+        }else if(key === "message"){
+            operationModelContext.setIsMessageEditorOpen(true);
         } else if (key === "both") {
             if (props!.selectedCommit!.commit.branchIds.length === 0) {
                 operationModelContext.setIsCheckoutWaitingModalOpen(true);
@@ -98,8 +103,26 @@ function ContextMenu({
                 operationModelContext.setCheckoutMode("checkout variables only");
             }
         } else if (key.startsWith("Delete Branch")){
-            let branchName = getLastWord(key);
+            let branchName = getWordAfter(key, "Delete Branch");
+            if(branchName === props?.currentHeadBranch){
+                message.warning("You cannot delete the current branch")
+                return
+            }
             await BackEndAPI.deleteBranch(branchName!);
+            refreshGraphHandler()
+        } else if (key.startsWith("Delete Tag")){
+            let tagName = getWordAfter(key, "Delete Tag");
+            await BackEndAPI.deleteTag(tagName!);
+            //refresh the graph
+            refreshGraphHandler()
+        } else if (key.startsWith("Edit Branch")){
+            let branchName = getWordAfter(key, "Edit Branch");
+            operationModelContext.setIsBranchNameEditorOpen(true);
+            operationModelContext.setBranchNameToBeEdit(branchName!)
+        } else if(key.startsWith("Edit Tag")){
+            let tagName = getWordAfter(key, "Edit Tag");
+            operationModelContext.setIsTagEditorOpen(true);
+            operationModelContext.setTagNameToBeEdit(tagName!)
         }
     };
 
@@ -127,20 +150,24 @@ function ContextMenu({
 }
 
 
-function getLastWord(inputString: string): string | null {
-    // Trim the input string to remove leading and trailing spaces
-    const trimmedString = inputString.trim();
-
-    // Split the trimmed string into words using spaces as the separator
-    const words = trimmedString.split(' ');
+function getWordAfter(inputString: string, prefix: string): string | null {
+    const words = inputString.trim().split(' ');
+    const prefixWords = prefix.trim().split(' ');
 
     // Check if there are any words in the string
     if (words.length === 0) {
         return null; // No words found, return null or an appropriate value
     }
 
-    // Return the last word
-    return words[words.length - 1];
+    //check if the prefixWords is valid
+    for (let i = 0; i < prefixWords.length; i++) {
+        if (i >= words.length || prefixWords[i] !== words[i]) {
+            return null;
+        }
+    }
+
+    // Return the last words
+    return words.slice(prefixWords.length).join(' ');
 }
 
 

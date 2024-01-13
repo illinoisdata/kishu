@@ -7,6 +7,7 @@ import {DiffCodeHunk} from "../../util/DiffHunk";
 import {useEffect, useMemo, useRef, useState} from "react";
 import "ace-builds"
 import {Range} from "ace-builds";
+import {FONTSIZE} from "../HistoryPanel/GraphConsts";
 
 
 export interface SingleDiffCellProps {
@@ -135,7 +136,7 @@ function SingleDiffCell(props: SingleDiffCellProps) {
 
 
     return (
-        <div className="singleCellLayout">
+        <div className="singleCellLayout" style={{marginLeft:40}}>
             <AceEditor
                 // key = {objectHash(props.diffHunk)}
                 ref={aceRef}
@@ -146,8 +147,9 @@ function SingleDiffCell(props: SingleDiffCellProps) {
                 theme="github"
                 name="blah2"
                 fontSize={14}
-                width="100%"
-                height={(countLines(content) * 20).toString() + "px"}
+                width="90%"
+                height={(((countLines(content)) + 2) * (FONTSIZE + 3)).toString() + "px"}
+                // height={(countLines(content) * 20).toString() + "px"}
                 // height="10px"
                 showPrintMargin={false}
                 showGutter={false}

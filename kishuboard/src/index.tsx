@@ -12,15 +12,24 @@ import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import Menu from "./Menu";
+import {ConfigProvider} from "antd";
 
 function UserRouter() {
     return (
+        <ConfigProvider
+      theme={{
+        token: {
+          fontFamily: 'Fira Sans'
+        }
+      }}
+    >
         <BrowserRouter>
             <Routes>
                 <Route path="/" Component={Menu}/>
                 <Route path="/:notebookName" Component={App}/>
             </Routes>
         </BrowserRouter>
+        </ConfigProvider>
     );
 }
 
