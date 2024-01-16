@@ -99,4 +99,3 @@ def test_post_run_cell_update_return():
     changed_vars = planner.post_run_cell_update("y = x + 1\nx = 5", 1.0)
 
     assert changed_vars == ChangedVariables(created_vars={"y"}, modified_vars={"x"}, deleted_vars=set())
-

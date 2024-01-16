@@ -584,7 +584,8 @@ class KishuForJupyter:
                                                                set() if changed_vars is None else changed_vars.added(),
                                                                set() if changed_vars is None else changed_vars.deleted())
         # store variable version and commit-variable-version into database
-        self._kishu_variable_version.store_commit_variable_version_table(entry.commit_id, self._variable_version_tracker.get_variable_versions())
+        self._kishu_variable_version.store_commit_variable_version_table(
+            entry.commit_id, self._variable_version_tracker.get_variable_versions())
         if changed_vars is not None:
             self._kishu_variable_version.store_variable_version_table(changed_vars.added(), entry.commit_id)
 

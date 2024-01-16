@@ -23,8 +23,6 @@ class VariableVersionCompare:
         return hash((self.variable_name, self.option))
 
 
-
-
 @dataclass
 class CodeDiffAlgorithmResult:
     origin_same_idx: List[int]  # origin_same_idx[3] = 5 means origin[3] matches destination[5]
@@ -282,7 +280,8 @@ class KishuDiff:
                 for name in set(origin.keys()) | set(destination.keys())]
 
     @staticmethod
-    def _compare_variable_value(var_name: str, origin_val: Optional[str], destination_val: Optional[str]) -> VariableVersionCompare:
+    def _compare_variable_value(var_name: str, origin_val: Optional[str],
+                                destination_val: Optional[str]) -> VariableVersionCompare:
         if origin_val is None:
             return VariableVersionCompare(var_name, "destination_only")
         if destination_val is None:

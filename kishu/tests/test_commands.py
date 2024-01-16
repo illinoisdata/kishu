@@ -141,7 +141,7 @@ class TestKishuCommand:
             timestamp=status_result.commit_entry.timestamp,  # Not tested
             ahg_string=status_result.commit_entry.ahg_string,  # Not tested
             code_version=status_result.commit_entry.code_version,  # Not tested
-            var_version=status_result.commit_entry.var_version,  # Not tested
+            varset_version=status_result.commit_entry.varset_version,  # Not tested
             start_time=status_result.commit_entry.start_time,  # Not tested
             end_time=status_result.commit_entry.end_time,  # Not tested
             checkpoint_runtime_s=status_result.commit_entry.checkpoint_runtime_s,  # Not tested
