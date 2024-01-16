@@ -4,17 +4,19 @@ import pytest
 from pathlib import Path
 from typing import List
 
+from kishu.diff import VariableVersionCompare
 from tests.helpers.nbexec import KISHU_INIT_STR
 
 from kishu.commands import (
     CommitSummary,
+    DeleteTagResult,
     FECommit,
+    FEFindVarChangeResult,
     FESelectedCommit,
     InstrumentStatus,
     KishuCommand,
     KishuSession,
     TagResult,
-    DeleteTagResult,
 )
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import CommitEntryKind, CommitEntry
@@ -139,7 +141,7 @@ class TestKishuCommand:
             timestamp=status_result.commit_entry.timestamp,  # Not tested
             ahg_string=status_result.commit_entry.ahg_string,  # Not tested
             code_version=status_result.commit_entry.code_version,  # Not tested
-            var_version=status_result.commit_entry.var_version,  # Not tested
+            varset_version=status_result.commit_entry.varset_version,  # Not tested
             start_time=status_result.commit_entry.start_time,  # Not tested
             end_time=status_result.commit_entry.end_time,  # Not tested
             checkpoint_runtime_s=status_result.commit_entry.checkpoint_runtime_s,  # Not tested
@@ -350,7 +352,7 @@ class TestKishuCommand:
                 branches=[fe_commit_result.commit.branches[0]],  # 1 auto branch
                 tags=[],
                 code_version=fe_commit_result.commit.code_version,  # Not tested
-                var_version=fe_commit_result.commit.var_version,  # Not tested
+                varset_version=fe_commit_result.commit.varset_version,  # Not tested
             ),
             executed_cells=[  # TODO: Missing due to missing IPython kernel.
                 "",
@@ -531,3 +533,53 @@ class TestKishuCommand:
             # Run one more cell.
             _, x_value = notebook_session.run_code("x")
             assert x_value == "2"
+
+    def test_variable_diff(self, jupyter_server, tmp_nb_path):
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+            for content in contents[0:2]:
+                notebook_session.run_code(content)
+
+            # Get notebook key
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 1
+            assert list_result.sessions[0].notebook_path is not None
+            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
+            notebook_key = list_result.sessions[0].notebook_key
+
+            # get the commit ids
+            commits = KishuCommand.log_all(notebook_key).commit_graph
+            source_commit_id = commits[0].commit_id
+            dest_commit_id = commits[-1].commit_id
+
+            diff_result = KishuCommand.variable_diff(notebook_key, source_commit_id, dest_commit_id)
+            assert set(diff_result) == {VariableVersionCompare('a', 'destination_only'),
+                                        VariableVersionCompare('z', 'destination_only'),
+                                        VariableVersionCompare('y', 'destination_only'),
+                                        VariableVersionCompare('x', 'both_different_version')}
+
+    def test_variable_filter(self, jupyter_server, tmp_nb_path):
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+            for content in contents:
+                notebook_session.run_code(content)
+
+            # Get notebook key
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 1
+            assert list_result.sessions[0].notebook_path is not None
+            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
+            notebook_key = list_result.sessions[0].notebook_key
+
+            commits = KishuCommand.log_all(notebook_key).commit_graph
+
+            diff_result = KishuCommand.find_var_change(notebook_key, 'b')
+            assert diff_result == FEFindVarChangeResult([commits[3].commit_id, commits[4].commit_id])
+            diff_result = KishuCommand.find_var_change(notebook_key, 'y')
+            assert diff_result == FEFindVarChangeResult([commits[1].commit_id])

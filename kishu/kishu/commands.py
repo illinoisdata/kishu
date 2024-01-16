@@ -13,7 +13,7 @@ from kishu.exceptions import (
     BranchConflictError,
     TagNotFoundError,
 )
-from kishu.diff import DiffHunk, KishuDiff
+from kishu.diff import CodeDiffHunk, KishuDiff, VariableVersionCompare
 from kishu.exceptions import NoExecutedCellsError, NoFormattedCellsError
 from kishu.jupyterint import (
     JupyterCommandResult,
@@ -29,6 +29,7 @@ from kishu.storage.commit import CommitEntry, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag, TagRow
+from kishu.storage.variable_version import VariableVersion
 
 NO_METADATA_MESSAGE = (
     "Kishu instrumentaton not found, please double check notebook path and run kishu init NOTEBOOK_PATH"
@@ -235,7 +236,7 @@ class FECommit:
     branches: List[str]
     tags: List[str]
     code_version: int
-    var_version: int
+    varset_version: int
 
 
 @dataclass
@@ -271,8 +272,21 @@ class FEInitializeResult:
 
 @dataclass
 class FECodeDiffResult:
-    notebook_cells_diff: List[DiffHunk]
-    executed_cells_diff: List[DiffHunk]
+    notebook_cells_diff: List[CodeDiffHunk]
+    executed_cells_diff: List[CodeDiffHunk]
+
+
+@dataclass
+class FEVarDiffResult:
+    var_diff_compares: List[VariableVersionCompare]
+
+
+@dataclass
+class FEFindVarChangeResult:
+    commit_ids: List[str]
+
+    def __eq__(self, other):
+        return set(self.commit_ids) == set(other.commit_ids)
 
 
 class KishuCommand:
@@ -559,7 +573,7 @@ class KishuCommand:
                 branches=[],  # To be set in _branch_commit.
                 tags=[],  # To be set in _tag_commit.
                 code_version=commit_entry.code_version,
-                var_version=commit_entry.var_version,
+                varset_version=commit_entry.varset_version,
             ))
 
         # Retreives and joins branches.
@@ -602,12 +616,17 @@ class KishuCommand:
         )
 
     @staticmethod
-    def fe_commit_diff(notebook_id: str, from_commit_id: str, to_commit_id: str) -> FECodeDiffResult:
+    def fe_code_diff(notebook_id: str, from_commit_id: str, to_commit_id: str) -> FECodeDiffResult:
         to_cells, to_executed_cells = KishuCommand._retrieve_all_cells(notebook_id, to_commit_id)
         from_cells, from_executed_cells = KishuCommand._retrieve_all_cells(notebook_id, from_commit_id)
         cell_diff = KishuDiff.diff_cells(from_cells, to_cells)
         executed_cell_diff = KishuDiff.diff_cells(from_executed_cells, to_executed_cells)
         return FECodeDiffResult(cell_diff, executed_cell_diff)
+
+    @staticmethod
+    def fe_variable_diff(notebook_id: str, from_commit_id: str, to_commit_id: str) -> FEVarDiffResult:
+        var_version_compares = KishuCommand.variable_diff(notebook_id, from_commit_id, to_commit_id)
+        return FEVarDiffResult(var_version_compares)
 
     """Helpers"""
 
@@ -732,7 +751,7 @@ class KishuCommand:
             branches=branch_names,
             tags=tag_names,
             code_version=commit_entry.code_version,
-            var_version=commit_entry.var_version,
+            varset_version=commit_entry.varset_version,
         )
         return FESelectedCommit(
             commit=commit_summary,
@@ -868,3 +887,16 @@ class KishuCommand:
             raise NoExecutedCellsError(commit_id)
         cells = KishuCommand._get_cells_as_strings(formatted_cells)
         return cells, executed_cells
+
+    @staticmethod
+    def find_var_change(notebook_id: str, variable_name: str) -> FEFindVarChangeResult:
+        """
+        Returns a list of commits that have changed the variable.
+        """
+        return FEFindVarChangeResult(VariableVersion(notebook_id).get_commit_ids_by_variable_name(variable_name))
+
+    @staticmethod
+    def variable_diff(notebook_id: str, from_commit_id: str, to_commit_id: str) -> List[VariableVersionCompare]:
+        origin_variable_versions = VariableVersion(notebook_id).get_variable_version_by_commit_id(from_commit_id)
+        destination_variable_versions = VariableVersion(notebook_id).get_variable_version_by_commit_id(to_commit_id)
+        return KishuDiff.diff_variables(origin_variable_versions, destination_variable_versions)

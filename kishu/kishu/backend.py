@@ -98,7 +98,19 @@ def fe_commit(notebook_id: str, commit_id: str):
     return into_json(fe_commit_result)
 
 
-@app.get("/fe/diff/<notebook_id>/<from_commit_id>/<to_commit_id>")
-def fe_commit_diff(notebook_id: str, from_commit_id: str, to_commit_id: str):
-    fe_commit_diff_result = KishuCommand.fe_commit_diff(notebook_id, from_commit_id, to_commit_id)
-    return into_json(fe_commit_diff_result)
+@app.get("/fe/code_diff/<notebook_id>/<from_commit_id>/<to_commit_id>")
+def fe_code_diff(notebook_id: str, from_commit_id: str, to_commit_id: str):
+    fe_code_diff_result = KishuCommand.fe_code_diff(notebook_id, from_commit_id, to_commit_id)
+    return into_json(fe_code_diff_result)
+
+
+@app.get("/fe/find_var_change/<notebook_id>/<variable_name>")
+def fe_find_var_change(notebook_id: str, variable_name: str):
+    fe_commit_filter_result = KishuCommand.find_var_change(notebook_id, variable_name)
+    return into_json(fe_commit_filter_result)
+
+
+@app.get("/fe/var_diff/<notebook_id>/<from_commit_id>/<to_commit_id>")
+def fe_var_diff(notebook_id: str, from_commit_id: str, to_commit_id: str):
+    fe_var_diff_result = KishuCommand.fe_variable_diff(notebook_id, from_commit_id, to_commit_id)
+    return into_json(fe_var_diff_result)

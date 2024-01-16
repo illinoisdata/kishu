@@ -68,7 +68,7 @@ class CommitEntry:
     timestamp: float = 0.0
     ahg_string: Optional[str] = None
     code_version: int = 0
-    var_version: int = 0
+    varset_version: int = 0
 
     # Only available in jupyter commit entries
     execution_count: Optional[int] = None

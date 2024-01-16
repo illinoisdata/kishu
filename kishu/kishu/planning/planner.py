@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 from collections import defaultdict
@@ -12,6 +14,19 @@ from kishu.planning.idgraph import GraphNode, get_object_state
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import RestorePlan, CheckpointPlan
 from kishu.planning.profiler import profile_variable_size
+
+
+@dataclass
+class ChangedVariables:
+    created_vars: Set[str]
+    modified_vars: Set[str]
+    deleted_vars: Set[str]
+
+    def added(self):
+        return self.created_vars | self.modified_vars
+
+    def deleted(self):
+        return self.deleted_vars
 
 
 class CheckpointRestorePlanner:
@@ -48,7 +63,7 @@ class CheckpointRestorePlanner:
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def post_run_cell_update(self, code_block: Optional[str], runtime_s: Optional[float]) -> None:
+    def post_run_cell_update(self, code_block: Optional[str], runtime_s: Optional[float]) -> ChangedVariables:
         """
             Post-processing steps performed after cell execution.
             @param code_block: code of executed cell.
@@ -81,6 +96,8 @@ class CheckpointRestorePlanner:
         # Update ID graphs for newly created variables.
         for var in created_vars:
             self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
+
+        return ChangedVariables(created_vars, modified_vars, deleted_vars)
 
     def generate_checkpoint_restore_plans(self, database_path: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
 
