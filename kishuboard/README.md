@@ -1,17 +1,24 @@
-# Install from pypi
-
+# KishuBoard
+This is a dash-board extension of Kishu. With the interactive GUI provided by KishuBoard, you can browse, compare and search commits, checkout code/kernel variables to previous commits; branch out etc in a straightforward way.
+## Getting Started
+### pypi installation
 To install the extension from pypi, execute:
 
 ```bash
 pip install kishuboard
 ```
-
 To remove the extension, execute:
 
 ```bash
 pip uninstall kishuboard
 ```
-# Install from source code:
+### starting up via kishuboard
+```bash
+kishuboard
+```
+And then you should be able to  visit the kishuboard at localhost://5000.
+
+### Install from source code:
 Note: You will need NodeJS to build the kishuboard, please make sure you have node on your computer, or install it from [here](https://nodejs.org/en/download/).
 1. enter the directory of the current file
 2. build the NodeJS frontend
@@ -35,7 +42,9 @@ kishuboard
 ```
 And then you should be able to  visit the kishuboard at localhost://5000.
 
-## test in dev mode
+## Development
+### Dev mode deployment
+To run the kishuboard in dev mode, you will need to start the kishuboard server and the kishuboard frontend separately.
 1. enter the directory of this readme file
 2. start the kishuboard server(backend) in dev mode
 ```bash
@@ -48,5 +57,5 @@ cd .. # go back to the directory of this readme file
 npm start
 ```
 And you should be able to visit the kishuboard at **localhost://3000**.
-## Releasing
+### Release
 To build a new release of kishuboard, please refer to [RELEASE.md](./RELEASE.md)

@@ -33,7 +33,7 @@ jobs:
         cd kishu
         python -m pip install --upgrade pip
         python -m pip install .[dev]
-        python -c "import kishu, kishu.cli, kishu.backend, kishu.commands"
+        python -c "import kishu, kishu.cli, kishu.commands"
     - name: Lint with flake8
       run: |
         cd kishu

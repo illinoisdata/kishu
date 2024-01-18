@@ -18,11 +18,10 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
-dependencies = [
+dependencies = [ # README: Keep in sync with requirements.txt
     "kishu",
     "flask",
     "Flask-CORS",
-    "typer"
 ]
 dynamic = ["version", "description", "authors", "urls", "keywords"]
 
@@ -37,4 +36,4 @@ artifacts = ["kishuboard/build"]
 exclude = ["node_modules"]
 
 [project.scripts]
-kishuboard = "kishuboard.server:run"
+kishuboard = "kishuboard.server:main"
