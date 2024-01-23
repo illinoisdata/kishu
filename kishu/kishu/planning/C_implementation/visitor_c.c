@@ -28,6 +28,24 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include
         /* Not been visited yet */
         if (is_primitive(obj))
             return visitor -> visit_primitive(obj, state);
+        else if (PyTuple_Check(obj)) {
+            visitor -> visit_tuple(obj, visitor -> visited, include_id, state);
+            Py_ssize_t size = PyTuple_Size(obj);
+            for (Py_ssize_t i = 0; i < size; i++) {
+                PyObject *item = PyTuple_GetItem(obj, i);
+                get_object_state(item, visitor, include_id, state);
+            }
+            return state;
+        }
+        else if (PyList_Check(obj)) {
+            visitor -> visit_list(obj, visitor -> visited, include_id, state);
+            Py_ssize_t size = PyList_Size(obj);
+            for (Py_ssize_t i = 0; i < size; i++) {
+                PyObject *item = PyList_GetItem(obj, i);
+                get_object_state(item, visitor, include_id, state);
+            } 
+            return state;            
+        }
         else {
             PyErr_SetString(PyExc_TypeError, "Unsupported object type for ObjectStare");
             return NULL;
