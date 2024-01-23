@@ -24,6 +24,7 @@ Note: You will need NodeJS to build the kishuboard, please make sure you have no
 2. build the NodeJS frontend
 ```bash
 npm init # If you are building it from the source code for the first time
+npm install # If you are building it from the source code for the first time
 npm run build
 ```
 3. [optional] Install kishu core from source code
@@ -48,12 +49,15 @@ To run the kishuboard in dev mode, you will need to start the kishuboard server 
 1. enter the directory of this readme file
 2. start the kishuboard server(backend) in dev mode
 ```bash
+source ../.env/bin/activate # activate the virtual environment
 cd kishuboard
 flask --app server run
 ```
 3. start the kishuboard frontend in dev mode
 ```bash
 cd .. # go back to the directory of this readme file
+npm init # If you are building it from the source code for the first time
+npm install # If you are building it from the source code for the first time
 npm start
 ```
 And you should be able to visit the kishuboard at **localhost://3000**.
