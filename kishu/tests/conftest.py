@@ -14,7 +14,6 @@ from pathlib import Path, PurePath
 from typing import Any, Callable, Generator, List, Optional, Tuple, Type
 from unittest.mock import patch
 
-from kishu.backend import app as kishu_app
 from kishu.jupyterint import KishuForJupyter
 from kishu.notebook_id import NotebookId
 from kishu.storage.path import ENV_KISHU_PATH_ROOT, KishuPath
@@ -51,11 +50,6 @@ def tmp_kishu_path(tmp_path: Path) -> Generator[Type[KishuPath], None, None]:
         os.environ[ENV_KISHU_PATH_ROOT] = original_root
     else:
         del os.environ[ENV_KISHU_PATH_ROOT]
-
-
-@pytest.fixture()
-def backend_client():
-    return kishu_app.test_client()
 
 
 """

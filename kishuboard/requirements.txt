@@ -1,0 +1,6 @@
+# Packages required to import kishuboard.
+# README: Keep in sync with pyproject.toml
+
+kishu
+flask
+Flask-CORS

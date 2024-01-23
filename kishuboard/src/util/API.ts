@@ -14,9 +14,9 @@ const BackEndAPI = {
         // message.info(`rollback succeeds`);
         let res;
         if (branchID) {
-            res = await fetch(BACKEND_URL + "/checkout/" + globalThis.NotebookID! + "/" + branchID);
+            res = await fetch(BACKEND_URL + "/api/checkout/" + globalThis.NotebookID! + "/" + branchID);
         } else {
-            res = await fetch(BACKEND_URL + "/checkout/" + globalThis.NotebookID! + "/" + commitID);
+            res = await fetch(BACKEND_URL + "/api/checkout/" + globalThis.NotebookID! + "/" + commitID);
         }
         if (res.status !== 200) {
             throw new Error("rollback backend error, status != OK");
@@ -28,9 +28,9 @@ const BackEndAPI = {
         // message.info(`rollback succeeds`);
         let res;
         if (branchID) {
-            res = await fetch(BACKEND_URL + "/checkout/" + globalThis.NotebookID! + "/" + branchID + "?skip_notebook=True");
+            res = await fetch(BACKEND_URL + "/api/checkout/" + globalThis.NotebookID! + "/" + branchID + "?skip_notebook=True");
         } else {
-            res = await fetch(BACKEND_URL + "/checkout/" + globalThis.NotebookID! + "/" + commitID + "?skip_notebook=True");
+            res = await fetch(BACKEND_URL + "/api/checkout/" + globalThis.NotebookID! + "/" + commitID + "?skip_notebook=True");
         }
         if (res.status !== 200) {
             throw new Error("rollback backend error, status != OK");
@@ -38,7 +38,7 @@ const BackEndAPI = {
     },
 
     async getCommitGraph() {
-        const res = await fetch(BACKEND_URL + "/fe/commit_graph/" + globalThis.NotebookID!);
+        const res = await fetch(BACKEND_URL + "/api/fe/commit_graph/" + globalThis.NotebookID!);
         if (res.status !== 200) {
             throw new Error("get commit graph backend error, status != 200");
         }
@@ -48,7 +48,7 @@ const BackEndAPI = {
 
     async getCommitDetail(commitID: string) {
         const res = await fetch(
-            BACKEND_URL + "/fe/commit/" + globalThis.NotebookID! + "/" + commitID,
+            BACKEND_URL + "/api/fe/commit/" + globalThis.NotebookID! + "/" + commitID,
         );
         if (res.status !== 200) {
             throw new Error("get commit detail error, status != 200");
@@ -60,7 +60,7 @@ const BackEndAPI = {
 
     async setTag(commitID: string, newTag: string) {
         const res = await fetch(
-            BACKEND_URL + "/tag/" +
+            BACKEND_URL + "/api/tag/" +
             globalThis.NotebookID! +
             "/" +
             newTag +
@@ -78,7 +78,7 @@ const BackEndAPI = {
     async createBranch(commitID: string, newBranchname: string) {
         // message.info(`rollback succeeds`);
         const res = await fetch(
-            BACKEND_URL + "/branch/" +
+            BACKEND_URL + "/api/branch/" +
             globalThis.NotebookID! +
             "/" +
             newBranchname +
@@ -93,7 +93,7 @@ const BackEndAPI = {
     async deleteBranch(branchID: string) {
         // message.info(`rollback succeeds`);
         const res = await fetch(
-            BACKEND_URL + "/delete_branch/" +
+            BACKEND_URL + "/api/delete_branch/" +
             globalThis.NotebookID! +
             "/" +
             branchID,
@@ -104,7 +104,7 @@ const BackEndAPI = {
     },
 
     async getNotebookList() {
-        const res = await fetch(BACKEND_URL + "/list");
+        const res = await fetch(BACKEND_URL + "/api/list");
         if (res.status !== 200) {
             throw new Error("get commit detail error, status != 200");
         }
@@ -115,7 +115,7 @@ const BackEndAPI = {
 
     async getCodeDiff(originID: string, destID: string) {
         const res = await fetch(
-            BACKEND_URL + "/fe/code_diff/" + globalThis.NotebookID! + "/" + originID + "/" + destID,
+            BACKEND_URL + "/api/fe/code_diff/" + globalThis.NotebookID! + "/" + originID + "/" + destID,
         );
         if (res.status !== 200) {
             throw new Error("get code diff error, status != 200");
@@ -126,7 +126,7 @@ const BackEndAPI = {
 
     async getDataDiff(originID: string, destID: string){
         const res = await fetch(
-            BACKEND_URL + "/fe/var_diff/" + globalThis.NotebookID! + "/" + originID + "/" + destID,
+            BACKEND_URL + "/api/fe/var_diff/" + globalThis.NotebookID! + "/" + originID + "/" + destID,
         );
         if (res.status !== 200) {
             throw new Error("get variable diff error, status != 200");
@@ -137,7 +137,7 @@ const BackEndAPI = {
 
     async getFilteredCommit(varName: string){
         const res = await fetch(
-            BACKEND_URL + "/fe/find_var_change/" + globalThis.NotebookID! + "/" + varName,
+            BACKEND_URL + "/api/fe/find_var_change/" + globalThis.NotebookID! + "/" + varName,
         );
         if (res.status !== 200) {
             throw new Error("get filtered commit error, status != 200");
