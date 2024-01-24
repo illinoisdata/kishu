@@ -103,9 +103,13 @@ class CheckpointRestorePlanner:
 
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = []
-        for vs_list in self._ahg.get_variable_snapshots().values():
-            if not vs_list[-1].deleted:
-                active_vss.append(vs_list[-1])
+        for *_, latest_vs in self._ahg.get_variable_snapshots().values():
+            if not latest_vs.deleted:
+                """If manual commit made before init, pre-run cell update doesn't happen for new variables
+                so we need to add them to self._id_graph_map"""
+                if latest_vs.name not in self._id_graph_map:
+                    self._id_graph_map[latest_vs.name] = get_object_state(self._user_ns[latest_vs.name], {})
+                active_vss.append(latest_vs)
 
         # Profile the size of each variable defined in the current session.
         for active_vs in active_vss:
@@ -134,6 +138,11 @@ class CheckpointRestorePlanner:
         checkpoint_plan = CheckpointPlan.create(self._user_ns, database_path, commit_id, list(vss_to_migrate))
 
         # Create restore plan using optimization results.
+        restore_plan = self._generate_restore_plan(ces_to_recompute, ce_to_vs_map)
+
+        return checkpoint_plan, restore_plan
+
+    def _generate_restore_plan(self, ces_to_recompute, ce_to_vs_map) -> RestorePlan:
         restore_plan = RestorePlan()
         for ce in self._ahg.get_cell_executions():
             if ce.cell_num in ces_to_recompute:
@@ -141,8 +150,7 @@ class CheckpointRestorePlanner:
             if len(ce_to_vs_map[ce.cell_num]) > 0:
                 restore_plan.add_load_variable_restore_action(
                         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]])
-
-        return checkpoint_plan, restore_plan
+        return restore_plan
 
     def get_ahg(self) -> AHG:
         """
