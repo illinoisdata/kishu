@@ -106,6 +106,16 @@ class KishuCommit:
         )
         con.commit()
 
+    def update_commit(self, commit_entry: CommitEntry) -> None:
+        commit_entry_dill = dill.dumps(commit_entry)
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        cur.execute(
+            f"update {COMMIT_ENTRY_TABLE} set data = ? where commit_id = ?",
+            (memoryview(commit_entry_dill), commit_entry.commit_id)
+        )
+        con.commit()
+
     def get_commit(self, commit_id: str) -> CommitEntry:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
