@@ -12,6 +12,8 @@ extern const int TYPE_INT;
 extern const int TYPE_FLOAT;
 extern const int TYPE_BOOL;
 extern const int TYPE_STR;
+extern const int TYPE_BYTE;
+extern const int TYPE_BYTEARR;
 
 
 typedef union {
@@ -41,6 +43,7 @@ typedef struct Visitor {
     VisitorReturnType* (*visit_callable)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
     VisitorReturnType* (*visit_custom_obj)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
     VisitorReturnType* (*visit_other)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
+    void (*update_state_id)(PyObject *obj, VisitorReturnType* state);
     Visited* visited;
     VisitorReturnType* state;
 } Visitor;
@@ -51,6 +54,9 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include
 VisitorReturnType* get_object_hash(PyObject *obj);
 
 int is_primitive(PyObject *obj);
+int is_pickable(PyObject *obj);
+int is_pandas_RangeIndex_instance(PyObject *obj);
+int is_pickable_using_Python(PyObject *obj);
 
 PyMODINIT_FUNC PyInit_VisitorModule(void);
 
