@@ -10,6 +10,7 @@ from tests.helpers.nbexec import KISHU_INIT_STR
 from kishu.commands import (
     CommitSummary,
     DeleteTagResult,
+    EditCommitItem,
     FECommit,
     FEFindVarChangeResult,
     FESelectedCommit,
@@ -20,6 +21,7 @@ from kishu.commands import (
 )
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import CommitEntryKind, CommitEntry
+from kishu.notebook_id import NotebookId
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
 
@@ -561,6 +563,103 @@ class TestKishuCommand:
             # Get the variable value after checkout.
             _, var_value_after = notebook_session.run_code(var_to_compare)
             assert var_value_after == value_of_var
+
+    def test_edit_commit_by_commit_id(
+        self,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        notebook_path = tmp_nb_path("simple.ipynb")
+
+        # Start a notebook session.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Create a commit
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+            notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path)
+            commit_result = KishuCommand.commit(notebook_path, "Wrong message")
+            assert commit_result.status == "ok"
+
+            # Get most recent commit ID.
+            log_result = KishuCommand.log_all(notebook_key)
+            commit_id = log_result.commit_graph[-1].commit_id
+
+            # Edit the commit.
+            edit_result = KishuCommand.edit_commit(
+                notebook_path,
+                commit_id,
+                message="Correct one",
+            )
+            assert edit_result.status == "ok"
+            assert edit_result.edited == [
+                EditCommitItem(field="message", before="Wrong message", after="Correct one"),
+            ]
+
+            # Assert commit in database
+            status_result = KishuCommand.status(notebook_key, commit_id)
+            assert status_result.commit_entry.message == "Correct one"
+
+    def test_edit_commit_by_branch_name(
+        self,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        notebook_path = tmp_nb_path("simple.ipynb")
+
+        # Start a notebook session.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Create a commit
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+            notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path)
+            commit_result = KishuCommand.commit(notebook_path, "Wrong message")
+            assert commit_result.status == "ok"
+
+            # Get most recent commit ID.
+            log_result = KishuCommand.log_all(notebook_key)
+            commit_id = log_result.commit_graph[-1].commit_id
+
+            # Create a branch at current commit.
+            branch_result = KishuCommand.branch(notebook_key, "stick", None)
+            assert branch_result.status == "ok"
+            assert branch_result.branch_name == "stick"
+            assert branch_result.commit_id == commit_id
+
+            # Edit the commit.
+            edit_result = KishuCommand.edit_commit(
+                notebook_path,
+                commit_id,
+                message="Correct one",
+            )
+            assert edit_result.status == "ok"
+            assert edit_result.edited == [
+                EditCommitItem(field="message", before="Wrong message", after="Correct one"),
+            ]
+
+            # Assert commit in database
+            status_result = KishuCommand.status(notebook_key, commit_id)
+            assert status_result.commit_entry.message == "Correct one"
+
+    def test_edit_commit_by_commit_id_not_exist(
+        self,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        notebook_path = tmp_nb_path("simple.ipynb")
+
+        # Start a notebook session.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Create a commit
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+            commit_result = KishuCommand.commit(notebook_path, "Wrong message")
+            assert commit_result.status == "ok"
+
+            # Edit the commit.
+            edit_result = KishuCommand.edit_commit(
+                notebook_path,
+                "this_commit_message_does_not_exist",
+                message="Correct one",
+            )
+            assert edit_result.status == "error"
+            assert edit_result.edited == []
 
     def test_init_in_nonempty_session(
         self,

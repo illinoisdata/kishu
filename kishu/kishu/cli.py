@@ -222,11 +222,28 @@ def commit(
         help="Commit message.",
         show_default=False,
     ),
+    edit_branch_or_commit_id: str = typer.Option(
+        None,
+        "-e",
+        "--edit-branch-name",
+        "--edit_branch_name",
+        "--edit-commit-id",
+        "--edit_commit_id",
+        help="Branch name or commit ID to edit.",
+        show_default=False,
+    ),
 ) -> None:
     """
-    Checkout a notebook to a commit.
+    Create or edit a Kishu commit.
     """
-    print_commit_message(KishuCommand.commit(notebook_path_or_key, message=message))
+    if edit_branch_or_commit_id:
+        print(into_json(KishuCommand.edit_commit(
+            notebook_path_or_key,
+            edit_branch_or_commit_id,
+            message=message,
+        )))
+    else:
+        print_commit_message(KishuCommand.commit(notebook_path_or_key, message=message))
 
 
 @kishu_app.command()

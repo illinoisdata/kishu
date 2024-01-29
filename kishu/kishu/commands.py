@@ -14,7 +14,7 @@ from kishu.exceptions import (
     TagNotFoundError,
 )
 from kishu.diff import CodeDiffHunk, KishuDiff, VariableVersionCompare
-from kishu.exceptions import NoExecutedCellsError, NoFormattedCellsError
+from kishu.exceptions import MissingCommitEntryError, NoExecutedCellsError, NoFormattedCellsError
 from kishu.jupyterint import (
     JupyterCommandResult,
     JupyterConnection,
@@ -161,6 +161,22 @@ class CommitSummary:
     runtime_s: Optional[float]
     branches: List[str]
     tags: List[str]
+
+
+@dataclass_json
+@dataclass
+class EditCommitItem:
+    field: str
+    before: str
+    after: str
+
+
+@dataclass_json
+@dataclass
+class EditCommitResult:
+    status: str
+    message: str
+    edited: List[EditCommitItem]
 
 
 @dataclass_json
@@ -399,6 +415,49 @@ class KishuCommand:
             status="error",
             message="Error re-attaching kishu instrumentation to notebook",
             reattachment=instrument_result
+        )
+
+    @staticmethod
+    def edit_commit(
+        notebook_path_or_key: str,
+        branch_or_commit_id: str,
+        message: Optional[str] = None,
+    ) -> EditCommitResult:
+        notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path_or_key)
+
+        # Attempt to interpret as a branch name, otherwise it is a commit ID.
+        kishu_branch = KishuBranch(notebook_key)
+        commit_id = branch_or_commit_id
+        commit_str = f"{commit_id}"
+        retrieved_branches = kishu_branch.get_branch(branch_or_commit_id)
+        if len(retrieved_branches) == 1:
+            assert retrieved_branches[0].branch_name == branch_or_commit_id
+            commit_id = retrieved_branches[0].commit_id
+            commit_str = f"{branch_or_commit_id} ({commit_id})"
+
+        # Get the commit.
+        kishu_commit = KishuCommit(notebook_key)
+        try:
+            commit = kishu_commit.get_commit(commit_id)
+        except MissingCommitEntryError:
+            return EditCommitResult(
+                status="error",
+                message=f"Cannot find commit entry for {commit_str}.",
+                edited=[],
+            )
+
+        # Edit commit entry.
+        edited: List[EditCommitItem] = []
+        if message is not None:
+            edited.append(EditCommitItem(field="message", before=str(commit.message), after=str(message)))
+            commit.message = message
+
+        # Update commit database.
+        kishu_commit.update_commit(commit)
+        return EditCommitResult(
+            status="ok",
+            message=f"Successfully edit commit {commit_str}",
+            edited=edited,
         )
 
     @staticmethod
