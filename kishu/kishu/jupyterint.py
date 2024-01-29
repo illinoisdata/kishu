@@ -592,7 +592,7 @@ class KishuForJupyter:
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":
             return str(self._session_id) + ":" + str(self._last_execution_count)
-        return str(uuid.uuid4())
+        return uuid.uuid4().hex
 
     def _checkpoint(self, cell_info: CommitEntry) -> Tuple[RestorePlan, int]:
         """
