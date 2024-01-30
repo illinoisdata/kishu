@@ -39,7 +39,8 @@ class Namespace:
         return {k: v for k, v in filter(Namespace.no_ipython_var, self._user_ns.items())}
 
     def update(self, other: Namespace):
-        self._user_ns.update(other._user_ns)
+        # Need to filter with other.to_dict() to not replace ipython variables.
+        self._user_ns.update(other.to_dict())
 
     def ipython_in(self) -> Optional[List[str]]:
         return self._user_ns["In"] if "In" in self._user_ns else None
