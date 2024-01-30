@@ -455,6 +455,58 @@ class TestKishuCommand:
             _, var_value_after = notebook_session.run_code(var_to_compare)
             assert var_value_before == var_value_after
 
+    def test_track_executed_cells_with_checkout(
+        self,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        # Get the contents of the test notebook.
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        cell_num_to_restore = len(contents) // 2  # Arbitrarily picked one.
+
+        # Start the notebook session.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+
+            # Run the rest of the notebook cells.
+            for i in range(len(contents)):
+                print("running", contents[i])
+                notebook_session.run_code(contents[i])
+
+            # Get the notebook key of the session.
+            notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path)
+
+            # Get commit id of commit which we want to restore
+            log_result = KishuCommand.log(notebook_key)
+            commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
+
+            # Executed cells should contain all cells from contents.
+            status_result = KishuCommand.status(notebook_key, commit_id)
+            assert status_result.commit_entry.executed_cells == [
+                "",  # PYTHONSTARTUP, https://ipython.readthedocs.io/en/stable/interactive/reference.html
+                *contents[:cell_num_to_restore+1],
+            ]
+
+            # Restore to that commit
+            KishuCommand.checkout(notebook_path, commit_id)
+
+            # Run some cells.
+            notebook_session.run_code("x = 1")
+            notebook_session.run_code("y = x + 10")
+
+            # Executed cells should work.
+            log_result_2 = KishuCommand.log(notebook_key)
+            commit_id_2 = log_result_2.commit_graph[-1].commit_id
+            status_result_2 = KishuCommand.status(notebook_key, commit_id_2)
+            assert status_result_2.commit_entry.executed_cells == [
+                "",  # PYTHONSTARTUP, https://ipython.readthedocs.io/en/stable/interactive/reference.html
+                *contents[:cell_num_to_restore+1],
+                "x = 1",
+                "y = x + 10",
+            ]
+
     def test_checkout_reattach(
         self,
         tmp_nb_path,
