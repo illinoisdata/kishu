@@ -472,7 +472,6 @@ class TestKishuCommand:
 
             # Run the rest of the notebook cells.
             for i in range(len(contents)):
-                print("running", contents[i])
                 notebook_session.run_code(contents[i])
 
             # Get the notebook key of the session.
