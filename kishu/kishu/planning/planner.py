@@ -81,7 +81,7 @@ class CheckpointRestorePlanner:
 
         # Find modified variables.
         modified_vars = set()
-        for k in self._id_graph_map.keys():
+        for k in filter(self._user_ns.__contains__, self._id_graph_map.keys()):
             new_idgraph = get_object_state(self._user_ns[k], {})
             if not self._id_graph_map[k] == new_idgraph:
                 self._id_graph_map[k] = new_idgraph
