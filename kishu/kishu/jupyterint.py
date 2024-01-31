@@ -440,6 +440,9 @@ class KishuForJupyter:
         """
         self._start_time = time.time()
 
+        # Saving needs to be before cell execution, otherwise stream/print output will disappear.
+        self.save_notebook()
+
         self._cr_planner.pre_run_cell_update()
 
     def post_run_cell(self, result) -> None:
@@ -548,6 +551,7 @@ class KishuForJupyter:
         entry = CommitEntry(kind=CommitEntryKind.manual)
         entry.execution_count = self._last_execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
+        self.save_notebook()
         self._commit_entry(entry)
         return BareReprStr(entry.commit_id)
 
@@ -556,8 +560,7 @@ class KishuForJupyter:
         entry.commit_id = self._commit_id()
         entry.timestamp = time.time()
 
-        # Force saving to observe all cells and extract notebook informations.
-        self.save_notebook()
+        # Observe all cells and extract notebook informations.
         entry.executed_cells = self._user_ns.ipython_in()
         entry.raw_nb, entry.formatted_cells = self._all_notebook_cells()
         if entry.formatted_cells is not None:
