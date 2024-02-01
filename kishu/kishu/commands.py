@@ -271,6 +271,7 @@ class FESelectedCommitVariable:
     type: str
     children: List[FESelectedCommitVariable]
     size: Optional[str]
+    html: Optional[str]
 
 
 @dataclass
@@ -900,6 +901,7 @@ class KishuCommand:
             type=str(type(value).__name__),
             children=KishuCommand._recurse_variable(value, vardepth=vardepth),
             size=KishuCommand._size_or_none(value),
+            html=KishuCommand._str_or_none(value.head(50).to_html()) if str(type(value).__name__) == "DataFrame" else None,
         )
 
     @staticmethod
