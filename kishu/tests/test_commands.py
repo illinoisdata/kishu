@@ -405,7 +405,8 @@ class TestKishuCommand:
         [
             ('numpy.ipynb', 4, "iris_X_train"),
             ('simple.ipynb', 4, "b"),
-            ('test_unserializable_var.ipynb', 2, "gen")
+            ('test_unserializable_var.ipynb', 2, "gen"),
+            ('QiskitDemo_NCSA_May2023.ipynb', 61, "qc")
         ]
     )
     def test_end_to_end_checkout(

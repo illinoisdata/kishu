@@ -9,6 +9,8 @@ def _is_picklable(obj) -> bool:
     """
         Checks whether an object is pickleable.
     """
+    if _is_exception_class(obj):
+        return False
     if inspect.ismodule(obj):
         return True
     try:
@@ -25,6 +27,17 @@ def _is_picklable(obj) -> bool:
     except Exception:
         return False
     return True
+
+
+def _is_exception_class(obj) -> bool:
+    """
+        Checks whether object is from a class which Dill reports is pickleable but is actually not.
+    """
+    # TODO: replace this with a config file
+    for class_name in ["qiskit"]:
+        if inspect.getmodule(obj) and class_name in str(inspect.getmodule(obj)):
+            return True
+    return False
 
 
 def _get_memory_size(obj, is_initialize: bool, visited: set) -> int:
