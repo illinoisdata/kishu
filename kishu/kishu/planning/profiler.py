@@ -5,10 +5,12 @@ import sys
 import types
 
 
-def _is_picklable(obj):
+def _is_picklable(obj) -> bool:
     """
         Checks whether an object is pickleable.
     """
+    if _is_exception(obj):
+        return False
     if inspect.ismodule(obj):
         return True
     try:
@@ -25,6 +27,17 @@ def _is_picklable(obj):
     except Exception:
         return False
     return True
+
+
+def _is_exception(obj) -> bool:
+    """
+        List of objects which _is_picklable_dill returns true (or crashes) but are not pickleable.
+        Specifically, qiskit objects throw errors when attempting deserialization.
+    """
+    # TODO: replace this with a config file
+    if hasattr(obj, '__module__') and getattr(obj, '__module__', None).split(".")[0] in {"qiskit"}:
+        return True
+    return False
 
 
 def _get_memory_size(obj, is_initialize: bool, visited: set) -> int:

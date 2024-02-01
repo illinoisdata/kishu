@@ -196,7 +196,7 @@ class RerunCellRestoreAction(RestoreAction):
             pass
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(var_names={self.cell_code})"
+        return f"{self.__class__.__name__}(cell_code={self.cell_code})"
 
     def __str__(self) -> str:
         return self.__repr__()
