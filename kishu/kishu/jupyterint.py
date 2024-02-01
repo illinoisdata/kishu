@@ -419,7 +419,7 @@ class KishuForJupyter:
 
         # Create new commit when skip restoring notebook.
         if self._enable_auto_commit_when_skip_notebook and skip_notebook:
-            new_commit = self.commit(f"Auto-commit after checking out {commit_id} only variables.")
+            new_commit = self.commit("Checkout variables")
             return BareReprStr(f"Checkout {commit_id} only variables and commit {new_commit}.")
 
         if is_detach:
@@ -459,7 +459,7 @@ class KishuForJupyter:
         entry = CommitEntry(kind=CommitEntryKind.jupyter)
         entry.execution_count = result.execution_count
         short_raw_cell = result.info.raw_cell if len(result.info.raw_cell) <= 40 else f"{result.info.raw_cell[:40]}..."
-        entry.message = f"[run] {short_raw_cell}"
+        entry.message = f"[auto] {short_raw_cell}"
 
         # Jupyter-specific info for commit entry.
         entry.start_time = self._start_time
