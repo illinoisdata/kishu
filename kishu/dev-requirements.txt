@@ -15,6 +15,7 @@ scikit-learn
 seaborn
 textblob
 pandas
+qiskit
 
 # Testing framework/infra
 websocket-client
