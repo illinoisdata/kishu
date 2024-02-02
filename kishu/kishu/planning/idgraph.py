@@ -26,9 +26,10 @@ class GraphNode:
             return True
         return False
 
-    def is_root_equals(self, other):
+    def is_root_id_and_type_equals(self, other):
         """
-            Compare only the root nodes of 2 ID graphs. Used for detecting non-overwrite modifications.
+            Compare only the ID and type fields of root nodes of 2 ID graphs.
+            Used for detecting non-overwrite modifications.
         """
         if other is None:
             return False

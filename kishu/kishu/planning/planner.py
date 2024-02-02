@@ -89,7 +89,7 @@ class CheckpointRestorePlanner:
             new_idgraph = get_object_state(self._user_ns[k], {})
             if not self._id_graph_map[k] == new_idgraph:
                 # Non-overwrite modification requires also accessing the variable.
-                if self._id_graph_map[k].is_root_equals(new_idgraph):
+                if self._id_graph_map[k].is_root_id_and_type_equals(new_idgraph):
                     accessed_vars.add(k)
                 self._id_graph_map[k] = new_idgraph
                 modified_vars.add(k)
@@ -162,9 +162,6 @@ class CheckpointRestorePlanner:
         return restore_plan
 
     def get_ahg(self) -> AHG:
-        """
-            For testing only.
-        """
         return self._ahg
 
     def get_id_graph_map(self) -> Dict[str, GraphNode]:
