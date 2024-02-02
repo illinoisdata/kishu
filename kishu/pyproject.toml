@@ -80,6 +80,7 @@ dev = [  # README: Keep in sync with dev-requirements.txt
     "seaborn",
     "textblob",
     "pandas",
+    "pylatexenc",
     "qiskit",
 
     # Testing framework/infra
