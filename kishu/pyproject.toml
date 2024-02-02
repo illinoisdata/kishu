@@ -80,7 +80,7 @@ dev = [  # README: Keep in sync with dev-requirements.txt
     "seaborn",
     "textblob",
     "pandas",
-    "qiskit"
+    "qiskit",
 
     # Testing framework/infra
     "websocket-client",
