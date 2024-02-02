@@ -15,6 +15,7 @@ scikit-learn
 seaborn
 textblob
 pandas
+pylatexenc
 qiskit
 
 # Testing framework/infra
