@@ -17,6 +17,7 @@ textblob
 pandas
 pylatexenc
 qiskit
+qiskit-aer
 
 # Testing framework/infra
 websocket-client
