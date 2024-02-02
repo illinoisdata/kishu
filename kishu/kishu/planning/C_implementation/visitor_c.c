@@ -25,40 +25,53 @@ VisitorReturnType* get_object_hash(PyObject *obj) {
 VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include_id, VisitorReturnType* state) {
     VisitorReturnType* ret_state;
     if (NULL != (ret_state = (visitor -> has_visited(obj, visitor -> visited, include_id, state))))
-        return ret_state;
+        return visitor -> handle_visited(obj, visitor -> visited, include_id, state);
     else {
         /* Not been visited yet */
         if (is_primitive(obj))
             return visitor -> visit_primitive(obj, state);
         else if (PyTuple_Check(obj)) {
-            visitor -> visit_tuple(obj, visitor -> visited, include_id, state);
+            /* Tuple */
+            visitor -> visit_tuple(obj, &(visitor -> visited), include_id, state);
             Py_ssize_t size = PyTuple_Size(obj);
             for (Py_ssize_t i = 0; i < size; i++) {
                 PyObject *item = PyTuple_GetItem(obj, i);
-                get_object_state(item, visitor, include_id, state);
+                if (!get_object_state(item, visitor, include_id, state)) {
+                    // Error
+                    return NULL;
+                }
             }
             return state;
         }
         else if (PyList_Check(obj)) {
-            visitor -> visit_list(obj, visitor -> visited, include_id, state);
+            /* List */
+            visitor -> visit_list(obj, &(visitor -> visited), include_id, state);
             Py_ssize_t size = PyList_Size(obj);
             for (Py_ssize_t i = 0; i < size; i++) {
                 PyObject *item = PyList_GetItem(obj, i);
-                get_object_state(item, visitor, include_id, state);
+                if (!get_object_state(item, visitor, include_id, state)) {
+                    // Error
+                    return NULL;
+                }
             } 
             return state;            
         }
         else if (PyAnySet_Check(obj)) {
-            visitor -> visit_set(obj, visitor -> visited, include_id, state);
+            /* Set */
+            visitor -> visit_set(obj, &(visitor -> visited), include_id, state);
             PyObject *iter = PyObject_GetIter(obj);
             PyObject *item;
             while ((item = PyIter_Next(iter))) {
-                get_object_state(item, visitor, include_id, state);
+                if (!get_object_state(item, visitor, include_id, state)) {
+                    // Error
+                    return NULL;
+                }
             }
             return state;     
         }
         else if (PyDict_Check(obj)) {
-            visitor -> visit_dict(obj, visitor -> visited, include_id, state);
+            /* Dictionary */
+            visitor -> visit_dict(obj, &(visitor -> visited), include_id, state);
             PyObject *keys = PyDict_Keys(obj);
             PyObject *values = PyDict_Values(obj);
             Py_ssize_t size = PyList_Size(keys);
@@ -67,25 +80,38 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include
                 PyObject *value = PyList_GetItem(values, i);
 
                 // process key
-                get_object_state(key, visitor, include_id, state);
+                if (!get_object_state(key, visitor, include_id, state)) {
+                    return NULL;
+                }
 
                 // process values
-                get_object_state(value, visitor, include_id, state);
+                if (!get_object_state(value, visitor, include_id, state)) {
+                    // Error
+                    return NULL;
+                }
             }
             return state;        
         }
         else if (PyBytes_Check(obj) || PyByteArray_Check(obj)) {
-            return visitor -> visit_byte(obj, visitor -> visited, include_id, state);
+            /* Byte or Bytearray */
+            return visitor -> visit_byte(obj, &(visitor -> visited), include_id, state);
         }
         else if(PyType_Check(obj)) {
-            return visitor -> visit_type(obj, visitor -> visited, include_id, state);
+            /* type */
+            return visitor -> visit_type(obj, &(visitor -> visited), include_id, state);
         }
         else if (PyCallable_Check(obj)) {
-            return visitor -> visit_callable(obj, visitor -> visited, include_id, state);
+            /* Callable object */
+            return visitor -> visit_callable(obj, &(visitor -> visited), include_id, state);
         }
         else if (PyObject_HasAttrString(obj, "__reduce_ex__")) {
-            visitor -> visit_custom_obj(obj, visitor -> visited, include_id, state);
-            if (is_pickable(obj)) {
+            /* Custom object */
+            visitor -> visit_custom_obj(obj, &(visitor -> visited), include_id, state);
+            int picklable = is_picklable(obj);
+            if (picklable == -1)
+                return NULL;
+
+            if (picklable) {
                 // Prepare the argument for __reduce_ex__
                 PyObject *arg = PyLong_FromLong(4);
                 if (!arg) {
@@ -97,21 +123,32 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include
                 PyObject *reduced = PyObject_CallMethod(obj, "__reduce_ex__", "(O)", arg);
                 Py_DECREF(arg); // Decrement the reference count for arg
 
-                if (!is_pandas_RangeIndex_instance(obj))
+                if (!reduced)
+                    return state;
+
+                int range_index_instance = is_pandas_RangeIndex_instance(obj);
+                if (range_index_instance == -1)
+                    return NULL;
+
+                if (!range_index_instance)
                     visitor -> update_state_id(obj, state);
                 
-                if (PyUnicode_Check(obj))
+                if (PyUnicode_Check(reduced))
                     return visitor -> visit_primitive(reduced, state);
 
                 Py_ssize_t size = PyTuple_Size(reduced);
                 for (Py_ssize_t i = 1; i < size; i++) {
                     PyObject *item = PyTuple_GetItem(reduced, i);
-                    get_object_state(item, visitor, 0, state);
+                    if (!get_object_state(item, visitor, 0, state)) {
+                        // Error
+                        return NULL;
+                    }
                 }
             }
             return state;
         }
         else {
+            /* Not supported yet */
             PyErr_SetString(PyExc_TypeError, "Unsupported object type for ObjectStare");
             return NULL;
         }
@@ -125,7 +162,7 @@ int is_primitive(PyObject *obj) {
         return 0;
 }
 
-int is_pickable(PyObject *obj) {
+int is_picklable(PyObject *obj) {
     static PyObject *dumps_func = NULL;
 
     // Import pickle and get dumps function only once
@@ -133,23 +170,27 @@ int is_pickable(PyObject *obj) {
         PyObject *pickle_module = PyImport_ImportModule("pickle");
         if (!pickle_module) {
             // Handle error: unable to import pickle
-            return 0; // Considered not picklable
+            PyErr_Print();
+            return -1; // Considered not picklable
         }
 
         dumps_func = PyObject_GetAttrString(pickle_module, "dumps");
         Py_DECREF(pickle_module); // Done with pickle module
         if (!dumps_func) {
             // Handle error: dumps function not found
-            return 0; // Considered not picklable
+            PyErr_Print();
+            return -1; // Considered not picklable
         }
     }
 
-    // Try to pickle the object
+    // Prepare args
     PyObject *args = PyTuple_Pack(1, obj);
     if(!args) {
-        return 0;
+        // Failed to create tuple
+        return -1;
     }
 
+    // Try to pickle the object
     PyObject *result = PyObject_CallObject(dumps_func, args);
     Py_DECREF(args); // Decrement reference count for args
 
@@ -164,49 +205,49 @@ int is_pickable(PyObject *obj) {
     return 1; // True
 }
 
-int is_pickable_using_Python(PyObject *obj) {
-    PyObject *pModule, *pFunc, *pArgs, *pValue;
+// int is_pickable_using_Python(PyObject *obj) {
+//     PyObject *pModule, *pFunc, *pArgs, *pValue;
 
-    pModule = PyImport_ImportModule("test_is_pickable");
-    if (!pModule) {
-        PyErr_Print();
-        fprintf(stderr, "Failed to load");
-        return -1;
-    }
+//     pModule = PyImport_ImportModule("test_is_pickable");
+//     if (!pModule) {
+//         PyErr_Print();
+//         fprintf(stderr, "Failed to load");
+//         return -1;
+//     }
 
-    pFunc = PyObject_GetAttrString(pModule, "is_pickable");
-    if (!pFunc || !PyCallable_Check(pFunc)) {
-        if (PyErr_Occurred())
-            PyErr_Print();
-        fprintf(stderr, "Cannot find function");
-        Py_DECREF(pModule);
-        return -1;
-    }
+//     pFunc = PyObject_GetAttrString(pModule, "is_pickable");
+//     if (!pFunc || !PyCallable_Check(pFunc)) {
+//         if (PyErr_Occurred())
+//             PyErr_Print();
+//         fprintf(stderr, "Cannot find function");
+//         Py_DECREF(pModule);
+//         return -1;
+//     }
 
-    pArgs = PyTuple_New(1);
-    PyTuple_SetItem(pArgs, 0, obj);
-    Py_INCREF(obj);
+//     pArgs = PyTuple_New(1);
+//     PyTuple_SetItem(pArgs, 0, obj);
+//     Py_INCREF(obj);
 
-    pValue = PyObject_CallObject(pFunc, pArgs);
-    Py_DECREF(pArgs);
-    Py_DECREF(pFunc);
+//     pValue = PyObject_CallObject(pFunc, pArgs);
+//     Py_DECREF(pArgs);
+//     Py_DECREF(pFunc);
 
-    long long temp_obj;
+//     long long temp_obj;
 
-    if (pValue != NULL) {
-        // printf("Function call succeeded.\n");
-        temp_obj = PyLong_AsLongLong(pValue);
-        Py_DECREF(pValue);
-    } else {
-        PyErr_Print();
-        fprintf(stderr, "Call failed.\n");
-        Py_DECREF(pModule);
-        return -1;
-    }
+//     if (pValue != NULL) {
+//         // printf("Function call succeeded.\n");
+//         temp_obj = PyLong_AsLongLong(pValue);
+//         Py_DECREF(pValue);
+//     } else {
+//         PyErr_Print();
+//         fprintf(stderr, "Call failed.\n");
+//         Py_DECREF(pModule);
+//         return -1;
+//     }
 
-    Py_DECREF(pModule);
-    return temp_obj;
-}
+//     Py_DECREF(pModule);
+//     return temp_obj;
+// }
 
 int is_pandas_RangeIndex_instance(PyObject *obj) {
     static PyObject *RangeIndex = NULL;
@@ -216,18 +257,19 @@ int is_pandas_RangeIndex_instance(PyObject *obj) {
         PyObject *pandas_module = PyImport_ImportModule("pandas.core.indexes.range");
         if (!pandas_module) {
             // Handle error
-            return 0;
+            PyErr_Print();
+            return -1;
         }
 
         RangeIndex = PyObject_GetAttrString(pandas_module, "RangeIndex");
         Py_DECREF(pandas_module);
         if (!RangeIndex) {
             // Handle error
-            return 0;
+            PyErr_Print();
+            return -1;
         }
     }
 
-    // Call the recursive function
     if (PyObject_IsInstance(obj, RangeIndex))
         return 1;
     else

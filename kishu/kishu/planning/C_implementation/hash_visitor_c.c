@@ -15,6 +15,15 @@ VisitorReturnType* hash_has_visited(PyObject *obj, Visited *visited, int include
     return NULL;
 }
 
+VisitorReturnType* hash_handle_visited(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {
+    if (include_id) {
+        long long temp_obj = (long long)obj;
+        XXH32_update(state -> hashed_state, &temp_obj, sizeof(temp_obj));
+    }
+
+    return state;
+}
+
 // Handles int, float, bool, str, None, NotImplemented, Ellipsis, bytes, bytearray
 VisitorReturnType* hash_visit_primitive(PyObject *obj, VisitorReturnType* state) {
     if (obj == Py_None) {
@@ -66,15 +75,15 @@ VisitorReturnType* hash_visit_primitive(PyObject *obj, VisitorReturnType* state)
     return state;
 }
 
-VisitorReturnType* hash_visit_tuple(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {
-    return NULL;
+VisitorReturnType* hash_visit_tuple(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state) {
+    return state;
 }
 
-VisitorReturnType* hash_visit_list(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {
+VisitorReturnType* hash_visit_list(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state) {
     Visited *new_node = (Visited*)malloc(sizeof(Visited));
-    new_node -> next = visited;
+    new_node -> next = *visited;
     new_node -> pyObject = obj;
-    visited = new_node;
+    *visited = new_node;
 
     if (include_id == 1) {
         long long temp_obj = (long long)obj;
@@ -82,11 +91,11 @@ VisitorReturnType* hash_visit_list(PyObject *obj, Visited *visited, int include_
     }
     return state;
 }
-VisitorReturnType* hash_visit_set(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {
+VisitorReturnType* hash_visit_set(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state) {
     Visited *new_node = (Visited*)malloc(sizeof(Visited));
-    new_node -> next = visited;
+    new_node -> next = *visited;
     new_node -> pyObject = obj;
-    visited = new_node;
+    *visited = new_node;
 
     if (include_id == 1) {
         long long temp_obj = (long long)obj;
@@ -94,11 +103,11 @@ VisitorReturnType* hash_visit_set(PyObject *obj, Visited *visited, int include_i
     }  
     return state;
 }
-VisitorReturnType* hash_visit_dict(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {
+VisitorReturnType* hash_visit_dict(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state) {
     Visited *new_node = (Visited*)malloc(sizeof(Visited));
-    new_node -> next = visited;
+    new_node -> next = *visited;
     new_node -> pyObject = obj;
-    visited = new_node;
+    *visited = new_node;
 
     if (include_id == 1) {
         long long temp_obj = (long long)obj;
@@ -106,7 +115,7 @@ VisitorReturnType* hash_visit_dict(PyObject *obj, Visited *visited, int include_
     }  
     return state;
 }
-VisitorReturnType* hash_visit_byte(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {
+VisitorReturnType* hash_visit_byte(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state) {
     /* Python - bytes or bytearray */
     char *data;
     Py_ssize_t length;
@@ -132,7 +141,7 @@ VisitorReturnType* hash_visit_byte(PyObject *obj, Visited *visited, int include_
     return state;
 }
 
-VisitorReturnType* hash_visit_type(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {
+VisitorReturnType* hash_visit_type(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state) {
     /* Python - type */
     const char* typeName = ((PyTypeObject*)obj)->tp_name;
     if (!typeName) {
@@ -143,28 +152,30 @@ VisitorReturnType* hash_visit_type(PyObject *obj, Visited *visited, int include_
     return state;
 }
 
-VisitorReturnType* hash_visit_callable(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {
-    Visited *new_node = (Visited*)malloc(sizeof(Visited));
-    new_node -> next = visited;
-    new_node -> pyObject = obj;
-    visited = new_node;
+VisitorReturnType* hash_visit_callable(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state) {
+
 
     if (include_id == 1) {
+        Visited *new_node = (Visited*)malloc(sizeof(Visited));
+        new_node -> next = *visited;
+        new_node -> pyObject = obj;
+        *visited = new_node;
+        
         long long temp_obj = (long long)obj;
         XXH32_update(state -> hashed_state, &temp_obj, sizeof(temp_obj));
     }
 
     return state;
 }
-VisitorReturnType* hash_visit_custom_obj(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {
+VisitorReturnType* hash_visit_custom_obj(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state) {
     Visited *new_node = (Visited*)malloc(sizeof(Visited));
-    new_node -> next = visited;
+    new_node -> next = *visited;
     new_node -> pyObject = obj;
-    visited = new_node;
+    *visited = new_node;
 
     return state;
 }
-VisitorReturnType* hash_visit_other(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {return NULL;}
+VisitorReturnType* hash_visit_other(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state) {return NULL;}
 
 void hash_update_state_id(PyObject *obj, VisitorReturnType* state) {
     long long temp_obj = (long long)obj;
@@ -179,6 +190,8 @@ Visitor* create_hash_visitor() {
     // VisitorReturnType* state = (VisitorReturnType*)malloc(sizeof(VisitorReturnType*));
     /* Initialize hash visitor functions */
     visitor->has_visited = hash_has_visited;
+    visitor->handle_visited = hash_handle_visited;
+
     visitor->visit_primitive = hash_visit_primitive;
     visitor->visit_tuple = hash_visit_tuple;
     visitor->visit_list = hash_visit_list;
