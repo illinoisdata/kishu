@@ -43,8 +43,7 @@ class Optimizer():
         self._only_migrate = only_migrate
 
         # Set lookup for active VSs by name and version as VS objects are not hashable.
-        self.active_vss_name_lookup = set(vs.name for vs in active_vss)
-        self.active_vss_name_version_lookup = set((vs.name, vs.version) for vs in active_vss)
+        self.active_vss_lookup = {vs.name: vs.version for vs in active_vss}
 
         # CEs required to recompute a variables last modified by a given CE.
         self.req_func_mapping: Dict[int, Set[int]] = {}
@@ -65,7 +64,7 @@ class Optimizer():
                 # Else, recurse into input variables of the CE.
                 prerequisite_ces.add(current.cell_num)
                 for vs in current.src_vss:
-                    if (vs.name, vs.version) not in self.active_vss_name_version_lookup \
+                    if (vs.name, vs.version) not in self.active_vss_lookup.items() \
                             and (vs.name, vs.version) not in visited:
                         self.dfs_helper(vs, visited, prerequisite_ces)
 
@@ -80,7 +79,7 @@ class Optimizer():
         """
         for ce in self.ahg.get_cell_executions():
             # Find prerequisites only if the CE has at least 1 active output.
-            if set(vs.name for vs in ce.dst_vss).intersection(self.active_vss_name_lookup):
+            if set(vs.name for vs in ce.dst_vss).intersection(set(self.active_vss_lookup.keys())):
                 prerequisite_ces = set()
                 self.dfs_helper(ce, set(), prerequisite_ces)
                 self.req_func_mapping[ce.cell_num] = prerequisite_ces
@@ -95,7 +94,7 @@ class Optimizer():
             @param only_recompute: rerun all cells.
         """
         if self._only_migrate:
-            return self.active_vss_name_lookup, set()
+            return set(self.active_vss_lookup.keys()), set()
 
         if self._only_recompute:
             return set(), set(ce.cell_num for ce in self.ahg.get_cell_executions())
@@ -139,7 +138,7 @@ class Optimizer():
         cut_value, partition = nx.minimum_cut(flow_graph, "source", "sink", flow_func=shortest_augmenting_path)
 
         # Determine the replication plan from the partition.
-        vss_to_migrate = set(partition[1]).intersection(self.active_vss_name_lookup)
+        vss_to_migrate = set(partition[1]).intersection(set(self.active_vss_lookup.keys()))
         ces_to_recompute = set(partition[0]).intersection(set(ce.cell_num for ce in self.ahg.get_cell_executions()))
 
         return vss_to_migrate, ces_to_recompute

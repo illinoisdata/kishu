@@ -28,7 +28,7 @@ class GraphNode:
 
     def is_root_equals(self, other):
         """
-            Compare only the root notes of 2 ID graphs. Used for detecting non-overwrite modifications.
+            Compare only the root nodes of 2 ID graphs. Used for detecting non-overwrite modifications.
         """
         if other is None:
             return False

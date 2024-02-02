@@ -14,6 +14,9 @@ from kishu.planning.plan import RestorePlan, CheckpointPlan
 from kishu.planning.profiler import profile_variable_size
 
 
+REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
+
+
 @dataclass
 class ChangedVariables:
     created_vars: Set[str]
@@ -44,6 +47,9 @@ class CheckpointRestorePlanner:
         # C/R plan configs.
         self._always_recompute = False
         self._always_migrate = False
+
+        # Used by instrumentation to compute whether data has changed.
+        self._modified_vars: Set[str] = set()
 
     @staticmethod
     def from_existing(user_ns: Namespace) -> CheckpointRestorePlanner:
@@ -127,7 +133,7 @@ class CheckpointRestorePlanner:
         # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
         # Currently, a variable is recomputed only if it is unserialzable.
         # TODO: add config file for specifying migration speed
-        optimizer = Optimizer(self._ahg, active_vss, linked_vs_pairs, 10000000000)
+        optimizer = Optimizer(self._ahg, active_vss, linked_vs_pairs, REALLY_FAST_BANDWIDTH_10GBPS)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
