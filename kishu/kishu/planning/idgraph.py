@@ -26,6 +26,15 @@ class GraphNode:
             return True
         return False
 
+    def is_root_id_and_type_equals(self, other):
+        """
+            Compare only the ID and type fields of root nodes of 2 ID graphs.
+            Used for detecting non-overwrite modifications.
+        """
+        if other is None:
+            return False
+        return self.id_obj == other.id_obj and self.obj_type == other.obj_type
+
     def __eq__(self, other):
         return GraphNode._compare_idgraph(self, other)
 
@@ -124,7 +133,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         if include_id:
             node.id_obj = id(obj)
             node.check_value_only = False
-        for item in sorted(obj):
+        for item in obj:
             child = get_object_state(item, visited, include_id)
             node.children.append(child)
 
@@ -138,7 +147,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
             node.id_obj = id(obj)
             node.check_value_only = False
 
-        for key, value in sorted(obj.items()):
+        for key, value in obj.items():
             child = get_object_state(key, visited, include_id)
             node.children.append(child)
             child = get_object_state(value, visited, include_id)
@@ -214,7 +223,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         visited[id(obj)] = node
         node.id_obj = id(obj)
 
-        for attr_name, attr_value in sorted(obj.__getstate__().items()):
+        for attr_name, attr_value in obj.__getstate__().items():
             node.children.append(attr_name)
             child = get_object_state(attr_value, visited, False)
             node.children.append(child)
@@ -228,7 +237,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         visited[id(obj)] = node
         node.id_obj = id(obj)
 
-        for attr_name, attr_value in sorted(obj.__dict__.items()):
+        for attr_name, attr_value in obj.__dict__.items():
             node.children.append(attr_name)
             child = get_object_state(attr_value, visited)
             node.children.append(child)
@@ -282,7 +291,7 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
         if include_id:
             hashed.update(str(id(obj)))
 
-        for item in sorted(obj):
+        for item in obj:
             build_object_hash(item, visited, include_id, hashed)
 
         hashed.update("/EOC")
@@ -293,7 +302,7 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
         if include_id:
             hashed.update(str(id(obj)))
 
-        for key, value in sorted(obj.items()):
+        for key, value in obj.items():
             build_object_hash(key, visited, include_id, hashed)
             build_object_hash(value, visited, include_id, hashed)
 

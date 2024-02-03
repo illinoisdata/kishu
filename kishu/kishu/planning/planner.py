@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy as np
-
 from collections import defaultdict
 from typing import Dict, Optional, Set, Tuple
 
@@ -14,6 +12,9 @@ from kishu.planning.idgraph import GraphNode, get_object_state
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import RestorePlan, CheckpointPlan
 from kishu.planning.profiler import profile_variable_size
+
+
+REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
 
 
 @dataclass
@@ -45,7 +46,10 @@ class CheckpointRestorePlanner:
 
         # C/R plan configs.
         self._always_recompute = False
-        self._always_migrate = True
+        self._always_migrate = False
+
+        # Used by instrumentation to compute whether data has changed.
+        self._modified_vars: Set[str] = set()
 
     @staticmethod
     def from_existing(user_ns: Namespace) -> CheckpointRestorePlanner:
@@ -84,6 +88,9 @@ class CheckpointRestorePlanner:
         for k in filter(self._user_ns.__contains__, self._id_graph_map.keys()):
             new_idgraph = get_object_state(self._user_ns[k], {})
             if not self._id_graph_map[k] == new_idgraph:
+                # Non-overwrite modification requires also accessing the variable.
+                if self._id_graph_map[k].is_root_id_and_type_equals(new_idgraph):
+                    accessed_vars.add(k)
                 self._id_graph_map[k] = new_idgraph
                 modified_vars.add(k)
 
@@ -122,9 +129,11 @@ class CheckpointRestorePlanner:
                 if self._id_graph_map[active_vs1.name].is_overlap(self._id_graph_map[active_vs2.name]):
                     linked_vs_pairs.append((active_vs1, active_vs2))
 
-        # Initialize the optimizer. Migration speed is currently set to large value to prompt optimizer to store everything.
-        # TODO: add overlap detection in the future.
-        optimizer = Optimizer(self._ahg, active_vss, linked_vs_pairs, np.inf, only_migrate=True)
+        # Initialize optimizer.
+        # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
+        # Currently, a variable is recomputed only if it is unserialzable.
+        # TODO: add config file for specifying migration speed
+        optimizer = Optimizer(self._ahg, active_vss, linked_vs_pairs, REALLY_FAST_BANDWIDTH_10GBPS)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
@@ -153,9 +162,6 @@ class CheckpointRestorePlanner:
         return restore_plan
 
     def get_ahg(self) -> AHG:
-        """
-            For testing only.
-        """
         return self._ahg
 
     def get_id_graph_map(self) -> Dict[str, GraphNode]:

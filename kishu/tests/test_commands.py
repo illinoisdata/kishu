@@ -404,7 +404,9 @@ class TestKishuCommand:
         ("notebook_name", "cell_num_to_restore", "var_to_compare"),
         [
             ('numpy.ipynb', 4, "iris_X_train"),
-            ('simple.ipynb', 4, "b")
+            ('simple.ipynb', 4, "b"),
+            ('test_unserializable_var.ipynb', 2, "next(gen)"),  # directly printing gen prints out its memory address.
+            ('QiskitDemo_NCSA_May2023.ipynb', 61, "qc")
         ]
     )
     def test_end_to_end_checkout(
@@ -430,7 +432,8 @@ class TestKishuCommand:
                 notebook_session.run_code(contents[i])
 
             # Get the variable value before checkout.
-            _, var_value_before = notebook_session.run_code(var_to_compare)
+            # The variable is printed so custom objects with no equality defined can be compared.
+            var_value_before, _ = notebook_session.run_code(f"print({var_to_compare})")
 
             # Run the rest of the notebook cells.
             for i in range(cell_num_to_restore, len(contents)):
@@ -452,7 +455,7 @@ class TestKishuCommand:
             KishuCommand.checkout(notebook_path, commit_id)
 
             # Get the variable value after checkout.
-            _, var_value_after = notebook_session.run_code(var_to_compare)
+            var_value_after, _ = notebook_session.run_code(f"print({var_to_compare})")
             assert var_value_before == var_value_after
 
     def test_track_executed_cells_with_checkout(
