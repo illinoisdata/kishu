@@ -40,8 +40,10 @@ Reference
 """
 from __future__ import annotations
 
+import contextlib
 import dill as pickle
 import IPython
+import io
 import ipylab
 import json
 import jupyter_client
@@ -168,14 +170,24 @@ class JupyterConnection:
 
         return self
 
-    def execute(self, command: str, pre_command: str = "") -> Dict[str, Any]:
+    def execute(self, command: str, pre_command: str = "") -> Tuple[Dict[str, Any], str, str]:
         if self.km is None:
             raise NoChannelError()
-        return self.km.execute_interactive(
-            pre_command,  # Not capture output.
-            user_expressions={"command_result": command},  # To get output from command.
-            silent=True,  # Do not increment cell count and trigger pre/post_run_cell hooks.
-        )
+        with contextlib.redirect_stdout(io.StringIO()) as stdout_f, \
+             contextlib.redirect_stderr(io.StringIO()) as stderr_f:
+            reply = self.km.execute_interactive(
+                pre_command,  # Not capture output.
+                user_expressions={"command_result": command},  # To get output from command.
+                silent=True,  # Do not increment cell count and trigger pre/post_run_cell hooks.
+            )
+            stdout = stdout_f.getvalue()
+            stderr = stderr_f.getvalue()
+        # print("**************************")
+        # print(f"stdout>\n{stdout}")
+        # print("**************************")
+        # print(f"stderr>\n{stderr}")
+        # print("**************************")
+        return reply, stdout, stderr
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         if self.km is not None:
@@ -185,7 +197,7 @@ class JupyterConnection:
     def execute_one_command(self, command: str, pre_command: str = "") -> JupyterCommandResult:
         try:
             with self as conn:
-                reply = conn.execute(command, pre_command=pre_command)
+                reply, _, _ = conn.execute(command, pre_command=pre_command)
         except JupyterConnectionError as e:
             return JupyterCommandResult(
                 status="error",
