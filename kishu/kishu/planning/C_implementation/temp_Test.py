@@ -11,8 +11,6 @@ a = plt.plot(df['a'], df['b'])
 
 # x = lambda a : a + 10
 
-
-
 # os.kill(PID, signal.SIGUSR1)
 hw1 = VisitorModule.get_object_hash_wrapper(a)
 hw2 = VisitorModule.get_object_hash_wrapper(a)

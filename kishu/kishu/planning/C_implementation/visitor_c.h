@@ -25,6 +25,7 @@ typedef union {
 
 typedef struct Visited {
     PyObject *pyObject;
+    // PyObject *id;
     struct Visited *next;
     // maybe have a pointer here to the VisitorReturnType as well
 } Visited;
@@ -33,19 +34,20 @@ typedef struct Visited {
 
 typedef struct Visitor {
     VisitorReturnType* (*has_visited)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
-    VisitorReturnType* (*handle_visited)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
-    VisitorReturnType* (*visit_primitive)(PyObject *obj, VisitorReturnType* state);
-    VisitorReturnType* (*visit_tuple)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state);
-    VisitorReturnType* (*visit_list)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state);
-    VisitorReturnType* (*visit_set)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state);
-    VisitorReturnType* (*visit_dict)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state);
-    VisitorReturnType* (*visit_byte)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state);
-    VisitorReturnType* (*visit_type)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state);
-    VisitorReturnType* (*visit_callable)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state);
-    VisitorReturnType* (*visit_custom_obj)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state);
+    VisitorReturnType* (*handle_visited)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_primitive)(PyObject *obj, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_tuple)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_list)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_set)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_dict)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_byte)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_type)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_callable)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_custom_obj)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
     VisitorReturnType* (*visit_other)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state);
-    void (*update_state_id)(PyObject *obj, VisitorReturnType* state);
+    void (*update_state_id)(PyObject *obj, VisitorReturnType* state, PyObject* list_included);
     Visited* visited;
+    PyObject* list_included; // for debugging purposes
     VisitorReturnType* state;
 } Visitor;
 
@@ -54,9 +56,12 @@ typedef struct Visitor {
 VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include_id, VisitorReturnType* state);
 VisitorReturnType* get_object_hash(PyObject *obj);
 
+Visitor* get_hash_visitor();
+
 int is_primitive(PyObject *obj);
 int is_picklable(PyObject *obj);
 int is_pandas_RangeIndex_instance(PyObject *obj);
+int is_plt_Callback_instance(PyObject *obj);
 int is_pickable_using_Python(PyObject *obj);
 
 PyMODINIT_FUNC PyInit_VisitorModule(void);

@@ -22,17 +22,22 @@ VisitorReturnType* get_object_hash(PyObject *obj) {
     return get_object_state(obj, hash_visitor, 1, hash_visitor -> state);
 }
 
+Visitor* get_hash_visitor() {
+    Visitor* hash_visitor = create_hash_visitor();
+    return hash_visitor;
+}
+
 VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include_id, VisitorReturnType* state) {
     VisitorReturnType* ret_state;
     if (NULL != (ret_state = (visitor -> has_visited(obj, visitor -> visited, include_id, state))))
-        return visitor -> handle_visited(obj, visitor -> visited, include_id, state);
+        return visitor -> handle_visited(obj, visitor -> visited, include_id, state, visitor -> list_included);
     else {
         /* Not been visited yet */
         if (is_primitive(obj))
-            return visitor -> visit_primitive(obj, state);
+            return visitor -> visit_primitive(obj, state, visitor -> list_included);
         else if (PyTuple_Check(obj)) {
             /* Tuple */
-            visitor -> visit_tuple(obj, &(visitor -> visited), include_id, state);
+            visitor -> visit_tuple(obj, &(visitor -> visited), include_id, state, visitor -> list_included);
             Py_ssize_t size = PyTuple_Size(obj);
             for (Py_ssize_t i = 0; i < size; i++) {
                 PyObject *item = PyTuple_GetItem(obj, i);
@@ -45,7 +50,7 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include
         }
         else if (PyList_Check(obj)) {
             /* List */
-            visitor -> visit_list(obj, &(visitor -> visited), include_id, state);
+            visitor -> visit_list(obj, &(visitor -> visited), include_id, state, visitor -> list_included);
             Py_ssize_t size = PyList_Size(obj);
             for (Py_ssize_t i = 0; i < size; i++) {
                 PyObject *item = PyList_GetItem(obj, i);
@@ -58,7 +63,7 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include
         }
         else if (PyAnySet_Check(obj)) {
             /* Set */
-            visitor -> visit_set(obj, &(visitor -> visited), include_id, state);
+            visitor -> visit_set(obj, &(visitor -> visited), include_id, state, visitor -> list_included);
             PyObject *iter = PyObject_GetIter(obj);
             PyObject *item;
             while ((item = PyIter_Next(iter))) {
@@ -71,7 +76,7 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include
         }
         else if (PyDict_Check(obj)) {
             /* Dictionary */
-            visitor -> visit_dict(obj, &(visitor -> visited), include_id, state);
+            visitor -> visit_dict(obj, &(visitor -> visited), include_id, state, visitor -> list_included);
             PyObject *keys = PyDict_Keys(obj);
             PyObject *values = PyDict_Values(obj);
             Py_ssize_t size = PyList_Size(keys);
@@ -94,19 +99,19 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include
         }
         else if (PyBytes_Check(obj) || PyByteArray_Check(obj)) {
             /* Byte or Bytearray */
-            return visitor -> visit_byte(obj, &(visitor -> visited), include_id, state);
+            return visitor -> visit_byte(obj, &(visitor -> visited), include_id, state, visitor -> list_included);
         }
         else if(PyType_Check(obj)) {
             /* type */
-            return visitor -> visit_type(obj, &(visitor -> visited), include_id, state);
+            return visitor -> visit_type(obj, &(visitor -> visited), include_id, state, visitor -> list_included);
         }
         else if (PyCallable_Check(obj)) {
             /* Callable object */
-            return visitor -> visit_callable(obj, &(visitor -> visited), include_id, state);
+            return visitor -> visit_callable(obj, &(visitor -> visited), include_id, state, visitor -> list_included);
         }
         else if (PyObject_HasAttrString(obj, "__reduce_ex__")) {
             /* Custom object */
-            visitor -> visit_custom_obj(obj, &(visitor -> visited), include_id, state);
+            visitor -> visit_custom_obj(obj, &(visitor -> visited), include_id, state, visitor -> list_included);
             int picklable = is_picklable(obj);
             if (picklable == -1)
                 return NULL;
@@ -131,10 +136,17 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include
                     return NULL;
 
                 if (!range_index_instance)
-                    visitor -> update_state_id(obj, state);
+                    visitor -> update_state_id(obj, state, visitor -> list_included);
                 
                 if (PyUnicode_Check(reduced))
-                    return visitor -> visit_primitive(reduced, state);
+                    return visitor -> visit_primitive(reduced, state, visitor -> list_included);
+
+                int plt_callback_instance = is_plt_Callback_instance(obj);
+                if (plt_callback_instance == -1)
+                    return NULL;
+                
+                if (plt_callback_instance) 
+                    return state;
 
                 Py_ssize_t size = PyTuple_Size(reduced);
                 for (Py_ssize_t i = 1; i < size; i++) {
@@ -249,8 +261,36 @@ int is_picklable(PyObject *obj) {
 //     return temp_obj;
 // }
 
+int is_plt_Callback_instance(PyObject *obj) {
+    static PyObject *CallbackRegistry = NULL;
+
+    if (CallbackRegistry == NULL) {
+        PyObject *plt_module = PyImport_ImportModule("matplotlib.cbook");
+        if (!plt_module) {
+            // Handle error
+            PyErr_Print();
+            return -1;
+        }
+
+        CallbackRegistry = PyObject_GetAttrString(plt_module, "CallbackRegistry");
+        Py_DECREF(plt_module);
+        if (!CallbackRegistry) {
+            // Handle error
+            PyErr_Print();
+            return -1;
+        }    
+    }
+
+    if (PyObject_IsInstance(obj, CallbackRegistry))
+        return 1;
+    else
+        return 0;
+}
+
 int is_pandas_RangeIndex_instance(PyObject *obj) {
     static PyObject *RangeIndex = NULL;
+
+
 
     if (RangeIndex == NULL) {
         // Import the pandas.core.indexes.range module and get RangeIndex
@@ -314,11 +354,39 @@ static PyObject *get_digest_hash_wrapper(PyObject *self, PyObject *args) {
     return PyLong_FromUnsignedLong(digest_hash);
 }
 
+static PyObject *get_visited_objs_wrapper(PyObject *self, PyObject *args) {
+    // Parse arguments from Python to C
+    PyObject *obj;
+    if (!PyArg_ParseTuple(args, "O", &obj)) {
+        return NULL;
+    }
+
+    // Calling get_object_hash
+    Visitor* hash_visitor = get_hash_visitor();
+    VisitorReturnType* result = get_object_state(obj, hash_visitor, 1, hash_visitor -> state);
+
+    // // Get visited list
+    // PyObject* list_visited = PyList_New(0);
+    // Visited* current = hash_visitor -> visited;;
+
+    // while (current) {
+    //     PyList_Append(list_visited, current -> id);
+    //     current = current -> next;
+    // }
+
+    // return list_visited;
+
+    return hash_visitor -> list_included;
+}
+
+
 static PyMethodDef VisitorMethods[] = {
     {"get_object_hash_wrapper", get_object_hash_wrapper, METH_VARARGS,
      "Python interface for the get_object_hash C library function."},
     {"get_digest_hash_wrapper", get_digest_hash_wrapper, METH_VARARGS,
      "Python interface for the get_digest_hash_wrapper C library function."},
+    {"get_visited_objs_wrapper", get_visited_objs_wrapper, METH_VARARGS,
+     "Python interface for the visited objs."},     
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef VisitorModule = {
