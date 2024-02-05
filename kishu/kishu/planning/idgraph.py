@@ -13,9 +13,9 @@ class GraphNode:
         self.check_value_only = check_value_only
         self.obj_type = obj_type
 
-    def convert_to_list(self):
+    def convert_to_list(self, check_value_only=False):
         ls = []
-        GraphNode._convert_idgraph_to_list(self, ls, set())
+        GraphNode._convert_idgraph_to_list(self, ls, set(), check_value_only)
         return ls
 
     def id_set(self):
@@ -36,13 +36,22 @@ class GraphNode:
         return self.id_obj == other.id_obj and self.obj_type == other.obj_type
 
     def __eq__(self, other):
-        return GraphNode._compare_idgraph(self, other)
+        return GraphNode._compare_idgraph(self, other, check_value_only=False)
+
+    def compare_by_value_only(self, other):
+        """
+            Compare only the object values (not memory addresses) of 2 ID graphs.
+            Notably, this identifies two value-wise equal object stored in different memory locations
+            as equal.
+            Used by frontend to display variable diffs.
+        """
+        return GraphNode._compare_idgraph(self, other, check_value_only=True)
 
     @staticmethod
-    def _convert_idgraph_to_list(node: GraphNode, ret_list, visited: set):
+    def _convert_idgraph_to_list(node: GraphNode, ret_list, visited: set, check_value_only=False):
         # pre oder
 
-        if not node.check_value_only:
+        if not node.check_value_only and not check_value_only:
             ret_list.append(node.id_obj)
 
         ret_list.append(node.obj_type)
@@ -55,14 +64,14 @@ class GraphNode:
 
         for child in node.children:
             if isinstance(child, GraphNode):
-                GraphNode._convert_idgraph_to_list(child, ret_list, visited)
+                GraphNode._convert_idgraph_to_list(child, ret_list, visited, check_value_only)
             else:
                 ret_list.append(child)
 
     @staticmethod
-    def _compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode) -> bool:
-        ls1 = idGraph1.convert_to_list()
-        ls2 = idGraph2.convert_to_list()
+    def _compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode, check_value_only=False) -> bool:
+        ls1 = idGraph1.convert_to_list(check_value_only)
+        ls2 = idGraph2.convert_to_list(check_value_only)
 
         if len(ls1) != len(ls2):
             # print("Diff lengths of idgraph")

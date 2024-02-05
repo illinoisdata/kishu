@@ -1,5 +1,4 @@
 import pickle
-import pytest
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,6 +6,38 @@ import pandas as pd
 import seaborn as sns
 
 from kishu.planning.idgraph import get_object_hash, get_object_state
+
+
+def test_idgraph_simple_list_compare_by_value():
+    """
+        Test if the idgraph comparisons work. Comparing by value only will identify 'a' as equal
+        before and after reassigning, while comparing by structure will report a difference.
+    """
+    a = [1, 2]
+    idgraph1 = get_object_state(a, {})
+
+    # reference swap
+    a = [1, 2]
+    idgraph2 = get_object_state(a, {})
+
+    assert idgraph1 != idgraph2
+    assert idgraph1.compare_by_value_only(idgraph2)
+
+
+def test_idgraph_dict_compare_by_value():
+    """
+        Test if the idgraph comparisons work. Comparing by value only will identify 'a' as equal
+        before and after reassigning, while comparing by structure will report a difference.
+    """
+    a = {"foo": {"bar": "baz"}}
+    idgraph1 = get_object_state(a, {})
+
+    # reference swap
+    a["foo"] = {"bar": "baz"}
+    idgraph2 = get_object_state(a, {})
+
+    assert idgraph1 != idgraph2
+    assert idgraph1.compare_by_value_only(idgraph2)
 
 
 def test_idgraph_numpy():
@@ -62,10 +93,11 @@ def test_hash_numpy():
     assert hash1.digest() == hash4.digest()
 
 
-@pytest.mark.skip(reason="Flaky")
 def test_idgraph_pandas_Series():
     """
-        Test if idgraph is accurately generated for panda series
+        Test if idgraph is accurately generated for panda series.
+        This test compares by value only as some objects in series are dynamically generated,
+        i.e., there will be false positives if comparing via memory address.
     """
     s1 = pd.Series([1, 2, 3, 4])
 
@@ -76,21 +108,21 @@ def test_idgraph_pandas_Series():
     assert idgraph1.id_obj == id(s1)
 
     # Assert that the id graph does not change when the object remains unchanged
-    assert idgraph1 == idgraph2
+    assert idgraph1.compare_by_value_only(idgraph2)
 
     s1[2] = 0
 
     idgraph3 = get_object_state(s1, {})
 
     # Assert that the id graph changes when the object changes
-    assert idgraph1 != idgraph3
+    assert not idgraph1.compare_by_value_only(idgraph3)
 
     s1[2] = 3
 
     idgraph4 = get_object_state(s1, {})
 
     # Assert that the original id graph is restored when the original object state is restored
-    assert idgraph1 == idgraph4
+    assert idgraph1.compare_by_value_only(idgraph4)
 
 
 def test_hash_pandas_Series():
