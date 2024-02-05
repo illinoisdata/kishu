@@ -56,6 +56,28 @@ kishu commit {{notebook name}} [-m {{message}}]
 
 `kishu/tests/notebooks` contains simple data science notebooks for trying Kishu on.
 
+## Supported Libraries
+
+- qiskit 0.45.0
+- scikit-learn 1.1.3
+- numpy 1.24.4
+- scipy 1.3.2
+- pandas 1.4.1
+- matplotlib 3.7.3
+- textblob 0.17.1
+- nltk 3.8.1
+- tqdm 4.66.1
+- Seaborn 0.13.0
+
+**To be added in the future**:
+- Polars
+- PyTorch
+- Tensorflow
+- Arrow
+- Dask
+- LigthGBM
+
+
 ## Learn More
 
 Kishu's efficiency is enabled by its low-overhead session state monitoring, deduplicated variable storage, and optimized recomputation-assisted checkout. Our papers on Kishu can be found here; don't forget to star our repository and cite our papers if you like our work!
