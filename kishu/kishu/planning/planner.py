@@ -8,7 +8,7 @@ from typing import Dict, Optional, Set, Tuple
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG
 from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
-from kishu.planning.idgraph import GraphNode, get_object_state
+from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import RestorePlan, CheckpointPlan
 from kishu.planning.profiler import profile_variable_size
@@ -96,7 +96,7 @@ class CheckpointRestorePlanner:
             new_idgraph = get_object_state(self._user_ns[k], {})
 
             # Identify objects which have changed by value. For displaying in front end.
-            if not self._id_graph_map[k].compare_by_value_only(new_idgraph):
+            if not value_equals(self._id_graph_map[k], new_idgraph):
                 modified_vars_value.add(k)
 
             if not self._id_graph_map[k] == new_idgraph:
