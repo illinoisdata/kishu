@@ -88,14 +88,40 @@ def test_post_run_cell_update_return():
     user_ns["x"] = 1
     changed_vars = planner.post_run_cell_update("x = 1", 1.0)
 
-    assert changed_vars == ChangedVariables(created_vars={"x"}, modified_vars=set(), deleted_vars=set())
+    assert changed_vars == ChangedVariables(
+        created_vars={"x"},
+        modified_vars_value=set(),
+        modified_vars_structure=set(),
+        deleted_vars=set()
+    )
 
     # Pre run cell 2
     planner.pre_run_cell_update()
 
     # Post run cell 2
+    user_ns["z"] = [1, 2]
     user_ns["y"] = 2
     user_ns["x"] = 5
-    changed_vars = planner.post_run_cell_update("y = x + 1\nx = 5", 1.0)
+    changed_vars = planner.post_run_cell_update("z = [1, 2]\ny = x + 1\nx = 5", 1.0)
 
-    assert changed_vars == ChangedVariables(created_vars={"y"}, modified_vars={"x"}, deleted_vars=set())
+    assert changed_vars == ChangedVariables(
+        created_vars={"y", "z"},
+        modified_vars_value={"x"},
+        modified_vars_structure={"x"},
+        deleted_vars=set()
+    )
+
+    # Pre run cell 3
+    planner.pre_run_cell_update()
+
+    # Post run cell 3
+    user_ns["z"] = [1, 2]
+    del user_ns["x"]
+    changed_vars = planner.post_run_cell_update("z = [1, 2]\ndel x", 1.0)
+
+    assert changed_vars == ChangedVariables(
+        created_vars=set(),
+        modified_vars_value=set(),
+        modified_vars_structure={"z"},
+        deleted_vars={"x"},
+    )

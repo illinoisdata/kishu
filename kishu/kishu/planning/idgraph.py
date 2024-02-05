@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, List, Optional
+
 import pandas
 import pickle
 import xxhash
@@ -7,15 +9,14 @@ import xxhash
 
 class GraphNode:
 
-    def __init__(self, obj_type=type(None), id_obj=0, check_value_only=False):
+    def __init__(self, obj_type=type(None), id_obj: Optional[int] = None):
         self.id_obj = id_obj
-        self.children = []
-        self.check_value_only = check_value_only
+        self.children: List[Any] = []
         self.obj_type = obj_type
 
-    def convert_to_list(self):
+    def convert_to_list(self, check_id_obj=True):
         ls = []
-        GraphNode._convert_idgraph_to_list(self, ls, set())
+        GraphNode._convert_idgraph_to_list(self, ls, set(), check_id_obj)
         return ls
 
     def id_set(self):
@@ -36,13 +37,13 @@ class GraphNode:
         return self.id_obj == other.id_obj and self.obj_type == other.obj_type
 
     def __eq__(self, other):
-        return GraphNode._compare_idgraph(self, other)
+        return GraphNode._compare_idgraph(self, other, check_id_obj=True)
 
     @staticmethod
-    def _convert_idgraph_to_list(node: GraphNode, ret_list, visited: set):
+    def _convert_idgraph_to_list(node: GraphNode, ret_list, visited: set, check_id_obj=True):
         # pre oder
 
-        if not node.check_value_only:
+        if node.id_obj and check_id_obj:
             ret_list.append(node.id_obj)
 
         ret_list.append(node.obj_type)
@@ -55,14 +56,14 @@ class GraphNode:
 
         for child in node.children:
             if isinstance(child, GraphNode):
-                GraphNode._convert_idgraph_to_list(child, ret_list, visited)
+                GraphNode._convert_idgraph_to_list(child, ret_list, visited, check_id_obj)
             else:
                 ret_list.append(child)
 
     @staticmethod
-    def _compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode) -> bool:
-        ls1 = idGraph1.convert_to_list()
-        ls2 = idGraph2.convert_to_list()
+    def _compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode, check_id_obj=True) -> bool:
+        ls1 = idGraph1.convert_to_list(check_id_obj)
+        ls2 = idGraph2.convert_to_list(check_id_obj)
 
         if len(ls1) != len(ls2):
             # print("Diff lengths of idgraph")
@@ -92,19 +93,29 @@ def is_pickable(obj):
         return False
 
 
+def value_equals(idGraph1: GraphNode, idGraph2: GraphNode):
+    """
+        Compare only the object values (not memory addresses) of 2 ID graphs.
+        Notably, this identifies two value-wise equal object stored in different memory locations
+        as equal.
+        Used by frontend to display variable diffs.
+    """
+    return GraphNode._compare_idgraph(idGraph1, idGraph2, check_id_obj=False)
+
+
 def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
     if id(obj) in visited.keys():
         return visited[id(obj)]
 
     if isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
-        node = GraphNode(obj_type=type(obj), check_value_only=True)
+        node = GraphNode(obj_type=type(obj))
         node.children.append(obj)
         node.children.append("/EOC")
         return node
 
     elif isinstance(obj, tuple):
-        node = GraphNode(obj_type=type(obj), check_value_only=True)
+        node = GraphNode(obj_type=type(obj))
         for item in obj:
             child = get_object_state(item, visited, include_id)
             node.children.append(child)
@@ -113,11 +124,10 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif isinstance(obj, list):
-        node = GraphNode(obj_type=type(obj), check_value_only=True)
+        node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if include_id:
             node.id_obj = id(obj)
-            node.check_value_only = False
 
         for item in obj:
             child = get_object_state(item, visited, include_id)
@@ -127,12 +137,10 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif isinstance(obj, set):
-        node = GraphNode(obj_type=type(obj), id_obj=id(obj),
-                         check_value_only=True)
+        node = GraphNode(obj_type=type(obj), id_obj=id(obj))
         visited[id(obj)] = node
         if include_id:
             node.id_obj = id(obj)
-            node.check_value_only = False
         for item in obj:
             child = get_object_state(item, visited, include_id)
             node.children.append(child)
@@ -141,11 +149,10 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif isinstance(obj, dict):
-        node = GraphNode(obj_type=type(obj), check_value_only=True)
+        node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if include_id:
             node.id_obj = id(obj)
-            node.check_value_only = False
 
         for key, value in obj.items():
             child = get_object_state(key, visited, include_id)
@@ -157,38 +164,36 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     elif isinstance(obj, (bytes, bytearray)):
-        node = GraphNode(obj_type=type(obj), check_value_only=True)
+        node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         node.children.append(obj)
         node.children.append("/EOC")
         return node
 
     elif isinstance(obj, type):
-        node = GraphNode(obj_type=type(obj), check_value_only=True)
+        node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         node.children.append(str(obj))
         node.children.append("/EOC")
         return node
 
     elif callable(obj):
-        node = GraphNode(obj_type=type(obj), check_value_only=True)
+        node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if include_id:
             node.id_obj = id(obj)
-            node.check_value_only = False
         # This will break if obj is not pickleable. Commenting out for now.
         # node.children.append(pickle.dumps(obj))
         node.children.append("/EOC")
         return node
 
     elif hasattr(obj, '__reduce_ex__'):
-        node = GraphNode(obj_type=type(obj), check_value_only=True)
+        node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if is_pickable(obj):
             reduced = obj.__reduce_ex__(4)
             if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
                 node.id_obj = id(obj)
-                node.check_value_only = False
 
             if isinstance(reduced, str):
                 node.children.append(reduced)
@@ -246,11 +251,10 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         return node
 
     else:
-        node = GraphNode(obj_type=type(obj), check_value_only=True)
+        node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if include_id:
             node.id_obj = id(obj)
-            node.check_value_only = False
         node.children.append(pickle.dumps(obj))
         node.children.append("/EOC")
         return node

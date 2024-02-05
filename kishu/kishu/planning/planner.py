@@ -8,7 +8,7 @@ from typing import Dict, Optional, Set, Tuple
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG
 from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
-from kishu.planning.idgraph import GraphNode, get_object_state
+from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import RestorePlan, CheckpointPlan
 from kishu.planning.profiler import profile_variable_size
@@ -20,11 +20,17 @@ REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
 @dataclass
 class ChangedVariables:
     created_vars: Set[str]
-    modified_vars: Set[str]
+
+    # Modified vars by value equality , i.e., a == b.
+    modified_vars_value: Set[str]
+
+    # modified vars by memory structure (i.e., reference swaps). Is a superset of modified_vars_value.
+    modified_vars_structure: Set[str]
+
     deleted_vars: Set[str]
 
     def added(self):
-        return self.created_vars | self.modified_vars
+        return self.created_vars | self.modified_vars_value
 
     def deleted(self):
         return self.deleted_vars
@@ -49,7 +55,7 @@ class CheckpointRestorePlanner:
         self._always_migrate = False
 
         # Used by instrumentation to compute whether data has changed.
-        self._modified_vars: Set[str] = set()
+        self._modified_vars_structure: Set[str] = set()
 
     @staticmethod
     def from_existing(user_ns: Namespace) -> CheckpointRestorePlanner:
@@ -84,27 +90,33 @@ class CheckpointRestorePlanner:
                                                                    self._user_ns.keyset())
 
         # Find modified variables.
-        modified_vars = set()
+        modified_vars_structure = set()
+        modified_vars_value = set()
         for k in filter(self._user_ns.__contains__, self._id_graph_map.keys()):
             new_idgraph = get_object_state(self._user_ns[k], {})
+
+            # Identify objects which have changed by value. For displaying in front end.
+            if not value_equals(self._id_graph_map[k], new_idgraph):
+                modified_vars_value.add(k)
+
             if not self._id_graph_map[k] == new_idgraph:
                 # Non-overwrite modification requires also accessing the variable.
                 if self._id_graph_map[k].is_root_id_and_type_equals(new_idgraph):
                     accessed_vars.add(k)
                 self._id_graph_map[k] = new_idgraph
-                modified_vars.add(k)
+                modified_vars_structure.add(k)
 
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
 
         self._ahg.update_graph(code_block, runtime_s, accessed_vars,
-                               created_vars.union(modified_vars), deleted_vars)
+                               created_vars.union(modified_vars_structure), deleted_vars)
 
         # Update ID graphs for newly created variables.
         for var in created_vars:
             self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-        return ChangedVariables(created_vars, modified_vars, deleted_vars)
+        return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
 
     def generate_checkpoint_restore_plans(self, database_path: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
 
