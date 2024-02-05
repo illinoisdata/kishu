@@ -1,5 +1,5 @@
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.planner import CheckpointRestorePlanner
+from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
 
 
 def test_checkpoint_restore_planner():
@@ -35,10 +35,11 @@ def test_checkpoint_restore_planner():
     # Assert ID graphs are creaated.
     assert len(planner.get_id_graph_map().keys()) == 2
 
-    # Create a checkpoint plan.
-    restore_plan = planner.generate_restore_plan()
+    # Create checkpoint and restore plans.
+    checkpoint_plan, restore_plan = planner.generate_checkpoint_restore_plans("fake_path", "fake_commit_id")
 
-    # Assert that the restore plan has two actions in it.
+    # Assert the plans have appropriate actions.
+    assert len(checkpoint_plan.actions) == 1
     assert len(restore_plan.actions) == 2
 
 
@@ -74,3 +75,27 @@ def test_checkpoint_restore_planner_with_existing_items():
     assert len(variable_snapshots["x"]) == 3
     assert len(variable_snapshots["y"]) == 2
     assert len(cell_executions) == 3
+
+
+def test_post_run_cell_update_return():
+    user_ns = Namespace({})
+    planner = CheckpointRestorePlanner(user_ns)
+
+    # Pre run cell 1
+    planner.pre_run_cell_update()
+
+    # Post run cell 1
+    user_ns["x"] = 1
+    changed_vars = planner.post_run_cell_update("x = 1", 1.0)
+
+    assert changed_vars == ChangedVariables(created_vars={"x"}, modified_vars=set(), deleted_vars=set())
+
+    # Pre run cell 2
+    planner.pre_run_cell_update()
+
+    # Post run cell 2
+    user_ns["y"] = 2
+    user_ns["x"] = 5
+    changed_vars = planner.post_run_cell_update("y = x + 1\nx = 5", 1.0)
+
+    assert changed_vars == ChangedVariables(created_vars={"y"}, modified_vars={"x"}, deleted_vars=set())

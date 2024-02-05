@@ -1,0 +1,56 @@
+:root {
+    --COMMIT-HEIGHT: 68px;
+    --DATE-HEADER-HEIGHT: 30px;
+}
+
+
+.commitInfo {
+    height: var(--COMMIT-HEIGHT);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+    z-index: 99;
+}
+
+.branch_name {
+    color: #1e1f22;
+    background-color: #d0d7de;
+    margin: 0px 0px 0px 10px;
+    padding: 0px 3px 0px 3px
+}
+
+
+.tag_name {
+    color: #1e1f22;
+    /*margin: 1000px 8px 0px 0px;*/
+    background-color: rgb(253, 199, 51);
+    margin: 0px 0px 0px 10px;
+    padding: 0px 3px 0px 3px
+}
+
+.empty-line {
+    height: 1em; /* Adjust the height as needed */
+}
+
+.tags_container {
+    white-space: nowrap; /* Prevent content from wrapping */
+    display: inline-block; /* Keep the content inline */
+}
+
+.new_date{
+    position:absolute;
+    width:100%;
+    height: var(--DATE-HEADER-HEIGHT);
+    z-index: 999;
+    background-color: rgb(195, 200, 205);
+    border-bottom-color: #dedede;
+    border-width: 2px;
+    border-bottom-style:solid;
+    display: flex;
+    justify-content: space-between;
+}
+
+.empty_info{
+    height: var(--DATE-HEADER-HEIGHT);
+}

@@ -1,17 +1,33 @@
 from __future__ import annotations
 
-import numpy as np
+from dataclasses import dataclass
 
 from collections import defaultdict
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG
 from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
-from kishu.planning.idgraph import GraphNode, compare_idgraph, get_object_state
+from kishu.planning.idgraph import GraphNode, get_object_state
 from kishu.planning.optimizer import Optimizer
-from kishu.planning.plan import RestorePlan
+from kishu.planning.plan import RestorePlan, CheckpointPlan
 from kishu.planning.profiler import profile_variable_size
+
+
+REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
+
+
+@dataclass
+class ChangedVariables:
+    created_vars: Set[str]
+    modified_vars: Set[str]
+    deleted_vars: Set[str]
+
+    def added(self):
+        return self.created_vars | self.modified_vars
+
+    def deleted(self):
+        return self.deleted_vars
 
 
 class CheckpointRestorePlanner:
@@ -27,6 +43,13 @@ class CheckpointRestorePlanner:
         self._user_ns = user_ns
         self._id_graph_map: Dict[str, GraphNode] = {}
         self._pre_run_cell_vars: Set[str] = set()
+
+        # C/R plan configs.
+        self._always_recompute = False
+        self._always_migrate = False
+
+        # Used by instrumentation to compute whether data has changed.
+        self._modified_vars: Set[str] = set()
 
     @staticmethod
     def from_existing(user_ns: Namespace) -> CheckpointRestorePlanner:
@@ -44,7 +67,7 @@ class CheckpointRestorePlanner:
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def post_run_cell_update(self, code_block: Optional[str], runtime_s: Optional[float]) -> None:
+    def post_run_cell_update(self, code_block: Optional[str], runtime_s: Optional[float]) -> ChangedVariables:
         """
             Post-processing steps performed after cell execution.
             @param code_block: code of executed cell.
@@ -62,9 +85,12 @@ class CheckpointRestorePlanner:
 
         # Find modified variables.
         modified_vars = set()
-        for k in self._id_graph_map.keys():
+        for k in filter(self._user_ns.__contains__, self._id_graph_map.keys()):
             new_idgraph = get_object_state(self._user_ns[k], {})
-            if not compare_idgraph(self._id_graph_map[k], new_idgraph):
+            if not self._id_graph_map[k] == new_idgraph:
+                # Non-overwrite modification requires also accessing the variable.
+                if self._id_graph_map[k].is_root_id_and_type_equals(new_idgraph):
+                    accessed_vars.add(k)
                 self._id_graph_map[k] = new_idgraph
                 modified_vars.add(k)
 
@@ -78,20 +104,36 @@ class CheckpointRestorePlanner:
         for var in created_vars:
             self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def generate_restore_plan(self) -> RestorePlan:
+        return ChangedVariables(created_vars, modified_vars, deleted_vars)
+
+    def generate_checkpoint_restore_plans(self, database_path: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
+
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = []
-        for vs_list in self._ahg.get_variable_snapshots().values():
-            if not vs_list[-1].deleted:
-                active_vss.append(vs_list[-1])
+        for *_, latest_vs in self._ahg.get_variable_snapshots().values():
+            if not latest_vs.deleted:
+                """If manual commit made before init, pre-run cell update doesn't happen for new variables
+                so we need to add them to self._id_graph_map"""
+                if latest_vs.name not in self._id_graph_map:
+                    self._id_graph_map[latest_vs.name] = get_object_state(self._user_ns[latest_vs.name], {})
+                active_vss.append(latest_vs)
 
         # Profile the size of each variable defined in the current session.
         for active_vs in active_vss:
             active_vs.size = profile_variable_size(self._user_ns[active_vs.name])
 
-        # Initialize the optimizer. Migration speed is currently set to large value to prompt optimizer to store everything.
-        # TODO: add overlap detection in the future.
-        optimizer = Optimizer(self._ahg, active_vss, [], np.inf)
+        # Find pairs of linked variables.
+        linked_vs_pairs = []
+        for active_vs1 in active_vss:
+            for active_vs2 in active_vss:
+                if self._id_graph_map[active_vs1.name].is_overlap(self._id_graph_map[active_vs2.name]):
+                    linked_vs_pairs.append((active_vs1, active_vs2))
+
+        # Initialize optimizer.
+        # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
+        # Currently, a variable is recomputed only if it is unserialzable.
+        # TODO: add config file for specifying migration speed
+        optimizer = Optimizer(self._ahg, active_vss, linked_vs_pairs, REALLY_FAST_BANDWIDTH_10GBPS)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
@@ -101,7 +143,15 @@ class CheckpointRestorePlanner:
         for vs_name in vss_to_migrate:
             ce_to_vs_map[self._ahg.get_variable_snapshots()[vs_name][-1].output_ce.cell_num].append(vs_name)
 
+        # Create checkpoint plan using optimization results.
+        checkpoint_plan = CheckpointPlan.create(self._user_ns, database_path, commit_id, list(vss_to_migrate))
+
         # Create restore plan using optimization results.
+        restore_plan = self._generate_restore_plan(ces_to_recompute, ce_to_vs_map)
+
+        return checkpoint_plan, restore_plan
+
+    def _generate_restore_plan(self, ces_to_recompute, ce_to_vs_map) -> RestorePlan:
         restore_plan = RestorePlan()
         for ce in self._ahg.get_cell_executions():
             if ce.cell_num in ces_to_recompute:
@@ -109,13 +159,9 @@ class CheckpointRestorePlanner:
             if len(ce_to_vs_map[ce.cell_num]) > 0:
                 restore_plan.add_load_variable_restore_action(
                         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]])
-
         return restore_plan
 
     def get_ahg(self) -> AHG:
-        """
-            For testing only.
-        """
         return self._ahg
 
     def get_id_graph_map(self) -> Dict[str, GraphNode]:

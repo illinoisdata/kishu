@@ -3,10 +3,18 @@ from __future__ import annotations
 import dill
 
 from dataclasses import dataclass, field
+from IPython.core.interactiveshell import InteractiveShell
 from typing import Any, Dict, List, Optional
 
 from kishu.jupyter.namespace import Namespace
 from kishu.storage.checkpoint import KishuCheckpoint
+
+
+@dataclass
+class RestoreActionContext:
+    shell: InteractiveShell
+    checkpoint_file: str
+    exec_id: str
 
 
 @dataclass
@@ -66,24 +74,8 @@ class SaveVariablesCheckpointAction(CheckpointAction):
 
 
 class CheckpointPlan:
-
-    def __init__(self) -> None:
-        self.actions: List[CheckpointAction] = []
-
-    def run(self, user_ns: Namespace) -> None:
-        for action in self.actions:
-            action.run(user_ns)
-
-    def restore_plan(self) -> RestorePlan:
-        raise NotImplementedError("Each inherited class must extend this method.")
-
-
-class StoreEverythingCheckpointPlan(CheckpointPlan):
     """
-    Checkpoint all the variables without any optimization.
-
-    A dumb approach to checkpointing. This is useful as a baseline approach. This class must
-    not be subclassed.
+    Checkpoint select variables to the database.
     """
     def __init__(self) -> None:
         """
@@ -91,6 +83,7 @@ class StoreEverythingCheckpointPlan(CheckpointPlan):
         """
         super().__init__()
         self.checkpoint_file: Optional[str] = None
+        self.actions: List[CheckpointAction] = []
 
     @classmethod
     def create(cls, user_ns: Namespace, checkpoint_file: str, exec_id: str,
@@ -132,18 +125,18 @@ class StoreEverythingCheckpointPlan(CheckpointPlan):
                 raise ValueError("Checkpointing a non-existenting var: {}".format(name))
         return var_names
 
-    def restore_plan(self) -> RestorePlan:
-        action = LoadVariableRestoreAction()
-        return RestorePlan([action])
+    def run(self, user_ns: Namespace) -> None:
+        for action in self.actions:
+            action.run(user_ns)
 
 
 class RestoreAction:
     """
     A base class for any action.
     """
-    def run(self, user_ns: Namespace, checkpoint_file: str, exec_id: str):
+    def run(self, ctx: RestoreActionContext):
         """
-        @param user_ns  A target space where restored variables will be set.
+        @param shell  A target space where restored variables will be set.
         """
         raise NotImplementedError("This base class must be extended.")
 
@@ -160,18 +153,18 @@ class LoadVariableRestoreAction(RestoreAction):
             raise ValueError("Unexpected type for var_names: {}".format(type(var_names)))
         self.variable_names: Optional[List[str]] = var_names
 
-    def run(self, user_ns: Namespace, database_path: str, exec_id: str):
+    def run(self, ctx: RestoreActionContext):
         """
         @param user_ns  A target space where restored variables will be set.
         """
-        data: bytes = KishuCheckpoint(database_path).get_checkpoint(exec_id)
+        data: bytes = KishuCheckpoint(ctx.checkpoint_file).get_checkpoint(ctx.exec_id)
         vars: VarNamesToObjects = VarNamesToObjects.loads(data)
         for key, obj in vars.items():
             # if self.variable_names is set, limit the restoration only to those variables.
             if self.variable_names is not None:
                 if key not in self.variable_names:
                     continue
-            user_ns[key] = obj
+            ctx.shell.user_ns[key] = obj
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(var_names={self.variable_names})"
@@ -192,15 +185,18 @@ class RerunCellRestoreAction(RestoreAction):
             raise ValueError("Unexpected type for cell_code: {}".format(type(cell_code)))
         self.cell_code: Optional[str] = cell_code
 
-    def run(self, user_ns: Namespace, checkpoint_file: str, exec_id: str):
+    def run(self, ctx: RestoreActionContext):
         """
         @param user_ns  A target space where restored variables will be set.
         """
-        # TODO: implement this when recomputation is required.
-        raise Exception("Restoration via cell rerunning is not supported yet.")
+        try:
+            ctx.shell.run_cell(self.cell_code)
+        except Exception:
+            # We don't want to raise exceptions during code rerunning as the code can contain errors.
+            pass
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(var_names={self.cell_code})"
+        return f"{self.__class__.__name__}(cell_code={self.cell_code})"
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -221,12 +217,15 @@ class RestorePlan:
     def add_load_variable_restore_action(self, variable_names: List[str]):
         self.actions.append(LoadVariableRestoreAction(variable_names))
 
-    def run(self, user_ns: Namespace, checkpoint_file: str, exec_id: str):
+    def run(self, checkpoint_file: str, exec_id: str) -> Namespace:
         """
         Performs a series of actions as specified in self.actions.
 
         @param user_ns  A target space where restored variables will be set.
         @param checkpoint_file  The file where information is stored.
         """
+        ctx = RestoreActionContext(InteractiveShell(), checkpoint_file, exec_id)
         for action in self.actions:
-            action.run(user_ns, checkpoint_file, exec_id)
+            action.run(ctx)
+
+        return Namespace(ctx.shell.user_ns)

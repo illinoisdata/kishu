@@ -1,0 +1,16 @@
+.u-fullWidthDiv {
+    width: 100%;
+}
+
+.u-central {
+    width: 100%;
+    background-color: #f0f0f0;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.u-same_row {
+    white-space: nowrap; /* Prevent content from wrapping */
+    display: inline-block; /* Keep the content inline */
+}

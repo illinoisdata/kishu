@@ -133,5 +133,5 @@ class JupyterRuntimeEnv:
         return [
             cell["source"]
             for cell in nb.get("cells", {})
-            if "source" in cell
+            if "source" in cell and cell["cell_type"] == "code"  # We don't need non-code cells in test cases
         ]

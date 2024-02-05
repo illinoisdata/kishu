@@ -31,6 +31,6 @@ def test_optimizer():
     opt = Optimizer(ahg, active_vss, [], migration_speed_bps=1)
 
     # Tests that the exact optimizer correctly escapes the local minimum by recomputing both x and y.
-    vss_to_migrate, ces_to_recompute = opt.compute_plan(only_migrate=False)
+    vss_to_migrate, ces_to_recompute = opt.compute_plan()
     assert vss_to_migrate == set()
     assert ces_to_recompute == {0, 1, 2}

@@ -1,0 +1,32 @@
+.title {
+    font-family: 'Arial', sans-serif; /* Arial font, or a similar sans-serif font */
+    color: #1e1f22; /* White text */
+    font-size: 72px; /* Large font size, adjust as necessary */
+    text-align: center;
+    padding-top: 30px;
+}
+
+.logo {
+    height: 1em;
+    width: auto;
+    margin-right: 0.5em;
+}
+
+.d2 {
+    color: white;
+    text-shadow: 0px 0px 20px yellow,
+    0px 0px 10px orange,
+    0px 0px 10px orangered,
+    0px 0px 10px red;
+    text-align: center;
+    font-size: 50px;
+    font-weight: 600;
+    line-height: 150px;
+}
+
+.parent {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}

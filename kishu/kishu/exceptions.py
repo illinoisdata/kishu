@@ -29,6 +29,16 @@ class BranchConflictError(Exception):
 
 
 """
+Raised by tag
+"""
+
+
+class TagNotFoundError(Exception):
+    def __init__(self, tag_name):
+        super().__init__(f"The provided tag '{tag_name}' does not exist.")
+
+
+"""
 Raised by jupyterint
 """
 

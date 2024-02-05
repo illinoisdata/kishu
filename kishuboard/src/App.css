@@ -1,0 +1,41 @@
+.app {
+    padding: 16px 8px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.tile-xy {
+    height: 100%;
+    width: 100%;
+
+    padding: 0px;
+
+    border-radius: 0px;
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+.center-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.custom_gutter {
+    height: 0px;
+    width: 0px;
+    background: #f0f0f0;
+}
+
+.history_panel {
+    background-color: #e9ebed;
+}
+
+.notebook_panel {
+    background-color: #fdfdfd;
+}

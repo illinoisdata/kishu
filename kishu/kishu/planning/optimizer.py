@@ -12,9 +12,14 @@ class Optimizer():
         The optimizer constructs a flow graph and runs the min-cut algorithm to exactly find the best
         checkpointing configuration.
     """
-    def __init__(self, ahg: AHG, active_vss: List[VariableSnapshot],
-                 linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
-                 migration_speed_bps=1) -> None:
+    def __init__(
+        self, ahg: AHG,
+        active_vss: List[VariableSnapshot],
+        linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
+        migration_speed_bps: float = 1.0,
+        only_migrate=False,
+        only_recompute=False
+    ) -> None:
         """
             Creates an optimizer with a migration speed estimate. The AHG and active VS fields
             must be populated prior to calling select_vss.
@@ -25,13 +30,20 @@ class Optimizer():
                 or recomputed together.
             @param migration_speed_bps: network bandwidth to storage.
         """
+        if only_migrate and only_recompute:
+            raise ValueError("only_migrate and only_recompute cannot both be True.")
+
         self.ahg = ahg
         self.active_vss = active_vss
         self.linked_vs_pairs = linked_vs_pairs
         self.migration_speed_bps = migration_speed_bps
 
-        # Set lookup for active VSs by name as VS objects are not hashable.
-        self.active_vss_lookup = set(vs.name for vs in active_vss)
+        # Flags for testing.
+        self._only_recompute = only_recompute
+        self._only_migrate = only_migrate
+
+        # Set lookup for active VSs by name and version as VS objects are not hashable.
+        self.active_vss_lookup = {vs.name: vs.version for vs in active_vss}
 
         # CEs required to recompute a variables last modified by a given CE.
         self.req_func_mapping: Dict[int, Set[int]] = {}
@@ -52,11 +64,12 @@ class Optimizer():
                 # Else, recurse into input variables of the CE.
                 prerequisite_ces.add(current.cell_num)
                 for vs in current.src_vss:
-                    if vs.name not in self.active_vss_lookup and vs.name not in visited:
+                    if (vs.name, vs.version) not in self.active_vss_lookup.items() \
+                            and (vs.name, vs.version) not in visited:
                         self.dfs_helper(vs, visited, prerequisite_ces)
 
         elif isinstance(current, VariableSnapshot):
-            visited.add(current.name)
+            visited.add((current.name, current.version))
             if current.output_ce and current.output_ce.cell_num not in prerequisite_ces:
                 self.dfs_helper(current.output_ce, visited, prerequisite_ces)
 
@@ -66,19 +79,25 @@ class Optimizer():
         """
         for ce in self.ahg.get_cell_executions():
             # Find prerequisites only if the CE has at least 1 active output.
-            if set(vs.name for vs in ce.dst_vss).intersection(self.active_vss_lookup):
+            if set(vs.name for vs in ce.dst_vss).intersection(set(self.active_vss_lookup.keys())):
                 prerequisite_ces = set()
                 self.dfs_helper(ce, set(), prerequisite_ces)
                 self.req_func_mapping[ce.cell_num] = prerequisite_ces
 
-    def compute_plan(self, only_migrate=True) -> Tuple[Set[str], Set[int]]:
+    def compute_plan(self) -> Tuple[Set[str], Set[int]]:
         """
             Returns the optimal replication plan for the stored AHG consisting of
             variables to migrate and cells to rerun.
+
+            Test parameters (mutually exclusive):
+            @param only_migrate: migrate all variables.
+            @param only_recompute: rerun all cells.
         """
-        # TODO: Remove when recomputation is supported.
-        if only_migrate:
-            return self.active_vss_lookup, set()
+        if self._only_migrate:
+            return set(self.active_vss_lookup.keys()), set()
+
+        if self._only_recompute:
+            return set(), set(ce.cell_num for ce in self.ahg.get_cell_executions())
 
         # Build prerequisite (rec) function mapping.
         self.find_prerequisites()
@@ -119,7 +138,7 @@ class Optimizer():
         cut_value, partition = nx.minimum_cut(flow_graph, "source", "sink", flow_func=shortest_augmenting_path)
 
         # Determine the replication plan from the partition.
-        vss_to_migrate = set(partition[1]).intersection(self.active_vss_lookup)
+        vss_to_migrate = set(partition[1]).intersection(set(self.active_vss_lookup.keys()))
         ces_to_recompute = set(partition[0]).intersection(set(ce.cell_num for ce in self.ahg.get_cell_executions()))
 
         return vss_to_migrate, ces_to_recompute

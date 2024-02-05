@@ -1,0 +1,40 @@
+.singleCellLayout {
+    display: flex;
+    /*justify-content: space-between;*/
+    align-items: flex-start; /* Align items to the start of the cross axis (top) */
+}
+
+.executionOrder {
+    display: flex;
+    margin-right: 4px;
+    margin-left: 10px;
+    padding: 0;
+    width: 40px;
+    white-space: pre;
+    word-break: break-all;
+}
+
+.cell-code {
+    border: 2px solid #dedede;
+    padding: 0.5em;
+    resize: vertical;
+    background-color: #f3f3f3;
+    .ace_hidden-cursors {
+        opacity: 0;
+    }
+}
+
+.add-row-marker {
+    background: rgba(0, 128, 0, 0.3);
+    position: absolute;
+}
+
+.delete-row-marker {
+    background: rgba(
+            255,
+            0,
+            0,
+            0.3
+    ); /* red */
+    position: absolute;
+}

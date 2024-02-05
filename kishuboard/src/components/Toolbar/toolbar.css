@@ -1,0 +1,11 @@
+.toolBar {
+    width: 100%;
+    background-color: #c5cacf;
+    display: flex;
+    justify-content: space-between;
+}
+
+.searchBar {
+    width: 40%;
+    display: flex;
+}

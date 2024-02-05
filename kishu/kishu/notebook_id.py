@@ -19,7 +19,7 @@ from kishu.storage.path import KishuPath
 @dataclass
 class KishuNotebookMetadata:
     notebook_id: str
-    session_count: int = 0
+    session_count: int = 1
 
 
 @dataclass_json
@@ -45,8 +45,18 @@ class NotebookId:
         return NotebookId(key=key, path=path, kernel_id=kernel_id)
 
     @staticmethod
-    def from_enclosing_with_key_and_path(key: str, path: Path) -> NotebookId:
+    def from_enclosing(path: Optional[Path]) -> NotebookId:
         kernel_id = JupyterRuntimeEnv.enclosing_kernel_id()
+        path = path or JupyterRuntimeEnv.notebook_path_from_kernel(kernel_id)
+
+        # Retrieve key if any, otherwise create new key.
+        try:
+            nb = JupyterRuntimeEnv.read_notebook(path)
+            metadata = NotebookId.read_kishu_metadata(nb)
+            key = metadata.notebook_id
+        except MissingNotebookMetadataError:
+            key = datetime.now().strftime('%Y%m%dT%H%M%S')
+
         return NotebookId(key=key, path=path, kernel_id=kernel_id)
 
     @staticmethod
@@ -56,17 +66,50 @@ class NotebookId:
         return metadata.notebook_id
 
     @staticmethod
+    def verify_metadata_exists(path: Path) -> bool:
+        nb = JupyterRuntimeEnv.read_notebook(path)
+        try:
+            NotebookId.read_kishu_metadata(nb)
+            return True
+        except MissingNotebookMetadataError:
+            return False
+
+    @staticmethod
     def parse_key_from_path_or_key(path_or_key: str) -> str:
         # Try parsing as path, if exists.
         path = Path(path_or_key)
         if path.exists():
-            return NotebookId.parse_key_from_path(path)
+            try:
+                return NotebookId.parse_key_from_path(path)
+            except (nbformat.reader.NotJSONError, UnicodeDecodeError):
+                # Ignore non-notebook file.
+                pass
 
         # Notebook path does not exist, try parsing as key.
         key = path_or_key
         if KishuPath.exists(key):
             return key
 
+        raise NotNotebookPathOrKey(path_or_key)
+
+    @staticmethod
+    def parse_path_from_path_or_key(path_or_key: str) -> Path:
+        # Try parsing as path
+        path = Path(path_or_key)
+        if path.exists():
+            try:
+                JupyterRuntimeEnv.read_notebook(path)
+                return path
+            except (nbformat.reader.NotJSONError, UnicodeDecodeError):
+                # Ignore non-notebook file.
+                pass
+
+        # Not a path, try parsing as key.
+        key = path_or_key
+        if KishuPath.exists(key):
+            conn_info = NotebookId.try_retrieve_connection(key)
+            if conn_info:
+                return Path(conn_info.notebook_path)
         raise NotNotebookPathOrKey(path_or_key)
 
     def key(self) -> str:
@@ -82,17 +125,11 @@ class NotebookId:
     Kishu notebook metadata.
     """
 
-    @staticmethod
-    def write_kishu_metadata(nb: nbformat.NotebookNode) -> KishuNotebookMetadata:
-        if "kishu" not in nb.metadata:
-            # Create new Kishu metadata.
-            notebook_name = datetime.now().strftime('%Y%m%dT%H%M%S')
-            metadata = KishuNotebookMetadata(notebook_name)
-        else:
-            # Read existing Kishu metadata
-            metadata = KishuNotebookMetadata(**nb.metadata.kishu)
-        metadata.session_count += 1
-        nb["metadata"]["kishu"] = asdict(metadata)
+    def create_kishu_metadata(self, nb: nbformat.NotebookNode) -> KishuNotebookMetadata:
+        metadata = KishuNotebookMetadata(self.key())
+        if "kishu" in nb.metadata:
+            assert nb.metadata["kishu"]["notebook_id"] == self.key()
+            metadata.session_count = nb.metadata["kishu"]["session_count"] + 1
         return metadata
 
     @staticmethod
@@ -100,6 +137,10 @@ class NotebookId:
         if "kishu" not in nb.metadata:
             raise MissingNotebookMetadataError()
         return KishuNotebookMetadata(**nb.metadata.kishu)
+
+    @staticmethod
+    def add_kishu_metadata(nb: nbformat.NotebookNode, metadata: KishuNotebookMetadata) -> None:
+        nb.metadata["kishu"] = asdict(metadata)
 
     @staticmethod
     def remove_kishu_metadata(nb: nbformat.NotebookNode) -> None:

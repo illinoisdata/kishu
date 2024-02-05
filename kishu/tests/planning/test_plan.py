@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.plan import LoadVariableRestoreAction, StoreEverythingCheckpointPlan
+from kishu.planning.plan import CheckpointPlan, RestorePlan
 from kishu.storage.checkpoint import KishuCheckpoint
 
 
@@ -12,11 +12,11 @@ def test_checkout_wrong_id_error(tmp_path: Path):
     KishuCheckpoint(filename).init_database()
 
     exec_id = 'abc'
-    restore_ns = {}
-    restore = LoadVariableRestoreAction()
+    restore_plan = RestorePlan()
+    restore_plan.add_load_variable_restore_action([])
 
     with pytest.raises(Exception):
-        restore.run(restore_ns, filename, exec_id)
+        restore_plan.run(filename, exec_id)
 
 
 def test_save_everything_checkpoint_plan(tmp_path: Path):
@@ -29,15 +29,15 @@ def test_save_everything_checkpoint_plan(tmp_path: Path):
 
     # save
     exec_id = 1
-    checkpoint = StoreEverythingCheckpointPlan.create(user_ns, filename, exec_id)
+    checkpoint = CheckpointPlan.create(user_ns, filename, exec_id)
     checkpoint.run(user_ns)
 
     # load
-    restore_ns = Namespace({})
-    restore = LoadVariableRestoreAction()
-    restore.run(restore_ns, filename, exec_id)
+    restore_plan = RestorePlan()
+    restore_plan.add_load_variable_restore_action(list(user_ns.keyset()))
+    result_ns = restore_plan.run(filename, exec_id)
 
-    assert restore_ns == user_ns
+    assert result_ns.to_dict() == user_ns.to_dict()
 
 
 def test_store_everything_generated_restore_plan(tmp_path: Path):
@@ -50,12 +50,12 @@ def test_store_everything_generated_restore_plan(tmp_path: Path):
 
     # save
     exec_id = 1
-    checkpoint = StoreEverythingCheckpointPlan.create(user_ns, filename, exec_id)
+    checkpoint = CheckpointPlan.create(user_ns, filename, exec_id)
     checkpoint.run(user_ns)
 
     # restore
-    restore_ns = Namespace({})
-    restore = checkpoint.restore_plan()
-    restore.run(restore_ns, filename, exec_id)
+    restore_plan = RestorePlan()
+    restore_plan.add_load_variable_restore_action(list(user_ns.keyset()))
+    result_ns = restore_plan.run(filename, exec_id)
 
-    assert restore_ns == user_ns
+    assert result_ns.to_dict() == user_ns.to_dict()

@@ -8,26 +8,17 @@ CHECKPOINT_TABLE = 'checkpoint'
 
 
 class KishuCheckpoint:
-    def __init__(self, dbfile: str):
-        self.dbfile = dbfile
-
-    def _save_into_table(self, table_name: str, commit_id: str, data: bytes) -> None:
-        con = sqlite3.connect(self.dbfile)
-        cur = con.cursor()
-        cur.execute(
-            "insert into {} values (?, ?)".format(table_name),
-            (commit_id, memoryview(data))
-        )
-        con.commit()
+    def __init__(self, database_path: str):
+        self.database_path = database_path
 
     def init_database(self):
-        con = sqlite3.connect(self.dbfile)
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(f'create table if not exists {CHECKPOINT_TABLE} (commit_id text primary key, data blob)')
         con.commit()
 
     def get_checkpoint(self, commit_id: str) -> bytes:
-        con = sqlite3.connect(self.dbfile)
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(
             f"select data from {CHECKPOINT_TABLE} where commit_id = ?",
@@ -39,7 +30,7 @@ class KishuCheckpoint:
         return result
 
     def store_checkpoint(self, commit_id: str, data: bytes) -> None:
-        con = sqlite3.connect(self.dbfile)
+        con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(
             f"insert into {CHECKPOINT_TABLE} values (?, ?)",
