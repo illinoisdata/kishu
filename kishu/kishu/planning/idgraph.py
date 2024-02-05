@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, List, Optional
 
 import pandas
 import pickle
@@ -11,7 +11,7 @@ class GraphNode:
 
     def __init__(self, obj_type=type(None), id_obj: Optional[int] = None):
         self.id_obj = id_obj
-        self.children = []
+        self.children: List[Any] = []
         self.obj_type = obj_type
 
     def convert_to_list(self, check_id_obj=True):
