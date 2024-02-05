@@ -7,6 +7,7 @@ import shutil
 
 from functools import wraps
 from typing import Tuple, List
+from collections import deque
 
 from kishu import __app_name__, __version__
 from kishu.commands import (
@@ -33,10 +34,12 @@ class CommitPrinter:
         else:
             self.output.append(f"{self.prefix}{text}")
 
-    def graph_line(self, text: str, is_first_line: bool = False, is_indented: bool = False):
+    def graph_line(self, text: str, is_first_line: bool = False, is_indented: bool = False, message = False):
         if is_first_line:
             self.line(f"* {text}", is_indented)
-        else:
+        elif message:
+            self.line(f"|  {self.indentation}{text}")        
+        else:    
             self.line(f"| {text}", is_indented)
 
 
@@ -84,9 +87,16 @@ class KishuPrint:
     @staticmethod
     def log_all_with_graph(log_all_result: LogAllResult):
         # TODO: implement textual graph for log --all --graph
-        printer = CommitPrinter()
+        if KishuPrint._is_linear(log_all_result.commit_graph):
+            KishuPrint.log_all(log_all_result, graph=False)
+        else:
+            output = KishuPrint._generate_ascii_graph(log_all_result.commit_graph)
+            KishuPrint._print_or_page('\n'.join(output))
 
-        return printer.output
+    @staticmethod
+    def _is_linear(commits: List[CommitSummary]) -> bool:
+        parent_ids = set(commit.parent_id for commit in commits if commit.parent_id)
+        return len(commits) - 1 == len(parent_ids)
 
     @staticmethod
     def _format_commit(commit: CommitSummary, include_parent_id: bool = False):
@@ -102,7 +112,7 @@ class KishuPrint:
 
         printer.line(f"Date:   {commit.timestamp}")
         printer.line("")
-        printer.line(commit.message, is_indented=True)
+        printer.line(commit.message, message=True)
         printer.line("")
 
         return '\n'.join(printer.output)
@@ -118,10 +128,49 @@ class KishuPrint:
 
         printer.graph_line(f"Date:   {commit.timestamp}")
         printer.graph_line("")
-        printer.graph_line(commit.message, is_indented=True)
+        printer.graph_line(commit.message, message=True)
         printer.graph_line("")
 
         return '\n'.join(printer.output)
+
+    @staticmethod
+    def _generate_ascii_graph(commits: List[CommitSummary]):
+        sorted_commits = sorted(
+            commits,
+            key=lambda commit: commit.timestamp, reverse=False,
+        )
+        
+        output = deque([])
+        seen = []
+        for commit in sorted_commits:
+            if commit.parent_id == "":
+                seen.append(commit.commit_id)
+                output.appendleft(KishuPrint._format_commit_with_graph(commit))
+                sorted_commits.remove(commit)
+
+        while len(sorted_commits):
+            for commit in sorted_commits:
+                if commit.parent_id == seen[-1]:
+                    printer = CommitPrinter()
+                    seen.append(commit)
+                    ref_names = ', '.join(commit.branches + commit.tags)
+                    ref_str = f" ({ref_names})" if ref_names else ""
+                    printer.graph_line(f" * commit {commit.commit_id}{ref_str}")
+
+                    # TODO: Print author with details
+
+                    printer.graph_line(f"/  Date:   {commit.timestamp}")
+                    printer.graph_line("")
+                    printer.graph_line(f"  {commit.message}", message=True)
+                    printer.graph_line("")
+                    sorted_commits.remove(commit)
+                    output.appendleft('\n'.join(printer.output))
+                else:
+                    seen.append(commit.commit_id)
+                    output.appendleft(KishuPrint._format_commit_with_graph(commit))
+                    sorted_commits.remove(commit)
+
+        return output
 
 
 kishu_app = typer.Typer(add_completion=False)
