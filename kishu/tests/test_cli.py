@@ -164,6 +164,65 @@ class TestKishuApp:
         assert isinstance(result.exception, NotNotebookPathOrKey)
         assert "NON_EXISTENT_NOTEBOOK_ID" in str(result.exception)
 
+    def test_log_basic(self, runner, kishu_jupyter, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["log", kishu_jupyter._notebook_id.key()])
+        assert result.exit_code == 0
+        assert re.search(
+            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n"
+            r"Date:   ([0-9\-:. ]+)\n\n",
+            result.stdout,
+        )
+
+    def test_log_all_basic(self, runner, kishu_jupyter, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["log", "--all", kishu_jupyter._notebook_id.key()])
+        assert result.exit_code == 0
+        assert re.search(
+            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n"
+            r"Parent: ([0-9a-fA-F:]+)\n"
+            r"Date:   ([0-9\-:. ]+)\n\n",
+            result.stdout,
+        )
+
+    def test_log_graph_basic(self, runner, kishu_jupyter, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["log", "--graph", kishu_jupyter._notebook_id.key()])
+        assert result.exit_code == 0
+        assert re.search(
+            r"\* commit ([0-9a-fA-F:]+) \((.*?)\)\n"
+            r"| Date:   ([0-9\-:. ]+)\n\n",
+            result.stdout,
+        )
+
+    def test_log_all_graph_basic(self, runner, kishu_jupyter, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["log", "--all", "--graph", kishu_jupyter._notebook_id.key()])
+        assert result.exit_code == 0
+        assert "Warning: feature not supported." in result.stdout
+        assert re.search(
+            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n"
+            r"Parent: ([0-9a-fA-F:]+)\n"
+            r"Date:   ([0-9\-:. ]+)\n\n",
+            result.stdout,
+        )
+
+    def test_log_with_tag(self, runner, kishu_jupyter, basic_execution_ids):
+        tag = "tag_1"
+        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), tag])
+        assert result.exit_code == 0
+        tag_result = TagResult.from_json(result.stdout)
+        assert tag_result == TagResult(
+            status="ok",
+            tag_name="tag_1",
+            commit_id=basic_execution_ids[-1],
+            message="",
+        )
+        result = runner.invoke(kishu_app, ["log", kishu_jupyter._notebook_id.key()])
+        assert result.exit_code == 0
+        assert re.search(
+            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n"
+            r"Date:   ([0-9\-:. ]+)\n\n",
+            result.stdout,
+        )
+        assert tag in result.stdout
+
     def test_create_branch(self, runner, notebook_key, basic_execution_ids):
         result = runner.invoke(kishu_app, ["branch", notebook_key, "-c", "new_branch"])
         assert result.exit_code == 0
