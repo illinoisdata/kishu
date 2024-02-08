@@ -11,8 +11,8 @@ from kishu.storage.path import KishuPath
 class Config:
     CONFIG_PATH = os.path.join(KishuPath.kishu_directory(), "config.ini")
     config = configparser.ConfigParser()
-    last_get_config_time = -1
-    last_set_config_time = 0
+    last_get_config_time = -1.0
+    last_set_config_time = 0.0
 
     @staticmethod
     def _create_config_file() -> None:
