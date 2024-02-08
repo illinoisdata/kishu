@@ -27,6 +27,11 @@ namespace CommandIDs {
    * Checkout a commit on the currently viewed notebook.
    */
   export const checkout = 'kishu:checkout';
+
+  /**
+   * Create a commit on the currently viewed notebook.
+   */
+  export const commit = 'kishu:commit';
 }
 
 namespace KishuSetting {
@@ -60,6 +65,17 @@ interface LogAllResult {
 interface CheckoutResult {
   status: string;
   message: string;
+}
+
+interface InstrumentResult {
+  status: string;
+  message?: string;
+}
+
+interface CommitResult {
+  status: string;
+  message: string;
+  reattachment: InstrumentResult;
 }
 
 function notifyError(message: string) {
@@ -251,6 +267,69 @@ function installCommands(
   });
   palette.addItem({
     command: CommandIDs.checkout,
+    category: 'Kishu',
+  });
+
+  /**
+   * Commit
+   */
+
+  commands.addCommand(CommandIDs.commit, {
+    label: trans.__('Kishu: Commit...'),
+    execute: async (_args) => {
+      // Detect currently viewed notebook.
+      const notebook_path = currentNotebookPath(tracker);
+      if (!notebook_path) {
+        notifyError(trans.__(`No currently viewed notebook detected to ommit.`));
+        return;
+      }
+
+      // Ask for the commit message.
+      const message = (
+        await InputDialog.getText({
+          placeholder: '<commit_message>',
+          title: trans.__('Commit message'),
+          okLabel: trans.__('Commit')
+        })
+      ).value ?? undefined;
+      if (!message) {
+        notifyError(trans.__(`Kishu commit requires a commit message.`));
+      }
+
+      // Make checkout request
+      const commit_promise = requestAPI<CommitResult>('commit', {
+        method: 'POST',
+        body: JSON.stringify({notebook_path: notebook_path, message: message}),
+      });
+
+      // Reports.
+      const notify_manager = Notification.manager;
+      const notify_id = notify_manager.notify(
+        trans.__(`Creating a commit...`),
+        'in-progress',
+        { autoClose: false },
+      );
+      commit_promise.then((commit_result,) => {
+        if (commit_result.status != "ok") {
+          notify_manager.update({
+            id: notify_id,
+            message: trans.__(`Kishu commit failed.\n"${commit_result.message}"`),
+            type: 'error',
+            autoClose: 3000,
+          });
+        } else {
+          notify_manager.update({
+            id: notify_id,
+            message: trans.__(`Kishu commit succeeded!`),
+            type: 'success',
+            autoClose: 3000,
+          });
+        }
+      });
+    }
+  });
+  palette.addItem({
+    command: CommandIDs.commit,
     category: 'Kishu',
   });
 }
