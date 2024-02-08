@@ -1,8 +1,12 @@
 import numpy as np
+import os
 import pandas as pd
 import sys
 
+from pathlib import Path
+
 from kishu.planning.profiler import profile_variable_size
+from kishu.storage.config import Config
 
 
 def test_primitive_size():
@@ -67,3 +71,20 @@ def test_pandas_dataframe():
 def test_generator():
     gen = (i for i in range(10))
     assert profile_variable_size(gen) == np.inf
+
+
+def test_add_unserializable_variable_to_config(tmp_path: Path):
+    # Change the config path to temp path.
+    Config.CONFIG_PATH = os.path.join(tmp_path, "config.ini")
+
+    Config.set('PROFILER', 'auto_add_unpicklable_object', True)
+    assert Config.get('PROFILER', 'auto_add_unpicklable_object', False)
+
+    # Try profiling the size of a generator.
+    # Its class will be added to the unserializable list in the config.
+    gen = (i for i in range(10))
+    assert profile_variable_size(gen) == np.inf
+
+    # The generator has no module, so it is only added to the class list.
+    assert Config.get('PROFILER', 'excluded_modules', []) == []
+    assert Config.get('PROFILER', 'excluded_classes', []) == ["<class 'generator'>"]

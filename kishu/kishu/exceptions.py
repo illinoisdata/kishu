@@ -117,8 +117,3 @@ Raised by config
 class MissingConfigCategoryError(Exception):
     def __init__(self, config_category):
         super().__init__(f"Missing config category for {config_category}.")
-
-
-class MissingConfigEntryError(Exception):
-    def __init__(self, config_entry):
-        super().__init__(f"Missing config entry for {config_entry}.")

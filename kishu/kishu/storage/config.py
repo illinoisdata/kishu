@@ -1,6 +1,6 @@
+import ast
 import configparser
 import os
-import time
 
 from typing import Any
 
@@ -11,19 +11,19 @@ from kishu.storage.path import KishuPath
 class Config:
     CONFIG_PATH = os.path.join(KishuPath.kishu_directory(), "config.ini")
     config = configparser.ConfigParser()
-    last_get_config_time = -1.0
-    last_set_config_time = 0.0
+    last_read_time = -1.0
+
+    # Default config categories.
+    DEFAULT_CATEGORIES = ['CLI', 'COMMIT_GRAPH', 'JUPYTERINT', 'PLANNER', 'PROFILER']
 
     @staticmethod
     def _create_config_file() -> None:
         """
             Creates a config file with default parameters.
         """
-        Config.config['CLI'] = {}
-        Config.config['COMMIT_GRAPH'] = {}
-        Config.config['JUPYTERINT'] = {}
-        Config.config['PLANNER'] = {}
-        Config.config['PROFILER'] = {}
+        for category in Config.DEFAULT_CATEGORIES:
+            Config.config[category] = {}
+
         with open(Config.CONFIG_PATH, 'w') as configfile:
             Config.config.write(configfile)
 
@@ -37,14 +37,14 @@ class Config:
             Config._create_config_file()
 
         # Only re-read the config file if it was modified since last read
-        if Config.last_get_config_time < Config.last_set_config_time:
+        if Config.last_read_time <= os.path.getmtime(Config.CONFIG_PATH):
             Config.config.read(Config.CONFIG_PATH)
 
-        # Update the last read time.
-        Config.last_get_config_time = time.time()
+            # Update the last read time.
+            Config.last_read_time = os.path.getatime(Config.CONFIG_PATH)
 
     @staticmethod
-    def get_config_entry(config_category: str, config_entry: str, default: Any) -> Any:
+    def get(config_category: str, config_entry: str, default: Any) -> Any:
         """
             Gets the value of an entry from the config file.
 
@@ -59,10 +59,14 @@ class Config:
         if config_category not in Config.config:
             raise MissingConfigCategoryError(config_category)
 
+        # Lists can't be cast directly to the type of the default and need to be parsed.
+        if isinstance(default, list) and config_entry in Config.config[config_category]:
+            return ast.literal_eval(Config.config[config_category][config_entry])
+
         return type(default)(Config.config[config_category].get(config_entry, default))
 
     @staticmethod
-    def set_config_entry(config_category: str, config_entry: str, config_value: Any) -> None:
+    def set(config_category: str, config_entry: str, config_value: Any) -> None:
         """
             Sets the value of an entry in the config file.
 
@@ -75,10 +79,7 @@ class Config:
         if config_category not in Config.config:
             raise MissingConfigCategoryError(config_category)
 
-        Config.config[config_category][config_entry] = config_value
+        Config.config[config_category][config_entry] = str(config_value)
 
         with open(Config.CONFIG_PATH, 'w') as configfile:
             Config.config.write(configfile)
-
-        # Update the last write time.
-        Config.last_set_config_time = os.path.getmtime(Config.CONFIG_PATH)

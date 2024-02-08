@@ -278,11 +278,11 @@ class KishuForJupyter:
         self._start_time: Optional[float] = None
         self._last_execution_count = 0
 
-        # Go to config
-        self._test_mode = Config.get_config_entry('JUPYTERINT', 'test_mode', False)
-        self._commit_id_mode = Config.get_config_entry('JUPYTERINT', 'commit_id_mode', 'uuid4')
-        self._enable_auto_branch = Config.get_config_entry('JUPYTERINT', 'enable_auto_branch', True)
-        self._enable_auto_commit_when_skip_notebook = Config.get_config_entry(
+        # Configurations.
+        self._test_mode = Config.get('JUPYTERINT', 'test_mode', False)
+        self._commit_id_mode = Config.get('JUPYTERINT', 'commit_id_mode', 'uuid4')
+        self._enable_auto_branch = Config.get('JUPYTERINT', 'enable_auto_branch', True)
+        self._enable_auto_commit_when_skip_notebook = Config.get(
             'JUPYTERINT',
             'enable_auto_commit_when_skip_notebook',
             True)

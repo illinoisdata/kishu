@@ -52,8 +52,8 @@ class CheckpointRestorePlanner:
         self._pre_run_cell_vars: Set[str] = set()
 
         # C/R plan configs.
-        self._always_recompute = Config.get_config_entry('PLANNER', 'always_recompute', False)
-        self._always_migrate = Config.get_config_entry('PLANNER', 'always_migrate', False)
+        self._always_recompute = Config.get('PLANNER', 'always_recompute', False)
+        self._always_migrate = Config.get('PLANNER', 'always_migrate', False)
 
         # Used by instrumentation to compute whether data has changed.
         self._modified_vars_structure: Set[str] = set()
@@ -149,7 +149,7 @@ class CheckpointRestorePlanner:
             self._ahg,
             active_vss,
             linked_vs_pairs,
-            Config.get_config_entry('PLANNER', 'network_bandwidth', 10_000_000_000)
+            Config.get('PLANNER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
         )
 
         # Use the optimizer to compute the checkpointing configuration.

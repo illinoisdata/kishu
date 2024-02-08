@@ -9,12 +9,29 @@ from typing import Any, Optional
 from kishu.storage.config import Config
 
 
+def _get_object_class(obj: Any) -> Optional[str]:
+    obj_class = getattr(obj, "__class__", None)
+    return str(obj_class) if obj_class else None
+
+
 def _get_object_module(obj: Any) -> Optional[str]:
     """
         Get the name of the module an object is from.
     """
     obj_module_full = getattr(obj, "__module__", None)
     return obj_module_full.split(".")[0] if isinstance(obj_module_full, str) else None
+
+
+def _add_to_unserializable_lists(obj: Any) -> None:
+    if _get_object_module(obj):
+        unserializable_module_list = Config.get('PROFILER', 'excluded_modules', [])
+        unserializable_module_list.append(_get_object_module(obj))
+        Config.set('PROFILER', 'excluded_modules', unserializable_module_list)
+
+    if _get_object_class(obj):
+        unserializable_class_list = Config.get('PROFILER', 'excluded_classes', [])
+        unserializable_class_list.append(_get_object_class(obj))
+        Config.set('PROFILER', 'excluded_classes', unserializable_class_list)
 
 
 def _is_picklable(obj: Any) -> bool:
@@ -30,10 +47,8 @@ def _is_picklable(obj: Any) -> bool:
         is_picklable = dill.pickles(obj)
 
         # Add the unpicklable object to the config file.
-        if not is_picklable and Config.get_config_entry('PROFILER', 'auto_add_unpicklable_object', False):
-            unserializable_list = Config.get_config_entry('PROFILER', 'excluded_modules', [])
-            unserializable_list.append(_get_object_module(obj))
-            Config.set_config_entry('PROFILER', 'excluded_modules', str(unserializable_list))
+        if not is_picklable and Config.get('PROFILER', 'auto_add_unpicklable_object', False):
+            _add_to_unserializable_lists(obj)
         return is_picklable
     except Exception:
         pass
@@ -44,10 +59,8 @@ def _is_picklable(obj: Any) -> bool:
         pickle.dumps(obj)
     except Exception:
         # Add the unpicklable object to the config file.
-        if Config.get_config_entry('PROFILER', 'auto_add_unpicklable_object', False):
-            unserializable_list = Config.get_config_entry('PROFILER', 'excluded_modules', [])
-            unserializable_list.append(_get_object_module(obj))
-            Config.set_config_entry('PROFILER', 'excluded_modules', unserializable_list)
+        if Config.get('PROFILER', 'auto_add_unpicklable_object', False):
+            _add_to_unserializable_lists(obj)
         return False
     return True
 
@@ -57,7 +70,8 @@ def _in_exclude_list(obj: Any) -> bool:
         Checks whether object is from a class which Dill reports is pickleable but is actually not.
     """
     # TODO: remove 'qiskit' from default once recomptuation works.
-    return _get_object_module(obj) in Config.get_config_entry('PROFILER', 'excluded_modules', ["qiskit"])
+    return _get_object_module(obj) in Config.get('PROFILER', 'excluded_modules', ["qiskit"]) or \
+        _get_object_class(obj) in Config.get('PROFILER', 'excluded_classes', [])
 
 
 def _get_memory_size(obj: Any, is_initialize: bool, visited: set) -> int:

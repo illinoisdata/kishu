@@ -25,7 +25,7 @@ def _version_callback(value: bool) -> None:
 def print_clean_errors(fn):
     @wraps(fn)
     def fn_with_clean_errors(*args, **kwargs):
-        if Config.get_config_entry('CLI', 'KISHU_VERBOSE', "true") == "true":
+        if Config.get('CLI', 'KISHU_VERBOSE', True):
             return fn(*args, **kwargs)
         try:
             return fn(*args, **kwargs)
@@ -421,7 +421,7 @@ def fecommit(
     print(into_json(KishuCommand.fe_commit(notebook_key, commit_id, vardepth)))
 
 
-if Config.get_config_entry('CLI', 'KISHU_ENABLE_EXPERIMENTAL', "false").lower() in ('true', '1', 't'):
+if Config.get('CLI', 'KISHU_ENABLE_EXPERIMENTAL', False):
     kishu_app.add_typer(kishu_experimental_app, name="experimental")
 
 
