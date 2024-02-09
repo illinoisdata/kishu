@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import typer
 
 from functools import wraps
@@ -12,7 +11,7 @@ from kishu.commands import (
     InstrumentResult, InstrumentStatus, into_json, KishuCommand
 )
 from kishu.notebook_id import NotebookId
-
+from kishu.storage.config import Config
 
 kishu_app = typer.Typer(add_completion=False)
 
@@ -26,7 +25,7 @@ def _version_callback(value: bool) -> None:
 def print_clean_errors(fn):
     @wraps(fn)
     def fn_with_clean_errors(*args, **kwargs):
-        if os.environ.get("KISHU_VERBOSE") == "true":
+        if Config.get('CLI', 'KISHU_VERBOSE', True):
             return fn(*args, **kwargs)
         try:
             return fn(*args, **kwargs)
@@ -422,7 +421,7 @@ def fecommit(
     print(into_json(KishuCommand.fe_commit(notebook_key, commit_id, vardepth)))
 
 
-if os.environ.get("KISHU_ENABLE_EXPERIMENTAL", "false").lower() in ('true', '1', 't'):
+if Config.get('CLI', 'KISHU_ENABLE_EXPERIMENTAL', False):
     kishu_app.add_typer(kishu_experimental_app, name="experimental")
 
 
