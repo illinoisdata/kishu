@@ -87,3 +87,5 @@ class Config:
 
         with open(Config.CONFIG_PATH, 'w') as configfile:
             Config.config.write(configfile)
+            configfile.flush()
+            os.fsync(configfile.fileno())

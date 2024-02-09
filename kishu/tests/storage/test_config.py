@@ -102,8 +102,10 @@ def test_manual_bad_write():
     time.sleep(0.01)
 
     # Manually write garbage into the config file.
-    with open(Config.CONFIG_PATH, "wb") as config_file:
-        config_file.write(b"abcdefg")
+    with open(Config.CONFIG_PATH, "wb") as configfile:
+        configfile.write(b"abcdefg")
+        configfile.flush()
+        os.fsync(configfile.fileno())
 
     # Assert reading the config file fails.
     with pytest.raises(configparser.MissingSectionHeaderError):
