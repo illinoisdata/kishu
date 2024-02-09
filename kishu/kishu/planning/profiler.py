@@ -22,12 +22,7 @@ def _get_object_module(obj: Any) -> Optional[str]:
     return obj_module_full.split(".")[0] if isinstance(obj_module_full, str) else None
 
 
-def _add_to_unserializable_lists(obj: Any) -> None:
-    if _get_object_module(obj):
-        unserializable_module_list = Config.get('PROFILER', 'excluded_modules', [])
-        unserializable_module_list.append(_get_object_module(obj))
-        Config.set('PROFILER', 'excluded_modules', unserializable_module_list)
-
+def _add_to_unserializable_list(obj: Any) -> None:
     if _get_object_class(obj):
         unserializable_class_list = Config.get('PROFILER', 'excluded_classes', [])
         unserializable_class_list.append(_get_object_class(obj))
@@ -48,7 +43,7 @@ def _is_picklable(obj: Any) -> bool:
 
         # Add the unpicklable object to the config file.
         if not is_picklable and Config.get('PROFILER', 'auto_add_unpicklable_object', True):
-            _add_to_unserializable_lists(obj)
+            _add_to_unserializable_list(obj)
         return is_picklable
     except Exception:
         pass
@@ -60,7 +55,7 @@ def _is_picklable(obj: Any) -> bool:
     except Exception:
         # Add the unpicklable object to the config file.
         if Config.get('PROFILER', 'auto_add_unpicklable_object', True):
-            _add_to_unserializable_lists(obj)
+            _add_to_unserializable_list(obj)
         return False
     return True
 
