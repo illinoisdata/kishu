@@ -47,7 +47,7 @@ def _is_picklable(obj: Any) -> bool:
         is_picklable = dill.pickles(obj)
 
         # Add the unpicklable object to the config file.
-        if not is_picklable and Config.get('PROFILER', 'auto_add_unpicklable_object', False):
+        if not is_picklable and Config.get('PROFILER', 'auto_add_unpicklable_object', True):
             _add_to_unserializable_lists(obj)
         return is_picklable
     except Exception:
@@ -59,7 +59,7 @@ def _is_picklable(obj: Any) -> bool:
         pickle.dumps(obj)
     except Exception:
         # Add the unpicklable object to the config file.
-        if Config.get('PROFILER', 'auto_add_unpicklable_object', False):
+        if Config.get('PROFILER', 'auto_add_unpicklable_object', True):
             _add_to_unserializable_lists(obj)
         return False
     return True

@@ -1,5 +1,4 @@
 import numpy as np
-import os
 import pandas as pd
 import sys
 
@@ -74,9 +73,6 @@ def test_generator():
 
 
 def test_add_unserializable_variable_to_config(tmp_path: Path):
-    # Change the config path to temp path.
-    Config.CONFIG_PATH = os.path.join(tmp_path, "config.ini")
-
     Config.set('PROFILER', 'auto_add_unpicklable_object', True)
     assert Config.get('PROFILER', 'auto_add_unpicklable_object', False)
 

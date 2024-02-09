@@ -36,12 +36,16 @@ class Config:
         if not os.path.isfile(Config.CONFIG_PATH):
             Config._create_config_file()
 
-        # Only re-read the config file if it was modified since last read
-        if Config.last_read_time <= os.path.getmtime(Config.CONFIG_PATH):
+        last_modify_time = os.stat(Config.CONFIG_PATH).st_mtime_ns
+
+        # Only re-read the config file if it was modified since last read.
+        # Note: the granularity of st_mtime_ns depends on the system (e.g., 1ms) and can result in very
+        # recent updates being missed.
+        if Config.last_read_time < last_modify_time:
             Config.config.read(Config.CONFIG_PATH)
 
             # Update the last read time.
-            Config.last_read_time = os.path.getatime(Config.CONFIG_PATH)
+            Config.last_read_time = last_modify_time
 
     @staticmethod
     def get(config_category: str, config_entry: str, default: Any) -> Any:
