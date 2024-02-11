@@ -5,6 +5,7 @@ import subprocess
 import typer
 
 
+from abc import ABC, abstractmethod
 from functools import wraps
 from typing import List, Tuple
 
@@ -23,31 +24,47 @@ from kishu.commands import (
     LogResult,
 )
 from kishu.notebook_id import NotebookId
+from kishu.storage.config import Config
 
 
-class CommitPrinter:
-    def __init__(self, prefix: str = "", indentation: str = "   "):
-        self.prefix = prefix
+class CommitPrinter(ABC):
+    def __init__(self, indentation: str = "    "):
         self.indentation = indentation
         self.output: List[str] = []
 
-    def line(self, text: str, is_indented: bool = False):
-        self.output.append(
-            f"{self.prefix}{self.indentation if is_indented else ''}{text}")
+    def add_line(self, text: str, is_indented: bool = False, prefix: str = ""):
+        indent = self.indentation if is_indented else ''
+        self.output.append(f"{prefix}{indent}{text}")
 
-    def graph_line(
+    @abstractmethod
+    def add_commit_line(
         self,
         text: str,
-        is_first_line: bool = False,
         is_indented: bool = False,
-        message: bool = False,
+        is_first_line: bool = False,
     ):
-        if is_first_line:
-            self.line(f"* {text}", is_indented)
-        elif message:
-            self.line(f"|  {self.indentation}{text}")
-        else:
-            self.line(f"| {text}", is_indented)
+        pass
+
+
+class BasicCommitPrinter(CommitPrinter):
+    def add_commit_line(
+        self,
+        text: str,
+        is_indented: bool = False,
+        is_first_line: bool = False,
+    ):
+        super().add_line(text, is_indented)
+
+
+class GraphCommitPrinter(CommitPrinter):
+    def add_commit_line(
+        self,
+        text: str,
+        is_indented: bool = False,
+        is_first_line: bool = False,
+    ):
+        prefix = "* " if is_first_line else "| "
+        super().add_line(text, is_indented, prefix)
 
 
 class KishuPrint:
@@ -76,12 +93,10 @@ class KishuPrint:
             key=lambda commit: commit.timestamp, reverse=True,
         )
 
-        if graph:
-            output = [KishuPrint._format_commit_with_graph(commit)
-                      for commit in sorted_commits]
-        else:
-            output = [KishuPrint._format_commit(commit)
-                      for commit in sorted_commits]
+        output = [
+            KishuPrint._format_commit(commit, graph=graph)
+            for commit in sorted_commits
+        ]
         KishuPrint._print_or_page('\n'.join(output))
 
     @staticmethod
@@ -92,10 +107,10 @@ class KishuPrint:
             key=lambda commit: commit.timestamp, reverse=True,
         )
 
-        output = []
-        for commit in sorted_commits:
-            output.append(KishuPrint._format_commit(
-                commit, include_parent_id=True))
+        output = [
+            KishuPrint._format_commit(commit, include_parent_id=True)
+            for commit in sorted_commits
+        ]
         KishuPrint._print_or_page('\n'.join(output))
 
     @staticmethod
@@ -104,51 +119,26 @@ class KishuPrint:
         KishuPrint.log_all(log_all_result)
 
     @staticmethod
-    def _is_linear(commits: List[CommitSummary]) -> bool:
-        parent_ids = set(
-            commit.parent_id
-            for commit in commits if commit.parent_id
-        )
-        return len(commits) - 1 == len(parent_ids)
-
-    @staticmethod
-    def _format_commit(commit: CommitSummary,
-                       include_parent_id: bool = False):
-        printer = CommitPrinter()
+    def _format_commit(
+        commit: CommitSummary,
+        include_parent_id: bool = False,
+        graph: bool = False
+    ):
+        printer = BasicCommitPrinter() if not graph else GraphCommitPrinter()
         ref_names = ', '.join(commit.branches + commit.tags)
         ref_str = f" ({ref_names})" if ref_names else ""
-        printer.line(f"commit {commit.commit_id}{ref_str}")
+        printer.add_commit_line(f"commit {commit.commit_id}{ref_str}",
+                                is_first_line=True)
 
         if include_parent_id and commit.parent_id:
-            printer.line(f"Parent: {commit.parent_id}")
+            printer.add_commit_line(f"Parent: {commit.parent_id}")
 
         # TODO: Print author with details
 
-        printer.line(f"Date:   {commit.timestamp}")
-        printer.line("")
-        printer.line(commit.message, is_indented=True)
-        printer.line("")
-
-        return '\n'.join(printer.output)
-
-    @staticmethod
-    def _format_commit_with_graph(commit: CommitSummary,
-                                  include_parent_id: bool = False):
-        printer = CommitPrinter()
-        ref_names = ', '.join(commit.branches + commit.tags)
-        ref_str = f" ({ref_names})" if ref_names else ""
-        printer.graph_line(f"commit {commit.commit_id}{ref_str}",
-                           is_first_line=True)
-
-        if include_parent_id and commit.parent_id:
-            printer.graph_line(f"Parent: {commit.parent_id}")
-
-        # TODO: Print author with details
-
-        printer.graph_line(f"Date:   {commit.timestamp}")
-        printer.graph_line("")
-        printer.graph_line(commit.message, message=True)
-        printer.graph_line("")
+        printer.add_commit_line(f"Date:   {commit.timestamp}")
+        printer.add_commit_line("")
+        printer.add_commit_line(commit.message, is_indented=True)
+        printer.add_commit_line("")
 
         return '\n'.join(printer.output)
 
@@ -165,7 +155,7 @@ def _version_callback(value: bool) -> None:
 def print_clean_errors(fn):
     @wraps(fn)
     def fn_with_clean_errors(*args, **kwargs):
-        if os.environ.get("KISHU_VERBOSE") == "true":
+        if Config.get('CLI', 'KISHU_VERBOSE', True):
             return fn(*args, **kwargs)
         try:
             return fn(*args, **kwargs)
@@ -571,7 +561,7 @@ def fecommit(
     print(into_json(KishuCommand.fe_commit(notebook_key, commit_id, vardepth)))
 
 
-if os.environ.get("KISHU_ENABLE_EXPERIMENTAL", "false").lower() in ('true', '1', 't'):
+if Config.get('CLI', 'KISHU_ENABLE_EXPERIMENTAL', False):
     kishu_app.add_typer(kishu_experimental_app, name="experimental")
 
 

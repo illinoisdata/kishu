@@ -8,27 +8,30 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Tuple, Union
 from typing_extensions import TypeAlias
 
+from kishu.storage.config import Config
+
 """
 Common types.
 """
 CommitId = str
 BlockPosition: TypeAlias = Tuple[int, int]  # (rank, position)
 
+# Go to config
 """
 Block size in number of nodes. Tail block has MAX_BASE_SIZE nodes where each upper rank block is
 MUL_SIZE times larger than its lower rank block (exponential sizes).
 """
-MAX_BASE_SIZE: int = 128
-MUL_SIZE: int = 2
+MAX_BASE_SIZE = Config.get('COMMIT_GRAPH', 'MAX_BASE_SIZE', 128)
+MUL_SIZE = Config.get('COMMIT_GRAPH', 'MUL_SIZE', 2)
 
 """
 Node byte format: [ header | serialzied node | padding ] where header contains the serialized node
 size in bytes. Header is an integer encoded in little endian. This assumes each node fits in 200 B.
 """
-NODE_SIZE = 256  # bytes
-NODE_HEADER_SIZE = 1  # bytes
+NODE_SIZE = Config.get('COMMIT_GRAPH', 'NODE_SIZE', 256)  # bytes
+NODE_HEADER_SIZE = Config.get('COMMIT_GRAPH', 'NODE_HEADER_SIZE', 1)  # bytes
 NODE_DATA_SIZE = NODE_SIZE - NODE_HEADER_SIZE
-NODE_HEADER_BYTEORDER: Literal['little', 'big'] = 'little'
+NODE_HEADER_BYTEORDER: Literal['little', 'big'] = Config.get('COMMIT_GRAPH', 'NODE_HEADER_BYTEORDER', 'little')
 assert 2 ** (8 * NODE_HEADER_SIZE) >= NODE_DATA_SIZE
 
 """

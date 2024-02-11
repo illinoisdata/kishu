@@ -77,6 +77,7 @@ from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import KishuCommitGraph
+from kishu.storage.config import Config
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag
 from kishu.storage.variable_version import VariableVersion
@@ -278,10 +279,13 @@ class KishuForJupyter:
         self._last_execution_count = 0
 
         # Configurations.
-        self._test_mode = False
-        self._commit_id_mode = "uuid4"  # TODO: Load from environment/configuration
-        self._enable_auto_branch = True
-        self._enable_auto_commit_when_skip_notebook = True
+        self._test_mode = Config.get('JUPYTERINT', 'test_mode', False)
+        self._commit_id_mode = Config.get('JUPYTERINT', 'commit_id_mode', 'uuid4')
+        self._enable_auto_branch = Config.get('JUPYTERINT', 'enable_auto_branch', True)
+        self._enable_auto_commit_when_skip_notebook = Config.get(
+            'JUPYTERINT',
+            'enable_auto_commit_when_skip_notebook',
+            True)
 
         # Initialize databases.
         self._kishu_commit.init_database()

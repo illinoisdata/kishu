@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 from kishu.jupyterint import KishuForJupyter
 from kishu.notebook_id import NotebookId
+from kishu.storage.config import Config
 from kishu.storage.path import ENV_KISHU_PATH_ROOT, KishuPath
 
 from tests.helpers.serverexec import JupyterServerRunner
@@ -83,6 +84,14 @@ def tmp_nb_path(tmp_path: Path, kishu_test_notebook_dir: Path) -> Callable[[str]
 @pytest.fixture()
 def nb_simple_path(tmp_nb_path: Callable[[str], Path]) -> Path:
     return tmp_nb_path("simple.ipynb")
+
+
+@pytest.fixture(autouse=True)
+def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_config_path = Config.CONFIG_PATH
+    Config.CONFIG_PATH = os.path.join(KishuPath.kishu_directory(), "config.ini")
+    yield Config
+    Config.CONFIG_PATH = prev_config_path
 
 
 @pytest.fixture()
