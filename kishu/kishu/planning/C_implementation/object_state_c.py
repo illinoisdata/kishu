@@ -13,7 +13,8 @@ class ObjectState:
 
     def __init__(self, obj):
         self.pick = pickle.dumps(obj)
-        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(obj)
+        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
+            obj)
         # self.visitor = VisitorModule.get_visitor_wrapper(obj)
         # self.hashed_state = VisitorModule.get_digest_hash_wrapper(self.visitor)
         # self.traversal = VisitorModule.get_visited_objs_wrapper(self.visitor)
@@ -44,7 +45,8 @@ class ObjectState:
         self.pick = pickle.dumps(obj)
         # self.visitor = VisitorModule.get_visitor_wrapper(obj)
         # self.hashed_state = VisitorModule.get_digest_hash_wrapper(self.visitor)
-        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(obj)
+        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
+            obj)
 
     def get_object_hash(self):
         """

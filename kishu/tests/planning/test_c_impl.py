@@ -7,13 +7,18 @@ import pytest
 
 from kishu.planning.C_implementation.object_state_c import ObjectState
 
+
 def benchmark_hash_creation(obj):
     objs1 = ObjectState(obj)
+    return objs1
+
 
 def benchmark_hash_comparison(objs1: ObjectState, objs2: ObjectState):
     return objs1.compare_ObjectStates(objs2)
 
-#--------------------------------------- Numpy tests -----------------------
+# --------------------------------------- Numpy tests -----------------------
+
+
 def test_hash_numpy():
     """
         Test if hash is accurately generated for numpy arrays
@@ -24,19 +29,20 @@ def test_hash_numpy():
     objs2 = ObjectState(a)
 
     # Assert that the hash does not change when the object remains unchanged
-    assert objs1.compare_ObjectStates(objs2) == True
+    assert objs1.compare_ObjectStates(objs2)
 
     a[3] = 10
     objs2.update_object_hash(a)
 
     # Assert that the hash changes when the object changes
-    assert objs1.compare_ObjectStates(objs2) == False
+    assert not objs1.compare_ObjectStates(objs2)
 
     a[3] = 3
     objs2.update_object_hash(a)
 
     # Assert that the original hash is restored when the original object state is restored
-    assert objs1.compare_ObjectStates(objs2) == True
+    assert objs1.compare_ObjectStates(objs2)
+
 
 @pytest.mark.benchmark(group="hash creation")
 def test_hash_creation_numpy(benchmark):
@@ -45,6 +51,7 @@ def test_hash_creation_numpy(benchmark):
     benchmark(benchmark_hash_creation, a)
     assert True
 
+
 @pytest.mark.benchmark(group="hash comparison")
 def test_hash_comparison_numpy(benchmark):
     a = np.arange(6)
@@ -52,10 +59,12 @@ def test_hash_comparison_numpy(benchmark):
     objs1 = ObjectState(a)
     objs2 = ObjectState(a)
 
-    hash_equal = benchmark(benchmark_hash_comparison, objs1, objs2)
+    benchmark(benchmark_hash_comparison, objs1, objs2)
     assert True
-    
-#--------------------------------------- Pandas tests ----------------------
+
+# --------------------------------------- Pandas tests ----------------------
+
+
 def test_hash_pandas_Series():
     """
         Test if hash is accurately generated for pandas series
@@ -66,20 +75,21 @@ def test_hash_pandas_Series():
     objs2 = ObjectState(a)
 
     # Assert that the hash does not change when the object remains unchanged
-    assert objs1.compare_ObjectStates(objs2) == True
+    assert objs1.compare_ObjectStates(objs2)
 
     a[2] = 0
     objs2.update_object_hash(a)
 
     # Assert that the hash changes when the object changes
-    assert objs1.compare_ObjectStates(objs2) == False
+    assert not objs1.compare_ObjectStates(objs2)
 
     a[2] = 3
 
     objs2.update_object_hash(a)
 
     # Assert that the original hash is restored when the original object state is restored
-    assert objs1.compare_ObjectStates(objs2) == True
+    assert objs1.compare_ObjectStates(objs2)
+
 
 @pytest.mark.benchmark(group="hash creation")
 def test_hash_creation_series(benchmark):
@@ -87,14 +97,16 @@ def test_hash_creation_series(benchmark):
     benchmark(benchmark_hash_creation, a)
     assert True
 
+
 @pytest.mark.benchmark(group="hash comparison")
 def test_hash_comparison_series(benchmark):
     a = pd.Series([1, 2, 3, 4])
     objs1 = ObjectState(a)
     objs2 = ObjectState(a)
 
-    hash_equal = benchmark(benchmark_hash_comparison, objs1, objs2)
+    benchmark(benchmark_hash_comparison, objs1, objs2)
     assert True
+
 
 def test_hash_pandas_df():
     """
@@ -110,15 +122,15 @@ def test_hash_pandas_df():
 
     # Assert that the hash does not change when the object remains unchanged
     if pickled1 == pickled2:
-        assert objs1.compare_ObjectStates(objs2) == True
+        assert objs1.compare_ObjectStates(objs2)
     else:
-        assert objs1.compare_ObjectStates(objs2) == False
+        assert not objs1.compare_ObjectStates(objs2)
 
     df.at[0, 'species'] = "Changed"
     objs2.update_object_hash(df)
 
     # Assert that the hash changes when the object changes
-    assert objs1.compare_ObjectStates(objs2) == False
+    assert not objs1.compare_ObjectStates(objs2)
 
     df.at[0, 'species'] = "Adelie"
     objs2.update_object_hash(df)
@@ -127,9 +139,9 @@ def test_hash_pandas_df():
     # (if pickled binaries are the same)
     pickled2 = pickle.dumps(df)
     if pickled1 == pickled2:
-        assert objs1.compare_ObjectStates(objs2) == True
+        assert objs1.compare_ObjectStates(objs2)
     else:
-        assert objs1.compare_ObjectStates(objs2) == False
+        assert not objs1.compare_ObjectStates(objs2)
 
     new_row = {'species': "New Species", 'island': "New island", 'bill_length_mm': 999,
                'bill_depth_mm': 999, 'flipper_length_mm': 999, 'body_mass_g': 999, 'sex': "Male"}
@@ -138,13 +150,15 @@ def test_hash_pandas_df():
     objs2.update_object_hash(df)
 
     # Assert that hash changes when new row is added to dataframe
-    assert objs1.compare_ObjectStates(objs2) == False
+    assert not objs1.compare_ObjectStates(objs2)
+
 
 @pytest.mark.benchmark(group="hash creation")
 def test_hash_creation_df(benchmark):
     df = sns.load_dataset('penguins')
     benchmark(benchmark_hash_creation, df)
     assert True
+
 
 @pytest.mark.benchmark(group="hash comparison")
 def test_hash_compare_df(benchmark):
@@ -153,10 +167,12 @@ def test_hash_compare_df(benchmark):
     objs1 = ObjectState(df)
     objs2 = ObjectState(df)
 
-    hash_equal = benchmark(benchmark_hash_comparison, objs1, objs2)
+    benchmark(benchmark_hash_comparison, objs1, objs2)
     assert True
 
-#--------------------------------------- matplotlib tests ----------------------
+# --------------------------------------- matplotlib tests ----------------------
+
+
 def test_hash_matplotlib():
     """
         Test if hash is accurately generated for matplotlib objects
@@ -173,29 +189,29 @@ def test_hash_matplotlib():
     pickled1 = pickle.dumps(a)
     pickled2 = pickle.dumps(a)
 
-    # Assert that the hash does not change when the object remains unchanged 
+    # Assert that the hash does not change when the object remains unchanged
     # (if pickled binaries are the same)
     if pickled1 == pickled2:
-        assert objs1.compare_ObjectStates(objs2) == True
+        assert objs1.compare_ObjectStates(objs2)
     else:
-        assert objs1.compare_ObjectStates(objs2) == False
+        assert not objs1.compare_ObjectStates(objs2)
 
     plt.xlabel("XLABEL_2")
     objs2.update_object_hash(a)
 
     # Assert that the hash changes when the object changes
-    assert objs1.compare_ObjectStates(objs2) == False
+    assert not objs1.compare_ObjectStates(objs2)
 
     plt.xlabel("XLABEL_1")
     objs2.update_object_hash(a)
 
-    # Assert that the original hash is restored when the original object state is restored 
+    # Assert that the original hash is restored when the original object state is restored
     # (if pickled binaries are the same)
     pickled2 = pickle.dumps(a)
     if pickled1 == pickled2:
-        assert objs1.compare_ObjectStates(objs2) == True
+        assert objs1.compare_ObjectStates(objs2)
     else:
-        assert objs1.compare_ObjectStates(objs2) == False
+        assert not objs1.compare_ObjectStates(objs2)
 
     line = plt.gca().get_lines()[0]
     line_co = line.get_color()
@@ -203,7 +219,7 @@ def test_hash_matplotlib():
     objs2.update_object_hash(a)
 
     # Assert that the hash changes when the object changes
-    assert objs1.compare_ObjectStates(objs2) == False
+    assert not objs1.compare_ObjectStates(objs2)
 
     line.set_color(line_co)
     objs2.update_object_hash(a)
@@ -212,12 +228,13 @@ def test_hash_matplotlib():
     # (if pickled binaries are the same)
     pickled2 = pickle.dumps(a)
     if pickled1 == pickled2:
-        assert objs1.compare_ObjectStates(objs2) == True
+        assert objs1.compare_ObjectStates(objs2)
     else:
-        assert objs1.compare_ObjectStates(objs2) == False
+        assert not objs1.compare_ObjectStates(objs2)
 
     # Close all figures
     plt.close('all')
+
 
 @pytest.mark.benchmark(group="hash creation")
 def test_hash_creation_matplotlib(benchmark):
@@ -229,6 +246,7 @@ def test_hash_creation_matplotlib(benchmark):
     plt.close('all')
     assert True
 
+
 @pytest.mark.benchmark(group="hash comparison")
 def test_hash_compare_matplotlib(benchmark):
     plt.close('all')
@@ -239,11 +257,13 @@ def test_hash_compare_matplotlib(benchmark):
     objs1 = ObjectState(a)
     objs2 = ObjectState(a)
 
-    hash_equal = benchmark(benchmark_hash_comparison, objs1, objs2)
+    benchmark(benchmark_hash_comparison, objs1, objs2)
     plt.close('all')
     assert True
 
-#--------------------------------------- seaborn tests ----------------------
+# --------------------------------------- seaborn tests ----------------------
+
+
 def test_hash_sns_displot():
     """
         Test if hash is accurately generated for seaborn displot objects (figure-level object)
@@ -263,15 +283,15 @@ def test_hash_sns_displot():
     # Assert that the hash does not change when the object remains unchanged
     # (if pickled binaries are the same)
     if pickled1 == pickled2:
-        assert objs1.compare_ObjectStates(objs2) == True
+        assert objs1.compare_ObjectStates(objs2)
     else:
-        assert objs1.compare_ObjectStates(objs2) == False
+        assert not objs1.compare_ObjectStates(objs2)
 
     plot1.set(xlabel="NEW LABEL")
     objs2.update_object_hash(plot1)
 
     # Assert that the hash changes when the object changes
-    assert objs1.compare_ObjectStates(objs2) == False
+    assert not objs1.compare_ObjectStates(objs2)
 
     plot1.set(xlabel="flipper_length_mm")
     objs2.update_object_hash(plot1)
@@ -280,12 +300,13 @@ def test_hash_sns_displot():
     # (if pickled binaries are the same)
     pickled2 = pickle.dumps(plot1)
     if pickled1 == pickled2:
-        assert objs1.compare_ObjectStates(objs2) == True
+        assert objs1.compare_ObjectStates(objs2)
     else:
-        assert objs1.compare_ObjectStates(objs2) == False
+        assert not objs1.compare_ObjectStates(objs2)
 
     # Close all figures
-    plt.close('all')  
+    plt.close('all')
+
 
 @pytest.mark.benchmark(group="hash creation")
 def test_hash_creation_sns_displot(benchmark):
@@ -298,6 +319,7 @@ def test_hash_creation_sns_displot(benchmark):
     plt.close('all')
     assert True
 
+
 @pytest.mark.benchmark(group="hash comparison")
 def test_compare_hash_sns_displot(benchmark):
     plt.close('all')
@@ -309,9 +331,10 @@ def test_compare_hash_sns_displot(benchmark):
     objs1 = ObjectState(plot1)
     objs2 = ObjectState(plot1)
 
-    hash_equal = benchmark(benchmark_hash_comparison, objs1, objs2)
+    benchmark(benchmark_hash_comparison, objs1, objs2)
     plt.close('all')
     assert True
+
 
 def test_hash_sns_scatterplot():
     """
@@ -332,15 +355,15 @@ def test_hash_sns_scatterplot():
     # Assert that the hash does not change when the object remains unchanged
     # (if pickled binaries are the same)
     if pickled1 == pickled2:
-        assert objs1.compare_ObjectStates(objs2) == True
+        assert objs1.compare_ObjectStates(objs2)
     else:
-        assert objs1.compare_ObjectStates(objs2) == False
+        assert not objs1.compare_ObjectStates(objs2)
 
     plot1.set_xlabel('Flipper Length')
     objs2.update_object_hash(plot1)
 
     # Assert that the hash changes when the object changes
-    assert objs1.compare_ObjectStates(objs2) == False
+    assert not objs1.compare_ObjectStates(objs2)
 
     plot1.set_xlabel('flipper_length_mm')
     objs2.update_object_hash(plot1)
@@ -349,18 +372,19 @@ def test_hash_sns_scatterplot():
     # (if pickled binaries are the same)
     pickled2 = pickle.dumps(plot1)
     if pickled1 == pickled2:
-        assert objs1.compare_ObjectStates(objs2) == True
+        assert objs1.compare_ObjectStates(objs2)
     else:
-        assert objs1.compare_ObjectStates(objs2) == False
+        assert not objs1.compare_ObjectStates(objs2)
 
     plot1.set_facecolor('#eafff5')
     objs2.update_object_hash(plot1)
 
     # Assert that the hash changes when the object changes
-    assert objs1.compare_ObjectStates(objs2) == False
+    assert not objs1.compare_ObjectStates(objs2)
 
     # Close all figures
     plt.close('all')
+
 
 @pytest.mark.benchmark(group="hash creation")
 def test_hash_creation_sns_scatterplot(benchmark):
@@ -373,6 +397,7 @@ def test_hash_creation_sns_scatterplot(benchmark):
     plt.close('all')
     assert True
 
+
 @pytest.mark.benchmark(group="hash comparison")
 def test_hash_compare_sns_scatterplot(benchmark):
     plt.close('all')
@@ -384,6 +409,6 @@ def test_hash_compare_sns_scatterplot(benchmark):
     objs1 = ObjectState(plot1)
     objs2 = ObjectState(plot1)
 
-    hash_equal = benchmark(benchmark_hash_comparison, objs1, objs2)
+    benchmark(benchmark_hash_comparison, objs1, objs2)
     plt.close('all')
     assert True
