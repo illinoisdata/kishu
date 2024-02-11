@@ -18,7 +18,7 @@ extern const int TYPE_BYTEARR;
 
 typedef union {
     PyObject* py_object;
-    XXH32_state_t* hashed_state;
+    XXH3_state_t* hashed_state;
     // GraphNode* node;
     // other possible return types
 } VisitorReturnType;
@@ -54,7 +54,8 @@ typedef struct Visitor {
 // static PyObject* get_object_hash_wrapper(PyObject* self, PyObject* args);
 
 VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include_id, VisitorReturnType* state);
-VisitorReturnType* get_object_hash(PyObject *obj);
+// VisitorReturnType* get_object_hash(PyObject *obj);
+Visitor* get_object_hash(PyObject *obj);
 
 Visitor* get_hash_visitor();
 

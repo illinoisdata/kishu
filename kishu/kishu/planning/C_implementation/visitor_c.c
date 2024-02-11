@@ -13,19 +13,21 @@ const int TYPE_STR = 6;
 const int TYPE_BYTE = 7;
 const int TYPE_BYTEARR = 8;
 
+// VisitorReturnType* get_object_hash(PyObject *obj) {
+//     Visitor* hash_visitor = create_hash_visitor();
+//     return get_object_state(obj, hash_visitor, 1, hash_visitor -> state);
+// }
 
-
-
-
-VisitorReturnType* get_object_hash(PyObject *obj) {
+Visitor* get_object_hash(PyObject *obj) {
     Visitor* hash_visitor = create_hash_visitor();
-    return get_object_state(obj, hash_visitor, 1, hash_visitor -> state);
-}
-
-Visitor* get_hash_visitor() {
-    Visitor* hash_visitor = create_hash_visitor();
+    get_object_state(obj, hash_visitor, 1, hash_visitor -> state);
     return hash_visitor;
 }
+
+// Visitor* get_hash_visitor() {
+//     Visitor* hash_visitor = create_hash_visitor();
+//     return hash_visitor;
+// }
 
 VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include_id, VisitorReturnType* state) {
     VisitorReturnType* ret_state;
@@ -141,12 +143,12 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include
                 if (PyUnicode_Check(reduced))
                     return visitor -> visit_primitive(reduced, state, visitor -> list_included);
 
-                int plt_callback_instance = is_plt_Callback_instance(obj);
-                if (plt_callback_instance == -1)
-                    return NULL;
+                // int plt_callback_instance = is_plt_Callback_instance(obj);
+                // if (plt_callback_instance == -1)
+                //     return NULL;
                 
-                if (plt_callback_instance) 
-                    return state;
+                // if (plt_callback_instance) 
+                //     return state;
 
                 Py_ssize_t size = PyTuple_Size(reduced);
                 for (Py_ssize_t i = 1; i < size; i++) {
@@ -217,75 +219,31 @@ int is_picklable(PyObject *obj) {
     return 1; // True
 }
 
-// int is_pickable_using_Python(PyObject *obj) {
-//     PyObject *pModule, *pFunc, *pArgs, *pValue;
+// int is_plt_Callback_instance(PyObject *obj) {
+//     static PyObject *CallbackRegistry = NULL;
 
-//     pModule = PyImport_ImportModule("test_is_pickable");
-//     if (!pModule) {
-//         PyErr_Print();
-//         fprintf(stderr, "Failed to load");
-//         return -1;
-//     }
-
-//     pFunc = PyObject_GetAttrString(pModule, "is_pickable");
-//     if (!pFunc || !PyCallable_Check(pFunc)) {
-//         if (PyErr_Occurred())
+//     if (CallbackRegistry == NULL) {
+//         PyObject *plt_module = PyImport_ImportModule("matplotlib.cbook");
+//         if (!plt_module) {
+//             // Handle error
 //             PyErr_Print();
-//         fprintf(stderr, "Cannot find function");
-//         Py_DECREF(pModule);
-//         return -1;
+//             return -1;
+//         }
+
+//         CallbackRegistry = PyObject_GetAttrString(plt_module, "CallbackRegistry");
+//         Py_DECREF(plt_module);
+//         if (!CallbackRegistry) {
+//             // Handle error
+//             PyErr_Print();
+//             return -1;
+//         }    
 //     }
 
-//     pArgs = PyTuple_New(1);
-//     PyTuple_SetItem(pArgs, 0, obj);
-//     Py_INCREF(obj);
-
-//     pValue = PyObject_CallObject(pFunc, pArgs);
-//     Py_DECREF(pArgs);
-//     Py_DECREF(pFunc);
-
-//     long long temp_obj;
-
-//     if (pValue != NULL) {
-//         // printf("Function call succeeded.\n");
-//         temp_obj = PyLong_AsLongLong(pValue);
-//         Py_DECREF(pValue);
-//     } else {
-//         PyErr_Print();
-//         fprintf(stderr, "Call failed.\n");
-//         Py_DECREF(pModule);
-//         return -1;
-//     }
-
-//     Py_DECREF(pModule);
-//     return temp_obj;
+//     if (PyObject_IsInstance(obj, CallbackRegistry))
+//         return 1;
+//     else
+//         return 0;
 // }
-
-int is_plt_Callback_instance(PyObject *obj) {
-    static PyObject *CallbackRegistry = NULL;
-
-    if (CallbackRegistry == NULL) {
-        PyObject *plt_module = PyImport_ImportModule("matplotlib.cbook");
-        if (!plt_module) {
-            // Handle error
-            PyErr_Print();
-            return -1;
-        }
-
-        CallbackRegistry = PyObject_GetAttrString(plt_module, "CallbackRegistry");
-        Py_DECREF(plt_module);
-        if (!CallbackRegistry) {
-            // Handle error
-            PyErr_Print();
-            return -1;
-        }    
-    }
-
-    if (PyObject_IsInstance(obj, CallbackRegistry))
-        return 1;
-    else
-        return 0;
-}
 
 int is_pandas_RangeIndex_instance(PyObject *obj) {
     static PyObject *RangeIndex = NULL;
@@ -316,7 +274,11 @@ int is_pandas_RangeIndex_instance(PyObject *obj) {
         return 0;
 }
 
-static PyObject* get_object_hash_wrapper(PyObject* self, PyObject* args) {
+/*
+* Python interface function to get visitor object.
+* args: - Python object to hash
+*/
+static PyObject* get_visitor_wrapper(PyObject* self, PyObject* args) {
     // Parse arguments from Python to C
     PyObject *obj;
     if (!PyArg_ParseTuple(args, "O", &obj)) {
@@ -324,10 +286,12 @@ static PyObject* get_object_hash_wrapper(PyObject* self, PyObject* args) {
     }
 
     // Calling get_object_hash
-    VisitorReturnType* result = get_object_hash(obj);
+    // VisitorReturnType* result = get_object_hash(obj);
+    Visitor* hash_visitor = get_object_hash(obj);
 
     // Convert the result to a PyCapsule
-    PyObject* state_capsule = PyCapsule_New(result, "XXH32_hash", NULL);
+    // PyObject* state_capsule = PyCapsule_New(result, "XXH32_hash", NULL);
+    PyObject* state_capsule = PyCapsule_New(hash_visitor, "Visitor_hash", NULL);
 
     if (state_capsule == NULL)
         return NULL;
@@ -335,6 +299,10 @@ static PyObject* get_object_hash_wrapper(PyObject* self, PyObject* args) {
     return state_capsule;
 }
 
+/*
+* Python interface function to get hashed state from Visitor Object
+* args: Visitor object
+*/
 static PyObject *get_digest_hash_wrapper(PyObject *self, PyObject *args) {
     if (self == NULL) {
         return NULL;
@@ -344,16 +312,60 @@ static PyObject *get_digest_hash_wrapper(PyObject *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O", &obj)) {
         return NULL;
     }
-    VisitorReturnType* result = (VisitorReturnType *)PyCapsule_GetPointer(obj, "XXH32_hash");
+    // VisitorReturnType* result = (VisitorReturnType *)PyCapsule_GetPointer(obj, "XXH32_hash");
+    Visitor* hash_visitor = (Visitor *)PyCapsule_GetPointer(obj, "Visitor_hash");
 
-    if (result == NULL)
+    if (hash_visitor == NULL)
         return NULL;
 
-    unsigned int digest_hash = XXH32_digest(result -> hashed_state);
+    unsigned long digest_hash = XXH3_64bits_digest(hash_visitor -> state -> hashed_state);
 
     return PyLong_FromUnsignedLong(digest_hash);
 }
 
+/*
+* Python interface funtion to get hashed state of object
+* args: object whose state needs to be hashed
+*/
+static PyObject *get_object_hash_wrapper(PyObject *self, PyObject *args) {
+    // Parse arguments from Python to C
+    PyObject *obj;
+    if (!PyArg_ParseTuple(args, "O", &obj)) {
+        return NULL;
+    }
+
+    // Calling get_object_hash
+    // VisitorReturnType* result = get_object_hash(obj); 
+    Visitor* hash_visitor = get_object_hash(obj);    
+
+    unsigned long digest_hash = XXH3_64bits_digest(hash_visitor -> state -> hashed_state);
+
+    return PyLong_FromUnsignedLong(digest_hash);
+}
+
+/*
+* Python interface funtion to get hashed state of object and items hashed during traversing
+* args: object whose state needs to be hashed
+* Return: Tuple(hashed state, traversed items)
+*/
+static PyObject *get_object_hash_and_trav_wrapper(PyObject *self, PyObject *args) {
+    // Parse arguments from Python to C
+    PyObject *obj;
+    if (!PyArg_ParseTuple(args, "O", &obj)) {
+        return NULL;
+    }
+
+    Visitor* hash_visitor = get_object_hash(obj);    
+
+    unsigned long digest_hash = XXH3_64bits_digest(hash_visitor -> state -> hashed_state);
+
+    return PyTuple_Pack(2, PyLong_FromUnsignedLong(digest_hash), hash_visitor -> list_included);
+}
+
+/*
+* Python interface funtion to get items hashed during traversing
+* args: Visitor object
+*/
 static PyObject *get_visited_objs_wrapper(PyObject *self, PyObject *args) {
     // Parse arguments from Python to C
     PyObject *obj;
@@ -362,8 +374,10 @@ static PyObject *get_visited_objs_wrapper(PyObject *self, PyObject *args) {
     }
 
     // Calling get_object_hash
-    Visitor* hash_visitor = get_hash_visitor();
-    VisitorReturnType* result = get_object_state(obj, hash_visitor, 1, hash_visitor -> state);
+    // Visitor* hash_visitor = get_hash_visitor();
+    // VisitorReturnType* result = get_object_state(obj, hash_visitor, 1, hash_visitor -> state);
+
+    Visitor* hash_visitor = (Visitor *)PyCapsule_GetPointer(obj, "Visitor_hash");
 
     // // Get visited list
     // PyObject* list_visited = PyList_New(0);
@@ -381,10 +395,14 @@ static PyObject *get_visited_objs_wrapper(PyObject *self, PyObject *args) {
 
 
 static PyMethodDef VisitorMethods[] = {
-    {"get_object_hash_wrapper", get_object_hash_wrapper, METH_VARARGS,
-     "Python interface for the get_object_hash C library function."},
+    {"get_object_hash_and_trav_wrapper", get_object_hash_and_trav_wrapper, METH_VARARGS,
+     "Python interface to get hashed state and traversal as a tuple"},
+    {"get_visitor_wrapper", get_visitor_wrapper, METH_VARARGS,
+     "Python interface to get xxhash object"},
     {"get_digest_hash_wrapper", get_digest_hash_wrapper, METH_VARARGS,
-     "Python interface for the get_digest_hash_wrapper C library function."},
+     "Python interface to get hash value from xxhash object"},
+    {"get_object_hash_wrapper", get_object_hash_wrapper, METH_VARARGS,
+     "Python interface for getting hashed object state of object"}, 
     {"get_visited_objs_wrapper", get_visited_objs_wrapper, METH_VARARGS,
      "Python interface for the visited objs."},     
     {NULL, NULL, 0, NULL}};

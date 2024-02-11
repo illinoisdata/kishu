@@ -2,16 +2,16 @@
 #include "hash_visitor_c.h"
 #include "xxhash.h"
 
-static PyObject* get_obj_id(PyObject *v) {
-    PyObject *id = PyLong_FromVoidPtr(v);
+// static PyObject* get_obj_id(PyObject *v) {
+//     PyObject *id = PyLong_FromVoidPtr(v);
 
-    if (id && PySys_Audit("builtins.id", "O", id) < 0) {
-        Py_DECREF(id);
-        return NULL;
-    }
+//     if (id && PySys_Audit("builtins.id", "O", id) < 0) {
+//         Py_DECREF(id);
+//         return NULL;
+//     }
 
-    return id;
-}
+//     return id;
+// }
 
 VisitorReturnType* hash_has_visited(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state) {
     // Implementation specific to HashVisitor
@@ -32,7 +32,7 @@ VisitorReturnType* hash_handle_visited(PyObject *obj, Visited *visited, int incl
 
         // long long obj_id = PyLong_AsLongLong(get_obj_id(obj));
         long long obj_id = (long long)obj;
-        XXH32_update(state -> hashed_state, &obj_id, sizeof(obj_id));
+        XXH3_64bits_update(state -> hashed_state, &obj_id, sizeof(obj_id));
 
         // PyList_Append(list_included, get_obj_id(obj));
         PyList_Append(list_included, PyLong_FromLongLong(obj_id));
@@ -45,57 +45,57 @@ VisitorReturnType* hash_visit_primitive(PyObject *obj, VisitorReturnType* state,
     if (obj == Py_None) {
         /* Python - None */
         static const int none_value = 0;
-        XXH32_update(state -> hashed_state, &TYPE_NONE, sizeof(TYPE_NONE));
-        XXH32_update(state -> hashed_state, &none_value, sizeof(none_value));
+        XXH3_64bits_update(state -> hashed_state, &TYPE_NONE, sizeof(TYPE_NONE));
+        XXH3_64bits_update(state -> hashed_state, &none_value, sizeof(none_value));
 
         PyList_Append(list_included, obj);
     } else if (obj == Py_NotImplemented) {
         /* Python - NotImplemented */
         static const int notimplemented_value = 1;
-        XXH32_update(state -> hashed_state, &TYPE_NOTIMPLEMENTED, sizeof(TYPE_NOTIMPLEMENTED));
-        XXH32_update(state -> hashed_state, &notimplemented_value, sizeof(notimplemented_value));
+        XXH3_64bits_update(state -> hashed_state, &TYPE_NOTIMPLEMENTED, sizeof(TYPE_NOTIMPLEMENTED));
+        XXH3_64bits_update(state -> hashed_state, &notimplemented_value, sizeof(notimplemented_value));
 
         PyList_Append(list_included, obj);
     } else if (obj == Py_Ellipsis) {
         /* Python - Ellipsis */
         static const int ellipsis_value = 2;
-        XXH32_update(state -> hashed_state, &TYPE_ELLIPSIS, sizeof(TYPE_ELLIPSIS));
-        XXH32_update(state -> hashed_state, &ellipsis_value, sizeof(ellipsis_value)); 
+        XXH3_64bits_update(state -> hashed_state, &TYPE_ELLIPSIS, sizeof(TYPE_ELLIPSIS));
+        XXH3_64bits_update(state -> hashed_state, &ellipsis_value, sizeof(ellipsis_value)); 
 
         PyList_Append(list_included, obj);
     } else if (PyLong_Check(obj)) {
         /* Python - int */
         long long value = PyLong_AsLongLong(obj);
-        XXH32_update(state -> hashed_state, &TYPE_INT, sizeof(TYPE_INT));
-        XXH32_update(state -> hashed_state, &value, sizeof(value));
+        XXH3_64bits_update(state -> hashed_state, &TYPE_INT, sizeof(TYPE_INT));
+        XXH3_64bits_update(state -> hashed_state, &value, sizeof(value));
 
         PyList_Append(list_included, obj);
     } else if (PyFloat_Check(obj)) {
         /* Python - float */
         double value = PyFloat_AsDouble(obj);
-        XXH32_update(state -> hashed_state, &TYPE_FLOAT, sizeof(TYPE_FLOAT));
-        XXH32_update(state -> hashed_state, &value, sizeof(value));
+        XXH3_64bits_update(state -> hashed_state, &TYPE_FLOAT, sizeof(TYPE_FLOAT));
+        XXH3_64bits_update(state -> hashed_state, &value, sizeof(value));
 
         PyList_Append(list_included, obj);
     } else if (PyBool_Check(obj)) {
         /* Python - bool */
         long value = PyObject_IsTrue(obj);
-        XXH32_update(state -> hashed_state, &TYPE_BOOL, sizeof(TYPE_BOOL));
-        XXH32_update(state -> hashed_state, &value, sizeof(value));
+        XXH3_64bits_update(state -> hashed_state, &TYPE_BOOL, sizeof(TYPE_BOOL));
+        XXH3_64bits_update(state -> hashed_state, &value, sizeof(value));
 
         PyList_Append(list_included, obj);
     } else if (PyUnicode_Check(obj)) {
         /* Python - str */
         Py_ssize_t length;
         const char* data = PyUnicode_AsUTF8AndSize(obj, &length);
-        XXH32_update(state -> hashed_state, &TYPE_STR, sizeof(TYPE_STR));
-        XXH32_update(state -> hashed_state, data, (size_t)length);
+        XXH3_64bits_update(state -> hashed_state, &TYPE_STR, sizeof(TYPE_STR));
+        XXH3_64bits_update(state -> hashed_state, data, (size_t)length);
 
         PyList_Append(list_included, obj);
     }  else {
         // Set TypeError for unknown primitive type
         PyErr_SetString(PyExc_TypeError, "Unsupported object type for hashing");
-        XXH32_freeState(state -> hashed_state);
+        XXH3_freeState(state -> hashed_state);
         return NULL;
     }
 
@@ -120,7 +120,7 @@ VisitorReturnType* hash_visit_list(PyObject *obj, Visited **visited, int include
         /* Hash id */
         // long long obj_id = PyLong_AsLongLong(new_node -> id);
         long long obj_id = (long long)obj;
-        XXH32_update(state -> hashed_state, &obj_id, sizeof(obj_id));
+        XXH3_64bits_update(state -> hashed_state, &obj_id, sizeof(obj_id));
 
         // PyList_Append(list_included, new_node -> id);
         PyList_Append(list_included, PyLong_FromLongLong(obj_id));
@@ -137,7 +137,7 @@ VisitorReturnType* hash_visit_set(PyObject *obj, Visited **visited, int include_
     if (include_id == 1) {
         // long long obj_id = PyLong_AsLongLong(new_node -> id);
         long long obj_id = (long long)obj;
-        XXH32_update(state -> hashed_state, &obj_id, sizeof(obj_id));
+        XXH3_64bits_update(state -> hashed_state, &obj_id, sizeof(obj_id));
 
         // PyList_Append(list_included, new_node -> id);
         PyList_Append(list_included, PyLong_FromLongLong(obj_id));
@@ -154,7 +154,7 @@ VisitorReturnType* hash_visit_dict(PyObject *obj, Visited **visited, int include
     if (include_id == 1) {
         // long long obj_id = PyLong_AsLongLong(new_node -> id);
         long long obj_id = (long long)obj;
-        XXH32_update(state -> hashed_state, &obj_id, sizeof(obj_id));
+        XXH3_64bits_update(state -> hashed_state, &obj_id, sizeof(obj_id));
 
         // PyList_Append(list_included, new_node -> id);
         PyList_Append(list_included, PyLong_FromLongLong(obj_id));
@@ -180,14 +180,14 @@ VisitorReturnType* hash_visit_byte(PyObject *obj, Visited **visited, int include
     }
     /* Hash type */
     if (PyBytes_Check(obj)) {
-        XXH32_update(state -> hashed_state, &TYPE_BYTE, sizeof(TYPE_BYTE));
+        XXH3_64bits_update(state -> hashed_state, &TYPE_BYTE, sizeof(TYPE_BYTE));
     }
     else {
-        XXH32_update(state -> hashed_state, &TYPE_BYTEARR, sizeof(TYPE_BYTEARR));
+        XXH3_64bits_update(state -> hashed_state, &TYPE_BYTEARR, sizeof(TYPE_BYTEARR));
     }
 
     /* Hash value */
-    XXH32_update(state->hashed_state, data, (size_t)length);
+    XXH3_64bits_update(state->hashed_state, data, (size_t)length);
 
     PyList_Append(list_included, obj);
     return state;
@@ -200,7 +200,7 @@ VisitorReturnType* hash_visit_type(PyObject *obj, Visited **visited, int include
         // Handle error: typeName is NULL
         return NULL;
     }
-    XXH32_update(state->hashed_state, typeName, strlen(typeName));
+    XXH3_64bits_update(state->hashed_state, typeName, strlen(typeName));
 
     PyList_Append(list_included, obj);
     return state;
@@ -218,7 +218,7 @@ VisitorReturnType* hash_visit_callable(PyObject *obj, Visited **visited, int inc
         
         // long long obj_id = PyLong_AsLongLong(new_node -> id);
         long long obj_id = (long long)obj;
-        XXH32_update(state -> hashed_state, &obj_id, sizeof(obj_id));
+        XXH3_64bits_update(state -> hashed_state, &obj_id, sizeof(obj_id));
 
         // PyList_Append(list_included, new_node -> id);
         PyList_Append(list_included, PyLong_FromLongLong(obj_id));
@@ -240,7 +240,7 @@ VisitorReturnType* hash_visit_other(PyObject *obj, Visited **visited, int includ
 void hash_update_state_id(PyObject *obj, VisitorReturnType* state, PyObject* list_included) {
     // long long obj_id = PyLong_AsLongLong(get_obj_id(obj));
     long long obj_id = (long long)obj;
-    XXH32_update(state -> hashed_state, &obj_id, sizeof(obj_id)); 
+    XXH3_64bits_update(state -> hashed_state, &obj_id, sizeof(obj_id)); 
 
     // PyList_Append(list_included, get_obj_id(obj));
     PyList_Append(list_included, PyLong_FromLongLong(obj_id));
@@ -271,8 +271,8 @@ Visitor* create_hash_visitor() {
 
     visitor->visited = NULL;
 
-    XXH32_state_t* xxhash_state = XXH32_createState();
-    XXH32_reset(xxhash_state, seed);
+    XXH3_state_t* xxhash_state = XXH3_createState();
+    XXH3_64bits_reset_withSeed(xxhash_state, seed);
 
     VisitorReturnType* state = (VisitorReturnType*)malloc(sizeof(VisitorReturnType*));
     state -> hashed_state = xxhash_state;
