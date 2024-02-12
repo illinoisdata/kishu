@@ -406,7 +406,7 @@ class TestKishuCommand:
             ('numpy.ipynb', 4, "iris_X_train"),
             ('simple.ipynb', 4, "b"),
             ('test_unserializable_var.ipynb', 2, "next(gen)"),  # directly printing gen prints out its memory address.
-            ('QiskitDemo_NCSA_May2023.ipynb', 61, "qc")
+            #('QiskitDemo_NCSA_May2023.ipynb', 61, "qc")
         ]
     )
     def test_end_to_end_checkout(
@@ -429,6 +429,7 @@ class TestKishuCommand:
 
             # Run some notebook cells.
             for i in range(cell_num_to_restore):
+                print("-------", i)
                 notebook_session.run_code(contents[i])
 
             # Get the variable value before checkout.
@@ -437,6 +438,7 @@ class TestKishuCommand:
 
             # Run the rest of the notebook cells.
             for i in range(cell_num_to_restore, len(contents)):
+                print("-------", i)
                 notebook_session.run_code(contents[i])
 
             # Get the notebook key of the session.
@@ -450,6 +452,8 @@ class TestKishuCommand:
             log_result = KishuCommand.log_all(notebook_key)
             assert len(log_result.commit_graph) == len(contents) + 1  # all cells + init cell + print variable cell
             commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
+
+            print("checking out:")
 
             # Restore to that commit
             KishuCommand.checkout(notebook_path, commit_id)

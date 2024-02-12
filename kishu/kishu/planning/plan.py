@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from IPython.core.interactiveshell import InteractiveShell
 from typing import Any, Dict, List, Optional
 
+from kishu.exceptions import DuplicateRestoreActionError, RestoreActionNotFoundError, CheckpointWrongIdError
 from kishu.jupyter.namespace import Namespace
 from kishu.storage.checkpoint import KishuCheckpoint
 
@@ -145,20 +146,28 @@ class LoadVariableRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).
     """
-    def __init__(self, var_names: Optional[List[str]] = None):
+    def __init__(self,
+                 cell_num: float,
+                 var_names: Optional[List[str]] = None,
+                 fallback_recomputation: Optional[List[RerunCellRestoreAction]] = None):
         """
         variable_names: The variables to restore.
         """
         if (var_names is not None) and (not isinstance(var_names, list)):
             raise ValueError("Unexpected type for var_names: {}".format(type(var_names)))
+        self.cell_num = cell_num
         self.variable_names: Optional[List[str]] = var_names
+        self.fallback_recomputation: Optional[List[RerunCellRestoreAction]] = fallback_recomputation
 
     def run(self, ctx: RestoreActionContext):
         """
         @param user_ns  A target space where restored variables will be set.
         """
+        print("running load variable")
         data: bytes = KishuCheckpoint(ctx.checkpoint_file).get_checkpoint(ctx.exec_id)
+        print("running load variable")
         vars: VarNamesToObjects = VarNamesToObjects.loads(data)
+        print("running load variable")
         for key, obj in vars.items():
             # if self.variable_names is set, limit the restoration only to those variables.
             if self.variable_names is not None:
@@ -167,7 +176,7 @@ class LoadVariableRestoreAction(RestoreAction):
             ctx.shell.user_ns[key] = obj
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(var_names={self.variable_names})"
+        return f"{self.__class__.__name__}(cell_num={self.cell_num}, var_names={self.variable_names}, fallback recomputation cells={[i for i in self.fallback_recomputation]})"
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -177,12 +186,13 @@ class RerunCellRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).
     """
-    def __init__(self, cell_code: str = ""):
+    def __init__(self, cell_num: int, cell_code: str = ""):
         """
         cell_code: cell code to rerun.
         """
         if (cell_code is not None) and (not isinstance(cell_code, str)):
             raise ValueError("Unexpected type for cell_code: {}".format(type(cell_code)))
+        self.cell_num = cell_num
         self.cell_code: Optional[str] = cell_code
 
     def run(self, ctx: RestoreActionContext):
@@ -196,7 +206,7 @@ class RerunCellRestoreAction(RestoreAction):
             pass
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(cell_code={self.cell_code})"
+        return f"{self.__class__.__name__}(cell_num={self.cell_num}, cell_code={self.cell_code})"
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -209,13 +219,24 @@ class RestorePlan:
 
     @param actions  A series of actions for restoring a state.
     """
-    actions: List[RestoreAction] = field(default_factory=lambda: [])
+    actions: Dict[int, RestoreAction] = field(default_factory=lambda: {})
 
-    def add_rerun_cell_restore_action(self, cell_code: str):
-        self.actions.append(RerunCellRestoreAction(cell_code))
+    def add_rerun_cell_restore_action(self, cell_num: int, cell_code: str):
+        if cell_num in self.actions:
+            raise DuplicateRestoreActionError(cell_num)
+        self.actions[cell_num] = RerunCellRestoreAction(cell_num, cell_code)
 
-    def add_load_variable_restore_action(self, variable_names: List[str]):
-        self.actions.append(LoadVariableRestoreAction(variable_names))
+    def add_load_variable_restore_action(self,
+                                         cell_num: float,
+                                         variable_names: List[str],
+                                         fallback_recomputation: List[Tuple(int, str)]):
+        if cell_num in self.actions:
+            raise DuplicateRestoreActionError(cell_num)
+
+        self.actions[cell_num] = LoadVariableRestoreAction(
+            cell_num,
+            variable_names,
+            [RerunCellRestoreAction(i[0], i[1]) for i in fallback_recomputation])
 
     def run(self, checkpoint_file: str, exec_id: str) -> Namespace:
         """
@@ -224,8 +245,32 @@ class RestorePlan:
         @param user_ns  A target space where restored variables will be set.
         @param checkpoint_file  The file where information is stored.
         """
-        ctx = RestoreActionContext(InteractiveShell(), checkpoint_file, exec_id)
-        for action in self.actions:
-            action.run(ctx)
+        has_error = True
+        print("start restore:")
+        while has_error:
+            has_error = False
+            ctx = RestoreActionContext(InteractiveShell(), checkpoint_file, exec_id)
+
+            # Run restore actions sorted by cell number.
+            for action in [self.actions[i] for i in sorted(list(self.actions.keys()))]:
+                print("executing action:", action.cell_num)
+                try:
+                    action.run(ctx)
+                except Exception as e:
+                    print(e)
+                    if isinstance(action, RerunCellRestoreAction) or isinstance(e, CheckpointWrongIdError):
+                        # If the restore action is rerun cell, reraise the error.
+                        # If the error was caused by Kishu itself (specifically, missing file
+                        # for commit ID), also reraise.
+                        raise e
+                    else:
+                        # If the restore action is load variable, replace the action with
+                        # its fallback recomputation plan.
+                        has_error = True
+                        del self.actions[action.cell_num]
+                        for rerun_cell_action in action.fallback_recomputation:
+                            print("replacing with action:", rerun_cell_action.cell_num)
+                            self.actions[rerun_cell_action.cell_num] = rerun_cell_action
+                        break
 
         return Namespace(ctx.shell.user_ns)

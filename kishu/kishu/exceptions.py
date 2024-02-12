@@ -29,6 +29,16 @@ class BranchConflictError(Exception):
 
 
 """
+Raised by checkpoint
+"""
+
+
+class CheckpointWrongIdError(Exception):
+    def __init__(self, commit_id):
+        super().__init__(f"Checkpoint file for commit id '{commit_id}' does not exist.")
+
+
+"""
 Raised by tag
 """
 
@@ -87,6 +97,20 @@ class NoExecutedCellsError(Exception):
 class PostWithoutPreError(Exception):
     def __init__(self):
         super().__init__("Called post_run_cell without calling pre_run_cell")
+
+
+"""
+Raised by plan
+"""
+
+class DuplicateRestoreActionError(Exception):
+    def __init__(self, cell_num):
+        super().__init__(f"An restore action already exists for cell number {cell_num}.")
+
+
+class RestoreActionNotFoundError(Exception):
+    def __init__(self, cell_num):
+        super().__init__(f"Restore action for {cell_num} not found.")
 
 
 """

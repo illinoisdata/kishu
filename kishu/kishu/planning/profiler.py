@@ -65,8 +65,7 @@ def _in_exclude_list(obj: Any) -> bool:
         Checks whether object is from a class which Dill reports is pickleable but is actually not.
     """
     # TODO: remove 'qiskit' from default once recomptuation works.
-    return _get_object_module(obj) in Config.get('PROFILER', 'excluded_modules', ["qiskit"]) or \
-        _get_object_class(obj) in Config.get('PROFILER', 'excluded_classes', [])
+    return _get_object_class(obj) in Config.get('PROFILER', 'excluded_classes', [])
 
 
 def _get_memory_size(obj: Any, is_initialize: bool, visited: set) -> int:

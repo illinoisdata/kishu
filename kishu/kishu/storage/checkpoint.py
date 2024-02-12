@@ -3,6 +3,8 @@ Sqlite interface for storing checkpoints.
 """
 import sqlite3
 
+from kishu.exceptions import CheckpointWrongIdError
+
 
 CHECKPOINT_TABLE = 'checkpoint'
 
@@ -25,6 +27,8 @@ class KishuCheckpoint:
             (commit_id, )
         )
         res: tuple = cur.fetchone()
+        if not res:
+            raise CheckpointWrongIdError(commit_id)
         result = res[0]
         con.commit()
         return result

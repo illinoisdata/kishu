@@ -164,18 +164,22 @@ class CheckpointRestorePlanner:
         checkpoint_plan = CheckpointPlan.create(self._user_ns, database_path, commit_id, list(vss_to_migrate))
 
         # Create restore plan using optimization results.
-        restore_plan = self._generate_restore_plan(ces_to_recompute, ce_to_vs_map)
+        restore_plan = self._generate_restore_plan(ces_to_recompute, ce_to_vs_map, optimizer.req_func_mapping)
 
         return checkpoint_plan, restore_plan
 
-    def _generate_restore_plan(self, ces_to_recompute, ce_to_vs_map) -> RestorePlan:
+    def _generate_restore_plan(self, ces_to_recompute, ce_to_vs_map, req_func_mapping) -> RestorePlan:
         restore_plan = RestorePlan()
+
+        ce_dict = {ce.cell_num: ce for ce in self._ahg.get_cell_executions()}
         for ce in self._ahg.get_cell_executions():
             if ce.cell_num in ces_to_recompute:
-                restore_plan.add_rerun_cell_restore_action(ce.cell)
+                restore_plan.add_rerun_cell_restore_action(ce.cell_num, ce.cell)
             if len(ce_to_vs_map[ce.cell_num]) > 0:
                 restore_plan.add_load_variable_restore_action(
-                        [vs_name for vs_name in ce_to_vs_map[ce.cell_num]])
+                        ce.cell_num + 0.5,
+                        [vs_name for vs_name in ce_to_vs_map[ce.cell_num]],
+                        [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]])
         return restore_plan
 
     def get_ahg(self) -> AHG:
