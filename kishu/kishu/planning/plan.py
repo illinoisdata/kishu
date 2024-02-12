@@ -269,8 +269,7 @@ class RestorePlan:
                 try:
                     action.run(ctx)
                 except Exception as e:
-                    if isinstance(action, LoadVariableRestoreAction) and \
-                        not isinstance(e, CheckpointWrongIdError):
+                    if isinstance(action, LoadVariableRestoreAction) and not isinstance(e, CheckpointWrongIdError):
                         # If the restore action is load variable and the problem was not
                         # caused by Kishu itself (specifically, missing file for commit ID),
                         # replace the action with its fallback recomputation plan.
