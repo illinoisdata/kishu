@@ -149,8 +149,8 @@ class LoadVariableRestoreAction(RestoreAction):
     """
     def __init__(self,
                  cell_num: float,
-                 var_names: Optional[List[str]] = None,
-                 fallback_recomputation: Optional[List[RerunCellRestoreAction]] = None):
+                 var_names: List[str] = [],
+                 fallback_recomputation: List[RerunCellRestoreAction] = []):
         """
         @param cell_num: The cell number the variables are last modified in. Comes in
             the form of 'x.5' where x is the cell number so the cell rerun action for
@@ -164,11 +164,11 @@ class LoadVariableRestoreAction(RestoreAction):
         if not math.isclose(cell_num - int(cell_num), 0.5):
             raise ValueError(
                 f"Unexpected value for cell_num: {cell_num}. It should end in .5, e.g., 1.5.")
-        if (var_names is not None) and (not isinstance(var_names, list)):
+        if not isinstance(var_names, list):
             raise ValueError(f"Unexpected type for var_names: {type(var_names)}")
         self.cell_num = cell_num
-        self.variable_names: Optional[List[str]] = var_names
-        self.fallback_recomputation: Optional[List[RerunCellRestoreAction]] = fallback_recomputation
+        self.variable_names: List[str] = var_names
+        self.fallback_recomputation: List[RerunCellRestoreAction] = fallback_recomputation
 
     def run(self, ctx: RestoreActionContext):
         """
@@ -196,13 +196,16 @@ class RerunCellRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).
     """
-    def __init__(self, cell_num: int, cell_code: str = ""):
+    def __init__(self, cell_num: float, cell_code: str = ""):
         """
         cell_num: cell number of the executed cell code.
         cell_code: cell code to rerun.
         """
+        if not math.isclose(cell_num, int(cell_num)):
+            raise ValueError(
+                f"Unexpected value for cell_num: {cell_num}. It should be a whole number.")
         if (cell_code is not None) and (not isinstance(cell_code, str)):
-            raise ValueError("Unexpected type for cell_code: {}".format(type(cell_code)))
+            raise ValueError(f"Unexpected type for cell_code: {type(cell_code)}")
         self.cell_num = cell_num
         self.cell_code: Optional[str] = cell_code
 
@@ -230,9 +233,9 @@ class RestorePlan:
 
     @param actions  A series of actions for restoring a state.
     """
-    actions: Dict[int, RestoreAction] = field(default_factory=lambda: {})
+    actions: Dict[float, RestoreAction] = field(default_factory=lambda: {})
 
-    def add_rerun_cell_restore_action(self, cell_num: int, cell_code: str):
+    def add_rerun_cell_restore_action(self, cell_num: float, cell_code: str):
         if cell_num in self.actions:
             raise DuplicateRestoreActionError(cell_num)
         self.actions[cell_num] = RerunCellRestoreAction(cell_num, cell_code)
@@ -240,7 +243,7 @@ class RestorePlan:
     def add_load_variable_restore_action(self,
                                          cell_num: float,
                                          variable_names: List[str],
-                                         fallback_recomputation: List[Tuple(int, str)]):
+                                         fallback_recomputation: List[Tuple[float, str]]):
         if cell_num in self.actions:
             raise DuplicateRestoreActionError(cell_num)
 
@@ -257,7 +260,6 @@ class RestorePlan:
         @param checkpoint_file  The file where information is stored.
         """
         has_error = True
-        print("start restore:")
         while has_error:
             has_error = False
             ctx = RestoreActionContext(InteractiveShell(), checkpoint_file, exec_id)
@@ -267,18 +269,17 @@ class RestorePlan:
                 try:
                     action.run(ctx)
                 except Exception as e:
-                    if isinstance(action, RerunCellRestoreAction) or isinstance(e, CheckpointWrongIdError):
-                        # If the restore action is rerun cell, reraise the error.
-                        # If the error was caused by Kishu itself (specifically, missing file
-                        # for commit ID), also reraise.
-                        raise e
-                    else:
-                        # If the restore action is load variable, replace the action with
-                        # its fallback recomputation plan.
+                    if isinstance(action, LoadVariableRestoreAction) and \
+                        not isinstance(e, CheckpointWrongIdError):
+                        # If the restore action is load variable and the problem was not
+                        # caused by Kishu itself (specifically, missing file for commit ID),
+                        # replace the action with its fallback recomputation plan.
                         has_error = True
                         del self.actions[action.cell_num]
                         for rerun_cell_action in action.fallback_recomputation:
                             self.actions[rerun_cell_action.cell_num] = rerun_cell_action
                         break
+                    else:
+                        raise e
 
         return Namespace(ctx.shell.user_ns)

@@ -43,9 +43,6 @@ def test_checkpoint_restore_planner():
     assert len(checkpoint_plan.actions) == 1
     assert len(restore_plan.actions) == 2
 
-    print(restore_plan.actions[0.5])
-    print(restore_plan.actions[1.5])
-
     # Assert the restore plan has correct fields.
     assert isinstance(restore_plan.actions[0.5], LoadVariableRestoreAction)
     assert restore_plan.actions[0.5].cell_num == 0.5
