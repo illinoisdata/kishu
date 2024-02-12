@@ -125,7 +125,11 @@ function installCommands(
    */
 
   commands.addCommand(CommandIDs.init, {
-    label: trans.__('Kishu: Initialize/Re-attach'),
+    label: (args) => (
+      args.label && args.label == 'short'
+        ? trans.__('Initialize/Re-attach')
+        : trans.__('Kishu: Initialize/Re-attach...')
+    ),
     execute: async (_args) => {
       // Detect currently viewed notebook.
       const notebook_path = currentNotebookPath(tracker);
@@ -176,7 +180,11 @@ function installCommands(
    */
 
   commands.addCommand(CommandIDs.checkout, {
-    label: trans.__('Kishu: Checkout...'),
+    label: (args) => (
+      args.label && args.label == 'short'
+        ? trans.__('Checkout')
+        : trans.__('Kishu: Checkout...')
+    ),
     execute: async (_args) => {
       // Detect currently viewed notebook.
       const notebook_path = currentNotebookPath(tracker);
@@ -275,7 +283,11 @@ function installCommands(
    */
 
   commands.addCommand(CommandIDs.commit, {
-    label: trans.__('Kishu: Commit...'),
+    label: (args) => (
+      args.label && args.label == 'short'
+        ? trans.__('Commit')
+        : trans.__('Kishu: Commit...')
+    ),
     execute: async (_args) => {
       // Detect currently viewed notebook.
       const notebook_path = currentNotebookPath(tracker);
@@ -292,8 +304,11 @@ function installCommands(
           okLabel: trans.__('Commit')
         })
       ).value ?? undefined;
-      if (!message) {
+      if (message == undefined) {
         notifyError(trans.__(`Kishu commit requires a commit message.`));
+      }
+      if (!message) {
+        return;
       }
 
       // Make checkout request
