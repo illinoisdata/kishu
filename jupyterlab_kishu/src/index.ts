@@ -292,7 +292,7 @@ function installCommands(
       // Detect currently viewed notebook.
       const notebook_path = currentNotebookPath(tracker);
       if (!notebook_path) {
-        notifyError(trans.__(`No currently viewed notebook detected to ommit.`));
+        notifyError(trans.__(`No currently viewed notebook detected to commit.`));
         return;
       }
 
