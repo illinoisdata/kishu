@@ -103,14 +103,10 @@ class PostWithoutPreError(Exception):
 Raised by plan
 """
 
+
 class DuplicateRestoreActionError(Exception):
     def __init__(self, cell_num):
         super().__init__(f"An restore action already exists for cell number {cell_num}.")
-
-
-class RestoreActionNotFoundError(Exception):
-    def __init__(self, cell_num):
-        super().__init__(f"Restore action for {cell_num} not found.")
 
 
 """

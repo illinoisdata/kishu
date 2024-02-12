@@ -172,13 +172,10 @@ class JupyterConnection:
         return self
 
     def execute(self, command: str, pre_command: str = "") -> Tuple[Dict[str, Any], str, str]:
-        print("executing 2:")
         if self.km is None:
-            print("oops")
             raise NoChannelError()
         with contextlib.redirect_stdout(io.StringIO()) as stdout_f, \
              contextlib.redirect_stderr(io.StringIO()) as stderr_f:
-            print("executing 3:")
             reply = self.km.execute_interactive(
                 pre_command,  # Not capture output.
                 user_expressions={"command_result": command},  # To get output from command.
@@ -186,11 +183,11 @@ class JupyterConnection:
             )
             stdout = stdout_f.getvalue()
             stderr = stderr_f.getvalue()
-        print("**************************")
-        print(f"stdout>\n{stdout}")
-        print("**************************")
-        print(f"stderr>\n{stderr}")
-        print("**************************")
+        # print("**************************")
+        # print(f"stdout>\n{stdout}")
+        # print("**************************")
+        # print(f"stderr>\n{stderr}")
+        # print("**************************")
         return reply, stdout, stderr
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -201,7 +198,6 @@ class JupyterConnection:
     def execute_one_command(self, command: str, pre_command: str = "") -> JupyterCommandResult:
         try:
             with self as conn:
-                print("executing", command)
                 reply, _, _ = conn.execute(command, pre_command=pre_command)
         except JupyterConnectionError as e:
             return JupyterCommandResult(
@@ -401,8 +397,6 @@ class KishuForJupyter:
             commit_id = retrieved_branches[0].commit_id
             is_detach = False
 
-        print("got checkout plan")
-
         # Retrieve checkout plan.
         database_path = self.database_path()
         commit_id = KishuForJupyter.disambiguate_commit(self._notebook_id.key(), commit_id)
@@ -419,8 +413,6 @@ class KishuForJupyter:
             current_executed_cells = self._user_ns.ipython_in()
             if current_executed_cells is not None:
                 current_executed_cells[:] = commit_entry.executed_cells[:]
-
-        print("running restore plan")
 
         # Restore user-namespace variables.
         commit_ns = commit_entry.restore_plan.run(database_path, commit_id)

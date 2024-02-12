@@ -177,7 +177,7 @@ class CheckpointRestorePlanner:
                 restore_plan.add_rerun_cell_restore_action(ce.cell_num, ce.cell)
             if len(ce_to_vs_map[ce.cell_num]) > 0:
                 restore_plan.add_load_variable_restore_action(
-                        ce.cell_num + 0.5,
+                        ce.cell_num + 0.5,  # See plan.py for explanation on + 0.5
                         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]],
                         [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]])
         return restore_plan

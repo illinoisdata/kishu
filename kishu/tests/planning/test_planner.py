@@ -49,7 +49,7 @@ def test_checkpoint_restore_planner():
     # Assert the restore plan has correct fields.
     assert isinstance(restore_plan.actions[0.5], LoadVariableRestoreAction)
     assert restore_plan.actions[0.5].cell_num == 0.5
-    assert restore_plan.actions[0.5].variable_names == ["x"] 
+    assert restore_plan.actions[0.5].variable_names == ["x"]
     assert len(restore_plan.actions[0.5].fallback_recomputation) == 1
 
     # Assert the restore actions has correct fallback recomputation.

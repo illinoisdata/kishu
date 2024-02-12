@@ -5,7 +5,7 @@ from pathlib import Path
 
 from kishu.exceptions import CheckpointWrongIdError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.plan import CheckpointPlan, RestorePlan, RerunCellRestoreAction
+from kishu.planning.plan import CheckpointPlan, RestorePlan
 from kishu.storage.checkpoint import KishuCheckpoint
 
 
@@ -83,7 +83,7 @@ def test_mix_reload_recompute_restore_plan(tmp_path: Path):
     # restore
     restore_plan = RestorePlan()
     restore_plan.add_load_variable_restore_action(1.5,
-                                                 ["a"],
+                                                  ["a"],
                                                   [(1, "a=1")])
     restore_plan.add_rerun_cell_restore_action(2, "b=2")
     result_ns = restore_plan.run(filename, exec_id)
@@ -107,10 +107,10 @@ def test_fallback_recomputation(tmp_path: Path):
 
     # restore
     restore_plan = RestorePlan()
-    restore_plan.add_load_variable_restore_action(1.5, 
+    restore_plan.add_load_variable_restore_action(1.5,
                                                   ["Aer"],
                                                   [(1, "from qiskit import Aer")])
-    restore_plan.add_load_variable_restore_action(2.5, 
+    restore_plan.add_load_variable_restore_action(2.5,
                                                   ["sim"],
                                                   [(2, "sim = Aer.get_backend('aer_simulator')")])
     result_ns = restore_plan.run(filename, exec_id)

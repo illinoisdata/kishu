@@ -14,14 +14,6 @@ def _get_object_class(obj: Any) -> Optional[str]:
     return str(obj_class) if obj_class else None
 
 
-def _get_object_module(obj: Any) -> Optional[str]:
-    """
-        Get the name of the module an object is from.
-    """
-    obj_module_full = getattr(obj, "__module__", None)
-    return obj_module_full.split(".")[0] if isinstance(obj_module_full, str) else None
-
-
 def _add_to_unserializable_list(obj: Any) -> None:
     if _get_object_class(obj):
         unserializable_class_list = Config.get('PROFILER', 'excluded_classes', [])
