@@ -1,17 +1,147 @@
 from __future__ import annotations
 
+import shutil
+import subprocess
 import typer
 
+
+from abc import ABC, abstractmethod
 from functools import wraps
-from typing import Tuple
+from typing import List, Tuple
 
 from kishu import __app_name__, __version__
 from kishu.commands import (
-    CheckoutResult, CommitResult, DetachResult, InitResult,
-    InstrumentResult, InstrumentStatus, into_json, KishuCommand
+    CheckoutResult,
+    CommitResult,
+    CommitSummary,
+    DetachResult,
+    InitResult,
+    InstrumentResult,
+    InstrumentStatus,
+    into_json,
+    KishuCommand,
+    LogAllResult,
+    LogResult,
 )
 from kishu.notebook_id import NotebookId
 from kishu.storage.config import Config
+
+
+class CommitPrinter(ABC):
+    def __init__(self, indentation: str = "    "):
+        self.indentation = indentation
+        self.output: List[str] = []
+
+    def add_line(self, text: str, is_indented: bool = False, prefix: str = ""):
+        indent = self.indentation if is_indented else ''
+        self.output.append(f"{prefix}{indent}{text}")
+
+    @abstractmethod
+    def add_commit_line(
+        self,
+        text: str,
+        is_indented: bool = False,
+        is_first_line: bool = False,
+    ):
+        pass
+
+
+class BasicCommitPrinter(CommitPrinter):
+    def add_commit_line(
+        self,
+        text: str,
+        is_indented: bool = False,
+        is_first_line: bool = False,
+    ):
+        super().add_line(text, is_indented)
+
+
+class GraphCommitPrinter(CommitPrinter):
+    def add_commit_line(
+        self,
+        text: str,
+        is_indented: bool = False,
+        is_first_line: bool = False,
+    ):
+        prefix = "* " if is_first_line else "| "
+        super().add_line(text, is_indented, prefix)
+
+
+class KishuPrint:
+    @staticmethod
+    def _get_terminal_height():
+        return shutil.get_terminal_size().lines     # fallback (80, 24)
+
+    @staticmethod
+    def _print_or_page(output):
+        lines = len(output.splitlines())
+        if lines > min(80, KishuPrint._get_terminal_height()):
+            p = subprocess.Popen(
+                ['less', '-R'],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE
+            )
+            p.communicate(input=output.encode('utf-8'))
+        else:
+            print(output)
+
+    @staticmethod
+    def log(log_result: LogResult, graph: bool = False):
+        # Sort by timestamp in descending order
+        sorted_commits = sorted(
+            log_result.commit_graph,
+            key=lambda commit: commit.timestamp, reverse=True,
+        )
+
+        output = [
+            KishuPrint._format_commit(commit, graph=graph)
+            for commit in sorted_commits
+        ]
+        KishuPrint._print_or_page('\n'.join(output))
+
+    @staticmethod
+    def log_all(log_all_result: LogAllResult):
+        # Sort by timestamp in descending order
+        sorted_commits = sorted(
+            log_all_result.commit_graph,
+            key=lambda commit: commit.timestamp, reverse=True,
+        )
+
+        output = [
+            KishuPrint._format_commit(commit, include_parent_id=True)
+            for commit in sorted_commits
+        ]
+        KishuPrint._print_or_page('\n'.join(output))
+
+    @staticmethod
+    def log_all_with_graph(log_all_result: LogAllResult):
+        KishuPrint._print_or_page("Warning: feature not supported. Non-graph option will be displayed instead.")
+        KishuPrint.log_all(log_all_result)
+
+    @staticmethod
+    def _format_commit(
+        commit: CommitSummary,
+        include_parent_id: bool = False,
+        graph: bool = False
+    ):
+        printer = BasicCommitPrinter() if not graph else GraphCommitPrinter()
+        ref_names = ', '.join(commit.branches + commit.tags)
+        ref_str = f" ({ref_names})" if ref_names else ""
+        printer.add_commit_line(f"commit {commit.commit_id}{ref_str}",
+                                is_first_line=True)
+
+        if include_parent_id and commit.parent_id:
+            printer.add_commit_line(f"Parent: {commit.parent_id}")
+
+        # TODO: Print author with details
+
+        printer.add_commit_line(f"Date:   {commit.timestamp}")
+        printer.add_commit_line("")
+        printer.add_commit_line(commit.message, is_indented=True)
+        printer.add_commit_line("")
+
+        return '\n'.join(printer.output)
+
 
 kishu_app = typer.Typer(add_completion=False)
 
@@ -178,16 +308,26 @@ def log(
         "--all",
         "-a",
         help="Log all commits.",
-    )
+    ),
+    graph: bool = typer.Option(
+        False,
+        "--graph",
+        help="Display the commit graph.",
+    ),
 ) -> None:
     """
     Show a history view of commit graph.
     """
     notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path_or_key)
     if log_all:
-        print(into_json(KishuCommand.log_all(notebook_key)))
+        log_all_result = KishuCommand.log_all(notebook_key)
+        if graph:
+            KishuPrint.log_all_with_graph(log_all_result)
+        else:
+            KishuPrint.log_all(log_all_result)
     else:
-        print(into_json(KishuCommand.log(notebook_key, commit_id)))
+        log_result = KishuCommand.log(notebook_key, commit_id)
+        KishuPrint.log(log_result, graph=graph)
 
 
 @kishu_app.command()
