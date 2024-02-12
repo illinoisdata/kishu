@@ -406,7 +406,7 @@ class TestKishuCommand:
             ('numpy.ipynb', 4, "iris_X_train"),
             ('simple.ipynb', 4, "b"),
             ('test_unserializable_var.ipynb', 2, "next(gen)"),  # directly printing gen prints out its memory address.
-            # ('QiskitDemo_NCSA_May2023.ipynb', 61, "qc")
+            ('QiskitDemo_NCSA_May2023.ipynb', 61, "qc")
         ]
     )
     def test_end_to_end_checkout(
