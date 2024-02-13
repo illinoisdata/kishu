@@ -288,10 +288,8 @@ class RestorePlan:
                     # Problem was caused by Kishu itself (specifically, missing file for commit ID).
                     raise e
                 except Exception as e:
-                    if isinstance(action, RerunCellRestoreAction):
+                    if not isinstance(action, LoadVariableRestoreAction):
                         raise e
-
-                    assert isinstance(action, LoadVariableRestoreAction)  # To make MYPY happy
 
                     # If action is load variable, replace action with fallback recomputation plan
                     self.fallbacked_actions.append(action)
