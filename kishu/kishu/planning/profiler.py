@@ -14,14 +14,6 @@ def _get_object_class(obj: Any) -> Optional[str]:
     return str(obj_class) if obj_class else None
 
 
-def _get_object_module(obj: Any) -> Optional[str]:
-    """
-        Get the name of the module an object is from.
-    """
-    obj_module_full = getattr(obj, "__module__", None)
-    return obj_module_full.split(".")[0] if isinstance(obj_module_full, str) else None
-
-
 def _add_to_unserializable_list(obj: Any) -> None:
     if _get_object_class(obj):
         unserializable_class_list = Config.get('PROFILER', 'excluded_classes', [])
@@ -64,9 +56,7 @@ def _in_exclude_list(obj: Any) -> bool:
     """
         Checks whether object is from a class which Dill reports is pickleable but is actually not.
     """
-    # TODO: remove 'qiskit' from default once recomptuation works.
-    return _get_object_module(obj) in Config.get('PROFILER', 'excluded_modules', ["qiskit"]) or \
-        _get_object_class(obj) in Config.get('PROFILER', 'excluded_classes', [])
+    return _get_object_class(obj) in Config.get('PROFILER', 'excluded_classes', [])
 
 
 def _get_memory_size(obj: Any, is_initialize: bool, visited: set) -> int:

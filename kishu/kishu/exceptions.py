@@ -29,6 +29,16 @@ class BranchConflictError(Exception):
 
 
 """
+Raised by checkpoint
+"""
+
+
+class CommitIdNotExistError(Exception):
+    def __init__(self, commit_id):
+        super().__init__(f"Commit ID '{commit_id}' does not exist.")
+
+
+"""
 Raised by tag
 """
 
@@ -87,6 +97,19 @@ class NoExecutedCellsError(Exception):
 class PostWithoutPreError(Exception):
     def __init__(self):
         super().__init__("Called post_run_cell without calling pre_run_cell")
+
+
+"""
+Raised by plan
+"""
+
+
+class DuplicateRestoreActionError(Exception):
+    def __init__(self, cell_num, is_load_var):
+        if is_load_var:
+            super().__init__(f"A load variable restore action exists for cell number {cell_num}.")
+        else:
+            super().__init__(f"A rerun cell restore action exists for cell number {cell_num}.")
 
 
 """

@@ -1,5 +1,6 @@
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
+from kishu.planning.plan import RerunCellRestoreAction, StepOrder
 
 
 def test_checkpoint_restore_planner():
@@ -8,6 +9,9 @@ def test_checkpoint_restore_planner():
     """
     user_ns = Namespace({})
     planner = CheckpointRestorePlanner(user_ns)
+
+    # Set planner to only migrate for consistency
+    planner._always_migrate = True
 
     # Pre run cell 1
     planner.pre_run_cell_update()
@@ -41,6 +45,10 @@ def test_checkpoint_restore_planner():
     # Assert the plans have appropriate actions.
     assert len(checkpoint_plan.actions) == 1
     assert len(restore_plan.actions) == 2
+
+    # Assert the restore plan has correct fields.
+    assert restore_plan.actions[StepOrder(0, True)].fallback_recomputation == \
+        [RerunCellRestoreAction(StepOrder(0, False), "x = 1")]
 
 
 def test_checkpoint_restore_planner_with_existing_items():
