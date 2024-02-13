@@ -1,15 +1,34 @@
 from __future__ import annotations
 
-import math
 import dill
+import functools
 
 from dataclasses import dataclass, field
 from IPython.core.interactiveshell import InteractiveShell
 from typing import Any, Dict, List, Optional, Tuple
 
-from kishu.exceptions import CheckpointWrongIdError, DuplicateRestoreActionError
+from kishu.exceptions import CommitIdNotExistError, DuplicateRestoreActionError
 from kishu.jupyter.namespace import Namespace
 from kishu.storage.checkpoint import KishuCheckpoint
+
+
+@functools.total_ordering
+@dataclass(frozen=True)
+class StepOrder:
+    cell_num: int
+    is_load_var: bool
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(cell_num={self.cell_num}, is_load_var={self.is_load_var})"
+
+    def __eq__(self, other):
+        return self.cell_num == other.cell_num and self.is_load_var == other.is_load_var
+
+    def __lt__(self, other):
+        # For the same cell number, the recomputation should be performed before variable loading.
+        if self.cell_num == other.cell_num:
+            return int(self.is_load_var) < int(other.is_load_var)
+        return self.cell_num < other.cell_num
 
 
 @dataclass
@@ -147,26 +166,20 @@ class LoadVariableRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).
     """
-    def __init__(self,
-                 cell_num: float,
-                 var_names: List[str] = [],
-                 fallback_recomputation: List[RerunCellRestoreAction] = []):
+    def __init__(
+        self,
+        step_order: StepOrder,
+        var_names: List[str] = [],
+        fallback_recomputation: List[RerunCellRestoreAction] = []
+    ):
         """
-        @param cell_num: The cell number the variables are last modified in. Comes in
-            the form of 'x.5' where x is the cell number so the cell rerun action for
-            cell x will be executed first due to sorting - the variables last modified in
-            cell x should be loaded after cell x has been rerun.
+        @param step_order: the order (i.e., when to run) of this restore action.
         @param var_names: The variables to load from storage.
         @param fallback_recomputation: List of cell reruns to perform to recompute the
             variables loaded by this action. Required when variable loading fails
             for fallback recomputation.
         """
-        if not math.isclose(cell_num - int(cell_num), 0.5):
-            raise ValueError(
-                f"Unexpected value for cell_num: {cell_num}. It should end in .5, e.g., 1.5.")
-        if not isinstance(var_names, list):
-            raise ValueError(f"Unexpected type for var_names: {type(var_names)}")
-        self.cell_num = cell_num
+        self.step_order = step_order
         self.variable_names: List[str] = var_names
         self.fallback_recomputation: List[RerunCellRestoreAction] = fallback_recomputation
 
@@ -184,9 +197,9 @@ class LoadVariableRestoreAction(RestoreAction):
             ctx.shell.user_ns[key] = obj
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(cell_num={self.cell_num}, \
+        return f"{self.__class__.__name__}(step_order={self.step_order}, \
         var_names={self.variable_names}, \
-        fallback recomputation cells={[i.cell_num for i in self.fallback_recomputation]})"
+        fallback recomputation cells={[i.step_order.cell_num for i in self.fallback_recomputation]})"
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -196,17 +209,12 @@ class RerunCellRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).
     """
-    def __init__(self, cell_num: float, cell_code: str = ""):
+    def __init__(self, step_order: StepOrder, cell_code: str = ""):
         """
         cell_num: cell number of the executed cell code.
         cell_code: cell code to rerun.
         """
-        if not math.isclose(cell_num, int(cell_num)):
-            raise ValueError(
-                f"Unexpected value for cell_num: {cell_num}. It should be a whole number.")
-        if (cell_code is not None) and (not isinstance(cell_code, str)):
-            raise ValueError(f"Unexpected type for cell_code: {type(cell_code)}")
-        self.cell_num = cell_num
+        self.step_order = step_order
         self.cell_code: Optional[str] = cell_code
 
     def run(self, ctx: RestoreActionContext):
@@ -220,10 +228,13 @@ class RerunCellRestoreAction(RestoreAction):
             pass
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(cell_num={self.cell_num}, cell_code={self.cell_code})"
+        return f"{self.__class__.__name__}(step_order={self.step_order}, cell_code={self.cell_code})"
 
     def __str__(self) -> str:
         return self.__repr__()
+
+    def __eq__(self, other):
+        return self.step_order == other.step_order and self.cell_code == other.cell_code
 
 
 @dataclass
@@ -233,24 +244,31 @@ class RestorePlan:
 
     @param actions  A series of actions for restoring a state.
     """
-    actions: Dict[float, RestoreAction] = field(default_factory=lambda: {})
+    actions: Dict[StepOrder, RestoreAction] = field(default_factory=lambda: {})
+
+    # TODO: add the undeserializable variables which caused fallback computation to config list.
+    fallbacked_actions: List[LoadVariableRestoreAction] = field(default_factory=lambda: [])
 
     def add_rerun_cell_restore_action(self, cell_num: float, cell_code: str):
-        if cell_num in self.actions:
-            raise DuplicateRestoreActionError(cell_num)
-        self.actions[cell_num] = RerunCellRestoreAction(cell_num, cell_code)
+        step_order = StepOrder(cell_num, False)
+        if step_order in self.actions:
+            raise DuplicateRestoreActionError(step_order.cell_num, step_order.is_load_var)
+        self.actions[step_order] = RerunCellRestoreAction(step_order, cell_code)
 
-    def add_load_variable_restore_action(self,
-                                         cell_num: float,
-                                         variable_names: List[str],
-                                         fallback_recomputation: List[Tuple[float, str]]):
-        if cell_num in self.actions:
-            raise DuplicateRestoreActionError(cell_num)
+    def add_load_variable_restore_action(
+        self,
+        cell_num: float,
+        variable_names: List[str],
+        fallback_recomputation: List[Tuple[float, str]]
+    ):
+        step_order = StepOrder(cell_num, True)
+        if step_order in self.actions:
+            raise DuplicateRestoreActionError(step_order.cell_num, step_order.is_load_var)
 
-        self.actions[cell_num] = LoadVariableRestoreAction(
-            cell_num,
+        self.actions[step_order] = LoadVariableRestoreAction(
+            step_order,
             variable_names,
-            [RerunCellRestoreAction(i[0], i[1]) for i in fallback_recomputation])
+            [RerunCellRestoreAction(StepOrder(i[0], False), i[1]) for i in fallback_recomputation])
 
     def run(self, checkpoint_file: str, exec_id: str) -> Namespace:
         """
@@ -259,26 +277,27 @@ class RestorePlan:
         @param user_ns  A target space where restored variables will be set.
         @param checkpoint_file  The file where information is stored.
         """
-        has_error = True
-        while has_error:
-            has_error = False
+        while True:
             ctx = RestoreActionContext(InteractiveShell(), checkpoint_file, exec_id)
 
-            # Run restore actions sorted by cell number.
-            for action in [self.actions[i] for i in sorted(list(self.actions.keys()))]:
+            # Run restore actions sorted by cell number, then rerun cells before loading variables.
+            for _, action in sorted(self.actions.items(), key=lambda k: k[0]):
                 try:
                     action.run(ctx)
+                except CommitIdNotExistError as e:
+                    # Problem was caused by Kishu itself (specifically, missing file for commit ID).
+                    raise e
                 except Exception as e:
-                    if isinstance(action, LoadVariableRestoreAction) and not isinstance(e, CheckpointWrongIdError):
-                        # If the restore action is load variable and the problem was not
-                        # caused by Kishu itself (specifically, missing file for commit ID),
-                        # replace the action with its fallback recomputation plan.
-                        has_error = True
-                        del self.actions[action.cell_num]
-                        for rerun_cell_action in action.fallback_recomputation:
-                            self.actions[rerun_cell_action.cell_num] = rerun_cell_action
-                        break
-                    else:
+                    if isinstance(action, RerunCellRestoreAction):
                         raise e
 
-        return Namespace(ctx.shell.user_ns)
+                    assert isinstance(action, LoadVariableRestoreAction)  # To make MYPY happy
+
+                    # If action is load variable, replace action with fallback recomputation plan
+                    self.fallbacked_actions.append(self.actions[action.step_order])
+                    del self.actions[action.step_order]
+                    for rerun_cell_action in action.fallback_recomputation:
+                        self.actions[rerun_cell_action.step_order] = rerun_cell_action
+                    break
+            else:
+                return Namespace(ctx.shell.user_ns)

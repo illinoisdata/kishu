@@ -33,9 +33,9 @@ Raised by checkpoint
 """
 
 
-class CheckpointWrongIdError(Exception):
+class CommitIdNotExistError(Exception):
     def __init__(self, commit_id):
-        super().__init__(f"Checkpoint file for commit id '{commit_id}' does not exist.")
+        super().__init__(f"Commit ID '{commit_id}' does not exist.")
 
 
 """
@@ -105,8 +105,11 @@ Raised by plan
 
 
 class DuplicateRestoreActionError(Exception):
-    def __init__(self, cell_num):
-        super().__init__(f"An restore action already exists for cell number {cell_num}.")
+    def __init__(self, cell_num, is_load_var):
+        if is_load_var:
+            super().__init__(f"A load variable restore action exists for cell number {cell_num}.")
+        else:
+            super().__init__(f"A rerun cell restore action exists for cell number {cell_num}.")
 
 
 """

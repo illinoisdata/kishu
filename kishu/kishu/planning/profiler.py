@@ -56,7 +56,6 @@ def _in_exclude_list(obj: Any) -> bool:
     """
         Checks whether object is from a class which Dill reports is pickleable but is actually not.
     """
-    # TODO: remove 'qiskit' from default once recomptuation works.
     return _get_object_class(obj) in Config.get('PROFILER', 'excluded_classes', [])
 
 

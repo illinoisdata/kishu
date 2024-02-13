@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from collections import defaultdict
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG
@@ -168,16 +168,32 @@ class CheckpointRestorePlanner:
 
         return checkpoint_plan, restore_plan
 
-    def _generate_restore_plan(self, ces_to_recompute, ce_to_vs_map, req_func_mapping) -> RestorePlan:
+    def _generate_restore_plan(
+        self,
+        ces_to_recompute: Set[int],
+        ce_to_vs_map: Dict[int, List[str]],
+        req_func_mapping: Dict[int, Set[int]]
+    ) -> RestorePlan:
+        """
+            Generates a restore plan based on results from the optimizer.
+            @param ces_to_recompute: cell executions to rerun upon restart.
+            @param ce_to_vs_map: Mapping from cell number to active variables last modified there
+            @param req_func_mapping: Mapping from a cell number to all prerequisite cell numbers required
+                to rerun it
+        """
         restore_plan = RestorePlan()
 
         ce_dict = {ce.cell_num: ce for ce in self._ahg.get_cell_executions()}
+
         for ce in self._ahg.get_cell_executions():
+            # Add a rerun cell restore action if the cell needs to be rerun
             if ce.cell_num in ces_to_recompute:
                 restore_plan.add_rerun_cell_restore_action(ce.cell_num, ce.cell)
+
+            # Add a load variable restore action if there are variables from the cell that needs to be stored
             if len(ce_to_vs_map[ce.cell_num]) > 0:
                 restore_plan.add_load_variable_restore_action(
-                        ce.cell_num + 0.5,  # See plan.py for explanation on + 0.5
+                        ce.cell_num,
                         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]],
                         [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]])
         return restore_plan

@@ -1,6 +1,6 @@
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
-from kishu.planning.plan import LoadVariableRestoreAction, RerunCellRestoreAction
+from kishu.planning.plan import RerunCellRestoreAction, StepOrder
 
 
 def test_checkpoint_restore_planner():
@@ -9,6 +9,9 @@ def test_checkpoint_restore_planner():
     """
     user_ns = Namespace({})
     planner = CheckpointRestorePlanner(user_ns)
+
+    # Set planner to only migrate for consistency
+    planner._always_migrate = True
 
     # Pre run cell 1
     planner.pre_run_cell_update()
@@ -44,15 +47,8 @@ def test_checkpoint_restore_planner():
     assert len(restore_plan.actions) == 2
 
     # Assert the restore plan has correct fields.
-    assert isinstance(restore_plan.actions[0.5], LoadVariableRestoreAction)
-    assert restore_plan.actions[0.5].cell_num == 0.5
-    assert restore_plan.actions[0.5].variable_names == ["x"]
-    assert len(restore_plan.actions[0.5].fallback_recomputation) == 1
-
-    # Assert the restore actions has correct fallback recomputation.
-    assert isinstance(restore_plan.actions[0.5].fallback_recomputation[0], RerunCellRestoreAction)
-    assert restore_plan.actions[0.5].fallback_recomputation[0].cell_num == 0
-    assert restore_plan.actions[0.5].fallback_recomputation[0].cell_code == "x = 1"
+    assert restore_plan.actions[StepOrder(0, True)].fallback_recomputation == \
+        [RerunCellRestoreAction(StepOrder(0, False), "x = 1")]
 
 
 def test_checkpoint_restore_planner_with_existing_items():
