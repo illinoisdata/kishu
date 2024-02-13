@@ -249,7 +249,7 @@ class RestorePlan:
     # TODO: add the undeserializable variables which caused fallback computation to config list.
     fallbacked_actions: List[LoadVariableRestoreAction] = field(default_factory=lambda: [])
 
-    def add_rerun_cell_restore_action(self, cell_num: float, cell_code: str):
+    def add_rerun_cell_restore_action(self, cell_num: int, cell_code: str):
         step_order = StepOrder(cell_num, False)
         if step_order in self.actions:
             raise DuplicateRestoreActionError(step_order.cell_num, step_order.is_load_var)
@@ -257,9 +257,9 @@ class RestorePlan:
 
     def add_load_variable_restore_action(
         self,
-        cell_num: float,
+        cell_num: int,
         variable_names: List[str],
-        fallback_recomputation: List[Tuple[float, str]]
+        fallback_recomputation: List[Tuple[int, str]]
     ):
         step_order = StepOrder(cell_num, True)
         if step_order in self.actions:
@@ -294,7 +294,7 @@ class RestorePlan:
                     assert isinstance(action, LoadVariableRestoreAction)  # To make MYPY happy
 
                     # If action is load variable, replace action with fallback recomputation plan
-                    self.fallbacked_actions.append(self.actions[action.step_order])
+                    self.fallbacked_actions.append(action)
                     del self.actions[action.step_order]
                     for rerun_cell_action in action.fallback_recomputation:
                         self.actions[rerun_cell_action.step_order] = rerun_cell_action
