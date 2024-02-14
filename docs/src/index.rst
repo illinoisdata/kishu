@@ -20,4 +20,5 @@ Contents
 .. toctree::
 
    usage
+   supported_libraries
    api
