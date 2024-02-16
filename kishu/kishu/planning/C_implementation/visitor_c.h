@@ -2,6 +2,7 @@
 #define _VISITOR_C_H
 
 #include <Python.h>
+#include <stdbool.h>
 #include "xxhash.h"
 
 // Global type identifiers
@@ -33,18 +34,18 @@ typedef struct Visited {
 // function pointer for visitor pattern
 
 typedef struct Visitor {
-    VisitorReturnType* (*has_visited)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state);
-    VisitorReturnType* (*handle_visited)(PyObject *obj, Visited *visited, int include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*has_visited)(PyObject *obj, Visited *visited, const bool include_id, VisitorReturnType* state);
+    VisitorReturnType* (*handle_visited)(PyObject *obj, const bool include_id, VisitorReturnType* state, PyObject* list_included);
     VisitorReturnType* (*visit_primitive)(PyObject *obj, VisitorReturnType* state, PyObject* list_included);
-    VisitorReturnType* (*visit_tuple)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
-    VisitorReturnType* (*visit_list)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
-    VisitorReturnType* (*visit_set)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
-    VisitorReturnType* (*visit_dict)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
-    VisitorReturnType* (*visit_byte)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
-    VisitorReturnType* (*visit_type)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
-    VisitorReturnType* (*visit_callable)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
-    VisitorReturnType* (*visit_custom_obj)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state, PyObject* list_included);
-    VisitorReturnType* (*visit_other)(PyObject *obj, Visited **visited, int include_id, VisitorReturnType* state);
+    VisitorReturnType* (*visit_tuple)(PyObject *obj, Visited **visited, const bool include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_list)(PyObject *obj, Visited **visited, const bool include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_set)(PyObject *obj, Visited **visited, const bool include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_dict)(PyObject *obj, Visited **visited, const bool include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_byte)(PyObject *obj, Visited **visited, const bool include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_type)(PyObject *obj, Visited **visited, const bool include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_callable)(PyObject *obj, Visited **visited, const bool include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_custom_obj)(PyObject *obj, Visited **visited, const bool include_id, VisitorReturnType* state, PyObject* list_included);
+    VisitorReturnType* (*visit_other)(PyObject *obj, Visited **visited, const bool include_id, VisitorReturnType* state);
     void (*update_state_id)(PyObject *obj, VisitorReturnType* state, PyObject* list_included);
     Visited* visited;
     PyObject* list_included; // for debugging purposes
@@ -53,7 +54,7 @@ typedef struct Visitor {
 
 // static PyObject* get_object_hash_wrapper(PyObject* self, PyObject* args);
 
-VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, int include_id, VisitorReturnType* state);
+VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, const bool include_id, VisitorReturnType* state);
 // VisitorReturnType* get_object_hash(PyObject *obj);
 Visitor* get_object_hash(PyObject *obj);
 
