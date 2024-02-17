@@ -16,6 +16,69 @@ def benchmark_hash_creation(obj):
 def benchmark_hash_comparison(objs1: ObjectState, objs2: ObjectState):
     return objs1.compare_ObjectStates(objs2)
 
+# --------------------------------------- Simple tests -----------------------
+
+
+def test_idgraph_simple_list_compare_by_value():
+    """
+        Test if the idgraph comparisons work. Comparing by value only will identify 'a' as equal
+        before and after reassigning, while comparing by structure will report a difference.
+    """
+    a = [1, 2]
+    objs1 = ObjectState(a)
+
+    # reference swap
+    a = [1, 2]
+    objs2 = ObjectState(a)
+
+    assert not objs1.compare_ObjectStates(objs2)
+
+
+def test_idgraph_nested_list_compare_by_value():
+    a = [1, 2, 3]
+    b = [a, a]
+    objs1 = ObjectState(a)
+
+    b[1] = [1, 2, 3]  # Different list from a
+    objs2 = ObjectState(b)
+
+    assert not objs1.compare_ObjectStates(objs2)
+
+
+def test_idgraph_dict_compare_by_value():
+    """
+        Test if the idgraph comparisons work. Comparing by value only will identify 'a' as equal
+        before and after reassigning, while comparing by structure will report a difference.
+    """
+    a = {"foo": {"bar": "baz"}}
+    objs1 = ObjectState(a)
+
+    # reference swap
+    a["foo"] = {"bar": "baz"}
+    objs2 = ObjectState(a)
+
+    assert not objs1.compare_ObjectStates(objs2)
+
+
+def test_traversal():
+    a = [1, [2, 3]]
+    objs1 = ObjectState(a)
+
+    a[1][1] = [3]  # a = [1, [2, [3]]]
+    objs2 = ObjectState(a)
+
+    assert not objs1.compare_ObjectStates(objs2)
+
+
+def test_list_vs_tuple():
+    a = [1, 2]
+    b = (1, 2)
+
+    objs1 = ObjectState(a)
+    objs2 = ObjectState(b)
+
+    assert not objs1.compare_ObjectStates(objs2)
+
 # --------------------------------------- Numpy tests -----------------------
 
 

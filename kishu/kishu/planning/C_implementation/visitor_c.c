@@ -273,6 +273,46 @@ int is_pandas_RangeIndex_instance(PyObject *obj) {
 }
 
 /*
+* Python interface funtion to get hashed state of object
+* args: object whose state needs to be hashed
+* Return: long(hashed value)
+*/
+static PyObject *get_object_hash_wrapper(PyObject *self, PyObject *args) {
+    // Parse arguments from Python to C
+    PyObject *obj;
+    if (!PyArg_ParseTuple(args, "O", &obj)) {
+        return NULL;
+    }
+
+    // Calling get_object_hash
+    // VisitorReturnType* result = get_object_hash(obj); 
+    Visitor* hash_visitor = get_object_hash(obj);    
+    unsigned long digest_hash = XXH3_64bits_digest(hash_visitor->state->hashed_state);
+
+    return PyLong_FromUnsignedLong(digest_hash);
+}
+
+/*
+* Python interface funtion to get hashed state of object as well as
+* items hashed during traversing
+* args: object whose state needs to be hashed
+* Return: Tuple(hashed state, traversed items)
+*/
+static PyObject *get_object_hash_and_trav_wrapper(PyObject *self, PyObject *args) {
+    // Parse arguments from Python to C
+    PyObject *obj;
+    if (!PyArg_ParseTuple(args, "O", &obj)) {
+        return NULL;
+    }
+
+    Visitor* hash_visitor = get_object_hash(obj);    
+
+    unsigned long digest_hash = XXH3_64bits_digest(hash_visitor->state->hashed_state);
+
+    return PyTuple_Pack(2, PyLong_FromUnsignedLong(digest_hash), hash_visitor->list_included);
+}
+
+/*
 * Python interface function to get visitor object.
 * args: - Python object to hash
 */
@@ -319,44 +359,6 @@ static PyObject *get_digest_hash_wrapper(PyObject *self, PyObject *args) {
     unsigned long digest_hash = XXH3_64bits_digest(hash_visitor->state->hashed_state);
 
     return PyLong_FromUnsignedLong(digest_hash);
-}
-
-/*
-* Python interface funtion to get hashed state of object
-* args: object whose state needs to be hashed
-*/
-static PyObject *get_object_hash_wrapper(PyObject *self, PyObject *args) {
-    // Parse arguments from Python to C
-    PyObject *obj;
-    if (!PyArg_ParseTuple(args, "O", &obj)) {
-        return NULL;
-    }
-
-    // Calling get_object_hash
-    // VisitorReturnType* result = get_object_hash(obj); 
-    Visitor* hash_visitor = get_object_hash(obj);    
-    unsigned long digest_hash = XXH3_64bits_digest(hash_visitor->state->hashed_state);
-
-    return PyLong_FromUnsignedLong(digest_hash);
-}
-
-/*
-* Python interface funtion to get hashed state of object and items hashed during traversing
-* args: object whose state needs to be hashed
-* Return: Tuple(hashed state, traversed items)
-*/
-static PyObject *get_object_hash_and_trav_wrapper(PyObject *self, PyObject *args) {
-    // Parse arguments from Python to C
-    PyObject *obj;
-    if (!PyArg_ParseTuple(args, "O", &obj)) {
-        return NULL;
-    }
-
-    Visitor* hash_visitor = get_object_hash(obj);    
-
-    unsigned long digest_hash = XXH3_64bits_digest(hash_visitor->state->hashed_state);
-
-    return PyTuple_Pack(2, PyLong_FromUnsignedLong(digest_hash), hash_visitor->list_included);
 }
 
 /*

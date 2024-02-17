@@ -13,11 +13,15 @@ class ObjectState:
 
     def __init__(self, obj):
         self.pick = pickle.dumps(obj)
-        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
-            obj)
-        # self.visitor = VisitorModule.get_visitor_wrapper(obj)
-        # self.hashed_state = VisitorModule.get_digest_hash_wrapper(self.visitor)
-        # self.traversal = VisitorModule.get_visited_objs_wrapper(self.visitor)
+
+        # If using get_object_hash_wrapper(), comment this line.
+        # If using get_object_hash_and_trav_wrapper(), uncomment this line
+        # self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
+        #     obj)
+
+        # If using get_object_hash_and_trav_wrapper(), comment this line
+        # If using get_object_hash_wrapper(), uncomment this line.
+        self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
 
     # def compare_obj_hash(self, obj):
     #     """
@@ -39,14 +43,17 @@ class ObjectState:
 
     def update_object_hash(self, obj):
         """
-        Inputs: obj - Object whose state needs to be recorded
+        Inputs: obj - Object whose new state needs to be recorded
         Updates the hash and pickled bianries of the object state
         """
         self.pick = pickle.dumps(obj)
-        # self.visitor = VisitorModule.get_visitor_wrapper(obj)
-        # self.hashed_state = VisitorModule.get_digest_hash_wrapper(self.visitor)
-        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
-            obj)
+
+        # If storing traversal as well, uncomment this line, otherwise comment out
+        # self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
+        #     obj)
+
+        # If only storing hashed state, uncomment this line, otherwise comment out
+        self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
 
     def get_object_hash(self):
         """
@@ -54,16 +61,10 @@ class ObjectState:
         """
         return self.hashed_state
 
-    # def get_visitor(self):
+    # If storing traversal, uncomment this function
+    # def get_hashed_traversal(self):
     #     """
-    #     Inputs: obj - Object whose state needs to be recorded
-    #     Returns a PyCaspsule object for the XXH32_hash object
+    #     Input: obj - Object whose state needs to be recorded
+    #     Returns the data hashed during traversal
     #     """
-    #     return self.visitor
-
-    def get_hashed_traversal(self):
-        """
-        Input: obj - Object whose state needs to be recorded
-        Returns the data hashed during traversal
-        """
-        return self.traversal
+    #     return self.traversal
