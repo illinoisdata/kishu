@@ -5,7 +5,7 @@ import pickle
 import seaborn as sns
 import pytest
 
-from kishu.planning.C_implementation.object_state_c import ObjectState
+from lib.object_state_c import ObjectState
 
 
 def benchmark_hash_creation(obj):

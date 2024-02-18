@@ -5,7 +5,7 @@
 
 #include "cJSON.h"
 #include "numpy/arrayobject.h"
-#include "xxhash.h"
+#include "xxhash_old.h"
 
 // Forward declaration
 typedef struct idGraphNode idGraphNode;
