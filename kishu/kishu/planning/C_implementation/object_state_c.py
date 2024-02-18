@@ -68,7 +68,7 @@ class ObjectState:
         Returns the data hashed during traversal
         """
         return self.traversal
-    
+
     def id_set(self):
         return set([i for i in self.traversal if isinstance(i, int)])
 

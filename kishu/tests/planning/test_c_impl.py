@@ -79,6 +79,7 @@ def test_list_vs_tuple():
 
     assert not objs1.compare_ObjectStates(objs2)
 
+
 def test_idgraph_overlap():
     a, b, c = 1, 2, 3
     list1 = [a, b]
@@ -89,6 +90,7 @@ def test_idgraph_overlap():
 
     assert objs1.is_overlap(objs2)
 
+
 def test_idgraph_no_overlap():
     a, b, c, d = 1, 2, 3, 4
     list1 = [a, b]
@@ -98,6 +100,7 @@ def test_idgraph_no_overlap():
     objs2 = ObjectState(list2)
 
     assert not objs1.is_overlap(objs2)
+
 
 def test_idgraph_nested_overlap():
     a, b, c, d = 1, 2, 3, 4
