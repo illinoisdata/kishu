@@ -14,14 +14,14 @@ class ObjectState:
     def __init__(self, obj):
         self.pick = pickle.dumps(obj)
 
-        # If using get_object_hash_wrapper(), comment this line.
+        # If using get_object_hash_wrapper(), comment this line, and
         # If using get_object_hash_and_trav_wrapper(), uncomment this line
-        # self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
-        #     obj)
+        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
+            obj)
 
-        # If using get_object_hash_and_trav_wrapper(), comment this line
+        # If using get_object_hash_and_trav_wrapper(), comment this line, and
         # If using get_object_hash_wrapper(), uncomment this line.
-        self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
+        # self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
 
     # def compare_obj_hash(self, obj):
     #     """
@@ -49,11 +49,11 @@ class ObjectState:
         self.pick = pickle.dumps(obj)
 
         # If storing traversal as well, uncomment this line, otherwise comment out
-        # self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
-        #     obj)
+        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
+            obj)
 
         # If only storing hashed state, uncomment this line, otherwise comment out
-        self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
+        # self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
 
     def get_object_hash(self):
         """
@@ -61,10 +61,18 @@ class ObjectState:
         """
         return self.hashed_state
 
-    # If storing traversal, uncomment this function
-    # def get_hashed_traversal(self):
-    #     """
-    #     Input: obj - Object whose state needs to be recorded
-    #     Returns the data hashed during traversal
-    #     """
-    #     return self.traversal
+    # If not storing traversal, comment out this function
+    def get_hashed_traversal(self):
+        """
+        Input: obj - Object whose state needs to be recorded
+        Returns the data hashed during traversal
+        """
+        return self.traversal
+    
+    def id_set(self):
+        return set([i for i in self.traversal if isinstance(i, int)])
+
+    def is_overlap(self, other) -> bool:
+        if self.id_set().intersection(other.id_set()):
+            return True
+        return False
