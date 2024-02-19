@@ -9,14 +9,14 @@ from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.path import KishuPath
 
 
-UNDESERIALIZABLE_CLASS_FOO = """
-class Foo:
+UNDESERIALIZABLE_CLASS = """
+class UndeserializableClass:
     def __init__(self):
         self.bar = 1
         self.baz = 2
 
-    def __repr__(self):
-        return "self.bar" + "self.baz"
+    def __eq__(self, other):
+        return self.bar == other.bar and self.baz == other.baz
 
     def __reduce__(self):
         return (self.__class__, (self.bar,))  # Purposely doesn't save self.baz
@@ -111,8 +111,8 @@ def test_mix_reload_recompute_restore_plan():
 
 def test_fallback_recomputation():
     shell = InteractiveShell()
-    shell.run_cell(UNDESERIALIZABLE_CLASS_FOO)
-    shell.run_cell("foo = Foo()")
+    shell.run_cell(UNDESERIALIZABLE_CLASS)
+    shell.run_cell("foo = UndeserializableClass()")
 
     user_ns = Namespace(shell.user_ns)
     filename = KishuPath.database_path("test")
@@ -126,11 +126,11 @@ def test_fallback_recomputation():
     # restore
     restore_plan = RestorePlan()
     restore_plan.add_load_variable_restore_action(1,
-                                                  ["Foo"],
-                                                  [(1, UNDESERIALIZABLE_CLASS_FOO)])
+                                                  ["UndeserializableClass"],
+                                                  [(1, UNDESERIALIZABLE_CLASS)])
     restore_plan.add_load_variable_restore_action(2,
                                                   ["foo"],
-                                                  [(2, "foo = Foo()")])
+                                                  [(2, "foo = UndeserializableClass()")])
     result_ns = restore_plan.run(filename, exec_id)
 
     # Both load variable restored actions should have failed.
@@ -138,4 +138,4 @@ def test_fallback_recomputation():
 
     # Compare keys in this case as modules are not directly comparable
     assert result_ns.keyset() == user_ns.keyset()
-    assert str(result_ns["foo"]) == str(user_ns["foo"])
+    assert result_ns["foo"] == user_ns["foo"]
