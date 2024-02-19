@@ -9,6 +9,24 @@ from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.path import KishuPath
 
 
+UNDESERIALIZABLE_CLASS = """
+class UndeserializableClass:
+    def __init__(self):
+        self.bar = 1
+        self.baz = 2
+
+    def __eq__(self, other):
+        return self.bar == other.bar and self.baz == other.baz
+
+    def __reduce__(self):
+        return (self.__class__, (self.bar,))  # Purposely doesn't save self.baz
+
+    def __getattr__(self, attr):
+        if not self.baz:  # Infinite loop when unpickling
+            pass
+"""
+
+
 def test_checkout_wrong_id_error():
     filename = KishuPath.database_path("test")
     KishuCheckpoint(filename).init_database()
@@ -93,8 +111,8 @@ def test_mix_reload_recompute_restore_plan():
 
 def test_fallback_recomputation():
     shell = InteractiveShell()
-    shell.run_cell("from qiskit import Aer")
-    shell.run_cell("sim = Aer.get_backend('aer_simulator')")
+    shell.run_cell(UNDESERIALIZABLE_CLASS)
+    shell.run_cell("foo = UndeserializableClass()")
 
     user_ns = Namespace(shell.user_ns)
     filename = KishuPath.database_path("test")
@@ -108,11 +126,11 @@ def test_fallback_recomputation():
     # restore
     restore_plan = RestorePlan()
     restore_plan.add_load_variable_restore_action(1,
-                                                  ["Aer"],
-                                                  [(1, "from qiskit import Aer")])
+                                                  ["UndeserializableClass"],
+                                                  [(1, UNDESERIALIZABLE_CLASS)])
     restore_plan.add_load_variable_restore_action(2,
-                                                  ["sim"],
-                                                  [(2, "sim = Aer.get_backend('aer_simulator')")])
+                                                  ["foo"],
+                                                  [(2, "foo = UndeserializableClass()")])
     result_ns = restore_plan.run(filename, exec_id)
 
     # Both load variable restored actions should have failed.
@@ -120,5 +138,4 @@ def test_fallback_recomputation():
 
     # Compare keys in this case as modules are not directly comparable
     assert result_ns.keyset() == user_ns.keyset()
-    assert result_ns["Aer"] == user_ns["Aer"]
-    assert str(result_ns["sim"]) == str(user_ns["sim"])
+    assert result_ns["foo"] == user_ns["foo"]

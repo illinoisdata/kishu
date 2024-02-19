@@ -81,9 +81,6 @@ dev = [  # README: Keep in sync with dev-requirements.txt
     "textblob",
     "pandas",
     "pylatexenc",
-    "qiskit",
-    "qiskit-aer",
-    "qiskit_machine_learning",
 
     # Testing framework/infra
     "websocket-client",
