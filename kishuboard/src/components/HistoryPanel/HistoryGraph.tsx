@@ -86,12 +86,15 @@ function _HistoryGraph(props: HistoryGraphProps) {
                 return (
                     <>
                     <rect
+                        pointerEvents={"visible"}
                         x={info.cx - radius}
                         y={info.cy - COMMITHEIGHT / 2 + FONTSIZE / 2 - radius / 2}
                         width={point.type === VisPointType.GROUP_FOLD?2 * (radius):2 * COMMITRADIUS}
                         height={point.type === VisPointType.GROUP_FOLD?2 * (radius):2 * COMMITRADIUS}
-                        fill={info.color}
+                        fill={point.type === VisPointType.GROUP_FOLD || point.type === VisPointType.GROUP_UNFOLE?"none":info.color}
+                        stroke={info.color}
                         onClick={() => {
+                            console.log("clicked")
                             if(point.type === VisPointType.GROUP_FOLD){
                                 unfoldGroup(point.groupID)
                             }else if(point.type === VisPointType.GROUP_UNFOLE){
@@ -100,9 +103,7 @@ function _HistoryGraph(props: HistoryGraphProps) {
                         }}
                     />
                         {point.type === VisPointType.GROUP_FOLD &&
-                            <g id="plusIcon" stroke = {darkerColorGenerator(info.color)} strokeWidth="2" onClick={() => {
-                                unfoldGroup(point.groupID);
-                            }}>
+                            <g id="plusIcon" stroke = {info.color} strokeWidth="2">
                                 <line x1={x1} y1={y1} x2={x2} y2={y1} />
                                 <line x1={(x1 + x2)/2} y1={y2} x2={(x1 + x2)/2} y2={y3} />
                             </g>
