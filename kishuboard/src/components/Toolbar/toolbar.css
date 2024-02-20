@@ -3,6 +3,7 @@
     background-color: #c5cacf;
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 .searchBar {

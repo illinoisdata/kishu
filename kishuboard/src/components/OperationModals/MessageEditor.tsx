@@ -1,38 +1,35 @@
 import React, {useState} from "react";
 import {Modal, Input, Button, message} from "antd";
 
-export interface TagEditorProps {
+export interface MessageEditorProps {
     isModalOpen: boolean;
     setIsModalOpen: any;
-    submitHandler: (newTagName:string, oldTagName:string|undefined) => Promise<void>;
+    submitHandler: (arg: string) => Promise<void>;
     selectedHistoryID?: string;
-    tagToBeEdit: string|undefined;
-    setTagToBeEdit: any;
+    currentMessage?: string;
 }
 
-function TagEditor(props: TagEditorProps) {
+function MessageEditor(props: MessageEditorProps) {
     const [loading, setLoading] = useState(false);
-    const [content, setContent] = useState("");
+    const [content, setContent] = useState(props.currentMessage?props.currentMessage:"");
 
     async function handleOk() {
         setLoading(true);
         try {
-            await props.submitHandler(content,props.tagToBeEdit);
+            await props.submitHandler(content);
             setLoading(false);
-            message.info(props.tagToBeEdit?"Edit tag succeed":"Create tag succeed");
-            props.setTagToBeEdit(undefined);
+            message.info("Edit commit message succeed");
             props.setIsModalOpen(false);
         } catch (e) {
             setLoading(false);
             if (e instanceof Error) {
-                message.error("tag edit error" + e.message);
+                message.error("Edit commit message error" + e.message);
             }
         }
     }
 
     const handleCancel = () => {
         props.setIsModalOpen(false);
-        props.setTagToBeEdit(undefined);
     };
 
     const handleChange: any = (event: any) => {
@@ -41,7 +38,7 @@ function TagEditor(props: TagEditorProps) {
 
     return (
         <Modal
-            title={props.tagToBeEdit?"Edit tag name for tag " + props.tagToBeEdit!:"Create a tag for the selected history"}
+            title="Edit the commit message for the selected history"
             open={props.isModalOpen}
             onOk={handleOk}
             onCancel={handleCancel}
@@ -64,4 +61,4 @@ function TagEditor(props: TagEditorProps) {
     );
 }
 
-export default TagEditor;
+export default MessageEditor;

@@ -31,7 +31,7 @@ function _SingleNewDateHeader(props: SingleNewDateHeaderProps) {
             }}
             style={{top: props.y_position}}
         >
-            <span>{isFolded?<RightOutlined/>:<DownOutlined/>} {formatDate(props.newDate)}</span> {isFolded?props.commitNumber + " commits collapsed":""}
+            <span>{isFolded?<RightOutlined/>:<DownOutlined/>} {formatDate(props.newDate)}</span> {isFolded?props.commitNumber + " commits collapsed":props.commitNumber + " commits"}
         </div>
     );
 }

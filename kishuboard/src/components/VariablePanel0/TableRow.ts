@@ -36,7 +36,7 @@ export function GetTableRowNonDiff(variable: Variable): TableRowNonDiff {
 
 export function GetTableRowDiff(variable: Variable, option: number): TableRowDiff {
     return {
-        key: variable.key,
+        key: variable.variableName + option,
         variableName: variable.variableName,
         state: variable.state,
         type: variable.type,
@@ -44,5 +44,5 @@ export function GetTableRowDiff(variable: Variable, option: number): TableRowDif
         children: variable.children,
         html: variable.html,
         option: option,
-    };
+    } as TableRowDiff;
 }

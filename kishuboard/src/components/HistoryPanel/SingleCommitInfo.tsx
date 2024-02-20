@@ -37,8 +37,8 @@ function _SingleCommitInfo(props: SingleCommitInfoProps) {
     });
 
     const _timestamp =
-        <div>
-            <FieldTimeOutlined/> {extractTimeFromString(props.commit.timestamp)}
+        <div className={"timestamp"}>
+            {extractTimeFromString(props.commit.timestamp)}
         </div>
 
     return (

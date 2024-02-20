@@ -8,4 +8,5 @@
 export interface Cell {
   content: string;
   execNum?: string;
+  type: string;
 }

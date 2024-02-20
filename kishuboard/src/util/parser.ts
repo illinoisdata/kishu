@@ -7,7 +7,7 @@ import {DiffCodeDetail} from "./DiffCommitDetail";
 import {logger} from "../log/logger";
 import {VariableVersionCompare} from "./VariableVersionCompare";
 
-export function parseList(object: any) {
+export function parseList(object: any):Session[]{
     logger.silly("session list from backend",object)
     const _sessions = object["sessions"];
     return _sessions.map(
@@ -24,7 +24,8 @@ export function parseList(object: any) {
 
 //parse and sort the data from backend
 export function parseCommitGraph(object: any) {
-    logger.silly("git graph from backend", object)
+    // logger.silly("git graph from backend", object)
+    console.log("git graph from backend", object)
     const items = object["commits"];
     const commits: Commit[] = items.map(
         (item: any) =>
@@ -36,8 +37,8 @@ export function parseCommitGraph(object: any) {
                 parentOid: item["parent_oid"],
                 tags: item["tags"],
                 codeVersion: item["code_version"],
-                variableVersion: item["var_version"],
-                message: item["message"],
+                variableVersion: item["varset_version"],
+                message: item["message"].replace("Auto-commit after executing",""),
             }) as Commit,
     );
     const currentHead = object["head"]["commit_id"];
@@ -76,16 +77,20 @@ export function parseCommitDetail(json: any) {
                 ({
                     content: item["content"],
                     execNum: item["exec_num"] === "None" ? "-1" : item["exec_num"],
+                    type: item["cell_type"],
                 }) as Cell,
         ),
         variables: json["variables"].map((variable: any) =>
             recursiveGetVariable(variable),
-        ),
+        ).sort((a: Variable, b: Variable) => {
+            return a.type==="module" ? 1 : -1
+        }),
         // historyExecCells: json["cells"]
         historyExecCells: json["executed_cells"].reverse().map(
             (item: any) => ({
                 content: item,
-                execNum: "-1"
+                execNum: "-1",
+                type: "code"
             }) as Cell
         ),
     };
@@ -158,6 +163,6 @@ function parseDiffHunk(json: any) {
 }
 
 export function parseFilteredCommitIDs(json: any): string[] {
-    logger.silly("filtered commit from backend",json)
-    return json["commit_ids"].flatMap((item: any) => item[0])
+    logger.warn("filtered commit from backend",json)
+    return json["commit_ids"]
 }

@@ -24,3 +24,4 @@ export interface CommitDetail {
   variables: Variable[]; //no need for get commit_graph
   historyExecCells: Cell[];
 }
+

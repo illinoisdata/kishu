@@ -4,8 +4,10 @@ import {Modal, Input, Button, message} from "antd";
 export interface TagEditorProps {
     isModalOpen: boolean;
     setIsModalOpen: any;
-    submitHandler: (arg: string) => Promise<void>;
+    submitHandler: (newBranchName: string, oldBranchName: string|undefined) => Promise<void>;
     selectedHistoryID?: string;
+    branchNameToBeEdit: string|undefined;
+    setBranchNameToBeEdit: any;
 }
 
 function TagEditor(props: TagEditorProps) {
@@ -15,20 +17,22 @@ function TagEditor(props: TagEditorProps) {
     async function handleOk() {
         setLoading(true);
         try {
-            await props.submitHandler(content);
+            await props.submitHandler(content, props.branchNameToBeEdit);
             setLoading(false);
-            message.info("create branch succeed");
+            message.info(props.branchNameToBeEdit?"rename branch succeed":"create branch succeed");
+            props.setBranchNameToBeEdit(undefined);
             props.setIsModalOpen(false);
         } catch (e) {
             setLoading(false);
             if (e instanceof Error) {
-                message.error("branch create error" + e.message);
+                message.error("branch edit error" + e.message);
             }
         }
     }
 
     const handleCancel = () => {
         props.setIsModalOpen(false);
+        props.setBranchNameToBeEdit(undefined);
     };
 
     const handleChange: any = (event: any) => {
@@ -37,7 +41,7 @@ function TagEditor(props: TagEditorProps) {
 
     return (
         <Modal
-            title="create a new branch the selected history"
+            title={props.branchNameToBeEdit?"Change the branch name for branch "+props.branchNameToBeEdit!:"Create a new branch for the selected history"}
             open={props.isModalOpen}
             onOk={handleOk}
             onCancel={handleCancel}

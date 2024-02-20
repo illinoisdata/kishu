@@ -140,22 +140,22 @@ py38/
 ### kishu/timetravel_fe
 
 # dependencies
-timetravel_fe/node_modules
-timetravel_fe/.pnp
-timetravel_fe/.pnp.js
+kishuboard/node_modules
+kishuboard/.pnp
+kishuboard/.pnp.js
 
 # testing
-timetravel_fe/coverage
+kishuboard/coverage
 
 # production
-timetravel_fe/build
+kishuboard/build
 
 # misc
-timetravel_fe/.DS_Store
-timetravel_fe/.env.local
-timetravel_fe/.env.development.local
-timetravel_fe/.env.test.local
-timetravel_fe/.env.production.local
+kishuboard/.DS_Store
+kishuboard/.env.local
+kishuboard/.env.development.local
+kishuboard/.env.test.local
+kishuboard/.env.production.local
 
 npm-debug.log*
 yarn-debug.log*

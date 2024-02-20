@@ -1,27 +1,37 @@
 .singleCellLayout {
     display: flex;
+    flex-direction: row;
     /*justify-content: space-between;*/
     align-items: flex-start; /* Align items to the start of the cross axis (top) */
 }
 
 .executionOrder {
     display: flex;
-    margin-right: 4px;
+    /*margin-right: 4px;*/
     margin-left: 10px;
     padding: 0;
-    width: 40px;
+    /*width: 40px;*/
     white-space: pre;
     word-break: break-all;
+    width: 30px;
 }
 
 .cell-code {
     border: 2px solid #dedede;
     padding: 0.5em;
-    resize: vertical;
     background-color: #f3f3f3;
     .ace_hidden-cursors {
         opacity: 0;
     }
+    .ace_bracket { display: none }
+}
+
+.type_code{
+    width: 90%;
+}
+
+.type_markdown{
+    width: 93%;
 }
 
 .add-row-marker {

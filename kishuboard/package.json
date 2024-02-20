@@ -2,14 +2,13 @@
   "name": "kishuboard",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://127.0.0.1:5000/",
+  "proxy": "http://127.0.0.1:4999/",
   "dependencies": {
     "@devbookhq/splitter": "^1.4.0",
     "@gitgraph/react": "^1.6.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
     "@types/node": "^16.18.38",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
@@ -25,6 +24,7 @@
     "react-ace": "^10.1.0",
     "react-dom": "^18.2.0",
     "react-highlight-words": "^0.20.0",
+    "react-markdown": "^9.0.1",
     "react-router-dom": "^6.14.2",
     "react-scripts": "5.0.1",
     "ts-hashcode": "^1.0.2",
@@ -36,7 +36,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "BUILD_PATH='./kishuboard/build' react-scripts build",
-    "test": "react-scripts test",
+    "test": "jest",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -58,7 +58,10 @@
     ]
   },
   "devDependencies": {
+    "@types/jest": "^29.5.12",
     "eslint": "^8.53.0",
-    "prettier": "^3.0.3"
+    "jest": "^29.7.0",
+    "prettier": "^3.0.3",
+    "ts-jest": "^29.1.2"
   }
 }

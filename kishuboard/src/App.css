@@ -38,4 +38,11 @@
 
 .notebook_panel {
     background-color: #fdfdfd;
+    padding-left: 40px;
+    padding-top: 20px;
+}
+
+
+.executed_code_panel {
+    background-color: #e1e4ea;
 }

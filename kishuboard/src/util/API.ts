@@ -8,7 +8,7 @@ import {
 } from "./parser";
 import {logger} from "../log/logger";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:4999';
 const BackEndAPI = {
     async rollbackBoth(commitID: string, branchID?: string) {
         // message.info(`rollback succeeds`);
@@ -54,11 +54,15 @@ const BackEndAPI = {
             throw new Error("get commit detail error, status != 200");
         }
         const data = await res.json();
+        console.log("commit detail", data)
         logger.silly("commit detail before parse", data);
         return parseCommitDetail(data);
     },
 
-    async setTag(commitID: string, newTag: string) {
+    async setTag(commitID: string, newTag: string,oldTag?:string) {
+        if(oldTag){
+            await this.deleteTag(oldTag)
+        }
         const res = await fetch(
             BACKEND_URL + "/api/tag/" +
             globalThis.NotebookID! +
@@ -66,27 +70,78 @@ const BackEndAPI = {
             newTag +
             "?commit_id=" +
             commitID,
-            //
-            // "&message=" +
-            // newTag,
         );
         if (res.status !== 200) {
             throw new Error("setting tags error, status != 200");
         }
     },
 
-    async createBranch(commitID: string, newBranchname: string) {
-        // message.info(`rollback succeeds`);
+    async setMessage(commitID: string, newMessage: string) {
         const res = await fetch(
-            BACKEND_URL + "/api/branch/" +
+            BACKEND_URL + "/api/fe/edit_message/" +
             globalThis.NotebookID! +
             "/" +
-            newBranchname +
-            "?commit_id=" +
-            commitID,
+            commitID +
+            "/" +
+            newMessage,
         );
         if (res.status !== 200) {
-            throw new Error("create branch error, status != 200");
+            throw new Error("setting message error, status != 200");
+        }
+    },
+
+    async changeTag(oleName: string, newName: string) {
+        const res = await fetch(
+            BACKEND_URL + "/change_tag/" +
+            globalThis.NotebookID! +
+            "/" +
+            oleName +
+            "?new_name=" +
+            newName,
+        );
+        if (res.status !== 200) {
+            throw new Error("change tags error, status != 200");
+        }
+
+    },
+
+    async deleteTag(tagID: string) {
+        console.log("delete tag", tagID)
+        const res = await fetch(
+            BACKEND_URL + "/api/delete_tag/" +
+            globalThis.NotebookID! +
+            "/" +
+            tagID,
+        );
+        console.log("delete tag res", res)
+        if (res.status !== 200) {
+            throw new Error("delete tags error, status != 200");
+        }
+    },
+
+    async editBranch(commitID: string, newBranchname: string, oldBranchName: string|undefined) {
+        // message.info(`rollback succeeds`);
+        if(oldBranchName){
+            const res = await fetch(
+                BACKEND_URL + "/api/rename_branch/" +
+                globalThis.NotebookID! +
+                "/" + oldBranchName + "/" + newBranchname
+            );
+            if (res.status !== 200) {
+                throw new Error("edit branch error, status != 200");
+            }
+        }else{
+            const res = await fetch(
+                BACKEND_URL + "/api/branch/" +
+                globalThis.NotebookID! +
+                "/" +
+                newBranchname +
+                "?commit_id=" +
+                commitID,
+            );
+            if (res.status !== 200) {
+                throw new Error("create branch error, status != 200");
+            }
         }
     },
 
@@ -144,6 +199,17 @@ const BackEndAPI = {
         }
         const data = await res.json();
         return parseFilteredCommitIDs(data);
+    },
+
+    async getNoteBookName(notebookID: string):Promise<string> {
+        const list = await this.getNotebookList()
+        for (const item of list) {
+            if (item.NotebookID === notebookID) {
+                // get the last part of the path
+                return item.notebookPath.split("/").pop()!
+            }
+        }
+        throw new Error("Invalid notebookID or notebook kernel is not running")
     }
 };
 

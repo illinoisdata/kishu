@@ -1,12 +1,28 @@
 /* App.css */
 .historyPanel {
+
+
+}
+
+.historyGraph {
     position:relative;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: flex-start;
     width: 100%;
-    height: 100%;
+    /*height: 100%;*/
+}
+
+.hint{
+    padding-left: 10px;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    text-align: center;
+    background-color: lightgray;
+    z-index: 1000;
+    padding: 4px 0; /* Adjust padding as needed */
 }
 
 .svg {
@@ -23,7 +39,7 @@
 .highlight{
     position:absolute;
     width:100%;
-    height: 68px;
+    height: 48px;
     z-index: 1;
 }
 
@@ -32,13 +48,29 @@
 }
 
 .diff-notation{
-    color: rgb(0, 0, 0);
+    color:black;
     z-index: 999;
     width: 100%;
     height: 100%;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: right;
+    align-items: baseline;
+    padding-right: 5px;
+}
+
+.diff-from{
+    background-color:rgba(
+            255,
+            0,
+            0,
+            0.3
+    );
+    padding:  2px;
+}
+
+.diff-to{
+    background-color: rgba(0, 128, 0, 0.3);
+    padding: 2px;
 }
 
 .filter-highlight{

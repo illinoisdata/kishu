@@ -5,16 +5,21 @@ import {Input, ConfigProvider, Checkbox} from "antd";
 import DropdownBranch from "./DropDownBranch";
 import {CheckboxChangeEvent} from "antd/es/checkbox";
 import {SearchBar} from "./SearchBar";
+import {SearchType} from "./SearchType";
 
 export interface toolBarProps{
-    setInDiffMode: any;
+    // setInDiffMode: any;
     setSearchResultIds: any;
+    setScrollToHighlightSignal:any;
+    currentSignal:boolean;
 }
 
 function _Toolbar(props: toolBarProps) {
-    const onDiffModeChange = (e: CheckboxChangeEvent) => {
-        props?.setInDiffMode(e.target.checked);
-    };
+    // const onDiffModeChange = (e: CheckboxChangeEvent) => {
+    //     props?.setInDiffMode(e.target.checked);
+    // };
+
+    const [searchType, setSearchType] = React.useState<string>("all");
 
     return (
         <>
@@ -44,18 +49,20 @@ function _Toolbar(props: toolBarProps) {
                 {" "}
                 <div className="toolBar">
                     <Input
-                        placeholder={"Notebook Name: " + globalThis.NotebookID}
+                        placeholder={"Name: " + globalThis.NotebookName}
                         disabled={true}
                         style={{width: "20%"}}
                     />
 
-                    <SearchBar setHighlightedCommitIds={props.setSearchResultIds}/>
+                    <SearchBar setHighlightedCommitIds={props.setSearchResultIds} searchType={searchType} setSearchType={setSearchType} setScrollToHighlight={props.setScrollToHighlightSignal} currentSignal={props.currentSignal}/>
 
-                    <Checkbox onChange={onDiffModeChange}>DiffMode</Checkbox>
+                    {/*<Checkbox onChange={onDiffModeChange}>DiffMode</Checkbox>*/}
+
 
                     <div>
                         <DropdownBranch/>
                     </div>
+
 
                     {/* onSearch={} */}
                 </div>

@@ -1,7 +1,7 @@
 import React, {
     createContext,
     useEffect,
-    useMemo,
+    useMemo, useRef,
     useState,
 } from "react";
 import "./App.css";
@@ -24,6 +24,26 @@ import {DiffVarHunk} from "./util/DiffHunk";
 import {VersionChange} from "./util/VariableVersionCompare";
 import {Variable} from "./util/Variable";
 
+function useInterval(callback: () => void, delay: number | null): void {
+    const savedCallback = useRef<() => void>();
+
+    // Remember the latest callback.
+    useEffect(() => {
+        savedCallback.current = callback;
+    }, [callback]);
+
+    // Set up the interval.
+    useEffect(() => {
+        function tick() {
+            savedCallback.current!();
+        }
+        if (delay !== null) {
+            let id = setInterval(tick, delay);
+            return () => clearInterval(id);
+        }
+    }, [delay]);
+}
+
 interface appContextType {
     //control git graph
     commits: Commit[];
@@ -32,6 +52,8 @@ interface appContextType {
     setBranchID2CommitMap: any;
     currentHeadID: string | undefined;
     setCurrentHeadID: any;
+    currentHeadBranch: string | undefined;
+    setCurrentHeadBranch: any;
 
     //control commit detail (non-diff)
     selectedCommit: CommitDetail | undefined;
@@ -42,8 +64,8 @@ interface appContextType {
     setSelectedBranchID: any;
 
     //control diff. For diff, the origin commit id is selectedCommitID, the destination commit id is diffDestCommitID below
-    inDiffMode: boolean
-    setInDiffMode: any;
+    // inDiffMode: boolean
+    // setInDiffMode: any;
     diffCodeDetail: DiffCodeDetail | undefined;
     setDiffCodeDetail: any;
     diffVarDetail: DiffVarHunk[] | undefined;
@@ -56,6 +78,8 @@ interface operationModalContextType {
     //control modal render or not
     isTagEditorOpen: boolean;
     setIsTagEditorOpen: any;
+    isMessageEditorOpen: boolean;
+    setIsMessageEditorOpen: any;
     isBranchNameEditorOpen: boolean;
     setIsBranchNameEditorOpen: any;
     isCheckoutWaitingModalOpen: boolean;
@@ -68,56 +92,60 @@ interface operationModalContextType {
     setCheckoutMode: any;
     checkoutBranchID: string | undefined;
     setCheckoutBranchID: any;
+    tagNameToBeEdit: string | undefined;
+    setTagNameToBeEdit: any;
+    branchNameToBeEdit: string | undefined;
+    setBranchNameToBeEdit: any;
 }
 
 const cells_loading: TabsProps['items'] = [
     {
         key: '1',
-        label: 'notebook cells',
-        children: 'loading...',
+        label: 'executed cells',
+        children: 'No commit',
     },
     {
         key: '2',
-        label: 'executed cells',
-        children: 'loading...',
-    }
+        label: 'notebook cells',
+        children: 'No commit',
+    },
 ];
 
 const cells: TabsProps['items'] = [
     {
         key: '1',
+        label: 'executed cells',
+        children: <div className="tile-xy notebook_panel executed_code_panel">
+            {<ExecutedCodePanel/>}
+        </div>,
+    },
+    {
+        key: '2',
         label: 'notebook cells',
         children: <div className="tile-xy notebook_panel">
             {<NotebookFilePanel/>}
         </div>,
     },
-    {
-        key: '2',
-        label: 'executed cells',
-        children: <div className="tile-xy notebook_panel">
-            {<ExecutedCodePanel/>}
-        </div>,
-    }
 ];
 
 const cells_diff: TabsProps['items'] = [
     {
         key: '1',
+        label: 'executed cells',
+        children: <div className="tile-xy notebook_panel executed_code_panel">
+            {<ExecutedCodeDiffPanel/>}
+        </div>,
+    },
+    {
+        key: '2',
         label: 'notebook cells',
         children: <div className="tile-xy notebook_panel">
             {<NotebookFileDiffPanel/>}
         </div>,
     },
-    {
-        key: '2',
-        label: 'executed cells',
-        children: <div className="tile-xy notebook_panel">
-            {<ExecutedCodeDiffPanel/>}
-        </div>,
-    }
 ];
 
-async function loadInitialData(setGlobalLoading: any, setError: any, setCommits: any, setBranchID2CommitMap: any, setSelectedCommitID: any, setSelectedBranchID: any, setCurrentHeadID: any) {
+async function loadInitialData(setGlobalLoading: any, setError: any, setCommits: any, setBranchID2CommitMap: any, setSelectedCommitID: any, setSelectedBranchID: any, setCurrentHeadID: any, setCurrentHeadBranch: any) {
     setGlobalLoading(true);
     try {
         const data = await BackEndAPI.getCommitGraph();
@@ -133,6 +161,8 @@ async function loadInitialData(setGlobalLoading: any, setError: any, setCommits:
         setSelectedCommitID(data.currentHead);
         setSelectedBranchID(data.currentHeadBranch);
         setCurrentHeadID(data.currentHead);
+        setCurrentHeadBranch(data.currentHeadBranch);
+        globalThis.NotebookName = await BackEndAPI.getNoteBookName(globalThis.NotebookID!);
     } catch (e) {
         if (e instanceof Error) {
             setError(e.message);
@@ -148,8 +178,6 @@ async function loadCommitDetail(selectedCommitID: string, setSelectedCommit: any
     }
     try {
         const data = await BackEndAPI.getCommitDetail(selectedCommitID);
-        console.log("commit detail after parse:");
-        console.log(data);
         setSelectedCommit(data!);
     } catch (e) {
         if (e instanceof Error) {
@@ -162,7 +190,6 @@ async function loadDiffCommitDetail(originCommitID: string, destinationCommitID:
     try {
         const diffCodeDetail = await BackEndAPI.getCodeDiff(originCommitID, destinationCommitID);
         const variableCompares = await BackEndAPI.getDataDiff(originCommitID, destinationCommitID)
-        console.log(variableCompares)
         const originCommitDetail = await BackEndAPI.getCommitDetail(originCommitID);
         const destinationCommitDetail = await BackEndAPI.getCommitDetail(destinationCommitID);
         //convert to maps
@@ -202,8 +229,6 @@ async function loadDiffCommitDetail(originCommitID: string, destinationCommitID:
                 } as DiffVarHunk)
             }
         })
-        console.log("diff var detail")
-        console.log(diffVarDetail)
         setDiffCodeDetail(diffCodeDetail!)
         setDiffVarDetail(diffVarDetail)
     } catch (e) {
@@ -225,15 +250,17 @@ function App() {
     const [selectedCommitID, setSelectedCommitID] = useState<string>();
     const [selectedBranchID, setSelectedBranchID] = useState<string>();
     const [currentHeadID, setCurrentHeadID] = useState<string>();
+    const [currentHeadBranch, setCurrentHeadBranch] = useState<string>();
     const [branchID2CommitMap, setBranchID2CommitMap] = useState<
         Map<string, string>
     >(new Map());
-    const [inDiffMode, setInDiffMode] = useState<boolean>(false);
+    // const [inDiffMode, setInDiffMode] = useState<boolean>(false);
     const [diffDestCommitID, setDiffDestCommitID] = useState<string | undefined>(undefined)
     const [searchResultIds, setSearchResultIds] = useState<string[]>([]);
 
     //********status of pop-ups************************ */
     const [isTagEditorOpen, setIsTagEditorOpen] = useState(false);
+    const [isMessageEditorOpen, setIsMessageEditorOpen] = useState(false);
     const [isBranchNameEditorOpen, setIsBranchNameEditorOpen] = useState(false);
     const [isCheckoutWaitingModalOpen, setIsCheckoutWaitingModalOpen] =
         useState(false);
@@ -241,6 +268,10 @@ function App() {
         useState(false);
     const [checkoutMode, setCheckoutMode] = useState(""); //wait for what, like tag, checkout or XXX
     const [checkoutBranchID, setCheckoutBranchID] = useState<string | undefined>(
+        undefined,
+    );
+    const [tagNameToBeEdit, setTagNameToBeEdit] = useState<string | undefined>(undefined);
+    const [branchNameToBeEdit, setBranchNameToBeEdit] = useState<string | undefined>(
         undefined,
     );
 
@@ -251,6 +282,8 @@ function App() {
         setBranchID2CommitMap,
         currentHeadID,
         setCurrentHeadID,
+        currentHeadBranch,
+        setCurrentHeadBranch,
 
         selectedCommit,
         setSelectedCommit,
@@ -259,19 +292,21 @@ function App() {
         selectedBranchID,
         setSelectedBranchID,
 
-        inDiffMode,
-        setInDiffMode,
+        // inDiffMode,
+        // setInDiffMode,
         diffCodeDetail,
         setDiffCodeDetail,
         diffVarDetail,
         setDiffVarDetail,
         diffDestCommitID,
-        setDiffDestCommitID,
+        setDiffDestCommitID
     };
 
     const operationModelContext: operationModalContextType = {
         isTagEditorOpen,
         setIsTagEditorOpen,
+        isMessageEditorOpen,
+        setIsMessageEditorOpen,
         isBranchNameEditorOpen,
         setIsBranchNameEditorOpen,
         isCheckoutWaitingModalOpen,
@@ -282,6 +317,10 @@ function App() {
         setCheckoutMode,
         checkoutBranchID,
         setCheckoutBranchID,
+        tagNameToBeEdit,
+        setTagNameToBeEdit,
+        branchNameToBeEdit,
+        setBranchNameToBeEdit,
     }
 
     const [globalLoading, setGlobalLoading] = useState(true);
@@ -290,23 +329,40 @@ function App() {
     const [splitSizes1, setSplitSizes1] = useState([30, 70]);
     const [splitSizes2, setSplitSizes2] = useState([60, 40]);
 
+    //whether or not to scroll history panel to searched result
+    const [scrollToResult, setScrollToResult] = useState(false);
+    const scrollableHisPanel = useRef<HTMLDivElement>(null);
+
     globalThis.NotebookID = useParams().notebookName;
 
     useEffect(() => {
         //initialize the states
-        loadInitialData(setGlobalLoading, setError, setCommits, setBranchID2CommitMap, setSelectedCommitID, setSelectedBranchID, setCurrentHeadID);
+        loadInitialData(setGlobalLoading, setError, setCommits, setBranchID2CommitMap, setSelectedCommitID, setSelectedBranchID, setCurrentHeadID, setCurrentHeadBranch);
     }, []);
+
+    useInterval(() => {
+        // Your custom logic here
+        refreshGraph();
+    }, 1000);
+
+    // useMemo(() => {
+    //     loadCommitDetail(selectedCommitID!, setSelectedCommit, setError);
+    //     if (inDiffMode && currentHeadID) {
+    //         loadDiffCommitDetail(selectedCommitID!, diffDestCommitID?diffDestCommitID:currentHeadID!, setDiffCodeDetail, setDiffVarDetail, setError)
+    //     }
+    // }, [selectedCommitID, currentHeadID, inDiffMode, diffDestCommitID]);
 
     useMemo(() => {
         loadCommitDetail(selectedCommitID!, setSelectedCommit, setError);
-        if (inDiffMode && currentHeadID) {
+        if (diffDestCommitID && currentHeadID) {
             loadDiffCommitDetail(selectedCommitID!, diffDestCommitID?diffDestCommitID:currentHeadID!, setDiffCodeDetail, setDiffVarDetail, setError)
         }
-    }, [selectedCommitID, currentHeadID, inDiffMode, diffDestCommitID]);
+    }, [selectedCommitID, currentHeadID, diffDestCommitID]);
 
     async function refreshGraph(){
         const newGraph = await BackEndAPI.getCommitGraph();
-        logger.silly("checkout submit, git graph after parse:", newGraph);
+        //do a deap comparison of the commits
+        if(JSON.stringify(newGraph.commits) !== JSON.stringify(commits)){
         setCommits(newGraph.commits);
         const newSetBranchID2CommitMap = new Map<string, string>();
         commits.forEach((commit) => {
@@ -315,7 +371,17 @@ function App() {
             });
         });
         setBranchID2CommitMap(newSetBranchID2CommitMap);
+        setCurrentHeadBranch(newGraph.currentHeadBranch)
         setCurrentHeadID(newGraph.currentHead);
+        if(!selectedCommitID) {
+            setSelectedCommitID(newGraph.currentHead);
+            setSelectedBranchID(newGraph.currentHeadBranch);
+        }
+        await refreshSelectedCommit();}
+    }
+
+    async function refreshSelectedCommit(){
+        await loadCommitDetail(selectedCommitID!, setSelectedCommit, setError);
     }
 
 
@@ -333,7 +399,8 @@ function App() {
                 {/* only the history tree has been loaded */}
                 {!globalLoading && !error && !selectedCommit && (
                     <>
-                        <Toolbar setInDiffMode={setInDiffMode} setSearchResultIds={setSearchResultIds}/>
+                        {/*<Toolbar setInDiffMode={setInDiffMode} setSearchResultIds={setSearchResultIds}/>*/}
+                        <Toolbar setSearchResultIds={setSearchResultIds} setScrollToHighlightSignal={setScrollToResult} currentSignal={scrollToResult}/>
                         <ReactSplit
                             direction={SplitDirection.Horizontal}
                             initialSizes={splitSizes1}
@@ -344,7 +411,7 @@ function App() {
 
                         >
                             <div className="tile-xy history_panel">
-                                <HistoryPanel highlighted_commit_ids={searchResultIds}/>
+                                {/*<HistoryPanel highlighted_commit_ids={searchResultIds} refreshGraphHandler={refreshGraph} width={splitSizes1[0]} scrollSignal={scrollToResult} scrollableHisPanel={scrollableHisPanel}/>*/}
                             </div>
 
                             <ReactSplit
@@ -358,7 +425,7 @@ function App() {
                                 <Tabs defaultActiveKey="1" items={cells_loading}/>
                                 <div className="tile-xy">
                                     <div className="center-page">
-                                        <p>Loading...</p>
+                                        <p>No commit</p>
                                     </div>
                                 </div>
                             </ReactSplit>
@@ -368,7 +435,8 @@ function App() {
 
                 {!globalLoading && !error && selectedCommit && (
                     <>
-                        <Toolbar setInDiffMode={setInDiffMode} setSearchResultIds={searchResultIds}/>
+                        {/*<Toolbar setInDiffMode={setInDiffMode} setSearchResultIds={setSearchResultIds}/>*/}
+                        <Toolbar setSearchResultIds={setSearchResultIds} setScrollToHighlightSignal={setScrollToResult} currentSignal={scrollToResult}/>
                         <ReactSplit
                             direction={SplitDirection.Horizontal}
                             initialSizes={splitSizes1}
@@ -378,8 +446,8 @@ function App() {
                             gutterClassName="custom_gutter"
                         >
                             <OperationModelContext.Provider value={operationModelContext}>
-                                <div className="tile-xy  history_panel">
-                                    <HistoryPanel highlighted_commit_ids={searchResultIds}/>
+                                <div className="tile-xy  history_panel" ref={scrollableHisPanel}>
+                                    <HistoryPanel highlighted_commit_ids={searchResultIds} refreshGraphHandler={refreshGraph} width={splitSizes1[0]} scrollSignal={scrollToResult} scrollableHisPanel={scrollableHisPanel}/>
                                 </div>
                             </OperationModelContext.Provider>
                             <ReactSplit
@@ -391,11 +459,11 @@ function App() {
                                 gutterClassName="custom_gutter"
                             >
                                 <div className="tile-xy u-showbottom">
-                                    {inDiffMode ? <Tabs defaultActiveKey="1" items={cells_diff}/> :
-                                        <Tabs defaultActiveKey="1" items={cells}/>}
+                                    {diffDestCommitID ? <Tabs defaultActiveKey="1" items={cells_diff} tabBarStyle={{marginBottom:0, paddingLeft:40}}/> :
+                                        <Tabs defaultActiveKey="1" items={cells} tabBarStyle={{marginBottom:0, paddingLeft:40}}/>}
                                 </div>
                                 <div className="tile-xy">
-                                    <VariablePanel variables={inDiffMode?diffVarDetail!:selectedCommit!.variables!} diffMode={inDiffMode}/>
+                                    <VariablePanel variables={diffDestCommitID?diffVarDetail!:selectedCommit!.variables!} diffMode={!!diffDestCommitID}/>
                                 </div>
                             </ReactSplit>
                         </ReactSplit>

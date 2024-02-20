@@ -16,7 +16,7 @@ pip uninstall kishuboard
 ```bash
 kishuboard
 ```
-And then you should be able to  visit the kishuboard at localhost://5000.
+And then you should be able to  visit the kishuboard at localhost://4999.
 
 ### Install from source code:
 Note: You will need NodeJS to build the kishuboard, please make sure you have node on your computer, or install it from [here](https://nodejs.org/en/download/).
@@ -41,7 +41,7 @@ pip install .
 ```bash
 kishuboard
 ```
-And then you should be able to  visit the kishuboard at localhost://5000.
+And then you should be able to  visit the kishuboard at localhost://4999.
 
 ## Development
 ### Dev mode deployment
@@ -51,7 +51,7 @@ To run the kishuboard in dev mode, you will need to start the kishuboard server 
 ```bash
 source ../.env/bin/activate # activate the virtual environment
 cd kishuboard
-flask --app server run
+python server.py
 ```
 3. start the kishuboard frontend in dev mode
 ```bash

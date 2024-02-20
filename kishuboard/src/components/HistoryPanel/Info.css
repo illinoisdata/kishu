@@ -1,5 +1,5 @@
 :root {
-    --COMMIT-HEIGHT: 68px;
+    --COMMIT-HEIGHT: 48px;
     --DATE-HEADER-HEIGHT: 30px;
 }
 
@@ -11,6 +11,7 @@
     justify-content: center;
     align-items: flex-end;
     z-index: 99;
+    padding-right: 5px;
 }
 
 .branch_name {
@@ -42,15 +43,22 @@
     position:absolute;
     width:100%;
     height: var(--DATE-HEADER-HEIGHT);
+    padding-right: 5px;
+    padding-left: 3px;
     z-index: 999;
-    background-color: rgb(195, 200, 205);
+    background-color: rgb(176, 188, 232);
     border-bottom-color: #dedede;
     border-width: 2px;
     border-bottom-style:solid;
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 .empty_info{
     height: var(--DATE-HEADER-HEIGHT);
+}
+
+.timestamp{
+    color: #a1a3a8;
 }

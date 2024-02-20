@@ -251,6 +251,7 @@ class FECommit:
     timestamp: str
     branches: List[str]
     tags: List[str]
+    message: str
     code_version: int
     varset_version: int
 
@@ -270,6 +271,7 @@ class FESelectedCommitVariable:
     type: str
     children: List[FESelectedCommitVariable]
     size: Optional[str]
+    html: Optional[str]
 
 
 @dataclass
@@ -631,6 +633,7 @@ class KishuCommand:
                 timestamp=KishuCommand._to_datetime(commit_entry.timestamp),
                 branches=[],  # To be set in _branch_commit.
                 tags=[],  # To be set in _tag_commit.
+                message=commit_entry.message,
                 code_version=commit_entry.code_version,
                 varset_version=commit_entry.varset_version,
             ))
@@ -809,6 +812,7 @@ class KishuCommand:
             timestamp=KishuCommand._to_datetime(commit_entry.timestamp),
             branches=branch_names,
             tags=tag_names,
+            message=commit_entry.message,
             code_version=commit_entry.code_version,
             varset_version=commit_entry.varset_version,
         )
@@ -897,6 +901,7 @@ class KishuCommand:
             type=str(type(value).__name__),
             children=KishuCommand._recurse_variable(value, vardepth=vardepth),
             size=KishuCommand._size_or_none(value),
+            html=KishuCommand._str_or_none(value.head(50).to_html()) if str(type(value).__name__) == "DataFrame" else None,
         )
 
     @staticmethod
