@@ -606,7 +606,8 @@ class KishuForJupyter:
         self._kishu_variable_version.store_commit_variable_version_table(
             entry.commit_id, self._variable_version_tracker.get_variable_versions())
         if changed_vars is not None:
-            self._kishu_variable_version.store_variable_version_table(changed_vars.added(), entry.commit_id)
+            self._kishu_variable_version.store_variable_version_table(changed_vars.added()
+                                                                      | changed_vars.deleted(), entry.commit_id)
 
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":
