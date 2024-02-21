@@ -795,3 +795,5 @@ class TestKishuCommand:
             assert diff_result == FEFindVarChangeResult([commits[3].commit_id, commits[4].commit_id])
             diff_result = KishuCommand.find_var_change(notebook_key, 'y')
             assert diff_result == FEFindVarChangeResult([commits[1].commit_id])
+            diff_result = KishuCommand.find_var_change(notebook_key, 'a')
+            assert diff_result == FEFindVarChangeResult([commits[1].commit_id, commits[5].commit_id])
