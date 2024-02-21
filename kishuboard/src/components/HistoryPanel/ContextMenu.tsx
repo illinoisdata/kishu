@@ -41,11 +41,11 @@ function getBranchChildrenItem(branch: string): MenuItem[] {
 
 function getItems(tags: string[]|undefined, branches: string[]|undefined): MenuItem[] {
     let items: MenuItem[] = [];
-    items.push(getItem("Add Tag for Selected History", "tag", <EditOutlined/>))
+    items.push(getItem("Add Tag for Selected Commit", "tag", <EditOutlined/>))
     items.push(getItem("Create Branch", "branch", <CalendarOutlined/>))
-    items.push(getItem("RollBack to Selected History ", "rollback", <AppstoreOutlined/>, [
-        getItem("Checkout Codes&Variables", "both"),
-        getItem("Rollback Executions", "states"),
+    items.push(getItem("Checkout to Selected Commit ", "rollback", <AppstoreOutlined/>, [
+        getItem("Checkout Code + Variables", "both"),
+        getItem("Checkout Only Variables", "states"),
     ]))
     items.push(getItem("Edit Commit Message", "message", <EditOutlined/>))
     if(tags){
