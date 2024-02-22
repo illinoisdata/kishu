@@ -4,7 +4,7 @@ import dill
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.exceptions import MissingHistoryError
 from kishu.jupyter.namespace import Namespace
@@ -28,6 +28,15 @@ class CellExecution:
     dst_vss: List[VariableSnapshot]
 
 
+@dataclass(frozen=True)
+class VersionedName:
+    """
+        Simplified name-version representation of a Variable Snapshot. Hashable and immutable.
+    """
+    name: str
+    version: int
+
+
 @dataclass
 class VariableSnapshot:
     """
@@ -43,10 +52,96 @@ class VariableSnapshot:
     """
     name: str
     version: int
-    deleted: bool
+    deleted: bool = False
     size: float = 0.0
     input_ces: List[CellExecution] = field(default_factory=lambda: [])
     output_ce: CellExecution = field(default_factory=lambda: CellExecution(0, "", 0.0, [], []))
+
+
+class VsConnectedComponents:
+    def __init__(self) -> None:
+        """
+            Class for representing the connected components of a set of Variable Snapshots.
+        """
+        # VSes are internally stored as name-version pairs as they are not hashable.
+        self.roots: Dict[VersionedName, VersionedName] = {}
+        self.connected_components: List[Set[VersionedName]] = []
+
+    def union_find(self, vs_list: List[VersionedName], linked_vs_pairs: List[Tuple[VersionedName, VersionedName]]):
+        def find_root(vs: VersionedName) -> VersionedName:
+            if self.roots.get(vs, vs) == vs:
+                return vs
+            self.roots[vs] = find_root(self.roots[vs])
+            return self.roots[vs]
+
+        # Union find iterations.
+        for vs1, vs2 in linked_vs_pairs:
+            root_vs1 = find_root(vs1)
+            root_vs2 = find_root(vs2)
+            self.roots[root_vs2] = root_vs1
+
+        # Finally, flatten all connected components.
+        self.roots = {vs: find_root(vs) for vs in vs_list}
+
+    def compute_connected_components(self) -> None:
+        connected_components_dict = defaultdict(set)
+        for vs, vs_root in self.roots.items():
+            connected_components_dict[vs_root].add(vs)
+        self.connected_components = list(connected_components_dict.values())
+
+    def get_connected_components(self) -> List[Set[VersionedName]]:
+        return self.connected_components
+
+    def get_variable_names(self) -> Set[str]:
+        # Return all variable KVs in components as a flattened set.
+        return set(versioned_name.name for versioned_name in self.roots.keys())
+
+    def get_versioned_names(self) -> Set[VersionedName]:
+        # Return all versioned names in components as a flattened set.
+        return set(self.roots.keys())
+
+    def contains_component(self, other_component: Set[VersionedName]) -> bool:
+        """
+            Tests if other_component is a subset of any of the current connected components.
+        """
+        return any(other_component.issubset(component) for component in self.connected_components)
+
+    @staticmethod
+    def create_from_vses(
+        vs_list: List[VariableSnapshot],
+        linked_vs_pairs: Optional[List[Tuple[VariableSnapshot, VariableSnapshot]]] = None
+    ):
+        """
+            @param vs_list: all Variable Snapshots of interest.
+            @param linked_vs_pairs: pairs of linked Variable Snapshots.
+        """
+        vs_connected_components = VsConnectedComponents()
+
+        # Union find.
+        if linked_vs_pairs is not None:
+            vs_connected_components.union_find(
+                [VersionedName(vs.name, vs.version) for vs in vs_list],
+                [(VersionedName(vs1.name, vs1.version), VersionedName(vs2.name, vs2.version)) for vs1, vs2 in linked_vs_pairs]
+            )
+
+        # Compute connected components from union find results.
+        vs_connected_components.compute_connected_components()
+
+        return vs_connected_components
+
+    @staticmethod
+    def create_from_component_list(
+        component_list: List[List[VersionedName]]
+    ):
+        vs_connected_components = VsConnectedComponents()
+
+        # Manually populate the roots and connected_components variables as we already have them.
+        for component in component_list:
+            for vs in component:
+                vs_connected_components.roots[vs] = component[0]
+        vs_connected_components.compute_connected_components()
+
+        return vs_connected_components
 
 
 class AHG:

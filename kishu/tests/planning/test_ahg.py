@@ -1,4 +1,4 @@
-from kishu.planning.ahg import AHG
+from kishu.planning.ahg import AHG, VariableSnapshot, VersionedName, VsConnectedComponents
 
 
 def test_create_variable_snapshot():
@@ -62,3 +62,84 @@ def test_update_graph():
     assert vs1.input_ces[0] == cell_executions[0]
     assert len(cell_executions[0].src_vss) == 1
     assert len(cell_executions[0].dst_vss) == 3
+
+
+def test_create_vs_connected_component_from_vses():
+    """
+        Connected components:
+        a---b---c  d---e  f
+    """
+    vs_a = VariableSnapshot("a", 1)
+    vs_b = VariableSnapshot("b", 1)
+    vs_c = VariableSnapshot("c", 1)
+    vs_d = VariableSnapshot("d", 1)
+    vs_e = VariableSnapshot("e", 1)
+    vs_f = VariableSnapshot("f", 1)
+
+    vs_connected_components = VsConnectedComponents.create_from_vses(
+        [vs_a, vs_b, vs_c, vs_d, vs_e, vs_f],
+        [(vs_a, vs_b), (vs_b, vs_c), (vs_d, vs_e)]
+    )
+
+    # 3 connected components
+    assert len(vs_connected_components.get_connected_components()) == 3
+    assert {VersionedName("a", 1),
+            VersionedName("b", 1),
+            VersionedName("c", 1)} in vs_connected_components.get_connected_components()
+    assert {VersionedName("d", 1),
+            VersionedName("e", 1)} in vs_connected_components.get_connected_components()
+    assert {VersionedName("f", 1)} in vs_connected_components.get_connected_components()
+
+    # 6 VSes in total
+    assert vs_connected_components.get_variable_names() == {"a", "b", "c", "d", "e", "f"}
+
+
+def test_create_vs_merge_connected_components():
+    """
+        Connected components:
+           a--d
+          /|  |
+         / |  |
+        b--c  e--f
+    """
+    vs_a = VariableSnapshot("a", 1)
+    vs_b = VariableSnapshot("b", 1)
+    vs_c = VariableSnapshot("c", 1)
+    vs_d = VariableSnapshot("d", 1)
+    vs_e = VariableSnapshot("e", 1)
+    vs_f = VariableSnapshot("f", 1)
+
+    # components 'abc' and 'def' are merged.
+    vs_connected_components = VsConnectedComponents.create_from_vses(
+        [vs_a, vs_b, vs_c, vs_d, vs_e, vs_f],
+        [(vs_a, vs_b), (vs_b, vs_c), (vs_a, vs_c), (vs_d, vs_e), (vs_f, vs_e), (vs_a, vs_f)]
+    )
+
+    # 1 connected component
+    assert {
+                VersionedName("a", 1),
+                VersionedName("b", 1),
+                VersionedName("c", 1),
+                VersionedName("d", 1),
+                VersionedName("e", 1),
+                VersionedName("f", 1)
+           } in vs_connected_components.get_connected_components()
+
+    # 6 VSes in total
+    assert vs_connected_components.get_variable_names() == {"a", "b", "c", "d", "e", "f"}
+
+
+def test_is_subset_of_component():
+    """
+        Connected components:
+        a---b---c  d---e  f
+    """
+    vs_connected_components = VsConnectedComponents.create_from_component_list(
+        [[VersionedName("a", 1), VersionedName("b", 1), VersionedName("c", 1)],
+         [VersionedName("d", 1), VersionedName("e", 1)], [VersionedName("f", 1)]]
+    )
+
+    assert vs_connected_components.contains_component(
+        {VersionedName("a", 1), VersionedName("b", 1)})
+    assert not vs_connected_components.contains_component(
+        {VersionedName("f", 1), VersionedName("g", 1)})

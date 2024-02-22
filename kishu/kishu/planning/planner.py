@@ -3,18 +3,27 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from collections import defaultdict
+from itertools import combinations
 from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import AHG
+
+from kishu.planning.ahg import AHG, VariableSnapshot, VersionedName, VsConnectedComponents
 from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import Optimizer
-from kishu.planning.plan import RestorePlan, CheckpointPlan
+from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
 from kishu.planning.profiler import profile_variable_size
+from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.config import Config
 
 
-REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
+@dataclass
+class PlannerContext:
+    """
+        Planner-related config options.
+    """
+    incremental_store: bool
+    incremental_load: bool  # Not used yet
 
 
 @dataclass
@@ -41,18 +50,20 @@ class CheckpointRestorePlanner:
         The CheckpointRestorePlanner class holds items (e.g., AHG) relevant for creating
         the checkpoint and restoration plans during notebook runtime.
     """
-    def __init__(self, user_ns: Namespace = Namespace(), ahg: AHG = AHG()) -> None:
+    def __init__(self, user_ns: Namespace = Namespace(), ahg: Optional[AHG] = None) -> None:
         """
             @param user_ns  User namespace containing variables in the kernel.
         """
-        self._ahg = ahg
+        self._ahg = ahg if ahg else AHG()
         self._user_ns = user_ns
         self._id_graph_map: Dict[str, GraphNode] = {}
         self._pre_run_cell_vars: Set[str] = set()
 
         # C/R plan configs.
-        self._always_recompute = Config.get('PLANNER', 'always_recompute', False)
-        self._always_migrate = Config.get('PLANNER', 'always_migrate', False)
+        self._planner_context = PlannerContext(
+            incremental_store=Config.get('PLANNER', 'incremental_store', False),
+            incremental_load=Config.get('PLANNER', 'incremental_load', False)  # Not used yet
+        )
 
         # Used by instrumentation to compute whether data has changed.
         self._modified_vars_structure: Set[str] = set()
@@ -116,8 +127,34 @@ class CheckpointRestorePlanner:
 
         return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
 
-    def generate_checkpoint_restore_plans(self, database_path: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
+    def incremental_store_adjustment(
+        self,
+        active_vss: List[VariableSnapshot],
+        linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
+        database_path: str
+    ) -> Tuple[List[VariableSnapshot], Set[VersionedName]]:
+        """
+            Adjust the active variables and optimizer settings according to already stored variables if incremental
+            computation is enabled.
+        """
+        # Currently stored VSes
+        stored_vs_connected_components = KishuCheckpoint(database_path).get_stored_connected_components()
+        stored_vses = stored_vs_connected_components.get_versioned_names()
 
+        # VSes in session state
+        current_vs_connected_components = VsConnectedComponents.create_from_vses(active_vss, linked_vs_pairs)
+
+        # If a connected component of VSes in the current session state is a subset of an already stored
+        # connected component, we can skip storing it.
+        stored_active_vses: Set[VersionedName] = set()
+        for current_component in current_vs_connected_components.get_connected_components():
+            if stored_vs_connected_components.contains_component(current_component):
+                stored_active_vses.update(set(current_component))
+
+        # Return the active VSes we need to store and the already stored (not necessarily active) VSes
+        return [vs for vs in active_vss if VersionedName(vs.name, vs.version) not in stored_active_vses], stored_vses
+
+    def generate_checkpoint_restore_plans(self, database_path: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = []
         for *_, latest_vs in self._ahg.get_variable_snapshots().values():
@@ -134,10 +171,14 @@ class CheckpointRestorePlanner:
 
         # Find pairs of linked variables.
         linked_vs_pairs = []
-        for active_vs1 in active_vss:
-            for active_vs2 in active_vss:
-                if self._id_graph_map[active_vs1.name].is_overlap(self._id_graph_map[active_vs2.name]):
-                    linked_vs_pairs.append((active_vs1, active_vs2))
+        for active_vs1, active_vs2 in combinations(active_vss, 2):
+            if self._id_graph_map[active_vs1.name].is_overlap(self._id_graph_map[active_vs2.name]):
+                linked_vs_pairs.append((active_vs1, active_vs2))
+
+        # If incremental storage is enabled, retrieve list of currently stored VSes and compute VSes to
+        # NOT migrate as they are already stored.
+        if self._planner_context.incremental_store:
+            active_vss, already_stored_vses = self.incremental_store_adjustment(active_vss, linked_vs_pairs, database_path)
 
         # Initialize optimizer.
         # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
@@ -146,7 +187,7 @@ class CheckpointRestorePlanner:
             self._ahg,
             active_vss,
             linked_vs_pairs,
-            Config.get('PLANNER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
+            already_stored_vses if self._planner_context.incremental_store else None
         )
 
         # Use the optimizer to compute the checkpointing configuration.
@@ -157,8 +198,23 @@ class CheckpointRestorePlanner:
         for vs_name in vss_to_migrate:
             ce_to_vs_map[self._ahg.get_variable_snapshots()[vs_name][-1].output_ce.cell_num].append(vs_name)
 
-        # Create checkpoint plan using optimization results.
-        checkpoint_plan = CheckpointPlan.create(self._user_ns, database_path, commit_id, list(vss_to_migrate))
+        if self._planner_context.incremental_store:
+            # Find linked variables which are migrated which form connected components.
+            vs_connected_components_to_store = VsConnectedComponents.create_from_vses(
+                [vs for vs in active_vss if vs.name in vss_to_migrate],
+                [(vs1, vs2) for vs1, vs2 in linked_vs_pairs if vs1.name in vss_to_migrate and vs2.name in vss_to_migrate]
+            )
+
+            # Create incremental checkpoint plan using optimization results.
+            checkpoint_plan = IncrementalCheckpointPlan.create(
+                self._user_ns,
+                database_path,
+                commit_id,
+                vs_connected_components_to_store
+            )
+        else:
+            # Create checkpoint plan using optimization results.
+            checkpoint_plan = CheckpointPlan.create(self._user_ns, database_path, commit_id, list(vss_to_migrate))
 
         # Create restore plan using optimization results.
         restore_plan = self._generate_restore_plan(ces_to_recompute, ce_to_vs_map, optimizer.req_func_mapping)
