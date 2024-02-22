@@ -1,8 +1,7 @@
-# regular imports
 import pandas
 import pickle
+from typing import Any, List, Optional
 
-# kishu imports
 import kishu.planning.object_state as object_state
 from kishu.planning.visitor import Visitor
 
@@ -39,7 +38,7 @@ class GraphNode:
         self.obj_type = obj_type
         self.id_obj = id_obj
         self.check_value_only = check_value_only
-        self.children = []
+        self.children: List[Any] = []
 
     def __eq__(self, other) -> bool:
         return compare_idgraph(self, other)
@@ -47,7 +46,7 @@ class GraphNode:
 
 class idgraph(Visitor):
     def check_visited(self, visited: dict, obj_id: int, obj_type: type, include_id: bool,
-                      hash_state: None) -> GraphNode:
+                      hash_state: None) -> Optional[GraphNode]:
         if obj_id in visited.keys():
             return visited[obj_id]
         else:
@@ -177,7 +176,7 @@ class idgraph(Visitor):
         return node
 
 
-def convert_idgraph_to_list(node: GraphNode, ret_list, visited: set) -> list:
+def convert_idgraph_to_list(node: GraphNode, ret_list: List[Any], visited: set) -> None:
     # pre oder
 
     if not node.check_value_only:
