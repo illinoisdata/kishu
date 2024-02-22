@@ -43,7 +43,7 @@ jobs:
     - name: Check Python files with Mypy
       run: |
         cd kishu
-        mypy **/*.py
+        mypy kishu/*.py kishu/*/*.py tests/*.py tests/*/*.py
     - name: Test Kishu with pytest
       run: |
         cd kishu
