@@ -85,8 +85,8 @@ def test_idgraph_overlap():
     list1 = [a, b]
     list2 = [b, c]
 
-    objs1 = ObjectState(list1)
-    objs2 = ObjectState(list2)
+    objs1 = ObjectState(list1, True)
+    objs2 = ObjectState(list2, True)
 
     assert objs1.is_overlap(objs2)
 
@@ -96,8 +96,8 @@ def test_idgraph_no_overlap():
     list1 = [a, b]
     list2 = [c, d]
 
-    objs1 = ObjectState(list1)
-    objs2 = ObjectState(list2)
+    objs1 = ObjectState(list1, True)
+    objs2 = ObjectState(list2, True)
 
     assert not objs1.is_overlap(objs2)
 
@@ -107,8 +107,8 @@ def test_idgraph_nested_overlap():
     list = [a, b, c]
     nested_list = [list, d]
 
-    objs1 = ObjectState(list)
-    objs2 = ObjectState(nested_list)
+    objs1 = ObjectState(list, True)
+    objs2 = ObjectState(nested_list, True)
 
     assert objs1.is_overlap(objs2)
 # --------------------------------------- Numpy tests -----------------------

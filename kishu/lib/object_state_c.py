@@ -1,8 +1,6 @@
 import VisitorModule
 import pickle
 
-from kishu.storage.config import Config
-
 
 class ObjectState:
     """
@@ -13,20 +11,11 @@ class ObjectState:
     traversal: Items hashed during object travsersal
     """
 
-    def __init__(self, obj):
+    def __init__(self, obj, include_traversal=False):
         self.pick = pickle.dumps(obj)
 
-        hashing_method = Config.get(
-            'HASHING', 'method', 'get_object_hash_and_trav_wrapper')
-
-        if hashing_method == 'get_object_hash_and_trav_wrapper':
-            self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
-                obj)
-        elif hashing_method == 'get_object_hash_wrapper':
-            self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
-            self.traversal = None
-        else:
-            raise ValueError(f"Unknown hashing method: {hashing_method}")
+        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
+            obj, include_traversal)
 
     def compare_ObjectStates(self, other):
         """
@@ -36,22 +25,14 @@ class ObjectState:
         """
         return self.pick == other.pick and self.hashed_state == other.hashed_state
 
-    def update_object_hash(self, obj):
+    def update_object_hash(self, obj, include_traversal=False):
         """
         Inputs: obj - Object whose new state needs to be recorded
         Updates the hash and pickled bianries of the object state
         """
         self.pick = pickle.dumps(obj)
-
-        hashing_method = Config.get(
-            'HASHING', 'method', 'get_object_hash_and_trav_wrapper')
-        if hashing_method == 'get_object_hash_and_trav_wrapper':
-            self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
-                obj)
-        elif hashing_method == 'get_object_hash_wrapper':
-            self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
-        else:
-            raise ValueError(f"Unknown hashing method: {hashing_method}")
+        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
+            obj, include_traversal)
 
     def get_object_hash(self):
         """
