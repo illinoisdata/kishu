@@ -1,6 +1,8 @@
 import VisitorModule
 import pickle
 
+from kishu.storage.config import Config
+
 
 class ObjectState:
     """
@@ -14,24 +16,17 @@ class ObjectState:
     def __init__(self, obj):
         self.pick = pickle.dumps(obj)
 
-        # If using get_object_hash_wrapper(), comment this line, and
-        # If using get_object_hash_and_trav_wrapper(), uncomment this line
-        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
-            obj)
+        hashing_method = Config.get(
+            'HASHING', 'method', 'get_object_hash_and_trav_wrapper')
 
-        # If using get_object_hash_and_trav_wrapper(), comment this line, and
-        # If using get_object_hash_wrapper(), uncomment this line.
-        # self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
-
-    # def compare_obj_hash(self, obj):
-    #     """
-    #     Input: obj - Object whose state needs to be recorded
-    #     Checks whether hashed state of obj changes on two successive runs on the same object
-    #     """
-    #     if pickle.dumps(obj) != pickle.dumps(obj):
-    #         return False
-    #     else:
-    #         return self.get_object_hash(obj) == self.get_object_hash(obj)
+        if hashing_method == 'get_object_hash_and_trav_wrapper':
+            self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
+                obj)
+        elif hashing_method == 'get_object_hash_wrapper':
+            self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
+            self.traversal = None
+        else:
+            raise ValueError(f"Unknown hashing method: {hashing_method}")
 
     def compare_ObjectStates(self, other):
         """
@@ -48,12 +43,15 @@ class ObjectState:
         """
         self.pick = pickle.dumps(obj)
 
-        # If storing traversal as well, uncomment this line, otherwise comment out
-        self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
-            obj)
-
-        # If only storing hashed state, uncomment this line, otherwise comment out
-        # self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
+        hashing_method = Config.get(
+            'HASHING', 'method', 'get_object_hash_and_trav_wrapper')
+        if hashing_method == 'get_object_hash_and_trav_wrapper':
+            self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
+                obj)
+        elif hashing_method == 'get_object_hash_wrapper':
+            self.hashed_state = VisitorModule.get_object_hash_wrapper(obj)
+        else:
+            raise ValueError(f"Unknown hashing method: {hashing_method}")
 
     def get_object_hash(self):
         """

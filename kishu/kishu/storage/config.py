@@ -14,7 +14,7 @@ class Config:
     last_read_time = -1.0
 
     # Default config categories.
-    DEFAULT_CATEGORIES = ['CLI', 'COMMIT_GRAPH', 'JUPYTERINT', 'PLANNER', 'PROFILER']
+    DEFAULT_CATEGORIES = ['CLI', 'COMMIT_GRAPH', 'JUPYTERINT', 'PLANNER', 'PROFILER', 'HASHING']
 
     @staticmethod
     def _create_config_file() -> None:
@@ -23,6 +23,9 @@ class Config:
         """
         for category in Config.DEFAULT_CATEGORIES:
             Config.config[category] = {}
+
+        # Default method for hash
+        Config.config['HASHING']['method'] = 'get_object_hash_and_trav_wrapper'
 
         with open(Config.CONFIG_PATH, 'w') as configfile:
             Config.config.write(configfile)

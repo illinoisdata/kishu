@@ -85,6 +85,7 @@ VisitorReturnType* hash_visit_primitive(PyObject *obj, VisitorReturnType* state,
     return state;
 }
 
+// This function is a no-op since we neither add the id of a tuple to our visited list nor do we hash the id
 VisitorReturnType* hash_visit_tuple(PyObject *obj, Visited **visited, const bool include_id, VisitorReturnType* state, PyObject* list_included) {
     return state;
 }
