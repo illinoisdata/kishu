@@ -507,3 +507,44 @@ def test_hash_compare_sns_scatterplot(benchmark):
     benchmark(benchmark_hash_comparison, objs1, objs2)
     plt.close('all')
     assert True
+
+# --------------------------------------- df benchmarks ----------------------
+
+
+def make_df(rows, cols):
+    num_rows = rows
+    num_cols = cols
+    data = {}
+    for i in range(num_cols):
+        col_name = f'col{i+1}'
+        data[col_name] = np.random.randint(low=0, high=100, size=num_rows)
+    df = pd.DataFrame(data)
+    return df
+
+
+@pytest.mark.benchmark(group="dataframe benchmarks")
+def test_df_1k_rows_10_cols(benchmark):
+    df = make_df(1000, 10)
+    benchmark(benchmark_hash_creation, df)
+    assert True
+
+
+@pytest.mark.benchmark(group="dataframe benchmarks")
+def test_df_10k_rows_10_cols(benchmark):
+    df = make_df(10000, 10)
+    benchmark(benchmark_hash_creation, df)
+    assert True
+
+
+@pytest.mark.benchmark(group="dataframe benchmarks")
+def test_df_100k_rows_10_cols(benchmark):
+    df = make_df(100000, 10)
+    benchmark(benchmark_hash_creation, df)
+    assert True
+
+
+@pytest.mark.benchmark(group="dataframe benchmarks")
+def test_df_1M_rows_10_cols(benchmark):
+    df = make_df(1000000, 10)
+    benchmark(benchmark_hash_creation, df)
+    assert True
