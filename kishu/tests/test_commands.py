@@ -435,7 +435,7 @@ class TestKishuCommand:
 
             # Get the variable value before checkout.
             # The variable is printed so custom objects with no equality defined can be compared.
-            _, var_value_before = notebook_session.run_code(f"{var_to_compare}")
+            _, var_value_before = notebook_session.run_code(f"repr({var_to_compare})")
 
             # Run the rest of the notebook cells.
             for i in range(cell_num_to_restore, len(contents)):
@@ -457,7 +457,7 @@ class TestKishuCommand:
             KishuCommand.checkout(notebook_path, commit_id)
 
             # Get the variable value after checkout.
-            _, var_value_after = notebook_session.run_code(f"{var_to_compare}")
+            _, var_value_after = notebook_session.run_code(f"repr({var_to_compare})")
             assert var_value_before == var_value_after
 
     def test_track_executed_cells_with_checkout(

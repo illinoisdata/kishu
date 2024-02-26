@@ -71,6 +71,7 @@ dev = [  # README: Keep in sync with dev-requirements.txt
     "mypy",
     "pytest",
     "pytest-cov",
+    "pytest-benchmark",
     "pytest-xdist",
 
     # Test cases
