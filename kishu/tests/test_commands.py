@@ -492,6 +492,7 @@ class TestKishuCommand:
                 "",  # PYTHONSTARTUP, https://ipython.readthedocs.io/en/stable/interactive/reference.html
                 *contents[:cell_num_to_restore+1],
             ]
+            assert status_result.commit_entry.execution_count == (cell_num_to_restore + 1)
 
             # Restore to that commit
             KishuCommand.checkout(notebook_path, commit_id)
@@ -510,6 +511,7 @@ class TestKishuCommand:
                 "x = 1",
                 "y = x + 10",
             ]
+            assert status_result_2.commit_entry.execution_count == (cell_num_to_restore + 1) + 2
 
     def test_checkout_reattach(
         self,

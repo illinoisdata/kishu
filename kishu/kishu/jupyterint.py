@@ -414,6 +414,10 @@ class KishuForJupyter:
             if current_executed_cells is not None:
                 current_executed_cells[:] = commit_entry.executed_cells[:]
 
+        # Restore execution count.
+        if commit_entry.execution_count is not None:
+            self._ip.execution_count = commit_entry.execution_count + 1  # _ip.execution_count is the next count.
+
         # Restore user-namespace variables.
         commit_ns = commit_entry.restore_plan.run(database_path, commit_id)
         self._checkout_namespace(self._user_ns, commit_ns)
@@ -491,7 +495,7 @@ class KishuForJupyter:
         changed_vars = self._cr_planner.post_run_cell_update(entry.raw_cell, entry.end_time - entry.start_time)
 
         # Step forward internal data.
-        self._last_execution_count = result.execution_count
+        self._last_execution_count += 1
         self._start_time = None
 
         self._commit_entry(entry, changed_vars)
@@ -565,7 +569,7 @@ class KishuForJupyter:
 
     def commit(self, message: Optional[str] = None) -> BareReprStr:
         entry = CommitEntry(kind=CommitEntryKind.manual)
-        entry.execution_count = self._last_execution_count
+        entry.execution_count = self._ip.execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
         self.save_notebook()
         self._commit_entry(entry)
