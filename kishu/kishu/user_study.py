@@ -33,8 +33,6 @@ def install_submit_cell_execution() -> None:
     except Exception:
         pass
 
-install_submit_cell_execution()
-
 def check_train_test_dataset(X_train, Y_train, X_test, Y_test):
     expected_rows = 16512 + 4128
     if X_train.shape[0] + X_test.shape[0] != expected_rows:
