@@ -85,10 +85,15 @@ function ContextMenu({
         }else if(key === "message"){
             operationModelContext.setIsMessageEditorOpen(true);
         } else if (key === "both") {
-            if (props!.selectedCommit!.commit.branchIds.length === 0) {
+            if (props!.selectedCommit!.commit.branchIds.length == 0) {
                 operationModelContext.setIsCheckoutWaitingModalOpen(true);
                 operationModelContext.setCheckoutMode("checkout codes and data");
-            } else {
+            } else if(props!.selectedCommit!.commit.branchIds.length ===  1){
+                operationModelContext.setIsCheckoutWaitingModalOpen(true);
+                operationModelContext.setCheckoutBranchID(props!.selectedCommit!.commit.branchIds[0]);
+                operationModelContext.setCheckoutMode("checkout codes and data");
+            }
+            else {
                 operationModelContext.setChooseCheckoutBranchModalOpen(true);
                 operationModelContext.setCheckoutMode("checkout codes and data");
             }
@@ -98,7 +103,12 @@ function ContextMenu({
             if (props!.selectedCommit!.commit.branchIds.length === 0) {
                 operationModelContext.setIsCheckoutWaitingModalOpen(true);
                 operationModelContext.setCheckoutMode("checkout variables only");
-            } else {
+            } else if(props!.selectedCommit!.commit.branchIds.length ===  1){
+                operationModelContext.setIsCheckoutWaitingModalOpen(true);
+                operationModelContext.setCheckoutBranchID(props!.selectedCommit!.commit.branchIds[0]);
+                operationModelContext.setCheckoutMode("checkout variables only");
+            }
+            else {
                 operationModelContext.setChooseCheckoutBranchModalOpen(true);
                 operationModelContext.setCheckoutMode("checkout variables only");
             }

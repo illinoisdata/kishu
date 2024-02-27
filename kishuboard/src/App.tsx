@@ -373,7 +373,7 @@ function App() {
         setBranchID2CommitMap(newSetBranchID2CommitMap);
         setCurrentHeadBranch(newGraph.currentHeadBranch)
         setCurrentHeadID(newGraph.currentHead);
-        if(!selectedCommitID) {
+        if(!selectedCommitID || newGraph.commits.length > commits.length) {
             setSelectedCommitID(newGraph.currentHead);
             setSelectedBranchID(newGraph.currentHeadBranch);
         }
