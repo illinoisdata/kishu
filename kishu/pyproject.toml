@@ -90,6 +90,11 @@ dev = [  # README: Keep in sync with dev-requirements.txt
     "jupyter"
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "benchmark: mark a test as a benchmark test."
+]
+
 
 [project.scripts]
 kishu = "kishu.cli:main"

@@ -9,8 +9,7 @@ from lib.object_state_c import ObjectState
 
 
 def benchmark_hash_creation(obj):
-    objs1 = ObjectState(obj)
-    return objs1
+    ObjectState(obj)
 
 
 def benchmark_hash_comparison(objs1: ObjectState, objs2: ObjectState):

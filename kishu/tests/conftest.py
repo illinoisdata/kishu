@@ -144,6 +144,22 @@ def seaborn_scatterplot() -> Generator[matplotlib.axes._axes.Axes, None, None]:
     matplotlib.pyplot.close('all')
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-benchmark", action="store_true", default=False, help="run benchmark tests"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--run-benchmark"):
+        # If --run-benchmark is specified, don't skip any tests
+        return
+    skip_benchmark = pytest.mark.skip(reason="need --run-benchmark option to run")
+    for item in items:
+        if "benchmark" in item.keywords:
+            item.add_marker(skip_benchmark)
+
+
 """
 Jupyter runtime mocks
 """
