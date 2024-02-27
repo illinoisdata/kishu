@@ -12,7 +12,7 @@ export function ExecutedCodePanel() {
         <div className="executed-code">
             {props!.selectedCommit!.historyExecCells.map((code, i) => (
                 <div key={i}>
-                    <SingleCell execNumber={(length - i).toString()} content={code.content} cssClassNames={"notebook"}/>
+                    <SingleCell execNumber={(length - i - 1).toString()} content={code.content} cssClassNames={"notebook"}/>
                     <br/>
                 </div>
             ))}
