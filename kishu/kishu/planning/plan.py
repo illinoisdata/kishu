@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import atexit
 import dill
 import functools
-
 from dataclasses import dataclass, field
 from IPython.core.interactiveshell import InteractiveShell
-from typing import Any, Dict, List, Optional, Tuple
+from queue import LifoQueue
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from kishu.exceptions import CommitIdNotExistError, DuplicateRestoreActionError
 from kishu.jupyter.namespace import Namespace
@@ -88,10 +89,10 @@ class SaveVariablesCheckpointAction(CheckpointAction):
             raise ValueError("filename is not set.")
         if self.exec_id is None:
             raise ValueError("exec_id is not set.")
-        vars: VarNamesToObjects = VarNamesToObjects()
+        namespace: VarNamesToObjects = VarNamesToObjects()
         for name in self.variable_names:
-            vars[name] = user_ns[name]
-        KishuCheckpoint(self.filename).store_checkpoint(self.exec_id, vars.dumps())
+            namespace[name] = user_ns[name]
+        KishuCheckpoint(self.filename).store_checkpoint(self.exec_id, namespace.dumps())
 
 
 class CheckpointPlan:
@@ -126,16 +127,16 @@ class CheckpointPlan:
         if user_ns is None or checkpoint_file is None:
             raise ValueError("Fields are not properly initialized.")
         actions: List[CheckpointAction] = []
-        vars: List[str] = cls.vars_to_checkpoint(user_ns, var_names)
+        variable_names: List[str] = cls.namespace_to_checkpoint(user_ns, var_names)
         action = SaveVariablesCheckpointAction()
-        action.variable_names = vars
+        action.variable_names = variable_names
         action.filename = checkpoint_file
         action.exec_id = exec_id
         actions.append(action)
         return actions
 
     @classmethod
-    def vars_to_checkpoint(cls, user_ns: Namespace, var_names=None) -> List[str]:
+    def namespace_to_checkpoint(cls, user_ns: Namespace, var_names=None) -> List[str]:
         if user_ns is None:
             return []
         if var_names is None:
@@ -180,7 +181,7 @@ class LoadVariableRestoreAction(RestoreAction):
             for fallback recomputation.
         """
         self.step_order = step_order
-        self.variable_names: List[str] = var_names
+        self.variable_names: Set[str] = set(var_names)
         self.fallback_recomputation: List[RerunCellRestoreAction] = fallback_recomputation
 
     def run(self, ctx: RestoreActionContext):
@@ -188,13 +189,11 @@ class LoadVariableRestoreAction(RestoreAction):
         @param user_ns  A target space where restored variables will be set.
         """
         data: bytes = KishuCheckpoint(ctx.checkpoint_file).get_checkpoint(ctx.exec_id)
-        vars: VarNamesToObjects = VarNamesToObjects.loads(data)
-        for key, obj in vars.items():
+        namespace: VarNamesToObjects = VarNamesToObjects.loads(data)
+        for key, obj in namespace.items():
             # if self.variable_names is set, limit the restoration only to those variables.
-            if self.variable_names is not None:
-                if key not in self.variable_names:
-                    continue
-            ctx.shell.user_ns[key] = obj
+            if key in self.variable_names:
+                ctx.shell.user_ns[key] = obj
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(step_order={self.step_order}, \
@@ -235,6 +234,35 @@ class RerunCellRestoreAction(RestoreAction):
 
     def __eq__(self, other):
         return self.step_order == other.step_order and self.cell_code == other.cell_code
+
+
+# Idea from https://stackoverflow.com/questions/57633815/atexit-how-does-one-trigger-it-manually
+class AtExitContext:
+
+    def __init__(self) -> None:
+        self._original_atexit_register: Optional[Callable] = None
+        self._atexit_queue: LifoQueue = LifoQueue()
+
+    def __enter__(self) -> AtExitContext:
+        self._original_atexit_register = atexit.register
+        atexit.register = self.intercepted_register  # type: ignore
+        return self
+
+    def intercepted_register(self, func, *args, **kwargs) -> None:
+        assert self._original_atexit_register is not None, "AtExitContext must be __enter__ before intercepting."
+        self._original_atexit_register(func, *args, **kwargs)
+        self._atexit_queue.put((func, args, kwargs))  # Intercept atexit function in this context.
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        # Recover previous registry.
+        atexit.register = self._original_atexit_register  # type: ignore
+        self._original_atexit_register = None
+
+        # Call all registed atexit function within this context.
+        while self._atexit_queue.qsize():
+            func, args, kwargs = self._atexit_queue.get()
+            atexit.unregister(func)
+            func(*args, **kwargs)
 
 
 @dataclass
@@ -278,24 +306,25 @@ class RestorePlan:
         @param checkpoint_file  The file where information is stored.
         """
         while True:
-            ctx = RestoreActionContext(InteractiveShell(), checkpoint_file, exec_id)
+            with AtExitContext():  # Intercept and trigger all atexit functions.
+                ctx = RestoreActionContext(InteractiveShell(), checkpoint_file, exec_id)
 
-            # Run restore actions sorted by cell number, then rerun cells before loading variables.
-            for _, action in sorted(self.actions.items(), key=lambda k: k[0]):
-                try:
-                    action.run(ctx)
-                except CommitIdNotExistError as e:
-                    # Problem was caused by Kishu itself (specifically, missing file for commit ID).
-                    raise e
-                except Exception as e:
-                    if not isinstance(action, LoadVariableRestoreAction):
+                # Run restore actions sorted by cell number, then rerun cells before loading variables.
+                for _, action in sorted(self.actions.items(), key=lambda k: k[0]):
+                    try:
+                        action.run(ctx)
+                    except CommitIdNotExistError as e:
+                        # Problem was caused by Kishu itself (specifically, missing file for commit ID).
                         raise e
+                    except Exception as e:
+                        if not isinstance(action, LoadVariableRestoreAction):
+                            raise e
 
-                    # If action is load variable, replace action with fallback recomputation plan
-                    self.fallbacked_actions.append(action)
-                    del self.actions[action.step_order]
-                    for rerun_cell_action in action.fallback_recomputation:
-                        self.actions[rerun_cell_action.step_order] = rerun_cell_action
-                    break
-            else:
-                return Namespace(ctx.shell.user_ns)
+                        # If action is load variable, replace action with fallback recomputation plan
+                        self.fallbacked_actions.append(action)
+                        del self.actions[action.step_order]
+                        for rerun_cell_action in action.fallback_recomputation:
+                            self.actions[rerun_cell_action.step_order] = rerun_cell_action
+                        break
+                else:
+                    return Namespace(ctx.shell.user_ns)
