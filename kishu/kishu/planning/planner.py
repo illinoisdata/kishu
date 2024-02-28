@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG
-from kishu.planning.change import find_created_and_deleted_vars, find_input_vars
+from kishu.planning.change import find_created_and_deleted_vars
 from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import RestorePlan, CheckpointPlan
@@ -80,11 +80,9 @@ class CheckpointRestorePlanner:
             @param code_block: code of executed cell.
             @param runtime_s: runtime of cell execution.
         """
-        # Find accessed variables.
-        accessed_vars = (
-            find_input_vars(code_block, self._pre_run_cell_vars, self._user_ns, set())
-            if code_block else set()
-        )
+        # Find accessed variables from monkey-patched namespace.
+        accessed_vars = self._user_ns.get_accessed_vars().intersection(self._pre_run_cell_vars)
+        self._user_ns.reset_accessed_vars()
 
         # Find created and deleted variables.
         created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,

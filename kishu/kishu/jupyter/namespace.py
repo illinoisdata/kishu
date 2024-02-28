@@ -3,6 +3,41 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 
+class UserNsWrapper(dict):
+    """
+        Wrapper class for monkey-patching Jupyter namespace to monitor variable accesses.
+    """
+    def __init__(self, *args, **kwargs) -> None:
+        dict.__init__(self, *args, **kwargs)
+        self.accessed_vars: Set[str] = set()
+
+    def __getitem__(self, name: str) -> Object:
+        self.accessed_vars.add(name)
+        return dict.__getitem__(self, name)
+
+    def __setitem__(self, name: str, obj: Object) -> None:
+        return dict.__setitem__(self, name, obj)
+
+    def __delitem__(self, name: str):
+        return dict.__delitem__(self, name)
+
+    def __iter__(self):
+        self.accessed_vars = set(self.keys())  # TODO: Use enum for this.
+        return dict.__iter__(self)
+
+    def to_dict(self):
+        return dict(self.items())
+
+    def my_items(self):  # Deliberately named differently to avoid infinite recursion.
+        return self.items()
+
+    def get_accessed_vars(self) -> Set[str]:
+        return self.accessed_vars
+
+    def reset_accessed_vars(self) -> None:
+        self.accessed_vars = set()
+
+
 class Namespace:
     """
         Wrapper class around the kernel namespace.
@@ -15,35 +50,44 @@ class Namespace:
         Namespace.KISHU_VARS.update(kishu_vars)
 
     def __init__(self, user_ns: Dict[str, Any] = {}):
-        self._user_ns = user_ns
+        self._ns_wrapper = UserNsWrapper(user_ns)
 
     def __contains__(self, key) -> bool:
-        return key in self._user_ns
+        return key in self._ns_wrapper.to_dict()
 
     def __getitem__(self, key) -> Any:
-        return self._user_ns[key]
+        return self._ns_wrapper.to_dict()[key]
 
     def __delitem__(self, key) -> Any:
-        del self._user_ns[key]
+        del self._ns_wrapper[key]
 
     def __setitem__(self, key, value) -> Any:
-        self._user_ns[key] = value
+        self._ns_wrapper[key] = value
 
     def __eq__(self, other) -> bool:
-        return self._user_ns == other._user_ns
+        return self._ns_wrapper.to_dict() == self._ns_wrapper.to_dict()
+
+    def get_wrapper(self) -> UserNsWrapper:
+        return self._ns_wrapper
 
     def keyset(self) -> Set[str]:
-        return set(varname for varname, _ in filter(Namespace.no_ipython_var, self._user_ns.items()))
+        return set(varname for varname, _ in filter(Namespace.no_ipython_var, self._ns_wrapper.my_items()))
 
     def to_dict(self) -> Dict[str, Any]:
-        return {k: v for k, v in filter(Namespace.no_ipython_var, self._user_ns.items())}
+        return {k: v for k, v in filter(Namespace.no_ipython_var, self._ns_wrapper.my_items())}
 
     def update(self, other: Namespace):
         # Need to filter with other.to_dict() to not replace ipython variables.
-        self._user_ns.update(other.to_dict())
+        self._ns_wrapper.update(other._ns_wrapper.to_dict())
+
+    def get_accessed_vars(self) -> Set[str]:
+        return set(name for name in self._ns_wrapper.get_accessed_vars() if Namespace.no_ipython_var((name, None)))
+
+    def reset_accessed_vars(self) -> None:
+        self._ns_wrapper.reset_accessed_vars()
 
     def ipython_in(self) -> Optional[List[str]]:
-        return self._user_ns["In"] if "In" in self._user_ns else None
+        return self._ns_wrapper["In"] if "In" in self._ns_wrapper else None
 
     @staticmethod
     def no_ipython_var(name_obj: Tuple[str, Any]) -> bool:
