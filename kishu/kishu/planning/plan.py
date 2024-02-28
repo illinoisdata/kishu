@@ -262,7 +262,10 @@ class AtExitContext:
         while self._atexit_queue.qsize():
             func, args, kwargs = self._atexit_queue.get()
             atexit.unregister(func)
-            func(*args, **kwargs)
+            try:
+                func(*args, **kwargs)
+            except Exception:
+                pass
 
 
 @dataclass
@@ -327,4 +330,4 @@ class RestorePlan:
                             self.actions[rerun_cell_action.step_order] = rerun_cell_action
                         break
                 else:
-                    return Namespace(ctx.shell.user_ns)
+                    return Namespace(ctx.shell.user_ns.copy())
