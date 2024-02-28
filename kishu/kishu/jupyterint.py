@@ -427,7 +427,6 @@ class KishuForJupyter:
 
         # Restore user-namespace variables.
         commit_ns = commit_entry.restore_plan.run(database_path, commit_id)
-        print("commit ns keyset:", commit_ns.keyset())
         self._checkout_namespace(self._user_ns, commit_ns)
         
         # Update C/R planner with AHG from checkpoint file and new namespace.
