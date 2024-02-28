@@ -404,6 +404,9 @@ class KishuForJupyter:
         if commit_entry.restore_plan is None:
             raise ValueError("No restore plan found for commit_id = {}".format(commit_id))
 
+        # Reset ipython kernel.
+        self._ip.reset(new_session=True)
+
         # Restore notebook cells.
         if not skip_notebook and commit_entry.raw_nb is not None:
             self._checkout_notebook(commit_entry.raw_nb)
