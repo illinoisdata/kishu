@@ -23,13 +23,34 @@ from tests.helpers.serverexec import JupyterServerRunner
 
 
 """
+Pytest Mods
+"""
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-benchmark", action="store_true", default=False, help="run benchmark tests"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--run-benchmark"):
+        skip_benchmark = pytest.mark.skip(
+            reason="Enable with --run-benchmark")
+        for item in items:
+            if "benchmark" in item.keywords:
+                item.add_marker(skip_benchmark)
+
+
+"""
 Kishu Resources
 """
 
 
 @pytest.fixture(autouse=True)
 def set_test_mode() -> Generator[None, None, None]:
-    original_test_mode = os.environ.get(KishuForJupyter.ENV_KISHU_TEST_MODE, None)
+    original_test_mode = os.environ.get(
+        KishuForJupyter.ENV_KISHU_TEST_MODE, None)
     os.environ[KishuForJupyter.ENV_KISHU_TEST_MODE] = "true"
     yield None
     if original_test_mode is not None:
@@ -89,7 +110,8 @@ def nb_simple_path(tmp_nb_path: Callable[[str], Path]) -> Path:
 @pytest.fixture(autouse=True)
 def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
     prev_config_path = Config.CONFIG_PATH
-    Config.CONFIG_PATH = os.path.join(KishuPath.kishu_directory(), "config.ini")
+    Config.CONFIG_PATH = os.path.join(
+        KishuPath.kishu_directory(), "config.ini")
     yield Config
     Config.CONFIG_PATH = prev_config_path
 
@@ -142,22 +164,6 @@ def seaborn_scatterplot() -> Generator[matplotlib.axes._axes.Axes, None, None]:
 
     # Teardown code
     matplotlib.pyplot.close('all')
-
-
-def pytest_addoption(parser):
-    parser.addoption(
-        "--run-benchmark", action="store_true", default=False, help="run benchmark tests"
-    )
-
-
-def pytest_collection_modifyitems(config, items):
-    if config.getoption("--run-benchmark"):
-        # If --run-benchmark is specified, don't skip any tests
-        return
-    skip_benchmark = pytest.mark.skip(reason="need --run-benchmark option to run")
-    for item in items:
-        if "benchmark" in item.keywords:
-            item.add_marker(skip_benchmark)
 
 
 """
@@ -256,7 +262,8 @@ def notebook_key() -> Generator[str, None, None]:
 @pytest.fixture()
 def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
     ip = InteractiveShell()
-    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key), ip=ip)
+    kishu_jupyter = KishuForJupyter(
+        notebook_id=NotebookId.from_enclosing_with_key(notebook_key), ip=ip)
     yield kishu_jupyter
 
 
