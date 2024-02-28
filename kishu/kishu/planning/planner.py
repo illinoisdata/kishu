@@ -7,7 +7,6 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG
-from kishu.planning.change import find_created_and_deleted_vars
 from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import RestorePlan, CheckpointPlan
@@ -85,8 +84,8 @@ class CheckpointRestorePlanner:
         self._user_ns.reset_accessed_vars()
 
         # Find created and deleted variables.
-        created_vars, deleted_vars = find_created_and_deleted_vars(self._pre_run_cell_vars,
-                                                                   self._user_ns.keyset())
+        created_vars = self._user_ns.keyset().difference(self._pre_run_cell_vars)
+        deleted_vars = self._pre_run_cell_vars.difference(self._user_ns.keyset())
 
         # Find modified variables.
         modified_vars_structure = set()

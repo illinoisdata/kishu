@@ -411,6 +411,10 @@ class KishuForJupyter:
         # Reset ipython kernel.
         self._ip.reset(new_session=True)
 
+        # Re-monkey patch global and local namespace.
+        self._user_ns = Namespace(self._ip.user_ns)
+        self._ip.init_create_namespaces(user_module=None, user_ns=self._user_ns.get_wrapper())
+
         # Restore notebook cells.
         if not skip_notebook and commit_entry.raw_nb is not None:
             self._checkout_notebook(commit_entry.raw_nb)
@@ -428,7 +432,7 @@ class KishuForJupyter:
         # Restore user-namespace variables.
         commit_ns = commit_entry.restore_plan.run(database_path, commit_id)
         self._checkout_namespace(self._user_ns, commit_ns)
-        
+
         # Update C/R planner with AHG from checkpoint file and new namespace.
         if commit_entry.ahg_string is None:
             raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))

@@ -11,11 +11,11 @@ class UserNsWrapper(dict):
         dict.__init__(self, *args, **kwargs)
         self.accessed_vars: Set[str] = set()
 
-    def __getitem__(self, name: str) -> Object:
+    def __getitem__(self, name: str) -> Any:
         self.accessed_vars.add(name)
         return dict.__getitem__(self, name)
 
-    def __setitem__(self, name: str, obj: Object) -> None:
+    def __setitem__(self, name: str, obj: Any) -> None:
         return dict.__setitem__(self, name, obj)
 
     def __delitem__(self, name: str):
@@ -78,7 +78,7 @@ class Namespace:
 
     def update(self, other: Namespace):
         # Need to filter with other.to_dict() to not replace ipython variables.
-        self._ns_wrapper.update(other._ns_wrapper.to_dict())
+        self._ns_wrapper.update(other.to_dict())
 
     def get_accessed_vars(self) -> Set[str]:
         return set(name for name in self._ns_wrapper.get_accessed_vars() if Namespace.no_ipython_var((name, None)))
