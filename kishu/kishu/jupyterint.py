@@ -270,8 +270,8 @@ class KishuForJupyter:
         self._ip = ip
         self._user_ns = Namespace(self._ip.user_ns)
 
-        # Monkey patch global and local namespace to monitor variable accesses.
-        self._ip.init_create_namespaces(user_module=None, user_ns=self._user_ns.get_wrapper())
+        # Patch global and local namespace to monitor variable accesses.
+        self._ip.init_create_namespaces(user_module=None, user_ns=self._user_ns.get_tracked_namespace())
 
         self._platform = enclosing_platform()
         self._session_id = 0
@@ -410,10 +410,6 @@ class KishuForJupyter:
 
         # Reset ipython kernel.
         self._ip.reset(new_session=True)
-
-        # Re-monkey patch global and local namespace.
-        self._user_ns = Namespace(self._ip.user_ns)
-        self._ip.init_create_namespaces(user_module=None, user_ns=self._user_ns.get_wrapper())
 
         # Restore notebook cells.
         if not skip_notebook and commit_entry.raw_nb is not None:

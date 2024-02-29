@@ -14,7 +14,6 @@ from pathlib import Path, PurePath
 from typing import Any, Callable, Generator, List, Optional, Tuple, Type
 from unittest.mock import patch
 
-from kishu.jupyter.namespace import Namespace
 from kishu.jupyterint import KishuForJupyter
 from kishu.notebook_id import NotebookId
 from kishu.storage.config import Config
@@ -257,14 +256,6 @@ def basic_execution_ids(kishu_jupyter) -> Generator[List[str], None, None]:
         info=info, execution_count=execution_count))
 
     yield ["0:1", "0:2", "0:3"]  # List of commit IDs
-
-
-@pytest.fixture()
-def monkey_patch_ns() -> Generator[Tuple[InteractiveShell, Namespace], None, None]:
-    shell = InteractiveShell()
-    namespace = Namespace(shell.user_ns)
-    shell.init_create_namespaces(user_module=None, user_ns=namespace.get_wrapper())
-    yield shell, namespace
 
 
 """

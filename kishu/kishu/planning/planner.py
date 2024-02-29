@@ -80,7 +80,7 @@ class CheckpointRestorePlanner:
             @param runtime_s: runtime of cell execution.
         """
         # Find accessed variables from monkey-patched namespace.
-        accessed_vars = self._user_ns.get_accessed_vars().intersection(self._pre_run_cell_vars)
+        accessed_vars = self._user_ns.accessed_vars().intersection(self._pre_run_cell_vars)
         self._user_ns.reset_accessed_vars()
 
         # Find created and deleted variables.
