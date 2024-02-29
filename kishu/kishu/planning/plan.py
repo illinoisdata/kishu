@@ -249,23 +249,24 @@ class AtExitContext:
         return self
 
     def intercepted_register(self, func, *args, **kwargs) -> None:
-        assert self._original_atexit_register is not None, "AtExitContext must be __enter__ before intercepting."
-        self._original_atexit_register(func, *args, **kwargs)
-        self._atexit_queue.put((func, args, kwargs))  # Intercept atexit function in this context.
+        if self._original_atexit_register is not None:
+            self._original_atexit_register(func, *args, **kwargs)
+            self._atexit_queue.put((func, args, kwargs))  # Intercept atexit function in this context.
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         # Recover previous registry.
-        atexit.register = self._original_atexit_register  # type: ignore
-        self._original_atexit_register = None
-
-        # Call all registed atexit function within this context.
-        while self._atexit_queue.qsize():
-            func, args, kwargs = self._atexit_queue.get()
-            atexit.unregister(func)
-            try:
-                func(*args, **kwargs)
-            except Exception:
-                pass
+        if self._original_atexit_register is not None:
+            atexit.register = self._original_atexit_register  # type: ignore
+            self._original_atexit_register = None
+    
+            # Call all registed atexit function within this context.
+            while self._atexit_queue.qsize():
+                func, args, kwargs = self._atexit_queue.get()
+                atexit.unregister(func)
+                try:
+                    func(*args, **kwargs)
+                except Exception:
+                    pass
 
 
 @dataclass
