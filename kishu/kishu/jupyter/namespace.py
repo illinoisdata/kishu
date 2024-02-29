@@ -3,6 +3,30 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 
+class TrackedNamespace(dict):
+    """
+        Wrapper class for monkey-patching Jupyter namespace to monitor variable accesses.
+    """
+    def __init__(self, *args, **kwargs) -> None:
+        dict.__init__(self, *args, **kwargs)
+        self._accessed_vars: Set[str] = set()
+
+    def __getitem__(self, name: str) -> Any:
+        if name in self:
+            self._accessed_vars.add(name)
+        return dict.__getitem__(self, name)
+
+    def __iter__(self):
+        self._accessed_vars = set(self.keys())  # TODO: Use enum for this.
+        return dict.__iter__(self)
+
+    def accessed_vars(self) -> Set[str]:
+        return self._accessed_vars
+
+    def reset_accessed_vars(self) -> None:
+        self._accessed_vars = set()
+
+
 class Namespace:
     """
         Wrapper class around the kernel namespace.
@@ -15,35 +39,44 @@ class Namespace:
         Namespace.KISHU_VARS.update(kishu_vars)
 
     def __init__(self, user_ns: Dict[str, Any] = {}):
-        self._user_ns = user_ns
+        self._tracked_namespace = TrackedNamespace(user_ns)
 
     def __contains__(self, key) -> bool:
-        return key in self._user_ns
+        return key in self._tracked_namespace
 
     def __getitem__(self, key) -> Any:
-        return self._user_ns[key]
+        return self._tracked_namespace[key]
 
     def __delitem__(self, key) -> Any:
-        del self._user_ns[key]
+        del self._tracked_namespace[key]
 
     def __setitem__(self, key, value) -> Any:
-        self._user_ns[key] = value
+        self._tracked_namespace[key] = value
 
     def __eq__(self, other) -> bool:
-        return self._user_ns == other._user_ns
+        return dict(self._tracked_namespace) == dict(self._tracked_namespace)
+
+    def get_tracked_namespace(self) -> TrackedNamespace:
+        return self._tracked_namespace
 
     def keyset(self) -> Set[str]:
-        return set(varname for varname, _ in filter(Namespace.no_ipython_var, self._user_ns.items()))
+        return set(varname for varname, _ in filter(Namespace.no_ipython_var, self._tracked_namespace.items()))
 
     def to_dict(self) -> Dict[str, Any]:
-        return {k: v for k, v in filter(Namespace.no_ipython_var, self._user_ns.items())}
+        return {k: v for k, v in filter(Namespace.no_ipython_var, self._tracked_namespace.items())}
 
     def update(self, other: Namespace):
         # Need to filter with other.to_dict() to not replace ipython variables.
-        self._user_ns.update(other.to_dict())
+        self._tracked_namespace.update(other.to_dict())
+
+    def accessed_vars(self) -> Set[str]:
+        return set(name for name in self._tracked_namespace.accessed_vars() if Namespace.no_ipython_var((name, None)))
+
+    def reset_accessed_vars(self) -> None:
+        self._tracked_namespace.reset_accessed_vars()
 
     def ipython_in(self) -> Optional[List[str]]:
-        return self._user_ns["In"] if "In" in self._user_ns else None
+        return self._tracked_namespace["In"] if "In" in self._tracked_namespace else None
 
     @staticmethod
     def no_ipython_var(name_obj: Tuple[str, Any]) -> bool:

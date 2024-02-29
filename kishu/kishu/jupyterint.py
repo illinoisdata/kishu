@@ -269,6 +269,10 @@ class KishuForJupyter:
         # Enclosing environment.
         self._ip = ip
         self._user_ns = Namespace(self._ip.user_ns)
+
+        # Patch global and local namespace to monitor variable accesses.
+        self._ip.init_create_namespaces(user_module=None, user_ns=self._user_ns.get_tracked_namespace())
+
         self._platform = enclosing_platform()
         self._session_id = 0
 
