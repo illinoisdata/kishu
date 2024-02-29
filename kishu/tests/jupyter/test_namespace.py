@@ -45,9 +45,9 @@ def test_find_input_vars_index(namespace, patched_shell):
 
 
 def test_find_input_vars_error_no_var(namespace, patched_shell):
-    # Access is recorded even in the case of errors (x doesn't exist).
+    # Access is not recorded as x doesn't exist.
     patched_shell.run_cell("y = x")
-    assert namespace.accessed_vars() == {"x"}
+    assert namespace.accessed_vars() == set()
 
 
 def test_find_input_vars_error_no_field(namespace, patched_shell):

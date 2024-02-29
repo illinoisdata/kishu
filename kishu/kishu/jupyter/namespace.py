@@ -12,7 +12,8 @@ class TrackedNamespace(dict):
         self._accessed_vars: Set[str] = set()
 
     def __getitem__(self, name: str) -> Any:
-        self._accessed_vars.add(name)
+        if name in self:
+            self._accessed_vars.add(name)
         return dict.__getitem__(self, name)
 
     def __iter__(self):
