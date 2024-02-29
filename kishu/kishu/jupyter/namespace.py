@@ -79,7 +79,7 @@ class Namespace:
         return self._tracked_namespace["In"] if "In" in self._tracked_namespace else None
 
     def subset(self, varnames: Set[str]) -> Namespace:
-        return Namespace({k: self._user_ns[k] for k in varnames if k in self})
+        return Namespace({k: self._tracked_namespace[k] for k in varnames if k in self})
 
     @staticmethod
     def no_ipython_var(name_obj: Tuple[str, Any]) -> bool:
