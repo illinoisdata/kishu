@@ -386,10 +386,7 @@ class KishuCommand:
     @staticmethod
     def status(notebook_id: str, commit_id: str) -> StatusResult:
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
-        commit_node_info = next(
-            KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
-                            .iter_history(commit_id)
-        )
+        commit_node_info = KishuCommand._find_commit_node_info(notebook_id, commit_id)
         commit_entry = KishuCommit(notebook_id).get_commit(commit_id)
         return StatusResult(
             commit_node_info=commit_node_info,
@@ -670,10 +667,7 @@ class KishuCommand:
     @staticmethod
     def fe_commit(notebook_id: str, commit_id: str, vardepth: int) -> FESelectedCommit:
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
-        commit_node_info = next(
-            KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
-                            .iter_history(commit_id)
-        )
+        commit_node_info = KishuCommand._find_commit_node_info(notebook_id, commit_id)
         nb_commit_node_info = KishuCommitGraph.new_on_file(
             KishuPath.nb_commit_graph_directory(notebook_id)
         ).get_commit(commit_id)
@@ -739,6 +733,14 @@ class KishuCommand:
     def _is_notebook_attached(kernel_id: str) -> bool:
         verification_response = JupyterConnection(kernel_id).execute_one_command("'_kishu' in globals()")
         return verification_response.message == "True"
+
+    @staticmethod
+    def _find_commit_node_info(notebook_id: str, commit_id: str) -> CommitNodeInfo:
+        try:
+            return next(KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
+                                        .iter_history(commit_id))
+        except StopIteration:
+            raise MissingCommitEntryError(commit_id)
 
     @staticmethod
     def _decorate_graph(notebook_id: str, graph: List[CommitNodeInfo]) -> List[CommitSummary]:
