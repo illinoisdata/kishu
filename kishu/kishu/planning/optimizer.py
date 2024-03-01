@@ -51,7 +51,7 @@ class Optimizer():
         # Optimizer context containing flags for optimizer parameters.
         self._optimizer_context = PlannerContext(
             always_recompute=Config.get('OPTIMIZER', 'always_recompute', False),
-            always_migrate=Config.get('OPTIMIZER', 'always_migrate', False),
+            always_migrate=Config.get('OPTIMIZER', 'always_migrate', True),
             network_bandwidth=Config.get('OPTIMIZER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
         )
 
