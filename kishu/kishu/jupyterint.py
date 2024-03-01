@@ -446,7 +446,7 @@ class KishuForJupyter:
 
         # Create new commit when skip restoring notebook.
         if self._enable_auto_commit_when_skip_notebook and skip_notebook:
-            new_commit = self.commit("Checkout variables")
+            new_commit = self.commit(f"Checked out vars from {commit_entry.message}")
             return BareReprStr(f"Checkout {commit_id} only variables and commit {new_commit}.")
 
         if is_detach:
