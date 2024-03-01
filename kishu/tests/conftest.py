@@ -16,7 +16,6 @@ from unittest.mock import patch
 
 from kishu.jupyterint import KishuForJupyter
 from kishu.notebook_id import NotebookId
-from kishu.planning.optimizer import REALLY_FAST_BANDWIDTH_10GBPS
 from kishu.storage.config import Config
 from kishu.storage.path import ENV_KISHU_PATH_ROOT, KishuPath
 
@@ -100,20 +99,6 @@ def enable_incremental_store(tmp_kishu_path) -> Generator[type, None, None]:
     Config.set('PLANNER', 'incremental_store', True)
     yield Config
     Config.set('PLANNER', 'incremental_store', False)
-
-
-@pytest.fixture()
-def enable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
-    Config.set('OPTIMIZER', 'always_migrate', True)
-    yield Config
-    Config.set('OPTIMIZER', 'always_migrate', False)
-
-
-@pytest.fixture()
-def enable_slow_network_bandwidth(tmp_kishu_path) -> Generator[type, None, None]:
-    Config.set('OPTIMIZER', 'network_bandwidth', 1)
-    yield Config
-    Config.set('OPTIMIZER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
 
 
 @pytest.fixture()

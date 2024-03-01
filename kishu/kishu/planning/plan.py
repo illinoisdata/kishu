@@ -329,7 +329,7 @@ class AtExitContext:
         if self._original_atexit_register is not None:
             atexit.register = self._original_atexit_register  # type: ignore
             self._original_atexit_register = None
-    
+
             # Call all registed atexit function within this context.
             while self._atexit_queue.qsize():
                 func, args, kwargs = self._atexit_queue.get()

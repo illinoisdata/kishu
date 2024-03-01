@@ -1,10 +1,20 @@
-from typing import Any, Dict, Set, Tuple
+import pytest
+
+from typing import Any, Dict, Generator, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
 from kishu.planning.plan import CheckpointPlan, RerunCellRestoreAction, RestorePlan, StepOrder
 from kishu.storage.checkpoint import KishuCheckpoint
+from kishu.storage.config import Config
 from kishu.storage.path import KishuPath
+
+
+@pytest.fixture()
+def enable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
+    Config.set('OPTIMIZER', 'always_migrate', True)
+    yield Config
+    Config.set('OPTIMIZER', 'always_migrate', False)
 
 
 class PlannerManager:

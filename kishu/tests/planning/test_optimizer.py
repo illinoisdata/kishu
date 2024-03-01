@@ -1,5 +1,17 @@
+import pytest
+
+from typing import Generator
+
 from kishu.planning.ahg import AHG, VersionedName
-from kishu.planning.optimizer import Optimizer
+from kishu.storage.config import Config
+from kishu.planning.optimizer import Optimizer, REALLY_FAST_BANDWIDTH_10GBPS
+
+
+@pytest.fixture()
+def enable_slow_network_bandwidth(tmp_kishu_path) -> Generator[type, None, None]:
+    Config.set('OPTIMIZER', 'network_bandwidth', 1)
+    yield Config
+    Config.set('OPTIMIZER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
 
 
 def test_optimizer(enable_slow_network_bandwidth):
