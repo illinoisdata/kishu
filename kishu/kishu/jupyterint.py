@@ -480,7 +480,7 @@ class KishuForJupyter:
         self._start_time = time.time()
 
         # Saving needs to be before cell execution, otherwise stream/print output will disappear.
-        self.save_notebook()
+        # self.save_notebook()  # HACK: Rely on autosave instead
 
         self._cr_planner.pre_run_cell_update()
 
@@ -590,7 +590,7 @@ class KishuForJupyter:
         entry = CommitEntry(kind=CommitEntryKind.manual)
         entry.execution_count = self._ip.execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
-        self.save_notebook()
+        # self.save_notebook()  # HACK: Rely on autosave instead
         self._commit_entry(entry)
         return BareReprStr(entry.commit_id)
 
