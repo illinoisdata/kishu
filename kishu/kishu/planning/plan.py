@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from kishu.exceptions import CommitIdNotExistError, DuplicateRestoreActionError
 from kishu.jupyter.namespace import Namespace
+from kishu.planning.ahg import VsConnectedComponents
 from kishu.storage.checkpoint import KishuCheckpoint
 
 
@@ -95,6 +96,19 @@ class SaveVariablesCheckpointAction(CheckpointAction):
         KishuCheckpoint(self.filename).store_checkpoint(self.exec_id, namespace.dumps())
 
 
+class IncrementalWriteCheckpointAction(CheckpointAction):
+    """
+    Stores VarNamesToObjects into database incrementally.
+    """
+    def __init__(self, vs_connected_components: VsConnectedComponents, filename: str, exec_id: str) -> None:
+        self.vs_connected_components = vs_connected_components
+        self.filename = filename
+        self.exec_id = exec_id
+
+    def run(self, user_ns: Namespace):
+        KishuCheckpoint(self.filename).store_variable_kv(self.exec_id, self.vs_connected_components, user_ns)
+
+
 class CheckpointPlan:
     """
     Checkpoint select variables to the database.
@@ -146,6 +160,63 @@ class CheckpointPlan:
             if name not in key_set:
                 raise ValueError("Checkpointing a non-existenting var: {}".format(name))
         return var_names
+
+    def run(self, user_ns: Namespace) -> None:
+        for action in self.actions:
+            action.run(user_ns)
+
+
+class IncrementalCheckpointPlan:
+    """
+    Checkpoint select variables to the database.
+    """
+    def __init__(self, checkpoint_file: str, actions: List[CheckpointAction]) -> None:
+        """
+        @param checkpoint_file  The file to which data will be saved.
+        """
+        super().__init__()
+        self.checkpoint_file = checkpoint_file
+        self.actions = actions
+
+    @staticmethod
+    def create(
+        user_ns: Namespace,
+        checkpoint_file: str,
+        exec_id: str,
+        vs_connected_components: VsConnectedComponents
+    ):
+        """
+        @param user_ns  A dictionary representing a target variable namespace. In Jupyter, this
+                can be optained by `get_ipython().user_ns`.
+        @param checkpoint_file  A file where checkpointed data will be stored to.
+        """
+        actions = IncrementalCheckpointPlan.set_up_actions(user_ns, checkpoint_file, exec_id, vs_connected_components)
+        return IncrementalCheckpointPlan(checkpoint_file, actions)
+
+    @classmethod
+    def set_up_actions(
+        cls,
+        user_ns: Namespace,
+        checkpoint_file: str,
+        exec_id: str,
+        vs_connected_components: VsConnectedComponents
+    ) -> List[CheckpointAction]:
+        if user_ns is None or checkpoint_file is None:
+            raise ValueError("Fields are not properly initialized.")
+
+        # Check all variables to checkpoint exist in the namespace.
+        key_set = user_ns.keyset()
+        for var_name in vs_connected_components.get_variable_names():
+            if var_name not in key_set:
+                raise ValueError("Checkpointing a non-existenting var: {}".format(var_name))
+
+        return [
+            IncrementalWriteCheckpointAction(
+                vs_connected_components,
+                checkpoint_file,
+                exec_id,
+            )
+        ]
 
     def run(self, user_ns: Namespace) -> None:
         for action in self.actions:
@@ -258,7 +329,7 @@ class AtExitContext:
         if self._original_atexit_register is not None:
             atexit.register = self._original_atexit_register  # type: ignore
             self._original_atexit_register = None
-    
+
             # Call all registed atexit function within this context.
             while self._atexit_queue.qsize():
                 func, args, kwargs = self._atexit_queue.get()

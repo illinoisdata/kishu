@@ -1,10 +1,25 @@
 import networkx as nx
 import numpy as np
 
+from dataclasses import dataclass
 from networkx.algorithms.flow import shortest_augmenting_path
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
-from kishu.planning.ahg import AHG, CellExecution, VariableSnapshot
+from kishu.planning.ahg import AHG, CellExecution, VariableSnapshot, VersionedName
+from kishu.storage.config import Config
+
+
+REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
+
+
+@dataclass
+class PlannerContext:
+    """
+        Optimizer-related config options.
+    """
+    always_recompute: bool
+    always_migrate: bool
+    network_bandwidth: float
 
 
 class Optimizer():
@@ -16,9 +31,7 @@ class Optimizer():
         self, ahg: AHG,
         active_vss: List[VariableSnapshot],
         linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
-        migration_speed_bps: float = 1.0,
-        only_migrate=False,
-        only_recompute=False
+        already_stored_vss: Optional[Set[VersionedName]] = None
     ) -> None:
         """
             Creates an optimizer with a migration speed estimate. The AHG and active VS fields
@@ -28,25 +41,29 @@ class Optimizer():
             @param active_vss: active Variable Snapshots at time of checkpointing.
             @param linked_vs_pairs: pairs of variables sharing underlying objects. They must be migrated
                 or recomputed together.
-            @param migration_speed_bps: network bandwidth to storage.
+            @param already_stored_vss: A List of Variable snapshots already stored in previous plans. They can be
+                loaded as part of the restoration plan to save restoration time.
         """
-        if only_migrate and only_recompute:
-            raise ValueError("only_migrate and only_recompute cannot both be True.")
-
         self.ahg = ahg
         self.active_vss = active_vss
         self.linked_vs_pairs = linked_vs_pairs
-        self.migration_speed_bps = migration_speed_bps
 
-        # Flags for testing.
-        self._only_recompute = only_recompute
-        self._only_migrate = only_migrate
+        # Optimizer context containing flags for optimizer parameters.
+        self._optimizer_context = PlannerContext(
+            always_recompute=Config.get('OPTIMIZER', 'always_recompute', False),
+            always_migrate=Config.get('OPTIMIZER', 'always_migrate', False),
+            network_bandwidth=Config.get('OPTIMIZER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
+        )
 
         # Set lookup for active VSs by name and version as VS objects are not hashable.
         self.active_vss_lookup = {vs.name: vs.version for vs in active_vss}
+        self.already_stored_vss = already_stored_vss if already_stored_vss else set()
 
         # CEs required to recompute a variables last modified by a given CE.
         self.req_func_mapping: Dict[int, Set[int]] = {}
+
+        if self._optimizer_context.always_migrate and self._optimizer_context.always_recompute:
+            raise ValueError("always_migrate and always_recompute cannot both be True.")
 
     def dfs_helper(self, current: Any, visited: Set[Any], prerequisite_ces: Set[int]):
         """
@@ -65,6 +82,7 @@ class Optimizer():
                 prerequisite_ces.add(current.cell_num)
                 for vs in current.src_vss:
                     if (vs.name, vs.version) not in self.active_vss_lookup.items() \
+                            and VersionedName(vs.name, vs.version) not in self.already_stored_vss \
                             and (vs.name, vs.version) not in visited:
                         self.dfs_helper(vs, visited, prerequisite_ces)
 
@@ -90,17 +108,17 @@ class Optimizer():
             variables to migrate and cells to rerun.
 
             Test parameters (mutually exclusive):
-            @param only_migrate: migrate all variables.
-            @param only_recompute: rerun all cells.
+            @param always_migrate: migrate all variables.
+            @param always_recompute: rerun all cells.
         """
-        if self._only_migrate:
-            return set(self.active_vss_lookup.keys()), set()
-
-        if self._only_recompute:
-            return set(), set(ce.cell_num for ce in self.ahg.get_cell_executions())
-
         # Build prerequisite (rec) function mapping.
         self.find_prerequisites()
+
+        if self._optimizer_context.always_migrate:
+            return set(self.active_vss_lookup.keys()), set()
+
+        if self._optimizer_context.always_recompute:
+            return set(), set(ce.cell_num for ce in self.ahg.get_cell_executions())
 
         # Construct flow graph for computing mincut.
         flow_graph = nx.DiGraph()
@@ -112,7 +130,7 @@ class Optimizer():
         # Add all active VSs as nodes, connect them with the source with edge capacity equal to migration cost.
         for active_vs in self.active_vss:
             flow_graph.add_node(active_vs.name)
-            flow_graph.add_edge("source", active_vs.name, capacity=active_vs.size / self.migration_speed_bps)
+            flow_graph.add_edge("source", active_vs.name, capacity=active_vs.size / self._optimizer_context.network_bandwidth)
 
         # Add all CEs as nodes, connect them with the sink with edge capacity equal to recomputation cost.
         for ce in self.ahg.get_cell_executions():

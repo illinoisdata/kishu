@@ -4,7 +4,8 @@ from IPython.core.interactiveshell import InteractiveShell
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.plan import CheckpointPlan, RestorePlan
+from kishu.planning.ahg import VersionedName, VsConnectedComponents
+from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.path import KishuPath
 
@@ -51,7 +52,11 @@ def test_store_everything_restore_plan():
 
     # save
     exec_id = 1
-    checkpoint = CheckpointPlan.create(user_ns, filename, exec_id)
+    checkpoint = CheckpointPlan.create(
+        user_ns,
+        filename,
+        exec_id,
+    )
     checkpoint.run(user_ns)
 
     # load
@@ -74,7 +79,7 @@ def test_recompute_everything_restore_plan():
 
     # save
     exec_id = 1
-    checkpoint = CheckpointPlan.create(user_ns, filename, exec_id, var_names=[])
+    checkpoint = CheckpointPlan.create(user_ns, filename, exec_id)
     checkpoint.run(user_ns)
 
     # restore
@@ -139,3 +144,31 @@ def test_fallback_recomputation():
     # Compare keys in this case as modules are not directly comparable
     assert result_ns.keyset() == user_ns.keyset()
     assert result_ns["foo"] == user_ns["foo"]
+
+
+def test_store_connected_components(enable_incremental_store):
+    """
+        Tests that the VARIABLE_KV and NAMESPACE tables are populated correctly.
+        TODO: add test for loading incrementally once that is implemented.
+    """
+    shell = InteractiveShell()
+    shell.run_cell("a = 1")
+    shell.run_cell("b = [a]")
+    shell.run_cell("c = 2")
+
+    user_ns = Namespace(shell.user_ns)
+    filename = KishuPath.database_path("test")
+    KishuCheckpoint(filename).init_database()
+
+    # save
+    exec_id = 1
+    vs_connected_components = VsConnectedComponents.create_from_component_list(
+        [[VersionedName('a', 1), VersionedName('b', 1)], [VersionedName('c', 1)]])
+    checkpoint = IncrementalCheckpointPlan.create(user_ns, filename, exec_id, vs_connected_components)
+    checkpoint.run(user_ns)
+
+    # Read stored connected components
+    stored_vs_connected_components = KishuCheckpoint(filename).get_stored_connected_components()
+
+    assert {VersionedName("a", 1), VersionedName("b", 1)}, \
+        {VersionedName("c", 1)} in stored_vs_connected_components.get_connected_components()

@@ -95,6 +95,13 @@ def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
 
 
 @pytest.fixture()
+def enable_incremental_store(tmp_kishu_path) -> Generator[type, None, None]:
+    Config.set('PLANNER', 'incremental_store', True)
+    yield Config
+    Config.set('PLANNER', 'incremental_store', False)
+
+
+@pytest.fixture()
 def matplotlib_plot() -> Generator[Tuple[Any, List[matplotlib.lines.Line2D]], None, None]:
     # Setup code
     matplotlib.pyplot.close('all')
