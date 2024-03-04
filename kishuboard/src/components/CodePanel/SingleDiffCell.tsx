@@ -1,7 +1,7 @@
 import AceEditor, {IMarker} from "react-ace";
 import "ace-builds/src-noconflict/mode-python";
-import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
+import "ace-builds/src-noconflict/theme-xcode";
 import "./Cell.css";
 import {DiffCodeHunk} from "../../util/DiffHunk";
 import {useEffect, useMemo, useRef, useState} from "react";
@@ -142,13 +142,14 @@ function SingleDiffCell(props: SingleDiffCellProps) {
                 ref={aceRef}
                 className={"cell-code"}
                 // className={!props.execNumber ? "code unexcecuted" : "code executed"}
-                placeholder="Placeholder Text"
+                placeholder="Jupyter Startup"
                 mode="python"
-                theme="github"
+                theme="xcode"
                 name="blah2"
-                fontSize={14}
+                fontSize={12}
                 width="90%"
-                height={(((countLines(content)) + 2) * (FONTSIZE + 3)).toString() + "px"}
+                height={(((countLines(content)) + 1) * (12 + 3.5)).toString() + "px"}
+                // height={(((countLines(content)) + 2) * (FONTSIZE + 3)).toString() + "px"}
                 // height={(countLines(content) * 20).toString() + "px"}
                 // height="10px"
                 showPrintMargin={false}

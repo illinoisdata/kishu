@@ -1,6 +1,6 @@
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-python";
-import "ace-builds/src-noconflict/theme-github";
+import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
 import "./Cell.css";
 import {useEffect, useRef} from "react";
@@ -48,13 +48,13 @@ function SingleCell(props: SingleCellProps) {
                     ref = {aceRef}
                     className={"cell-code markdown"}
                     // className={!props.execNumber ? "code unexcecuted" : "code executed"}
-                    placeholder="Placeholder Text"
+                    placeholder="Jupyter Startup"
                     mode="python"
-                    theme="github"
+                    theme="xcode"
                     name="blah2"
-                    fontSize={14}
+                    fontSize={12}
                     width="90%"
-                    height={(((countLines(props.content)) + 1) * (FONTSIZE + 3.5)).toString() + "px"}
+                    height={(((countLines(props.content)) + 1) * (12 + 3.5)).toString() + "px"}
                     // height="10px"
                     showPrintMargin={false}
                     showGutter={false}

@@ -124,10 +124,18 @@ function _HistoryGraph(props: HistoryGraphProps) {
                     </text>
                     {id == props.currentPointID &&
                         <>
+                            <rect
+                                x={info.cx - COMMITRADIUS + MESSAGEMARGINX - 3}
+                                y={info.cy + COMMITHEIGHT / 2 - 10 - FONTSIZE}
+                                width={FONTSIZE * 11}
+                                height={FONTSIZE + 3}
+                                fill="red"
+                            >
+                            </rect>
                             <text
                                 x={info.cx - COMMITRADIUS + MESSAGEMARGINX}
                                 y={info.cy + COMMITHEIGHT / 2 - 10}
-                                fill = "red"
+                                fill = "white"
                             >
                                 current notebook state
                             </text>
