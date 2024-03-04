@@ -43,6 +43,8 @@ class Config:
         if Config.last_read_time < last_modify_time:
             Config.config.read(Config.CONFIG_PATH)
 
+            # If the config category is supposed to exists but doesn't exist (e.g., config file created
+            # in earlier version of kishu), create it.
             for config_category in set(Config.DEFAULT_CATEGORIES).difference(set(Config.config.keys())):
                 Config.config[config_category] = {}
 
