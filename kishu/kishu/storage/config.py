@@ -45,8 +45,9 @@ class Config:
 
             # If the config category is supposed to exists but doesn't exist (e.g., config file created
             # in earlier version of kishu), create it.
-            for config_category in set(Config.DEFAULT_CATEGORIES).difference(set(Config.config.keys())):
-                Config.config[config_category] = {}
+            for config_category in Config.DEFAULT_CATEGORIES:
+                if config_category not in Config.config:
+                    Config.config[config_category] = {}
 
             # Update the last read time.
             Config.last_read_time = last_modify_time
