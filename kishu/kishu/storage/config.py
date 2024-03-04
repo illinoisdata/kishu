@@ -48,6 +48,16 @@ class Config:
             Config.last_read_time = last_modify_time
 
     @staticmethod
+    def _write_config_file() -> None:
+        """
+            Writes the config file.
+        """
+        with open(Config.CONFIG_PATH, 'w') as configfile:
+            Config.config.write(configfile)
+            configfile.flush()
+            os.fsync(configfile.fileno())
+
+    @staticmethod
     def get(config_category: str, config_entry: str, default: Any) -> Any:
         """
             Gets the value of an entry from the config file.
@@ -61,7 +71,13 @@ class Config:
         Config._read_config_file()
 
         if config_category not in Config.config:
-            raise MissingConfigCategoryError(config_category)
+            if config_category in Config.DEFAULT_CATEGORIES:
+                # If the category is intended to exist but not in the config file (e.g., file
+                # from older version of Kishu), create the category
+                Config.config[config_category] = {}
+                Config._write_config_file()
+            else:
+                raise MissingConfigCategoryError(config_category)
 
         # Lists can't be cast directly to the type of the default and need to be parsed.
         if isinstance(default, list) and config_entry in Config.config[config_category]:
@@ -81,11 +97,13 @@ class Config:
         Config._read_config_file()
 
         if config_category not in Config.config:
-            raise MissingConfigCategoryError(config_category)
+            if config_category in Config.DEFAULT_CATEGORIES:
+                # If the category is intended to exist but not in the config file (e.g., file
+                # from older version of Kishu), create the category
+                Config.config[config_category] = {}
+            else:
+                raise MissingConfigCategoryError(config_category)
 
         Config.config[config_category][config_entry] = str(config_value)
 
-        with open(Config.CONFIG_PATH, 'w') as configfile:
-            Config.config.write(configfile)
-            configfile.flush()
-            os.fsync(configfile.fileno())
+        Config._write_config_file()

@@ -122,3 +122,16 @@ def test_set_and_get_nonexistant_category():
     # Check that writing to a nonexistant caegory throws an error.
     with pytest.raises(MissingConfigCategoryError):
         Config.set('ABCDEFG', 'abcdefg', 1)
+
+
+def test_backward_compatibility():
+    # The config file should not exist before the first get call.
+    assert not os.path.isfile(Config.CONFIG_PATH)
+
+    # Remove a category, then create a config file without the category.
+    Config.DEFAULT_CATEGORIES.remove("OPTIMIZER")
+    _ = Config.get('PLANNER', 'nonexistant_field', "1")
+
+    # Querying for the new category should create it.
+    assert Config.get('OPTIMIZER', 'network_bandwidth', 1.0) == 1.0
+    assert "OPTIMIZER" in Config.config
