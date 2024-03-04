@@ -66,5 +66,5 @@ def submit(model):
         cprint(f"{type(e).__name__}: {e}", "light_red", attrs=["bold"])
         cprint("CHECK FAILED", "light_red", attrs=["underline", "bold"])
         if "income_cat" in str(e):
-            cprint(f"Hint: The model was trained with a temporary column (\"income_cat\") that should have been dropped", "light_red", attrs=["underline", "bold"])
+            cprint(f"Hint: The model was trained with a temporary column (\"income_cat\").", "light_red", attrs=["underline", "bold"])
         return False
