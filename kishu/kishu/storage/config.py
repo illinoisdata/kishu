@@ -4,7 +4,6 @@ import os
 
 from typing import Any
 
-from kishu.exceptions import MissingConfigCategoryError
 from kishu.storage.path import KishuPath
 
 
@@ -44,8 +43,24 @@ class Config:
         if Config.last_read_time < last_modify_time:
             Config.config.read(Config.CONFIG_PATH)
 
+            # If the config category is supposed to exists but doesn't exist (e.g., config file created
+            # in earlier version of kishu), create it.
+            for config_category in Config.DEFAULT_CATEGORIES:
+                if config_category not in Config.config:
+                    Config.config[config_category] = {}
+
             # Update the last read time.
             Config.last_read_time = last_modify_time
+
+    @staticmethod
+    def _write_config_file() -> None:
+        """
+            Writes the config file.
+        """
+        with open(Config.CONFIG_PATH, 'w') as configfile:
+            Config.config.write(configfile)
+            configfile.flush()
+            os.fsync(configfile.fileno())
 
     @staticmethod
     def get(config_category: str, config_entry: str, default: Any) -> Any:
@@ -59,9 +74,6 @@ class Config:
                 as this parameter.
         """
         Config._read_config_file()
-
-        if config_category not in Config.config:
-            raise MissingConfigCategoryError(config_category)
 
         # Lists can't be cast directly to the type of the default and need to be parsed.
         if isinstance(default, list) and config_entry in Config.config[config_category]:
@@ -80,12 +92,6 @@ class Config:
         """
         Config._read_config_file()
 
-        if config_category not in Config.config:
-            raise MissingConfigCategoryError(config_category)
-
         Config.config[config_category][config_entry] = str(config_value)
 
-        with open(Config.CONFIG_PATH, 'w') as configfile:
-            Config.config.write(configfile)
-            configfile.flush()
-            os.fsync(configfile.fileno())
+        Config._write_config_file()
