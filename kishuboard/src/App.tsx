@@ -376,12 +376,13 @@ function App() {
         if(!selectedCommitID || newGraph.commits.length > commits.length) {
             setSelectedCommitID(newGraph.currentHead);
             setSelectedBranchID(newGraph.currentHeadBranch);
+            await refreshSelectedCommit(newGraph.currentHead);
         }
-        await refreshSelectedCommit();}
+        }
     }
 
-    async function refreshSelectedCommit(){
-        await loadCommitDetail(selectedCommitID!, setSelectedCommit, setError);
+    async function refreshSelectedCommit(commitID: string){
+        await loadCommitDetail(commitID, setSelectedCommit, setError);
     }
 
 
