@@ -1,0 +1,13 @@
+# Libraries supported by Kishu.
+# To be continually expanded as more tests are added.
+
+qiskit
+scikit-learn
+numpy
+scipy
+pandas
+matplotlib
+textblob
+nltk
+tqdm
+seaborn
