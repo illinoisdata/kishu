@@ -1,4 +1,3 @@
-import time
 import pytest
 
 from typing import Any, Dict, Generator, Set, Tuple
@@ -42,7 +41,7 @@ class PlannerManager:
             del self.planner._user_ns[var_name]
 
         # Return changed variables from post run cell update.
-        return self.planner.post_run_cell_update(cell_code, time.monotonic_ns(), cell_runtime)
+        return self.planner.post_run_cell_update(cell_code, cell_runtime)
 
     def checkpoint_session(self, filename: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
         checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(filename, "1:1")
@@ -110,7 +109,7 @@ def test_checkpoint_restore_planner_with_existing_items(enable_always_migrate):
 
     # Post run cell 3; x is incremented by 1.
     user_ns["x"] = 2
-    planner.post_run_cell_update("x += 1", 1.0, 1.0)
+    planner.post_run_cell_update("x += 1", 1.0)
 
     # Assert correct contents of AHG is maintained after initializing the planner in a non-empty namespace.
     assert variable_snapshots.keys() == {"x", "y"}

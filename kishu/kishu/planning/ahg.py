@@ -225,13 +225,13 @@ class AHG:
         for dst_vs in dst_vss:
             dst_vs.output_ce = ce
 
-    def update_graph(self, cell: Optional[str], end_time: int, cell_runtime_s: float, input_variables: Set[str],
+    def update_graph(self, cell: Optional[str], version: int, cell_runtime_s: float, input_variables: Set[str],
                      created_and_modified_variables: Set[str], deleted_variables: Set[str]) -> None:
         """
             Updates the graph according to the newly executed cell and its input and output variables.
 
             @param cell: Raw cell code.
-            @param end_time: End time of cell execution. Used as version for newly created VSes.
+            @param version: Version number of newly created VSes.
             @param cell_runtime_s: Cell runtime in seconds.
             @param input_variables: Set of input variables of the cell.
             @param created_and_modified_variables: set of created and modified variables.
@@ -243,8 +243,8 @@ class AHG:
         input_vss = [self._variable_snapshots[variable][-1] for variable in input_variables]
 
         # Create output variable snapshots
-        output_vss_create = [self.create_variable_snapshot(k, end_time, False) for k in created_and_modified_variables]
-        output_vss_delete = [self.create_variable_snapshot(k, end_time, True) for k in deleted_variables]
+        output_vss_create = [self.create_variable_snapshot(k, version, False) for k in created_and_modified_variables]
+        output_vss_delete = [self.create_variable_snapshot(k, version, True) for k in deleted_variables]
 
         # Add the newly created CE to the graph.
         self.add_cell_execution(cell, cell_runtime_s, input_vss, output_vss_create + output_vss_delete)
