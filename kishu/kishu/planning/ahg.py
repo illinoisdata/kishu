@@ -173,8 +173,6 @@ class AHG:
             raise MissingHistoryError()
 
         # First cell execution has no input variables and outputs all existing variables.
-        # Since we don't have runtime information, we will assume that each cell execution takes
-        # 1 second to run, as such, versions are assigned in increments of 1 second.
         if existing_cell_executions:
             ahg.update_graph(existing_cell_executions[0], time.monotonic_ns(), 1.0, set(), user_ns.keyset(), set())
 
