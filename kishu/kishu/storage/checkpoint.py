@@ -90,7 +90,7 @@ class KishuCheckpoint:
             # Insert the mapping from variable KVs to namespace into database.
             cur.executemany(
                 f"insert into {VARIABLE_KV_TABLE} values (?, ?, ?, ?)",
-                [(versioned_name.timestamp, versioned_name.name, commit_id, ns_id) for timestamped_name in component]
+                [(versioned_name.timestamp, versioned_name.name, commit_id, ns_id) for versioned_name in component]
             )
             con.commit()
 
