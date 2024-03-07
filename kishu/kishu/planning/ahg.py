@@ -45,7 +45,7 @@ class VariableSnapshot:
         variable snapshots.
 
         @param name: variable name.
-        @param version: version of creation or update to the corresponding variable name.
+        @param version: time of creation or update to the corresponding variable name.
         @param deleted: whether this VS is created for the deletion of a variable, i.e., 'del x'.
         @param input_ces: Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
         @param output_ce: The (unique) cell execution creating this variable snapshot.
@@ -121,8 +121,7 @@ class VsConnectedComponents:
         if linked_vs_pairs is not None:
             vs_connected_components.union_find(
                 [VersionedName(vs.name, vs.version) for vs in vs_list],
-                [(VersionedName(vs1.name, vs1.version),
-                  VersionedName(vs2.name, vs2.version)) for vs1, vs2 in linked_vs_pairs]
+                [(VersionedName(vs1.name, vs1.version), VersionedName(vs2.name, vs2.version)) for vs1, vs2 in linked_vs_pairs]
             )
 
         # Compute connected components from union find results.

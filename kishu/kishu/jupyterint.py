@@ -41,7 +41,6 @@ Reference
 from __future__ import annotations
 
 import contextlib
-import datetime as dt
 import dill as pickle
 import IPython
 import io
@@ -504,7 +503,7 @@ class KishuForJupyter:
         # Update optimization items.
         changed_vars = self._cr_planner.post_run_cell_update(
             entry.raw_cell,
-            dt.datetime.now().timestamp(),
+            time.monotonic_ns(),
             entry.end_time - entry.start_time
         )
 
