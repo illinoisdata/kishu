@@ -29,8 +29,7 @@ class KishuCheckpoint:
 
         # Create incremental checkpointing related tables only if the config flag is enabled.
         if Config.get('PLANNER', 'incremental_store', False):
-            cur.execute(
-                f'create table if not exists {VARIABLE_KV_TABLE} (timestamp float, name text, ns_id text, commit_id text)')
+            cur.execute(f'create table if not exists {VARIABLE_KV_TABLE} (version int, name text, ns_id text, commit_id text)')
             cur.execute(f'create table if not exists {NAMESPACE_TABLE} (ns_id text primary key, data blob)')
 
         con.commit()
@@ -69,7 +68,7 @@ class KishuCheckpoint:
         component_list = []
         for ns_id in select_distinct_res:
             cur.execute(
-                f"select timestamp, name from {VARIABLE_KV_TABLE} where ns_id = ?",
+                f"select version, name from {VARIABLE_KV_TABLE} where ns_id = ?",
                 ns_id
             )
             filter_res: List = cur.fetchall()
@@ -90,7 +89,7 @@ class KishuCheckpoint:
             # Insert the mapping from variable KVs to namespace into database.
             cur.executemany(
                 f"insert into {VARIABLE_KV_TABLE} values (?, ?, ?, ?)",
-                [(versioned_name.timestamp, versioned_name.name, commit_id, ns_id) for versioned_name in component]
+                [(versioned_name.version, versioned_name.name, commit_id, ns_id) for versioned_name in component]
             )
             con.commit()
 

@@ -3,17 +3,17 @@ from kishu.planning.ahg import AHG, VariableSnapshot, VersionedName, VsConnected
 
 def test_create_variable_snapshot():
     """
-        Test graph correctly handles timestamping of VSs with the same and different names.
+        Test graph correctly handles versioning of VSs with the same and different names.
     """
     ahg = AHG()
-    vs1 = ahg.create_variable_snapshot("x", 1.0, False)
-    vs2 = ahg.create_variable_snapshot("x", 2.0, False)
-    vs3 = ahg.create_variable_snapshot("y", 3.0, False)
+    vs1 = ahg.create_variable_snapshot("x", 1, False)
+    vs2 = ahg.create_variable_snapshot("x", 2, False)
+    vs3 = ahg.create_variable_snapshot("y", 3, False)
 
-    # VSs are timestamped correcly
-    assert vs1.timestamp == 1.0
-    assert vs2.timestamp == 2.0
-    assert vs3.timestamp == 3.0
+    # VSs are versioned correcly
+    assert vs1.version == 1
+    assert vs2.version == 2  # vs2 is second VS for variable x
+    assert vs3.version == 3
 
     variable_snapshots = ahg.get_variable_snapshots()
 
@@ -25,8 +25,8 @@ def test_create_variable_snapshot():
 
 def test_add_cell_execution():
     ahg = AHG()
-    vs1 = ahg.create_variable_snapshot("x", 1.0, False)
-    vs2 = ahg.create_variable_snapshot("y", 1.0, False)
+    vs1 = ahg.create_variable_snapshot("x", 1, False)
+    vs2 = ahg.create_variable_snapshot("y", 1, False)
 
     ahg.add_cell_execution("", 1, [vs1], [vs2])
 
@@ -42,11 +42,11 @@ def test_add_cell_execution():
 
 def test_update_graph():
     ahg = AHG()
-    vs1 = ahg.create_variable_snapshot("x", 1.0, False)
-    _ = ahg.create_variable_snapshot("y", 1.0, False)
+    vs1 = ahg.create_variable_snapshot("x", 1, False)
+    _ = ahg.create_variable_snapshot("y", 1, False)
 
     # x is read and modified, z is created, y is deleted
-    ahg.update_graph("", 2.0, 1, {"x"}, {"x", "z"}, {"y"})
+    ahg.update_graph("", 2, 1, {"x"}, {"x", "z"}, {"y"})
 
     variable_snapshots = ahg.get_variable_snapshots()
     cell_executions = ahg.get_cell_executions()
@@ -69,12 +69,12 @@ def test_create_vs_connected_component_from_vses():
         Connected components:
         a---b---c  d---e  f
     """
-    vs_a = VariableSnapshot("a", 1.0)
-    vs_b = VariableSnapshot("b", 1.0)
-    vs_c = VariableSnapshot("c", 1.0)
-    vs_d = VariableSnapshot("d", 1.0)
-    vs_e = VariableSnapshot("e", 1.0)
-    vs_f = VariableSnapshot("f", 1.0)
+    vs_a = VariableSnapshot("a", 1)
+    vs_b = VariableSnapshot("b", 1)
+    vs_c = VariableSnapshot("c", 1)
+    vs_d = VariableSnapshot("d", 1)
+    vs_e = VariableSnapshot("e", 1)
+    vs_f = VariableSnapshot("f", 1)
 
     vs_connected_components = VsConnectedComponents.create_from_vses(
         [vs_a, vs_b, vs_c, vs_d, vs_e, vs_f],
@@ -83,12 +83,12 @@ def test_create_vs_connected_component_from_vses():
 
     # 3 connected components
     assert len(vs_connected_components.get_connected_components()) == 3
-    assert {VersionedName("a", 1.0),
-            VersionedName("b", 1.0),
-            VersionedName("c", 1.0)} in vs_connected_components.get_connected_components()
-    assert {VersionedName("d", 1.0),
-            VersionedName("e", 1.0)} in vs_connected_components.get_connected_components()
-    assert {VersionedName("f", 1.0)} in vs_connected_components.get_connected_components()
+    assert {VersionedName("a", 1),
+            VersionedName("b", 1),
+            VersionedName("c", 1)} in vs_connected_components.get_connected_components()
+    assert {VersionedName("d", 1),
+            VersionedName("e", 1)} in vs_connected_components.get_connected_components()
+    assert {VersionedName("f", 1)} in vs_connected_components.get_connected_components()
 
     # 6 VSes in total
     assert vs_connected_components.get_variable_names() == {"a", "b", "c", "d", "e", "f"}
@@ -102,12 +102,12 @@ def test_create_vs_merge_connected_components():
          / |  |
         b--c  e--f
     """
-    vs_a = VariableSnapshot("a", 1.0)
-    vs_b = VariableSnapshot("b", 1.0)
-    vs_c = VariableSnapshot("c", 1.0)
-    vs_d = VariableSnapshot("d", 1.0)
-    vs_e = VariableSnapshot("e", 1.0)
-    vs_f = VariableSnapshot("f", 1.0)
+    vs_a = VariableSnapshot("a", 1)
+    vs_b = VariableSnapshot("b", 1)
+    vs_c = VariableSnapshot("c", 1)
+    vs_d = VariableSnapshot("d", 1)
+    vs_e = VariableSnapshot("e", 1)
+    vs_f = VariableSnapshot("f", 1)
 
     # components 'abc' and 'def' are merged.
     vs_connected_components = VsConnectedComponents.create_from_vses(
@@ -117,12 +117,12 @@ def test_create_vs_merge_connected_components():
 
     # 1 connected component
     assert {
-                VersionedName("a", 1.0),
-                VersionedName("b", 1.0),
-                VersionedName("c", 1.0),
-                VersionedName("d", 1.0),
-                VersionedName("e", 1.0),
-                VersionedName("f", 1.0)
+                VersionedName("a", 1),
+                VersionedName("b", 1),
+                VersionedName("c", 1),
+                VersionedName("d", 1),
+                VersionedName("e", 1),
+                VersionedName("f", 1)
            } in vs_connected_components.get_connected_components()
 
     # 6 VSes in total
@@ -135,11 +135,11 @@ def test_is_subset_of_component():
         a---b---c  d---e  f
     """
     vs_connected_components = VsConnectedComponents.create_from_component_list(
-        [[VersionedName("a", 1.0), VersionedName("b", 1.0), VersionedName("c", 1.0)],
-         [VersionedName("d", 1.0), VersionedName("e", 1.0)], [VersionedName("f", 1.0)]]
+        [[VersionedName("a", 1), VersionedName("b", 1), VersionedName("c", 1)],
+         [VersionedName("d", 1), VersionedName("e", 1)], [VersionedName("f", 1)]]
     )
 
     assert vs_connected_components.contains_component(
-        {VersionedName("a", 1.0), VersionedName("b", 1.0)})
+        {VersionedName("a", 1), VersionedName("b", 1)})
     assert not vs_connected_components.contains_component(
-        {VersionedName("f", 1.0), VersionedName("g", 1.0)})
+        {VersionedName("f", 1), VersionedName("g", 1)})

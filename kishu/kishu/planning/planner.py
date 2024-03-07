@@ -84,7 +84,7 @@ class CheckpointRestorePlanner:
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def post_run_cell_update(self, code_block: Optional[str], end_time: float, runtime_s: Optional[float]) -> ChangedVariables:
+    def post_run_cell_update(self, code_block: Optional[str], end_time: int, runtime_s: Optional[float]) -> ChangedVariables:
         """
             Post-processing steps performed after cell execution.
             @param code_block: code of executed cell.
@@ -153,7 +153,7 @@ class CheckpointRestorePlanner:
                 stored_active_vses.update(set(current_component))
 
         # Return the active VSes we need to store and the already stored (not necessarily active) VSes
-        return [vs for vs in active_vss if VersionedName(vs.name, vs.timestamp) not in stored_active_vses], stored_vses
+        return [vs for vs in active_vss if VersionedName(vs.name, vs.version) not in stored_active_vses], stored_vses
 
     def generate_checkpoint_restore_plans(self, database_path: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.

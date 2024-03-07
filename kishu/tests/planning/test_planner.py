@@ -42,7 +42,7 @@ class PlannerManager:
             del self.planner._user_ns[var_name]
 
         # Return changed variables from post run cell update.
-        return self.planner.post_run_cell_update(cell_code, time.time(), cell_runtime)
+        return self.planner.post_run_cell_update(cell_code, time.monotonic_ns(), cell_runtime)
 
     def checkpoint_session(self, filename: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
         checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(filename, "1:1")

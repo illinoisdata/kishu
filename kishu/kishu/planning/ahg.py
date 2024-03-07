@@ -31,10 +31,10 @@ class CellExecution:
 @dataclass(frozen=True)
 class VersionedName:
     """
-        Simplified name-timestamp representation of a Variable Snapshot. Hashable and immutable.
+        Simplified name-version representation of a Variable Snapshot. Hashable and immutable.
     """
     name: str
-    timestamp: float
+    version: int
 
 
 @dataclass
@@ -45,13 +45,13 @@ class VariableSnapshot:
         variable snapshots.
 
         @param name: variable name.
-        @param timestamp: timestamp of creation or update to the corresponding variable name.
+        @param version: version of creation or update to the corresponding variable name.
         @param deleted: whether this VS is created for the deletion of a variable, i.e., 'del x'.
         @param input_ces: Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
         @param output_ce: The (unique) cell execution creating this variable snapshot.
     """
     name: str
-    timestamp: float
+    version: int
     deleted: bool = False
     size: float = 0.0
     input_ces: List[CellExecution] = field(default_factory=lambda: [])
@@ -63,7 +63,7 @@ class VsConnectedComponents:
         """
             Class for representing the connected components of a set of Variable Snapshots.
         """
-        # VSes are internally stored as name-timestamp pairs as they are not hashable.
+        # VSes are internally stored as name-version pairs as they are not hashable.
         self.roots: Dict[VersionedName, VersionedName] = {}
         self.connected_components: List[Set[VersionedName]] = []
 
@@ -120,9 +120,9 @@ class VsConnectedComponents:
         # Union find.
         if linked_vs_pairs is not None:
             vs_connected_components.union_find(
-                [VersionedName(vs.name, vs.timestamp) for vs in vs_list],
-                [(VersionedName(vs1.name, vs1.timestamp),
-                  VersionedName(vs2.name, vs2.timestamp)) for vs1, vs2 in linked_vs_pairs]
+                [VersionedName(vs.name, vs.version) for vs in vs_list],
+                [(VersionedName(vs1.name, vs1.version),
+                  VersionedName(vs2.name, vs2.version)) for vs1, vs2 in linked_vs_pairs]
             )
 
         # Compute connected components from union find results.
@@ -174,7 +174,7 @@ class AHG:
 
         # First cell execution has no input variables and outputs all existing variables.
         # Since we don't have runtime information, we will assume that each cell execution takes
-        # 1 second to run, as such, timestamps are assigned in increments of 1 second.
+        # 1 second to run, as such, versions are assigned in increments of 1 second.
         if existing_cell_executions:
             ahg.update_graph(existing_cell_executions[0], 0.0, 1.0, set(), user_ns.keyset(), set())
 
@@ -184,16 +184,16 @@ class AHG:
 
         return ahg
 
-    def create_variable_snapshot(self, variable_name: str, timestamp: float, deleted: bool) -> VariableSnapshot:
+    def create_variable_snapshot(self, variable_name: str, version: float, deleted: bool) -> VariableSnapshot:
         """
             Creates a new variable snapshot for a given variable.
 
             @param variable_name: name of variable.
-            @param timestamp: timestamp of variable snapshot.
+            @param version: version of variable snapshot.
             @param deleted: Whether this VS is created for the deletion of a variable, i.e. 'del x'.
         """
         # Create a new VS instance and store it in the graph.
-        vs = VariableSnapshot(variable_name, timestamp, deleted)
+        vs = VariableSnapshot(variable_name, version, deleted)
         self._variable_snapshots[variable_name].append(vs)
         return vs
 
@@ -232,7 +232,7 @@ class AHG:
             Updates the graph according to the newly executed cell and its input and output variables.
 
             @param cell: Raw cell code.
-            @param end_time: End time of cell execution. Used as timestamp for newly created VSes.
+            @param end_time: End time of cell execution. Used as version for newly created VSes.
             @param cell_runtime_s: Cell runtime in seconds.
             @param input_variables: Set of input variables of the cell.
             @param created_and_modified_variables: set of created and modified variables.

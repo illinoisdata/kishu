@@ -163,12 +163,12 @@ def test_store_connected_components(enable_incremental_store):
     # save
     exec_id = 1
     vs_connected_components = VsConnectedComponents.create_from_component_list(
-        [[VersionedName('a', 1.0), VersionedName('b', 1.0)], [VersionedName('c', 1.0)]])
+        [[VersionedName('a', 1), VersionedName('b', 1)], [VersionedName('c', 1)]])
     checkpoint = IncrementalCheckpointPlan.create(user_ns, filename, exec_id, vs_connected_components)
     checkpoint.run(user_ns)
 
     # Read stored connected components
     stored_vs_connected_components = KishuCheckpoint(filename).get_stored_connected_components()
 
-    assert {VersionedName("a", 1.0), VersionedName("b", 1.0)}, \
-        {VersionedName("c", 1.0)} in stored_vs_connected_components.get_connected_components()
+    assert {VersionedName("a", 1), VersionedName("b", 1)}, \
+        {VersionedName("c", 1)} in stored_vs_connected_components.get_connected_components()
