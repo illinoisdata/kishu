@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dill
+import time
 
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -175,15 +176,16 @@ class AHG:
         # Since we don't have runtime information, we will assume that each cell execution takes
         # 1 second to run, as such, versions are assigned in increments of 1 second.
         if existing_cell_executions:
-            ahg.update_graph(existing_cell_executions[0], 0.0, 1.0, set(), user_ns.keyset(), set())
+            ahg.update_graph(existing_cell_executions[0], time.monotonic_ns(), 1.0, set(), user_ns.keyset(), set())
 
             # Subsequent cell executions has all existing variables as input and output variables.
             for i in range(1, len(existing_cell_executions)):
-                ahg.update_graph(existing_cell_executions[i], i * 1.0, 1.0, user_ns.keyset(), user_ns.keyset(), set())
+                ahg.update_graph(
+                    existing_cell_executions[i], time.monotonic_ns(), 1.0, user_ns.keyset(), user_ns.keyset(), set())
 
         return ahg
 
-    def create_variable_snapshot(self, variable_name: str, version: float, deleted: bool) -> VariableSnapshot:
+    def create_variable_snapshot(self, variable_name: str, version: int, deleted: bool) -> VariableSnapshot:
         """
             Creates a new variable snapshot for a given variable.
 
@@ -225,7 +227,7 @@ class AHG:
         for dst_vs in dst_vss:
             dst_vs.output_ce = ce
 
-    def update_graph(self, cell: Optional[str], end_time: float, cell_runtime_s: float, input_variables: Set[str],
+    def update_graph(self, cell: Optional[str], end_time: int, cell_runtime_s: float, input_variables: Set[str],
                      created_and_modified_variables: Set[str], deleted_variables: Set[str]) -> None:
         """
             Updates the graph according to the newly executed cell and its input and output variables.
