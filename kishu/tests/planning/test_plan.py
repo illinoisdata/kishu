@@ -4,7 +4,7 @@ from IPython.core.interactiveshell import InteractiveShell
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import VersionedName, VsConnectedComponents
+from kishu.planning.ahg import TimestampedName, VsConnectedComponents
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.path import KishuPath
@@ -163,12 +163,12 @@ def test_store_connected_components(enable_incremental_store):
     # save
     exec_id = 1
     vs_connected_components = VsConnectedComponents.create_from_component_list(
-        [[VersionedName('a', 1), VersionedName('b', 1)], [VersionedName('c', 1)]])
+        [[TimestampedName('a', 1.0), TimestampedName('b', 1.0)], [TimestampedName('c', 1.0)]])
     checkpoint = IncrementalCheckpointPlan.create(user_ns, filename, exec_id, vs_connected_components)
     checkpoint.run(user_ns)
 
     # Read stored connected components
     stored_vs_connected_components = KishuCheckpoint(filename).get_stored_connected_components()
 
-    assert {VersionedName("a", 1), VersionedName("b", 1)}, \
-        {VersionedName("c", 1)} in stored_vs_connected_components.get_connected_components()
+    assert {TimestampedName("a", 1.0), TimestampedName("b", 1.0)}, \
+        {TimestampedName("c", 1.0)} in stored_vs_connected_components.get_connected_components()

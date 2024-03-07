@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from networkx.algorithms.flow import shortest_augmenting_path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from kishu.planning.ahg import AHG, CellExecution, VariableSnapshot, VersionedName
+from kishu.planning.ahg import AHG, CellExecution, TimestampedName, VariableSnapshot
 from kishu.storage.config import Config
 
 
@@ -31,7 +31,7 @@ class Optimizer():
         self, ahg: AHG,
         active_vss: List[VariableSnapshot],
         linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
-        already_stored_vss: Optional[Set[VersionedName]] = None
+        already_stored_vss: Optional[Set[TimestampedName]] = None
     ) -> None:
         """
             Creates an optimizer with a migration speed estimate. The AHG and active VS fields
@@ -55,8 +55,8 @@ class Optimizer():
             network_bandwidth=Config.get('OPTIMIZER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
         )
 
-        # Set lookup for active VSs by name and version as VS objects are not hashable.
-        self.active_vss_lookup = {vs.name: vs.version for vs in active_vss}
+        # Set lookup for active VSs by name and timestamp as VS objects are not hashable.
+        self.active_vss_lookup = {vs.name: vs.timestamp for vs in active_vss}
         self.already_stored_vss = already_stored_vss if already_stored_vss else set()
 
         # CEs required to recompute a variables last modified by a given CE.
@@ -81,13 +81,13 @@ class Optimizer():
                 # Else, recurse into input variables of the CE.
                 prerequisite_ces.add(current.cell_num)
                 for vs in current.src_vss:
-                    if (vs.name, vs.version) not in self.active_vss_lookup.items() \
-                            and VersionedName(vs.name, vs.version) not in self.already_stored_vss \
-                            and (vs.name, vs.version) not in visited:
+                    if (vs.name, vs.timestamp) not in self.active_vss_lookup.items() \
+                            and TimestampedName(vs.name, vs.timestamp) not in self.already_stored_vss \
+                            and (vs.name, vs.timestamp) not in visited:
                         self.dfs_helper(vs, visited, prerequisite_ces)
 
         elif isinstance(current, VariableSnapshot):
-            visited.add((current.name, current.version))
+            visited.add((current.name, current.timestamp))
             if current.output_ce and current.output_ce.cell_num not in prerequisite_ces:
                 self.dfs_helper(current.output_ce, visited, prerequisite_ces)
 

@@ -29,12 +29,12 @@ class CellExecution:
 
 
 @dataclass(frozen=True)
-class VersionedName:
+class TimestampedName:
     """
-        Simplified name-version representation of a Variable Snapshot. Hashable and immutable.
+        Simplified name-timestamp representation of a Variable Snapshot. Hashable and immutable.
     """
     name: str
-    version: int
+    timestamp: float
 
 
 @dataclass
@@ -45,13 +45,13 @@ class VariableSnapshot:
         variable snapshots.
 
         @param name: variable name.
-        @param version: nth update to the corresponding variable name.
+        @param timestamp: timestamp of creation or update to the corresponding variable name.
         @param deleted: whether this VS is created for the deletion of a variable, i.e., 'del x'.
         @param input_ces: Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
         @param output_ce: The (unique) cell execution creating this variable snapshot.
     """
     name: str
-    version: int
+    timestamp: float
     deleted: bool = False
     size: float = 0.0
     input_ces: List[CellExecution] = field(default_factory=lambda: [])
@@ -63,12 +63,12 @@ class VsConnectedComponents:
         """
             Class for representing the connected components of a set of Variable Snapshots.
         """
-        # VSes are internally stored as name-version pairs as they are not hashable.
-        self.roots: Dict[VersionedName, VersionedName] = {}
-        self.connected_components: List[Set[VersionedName]] = []
+        # VSes are internally stored as name-timestamp pairs as they are not hashable.
+        self.roots: Dict[TimestampedName, TimestampedName] = {}
+        self.connected_components: List[Set[TimestampedName]] = []
 
-    def union_find(self, vs_list: List[VersionedName], linked_vs_pairs: List[Tuple[VersionedName, VersionedName]]):
-        def find_root(vs: VersionedName) -> VersionedName:
+    def union_find(self, vs_list: List[TimestampedName], linked_vs_pairs: List[Tuple[TimestampedName, TimestampedName]]):
+        def find_root(vs: TimestampedName) -> TimestampedName:
             if self.roots.get(vs, vs) == vs:
                 return vs
             self.roots[vs] = find_root(self.roots[vs])
@@ -89,18 +89,18 @@ class VsConnectedComponents:
             connected_components_dict[vs_root].add(vs)
         self.connected_components = list(connected_components_dict.values())
 
-    def get_connected_components(self) -> List[Set[VersionedName]]:
+    def get_connected_components(self) -> List[Set[TimestampedName]]:
         return self.connected_components
 
     def get_variable_names(self) -> Set[str]:
         # Return all variable KVs in components as a flattened set.
-        return set(versioned_name.name for versioned_name in self.roots.keys())
+        return set(timestamped_name.name for timestamped_name in self.roots.keys())
 
-    def get_versioned_names(self) -> Set[VersionedName]:
-        # Return all versioned names in components as a flattened set.
+    def get_timestamped_names(self) -> Set[TimestampedName]:
+        # Return all timestamped names in components as a flattened set.
         return set(self.roots.keys())
 
-    def contains_component(self, other_component: Set[VersionedName]) -> bool:
+    def contains_component(self, other_component: Set[TimestampedName]) -> bool:
         """
             Tests if other_component is a subset of any of the current connected components.
         """
@@ -120,8 +120,9 @@ class VsConnectedComponents:
         # Union find.
         if linked_vs_pairs is not None:
             vs_connected_components.union_find(
-                [VersionedName(vs.name, vs.version) for vs in vs_list],
-                [(VersionedName(vs1.name, vs1.version), VersionedName(vs2.name, vs2.version)) for vs1, vs2 in linked_vs_pairs]
+                [TimestampedName(vs.name, vs.timestamp) for vs in vs_list],
+                [(TimestampedName(vs1.name, vs1.timestamp),
+                  TimestampedName(vs2.name, vs2.timestamp)) for vs1, vs2 in linked_vs_pairs]
             )
 
         # Compute connected components from union find results.
@@ -131,7 +132,7 @@ class VsConnectedComponents:
 
     @staticmethod
     def create_from_component_list(
-        component_list: List[List[VersionedName]]
+        component_list: List[List[TimestampedName]]
     ):
         vs_connected_components = VsConnectedComponents()
 
@@ -172,27 +173,27 @@ class AHG:
             raise MissingHistoryError()
 
         # First cell execution has no input variables and outputs all existing variables.
+        # Since we don't have runtime information, we will assume that each cell execution takes
+        # 1 second to run, as such, timestamps are assigned in increments of 1 second.
         if existing_cell_executions:
-            ahg.update_graph(existing_cell_executions[0], 1.0, set(), user_ns.keyset(), set())
+            ahg.update_graph(existing_cell_executions[0], 0.0, 1.0, set(), user_ns.keyset(), set())
 
             # Subsequent cell executions has all existing variables as input and output variables.
             for i in range(1, len(existing_cell_executions)):
-                ahg.update_graph(existing_cell_executions[i], 1.0, user_ns.keyset(), user_ns.keyset(), set())
+                ahg.update_graph(existing_cell_executions[i], i * 1.0, 1.0, user_ns.keyset(), user_ns.keyset(), set())
 
         return ahg
 
-    def create_variable_snapshot(self, variable_name: str, deleted: bool) -> VariableSnapshot:
+    def create_variable_snapshot(self, variable_name: str, timestamp: float, deleted: bool) -> VariableSnapshot:
         """
             Creates a new variable snapshot for a given variable.
 
             @param variable_name: name of variable.
+            @param timestamp: timestamp of variable snapshot.
             @param deleted: Whether this VS is created for the deletion of a variable, i.e. 'del x'.
         """
-        # Assign a version number to the VS.
-        version = len(self._variable_snapshots[variable_name]) if variable_name in self._variable_snapshots else 0
-
         # Create a new VS instance and store it in the graph.
-        vs = VariableSnapshot(variable_name, version, deleted)
+        vs = VariableSnapshot(variable_name, timestamp, deleted)
         self._variable_snapshots[variable_name].append(vs)
         return vs
 
@@ -225,12 +226,13 @@ class AHG:
         for dst_vs in dst_vss:
             dst_vs.output_ce = ce
 
-    def update_graph(self, cell: Optional[str], cell_runtime_s: float, input_variables: Set[str],
+    def update_graph(self, cell: Optional[str], end_time: float, cell_runtime_s: float, input_variables: Set[str],
                      created_and_modified_variables: Set[str], deleted_variables: Set[str]) -> None:
         """
             Updates the graph according to the newly executed cell and its input and output variables.
 
             @param cell: Raw cell code.
+            @param end_time: End time of cell execution. Used as timestamp for newly created VSes.
             @param cell_runtime_s: Cell runtime in seconds.
             @param input_variables: Set of input variables of the cell.
             @param created_and_modified_variables: set of created and modified variables.
@@ -242,8 +244,8 @@ class AHG:
         input_vss = [self._variable_snapshots[variable][-1] for variable in input_variables]
 
         # Create output variable snapshots
-        output_vss_create = [self.create_variable_snapshot(k, False) for k in created_and_modified_variables]
-        output_vss_delete = [self.create_variable_snapshot(k, True) for k in deleted_variables]
+        output_vss_create = [self.create_variable_snapshot(k, end_time, False) for k in created_and_modified_variables]
+        output_vss_delete = [self.create_variable_snapshot(k, end_time, True) for k in deleted_variables]
 
         # Add the newly created CE to the graph.
         self.add_cell_execution(cell, cell_runtime_s, input_vss, output_vss_create + output_vss_delete)

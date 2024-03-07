@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 
-from kishu.planning.ahg import AHG, VariableSnapshot, VersionedName, VsConnectedComponents
+from kishu.planning.ahg import AHG, TimestampedName, VariableSnapshot, VsConnectedComponents
 from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
@@ -84,10 +84,11 @@ class CheckpointRestorePlanner:
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def post_run_cell_update(self, code_block: Optional[str], runtime_s: Optional[float]) -> ChangedVariables:
+    def post_run_cell_update(self, code_block: Optional[str], end_time: float, runtime_s: Optional[float]) -> ChangedVariables:
         """
             Post-processing steps performed after cell execution.
             @param code_block: code of executed cell.
+            @param end_time: end time of cell execution.
             @param runtime_s: runtime of cell execution.
         """
         # Find accessed variables from monkey-patched namespace.
@@ -118,7 +119,7 @@ class CheckpointRestorePlanner:
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
 
-        self._ahg.update_graph(code_block, runtime_s, accessed_vars,
+        self._ahg.update_graph(code_block, end_time, runtime_s, accessed_vars,
                                created_vars.union(modified_vars_structure), deleted_vars)
 
         # Update ID graphs for newly created variables.
@@ -132,27 +133,27 @@ class CheckpointRestorePlanner:
         active_vss: List[VariableSnapshot],
         linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
         database_path: str
-    ) -> Tuple[List[VariableSnapshot], Set[VersionedName]]:
+    ) -> Tuple[List[VariableSnapshot], Set[TimestampedName]]:
         """
             Adjust the active variables and optimizer settings according to already stored variables if incremental
             computation is enabled.
         """
         # Currently stored VSes
         stored_vs_connected_components = KishuCheckpoint(database_path).get_stored_connected_components()
-        stored_vses = stored_vs_connected_components.get_versioned_names()
+        stored_vses = stored_vs_connected_components.get_timestamped_names()
 
         # VSes in session state
         current_vs_connected_components = VsConnectedComponents.create_from_vses(active_vss, linked_vs_pairs)
 
         # If a connected component of VSes in the current session state is a subset of an already stored
         # connected component, we can skip storing it.
-        stored_active_vses: Set[VersionedName] = set()
+        stored_active_vses: Set[TimestampedName] = set()
         for current_component in current_vs_connected_components.get_connected_components():
             if stored_vs_connected_components.contains_component(current_component):
                 stored_active_vses.update(set(current_component))
 
         # Return the active VSes we need to store and the already stored (not necessarily active) VSes
-        return [vs for vs in active_vss if VersionedName(vs.name, vs.version) not in stored_active_vses], stored_vses
+        return [vs for vs in active_vss if TimestampedName(vs.name, vs.timestamp) not in stored_active_vses], stored_vses
 
     def generate_checkpoint_restore_plans(self, database_path: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
