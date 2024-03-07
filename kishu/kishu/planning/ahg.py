@@ -50,7 +50,7 @@ class VariableSnapshot:
         @param input_ces: Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
         @param output_ce: The (unique) cell execution creating this variable snapshot.
     """
-    name: Set[str]
+    name: str
     timestamp: float
     deleted: bool = False
     size: float = 0.0
