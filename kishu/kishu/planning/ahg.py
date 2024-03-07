@@ -94,7 +94,7 @@ class VsConnectedComponents:
 
     def get_variable_names(self) -> Set[str]:
         # Return all variable KVs in components as a flattened set.
-        return set(timestamped_name.name for timestamped_name in self.roots.keys())
+        return set(versioned_name.name for versioned_name in self.roots.keys())
 
     def get_versioned_names(self) -> Set[VersionedName]:
         # Return all versioned names in components as a flattened set.
