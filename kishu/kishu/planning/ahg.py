@@ -29,7 +29,7 @@ class CellExecution:
 
 
 @dataclass(frozen=True)
-class TimestampedName:
+class VersionedName:
     """
         Simplified name-timestamp representation of a Variable Snapshot. Hashable and immutable.
     """
@@ -50,7 +50,7 @@ class VariableSnapshot:
         @param input_ces: Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
         @param output_ce: The (unique) cell execution creating this variable snapshot.
     """
-    name: str
+    name: Set[str]
     timestamp: float
     deleted: bool = False
     size: float = 0.0
@@ -64,11 +64,11 @@ class VsConnectedComponents:
             Class for representing the connected components of a set of Variable Snapshots.
         """
         # VSes are internally stored as name-timestamp pairs as they are not hashable.
-        self.roots: Dict[TimestampedName, TimestampedName] = {}
-        self.connected_components: List[Set[TimestampedName]] = []
+        self.roots: Dict[VersionedName, VersionedName] = {}
+        self.connected_components: List[Set[VersionedName]] = []
 
-    def union_find(self, vs_list: List[TimestampedName], linked_vs_pairs: List[Tuple[TimestampedName, TimestampedName]]):
-        def find_root(vs: TimestampedName) -> TimestampedName:
+    def union_find(self, vs_list: List[VersionedName], linked_vs_pairs: List[Tuple[VersionedName, VersionedName]]):
+        def find_root(vs: VersionedName) -> VersionedName:
             if self.roots.get(vs, vs) == vs:
                 return vs
             self.roots[vs] = find_root(self.roots[vs])
@@ -89,18 +89,18 @@ class VsConnectedComponents:
             connected_components_dict[vs_root].add(vs)
         self.connected_components = list(connected_components_dict.values())
 
-    def get_connected_components(self) -> List[Set[TimestampedName]]:
+    def get_connected_components(self) -> List[Set[VersionedName]]:
         return self.connected_components
 
     def get_variable_names(self) -> Set[str]:
         # Return all variable KVs in components as a flattened set.
         return set(timestamped_name.name for timestamped_name in self.roots.keys())
 
-    def get_timestamped_names(self) -> Set[TimestampedName]:
-        # Return all timestamped names in components as a flattened set.
+    def get_versioned_names(self) -> Set[VersionedName]:
+        # Return all versioned names in components as a flattened set.
         return set(self.roots.keys())
 
-    def contains_component(self, other_component: Set[TimestampedName]) -> bool:
+    def contains_component(self, other_component: Set[VersionedName]) -> bool:
         """
             Tests if other_component is a subset of any of the current connected components.
         """
@@ -120,9 +120,9 @@ class VsConnectedComponents:
         # Union find.
         if linked_vs_pairs is not None:
             vs_connected_components.union_find(
-                [TimestampedName(vs.name, vs.timestamp) for vs in vs_list],
-                [(TimestampedName(vs1.name, vs1.timestamp),
-                  TimestampedName(vs2.name, vs2.timestamp)) for vs1, vs2 in linked_vs_pairs]
+                [VersionedName(vs.name, vs.timestamp) for vs in vs_list],
+                [(VersionedName(vs1.name, vs1.timestamp),
+                  VersionedName(vs2.name, vs2.timestamp)) for vs1, vs2 in linked_vs_pairs]
             )
 
         # Compute connected components from union find results.
@@ -132,7 +132,7 @@ class VsConnectedComponents:
 
     @staticmethod
     def create_from_component_list(
-        component_list: List[List[TimestampedName]]
+        component_list: List[List[VersionedName]]
     ):
         vs_connected_components = VsConnectedComponents()
 

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from networkx.algorithms.flow import shortest_augmenting_path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from kishu.planning.ahg import AHG, CellExecution, TimestampedName, VariableSnapshot
+from kishu.planning.ahg import AHG, CellExecution, VariableSnapshot, VersionedName
 from kishu.storage.config import Config
 
 
@@ -31,7 +31,7 @@ class Optimizer():
         self, ahg: AHG,
         active_vss: List[VariableSnapshot],
         linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
-        already_stored_vss: Optional[Set[TimestampedName]] = None
+        already_stored_vss: Optional[Set[VersionedName]] = None
     ) -> None:
         """
             Creates an optimizer with a migration speed estimate. The AHG and active VS fields
@@ -82,7 +82,7 @@ class Optimizer():
                 prerequisite_ces.add(current.cell_num)
                 for vs in current.src_vss:
                     if (vs.name, vs.timestamp) not in self.active_vss_lookup.items() \
-                            and TimestampedName(vs.name, vs.timestamp) not in self.already_stored_vss \
+                            and VersionedName(vs.name, vs.timestamp) not in self.already_stored_vss \
                             and (vs.name, vs.timestamp) not in visited:
                         self.dfs_helper(vs, visited, prerequisite_ces)
 

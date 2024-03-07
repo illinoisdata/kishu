@@ -9,7 +9,7 @@ from typing import List
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import TimestampedName, VsConnectedComponents
+from kishu.planning.ahg import VersionedName, VsConnectedComponents
 from kishu.storage.config import Config
 
 
@@ -73,7 +73,7 @@ class KishuCheckpoint:
                 ns_id
             )
             filter_res: List = cur.fetchall()
-            component_list.append([TimestampedName(i[1], i[0]) for i in filter_res])
+            component_list.append([VersionedName(i[1], i[0]) for i in filter_res])
 
         return VsConnectedComponents.create_from_component_list(component_list)
 
@@ -90,7 +90,7 @@ class KishuCheckpoint:
             # Insert the mapping from variable KVs to namespace into database.
             cur.executemany(
                 f"insert into {VARIABLE_KV_TABLE} values (?, ?, ?, ?)",
-                [(timestamped_name.timestamp, timestamped_name.name, commit_id, ns_id) for timestamped_name in component]
+                [(versioned_name.timestamp, versioned_name.name, commit_id, ns_id) for timestamped_name in component]
             )
             con.commit()
 

@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 
-from kishu.planning.ahg import AHG, TimestampedName, VariableSnapshot, VsConnectedComponents
+from kishu.planning.ahg import AHG, VariableSnapshot, VersionedName, VsConnectedComponents
 from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import Optimizer
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
@@ -133,27 +133,27 @@ class CheckpointRestorePlanner:
         active_vss: List[VariableSnapshot],
         linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
         database_path: str
-    ) -> Tuple[List[VariableSnapshot], Set[TimestampedName]]:
+    ) -> Tuple[List[VariableSnapshot], Set[VersionedName]]:
         """
             Adjust the active variables and optimizer settings according to already stored variables if incremental
             computation is enabled.
         """
         # Currently stored VSes
         stored_vs_connected_components = KishuCheckpoint(database_path).get_stored_connected_components()
-        stored_vses = stored_vs_connected_components.get_timestamped_names()
+        stored_vses = stored_vs_connected_components.get_versioned_names()
 
         # VSes in session state
         current_vs_connected_components = VsConnectedComponents.create_from_vses(active_vss, linked_vs_pairs)
 
         # If a connected component of VSes in the current session state is a subset of an already stored
         # connected component, we can skip storing it.
-        stored_active_vses: Set[TimestampedName] = set()
+        stored_active_vses: Set[VersionedName] = set()
         for current_component in current_vs_connected_components.get_connected_components():
             if stored_vs_connected_components.contains_component(current_component):
                 stored_active_vses.update(set(current_component))
 
         # Return the active VSes we need to store and the already stored (not necessarily active) VSes
-        return [vs for vs in active_vss if TimestampedName(vs.name, vs.timestamp) not in stored_active_vses], stored_vses
+        return [vs for vs in active_vss if VersionedName(vs.name, vs.timestamp) not in stored_active_vses], stored_vses
 
     def generate_checkpoint_restore_plans(self, database_path: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.

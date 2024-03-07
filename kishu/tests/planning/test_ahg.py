@@ -1,4 +1,4 @@
-from kishu.planning.ahg import AHG, TimestampedName, VariableSnapshot, VsConnectedComponents
+from kishu.planning.ahg import AHG, VariableSnapshot, VersionedName, VsConnectedComponents
 
 
 def test_create_variable_snapshot():
@@ -83,12 +83,12 @@ def test_create_vs_connected_component_from_vses():
 
     # 3 connected components
     assert len(vs_connected_components.get_connected_components()) == 3
-    assert {TimestampedName("a", 1.0),
-            TimestampedName("b", 1.0),
-            TimestampedName("c", 1.0)} in vs_connected_components.get_connected_components()
-    assert {TimestampedName("d", 1.0),
-            TimestampedName("e", 1.0)} in vs_connected_components.get_connected_components()
-    assert {TimestampedName("f", 1.0)} in vs_connected_components.get_connected_components()
+    assert {VersionedName("a", 1.0),
+            VersionedName("b", 1.0),
+            VersionedName("c", 1.0)} in vs_connected_components.get_connected_components()
+    assert {VersionedName("d", 1.0),
+            VersionedName("e", 1.0)} in vs_connected_components.get_connected_components()
+    assert {VersionedName("f", 1.0)} in vs_connected_components.get_connected_components()
 
     # 6 VSes in total
     assert vs_connected_components.get_variable_names() == {"a", "b", "c", "d", "e", "f"}
@@ -117,12 +117,12 @@ def test_create_vs_merge_connected_components():
 
     # 1 connected component
     assert {
-                TimestampedName("a", 1.0),
-                TimestampedName("b", 1.0),
-                TimestampedName("c", 1.0),
-                TimestampedName("d", 1.0),
-                TimestampedName("e", 1.0),
-                TimestampedName("f", 1.0)
+                VersionedName("a", 1.0),
+                VersionedName("b", 1.0),
+                VersionedName("c", 1.0),
+                VersionedName("d", 1.0),
+                VersionedName("e", 1.0),
+                VersionedName("f", 1.0)
            } in vs_connected_components.get_connected_components()
 
     # 6 VSes in total
@@ -135,11 +135,11 @@ def test_is_subset_of_component():
         a---b---c  d---e  f
     """
     vs_connected_components = VsConnectedComponents.create_from_component_list(
-        [[TimestampedName("a", 1.0), TimestampedName("b", 1.0), TimestampedName("c", 1.0)],
-         [TimestampedName("d", 1.0), TimestampedName("e", 1.0)], [TimestampedName("f", 1.0)]]
+        [[VersionedName("a", 1.0), VersionedName("b", 1.0), VersionedName("c", 1.0)],
+         [VersionedName("d", 1.0), VersionedName("e", 1.0)], [VersionedName("f", 1.0)]]
     )
 
     assert vs_connected_components.contains_component(
-        {TimestampedName("a", 1.0), TimestampedName("b", 1.0)})
+        {VersionedName("a", 1.0), VersionedName("b", 1.0)})
     assert not vs_connected_components.contains_component(
-        {TimestampedName("f", 1.0), TimestampedName("g", 1.0)})
+        {VersionedName("f", 1.0), VersionedName("g", 1.0)})
