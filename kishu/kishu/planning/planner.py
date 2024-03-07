@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import time
 
 from collections import defaultdict
+from dataclasses import dataclass
 from itertools import combinations
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -90,6 +91,9 @@ class CheckpointRestorePlanner:
             @param code_block: code of executed cell.
             @param runtime_s: runtime of cell execution.
         """
+        # Use current timestamp as version for new VSes to be created during the update.
+        version = time.monotonic_ns()
+
         # Find accessed variables from monkey-patched namespace.
         accessed_vars = self._user_ns.accessed_vars().intersection(self._pre_run_cell_vars)
         self._user_ns.reset_accessed_vars()
@@ -118,7 +122,7 @@ class CheckpointRestorePlanner:
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
 
-        self._ahg.update_graph(code_block, runtime_s, accessed_vars,
+        self._ahg.update_graph(code_block, version, runtime_s, accessed_vars,
                                created_vars.union(modified_vars_structure), deleted_vars)
 
         # Update ID graphs for newly created variables.

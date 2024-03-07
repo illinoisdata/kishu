@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dill
+import time
 
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -45,7 +46,7 @@ class VariableSnapshot:
         variable snapshots.
 
         @param name: variable name.
-        @param version: nth update to the corresponding variable name.
+        @param version: time of creation or update to the corresponding variable name.
         @param deleted: whether this VS is created for the deletion of a variable, i.e., 'del x'.
         @param input_ces: Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
         @param output_ce: The (unique) cell execution creating this variable snapshot.
@@ -173,24 +174,23 @@ class AHG:
 
         # First cell execution has no input variables and outputs all existing variables.
         if existing_cell_executions:
-            ahg.update_graph(existing_cell_executions[0], 1.0, set(), user_ns.keyset(), set())
+            ahg.update_graph(existing_cell_executions[0], time.monotonic_ns(), 1.0, set(), user_ns.keyset(), set())
 
             # Subsequent cell executions has all existing variables as input and output variables.
             for i in range(1, len(existing_cell_executions)):
-                ahg.update_graph(existing_cell_executions[i], 1.0, user_ns.keyset(), user_ns.keyset(), set())
+                ahg.update_graph(
+                    existing_cell_executions[i], time.monotonic_ns(), 1.0, user_ns.keyset(), user_ns.keyset(), set())
 
         return ahg
 
-    def create_variable_snapshot(self, variable_name: str, deleted: bool) -> VariableSnapshot:
+    def create_variable_snapshot(self, variable_name: str, version: int, deleted: bool) -> VariableSnapshot:
         """
             Creates a new variable snapshot for a given variable.
 
             @param variable_name: name of variable.
+            @param version: version of variable snapshot.
             @param deleted: Whether this VS is created for the deletion of a variable, i.e. 'del x'.
         """
-        # Assign a version number to the VS.
-        version = len(self._variable_snapshots[variable_name]) if variable_name in self._variable_snapshots else 0
-
         # Create a new VS instance and store it in the graph.
         vs = VariableSnapshot(variable_name, version, deleted)
         self._variable_snapshots[variable_name].append(vs)
@@ -225,12 +225,13 @@ class AHG:
         for dst_vs in dst_vss:
             dst_vs.output_ce = ce
 
-    def update_graph(self, cell: Optional[str], cell_runtime_s: float, input_variables: Set[str],
+    def update_graph(self, cell: Optional[str], version: int, cell_runtime_s: float, input_variables: Set[str],
                      created_and_modified_variables: Set[str], deleted_variables: Set[str]) -> None:
         """
             Updates the graph according to the newly executed cell and its input and output variables.
 
             @param cell: Raw cell code.
+            @param version: Version number of newly created VSes.
             @param cell_runtime_s: Cell runtime in seconds.
             @param input_variables: Set of input variables of the cell.
             @param created_and_modified_variables: set of created and modified variables.
@@ -242,8 +243,8 @@ class AHG:
         input_vss = [self._variable_snapshots[variable][-1] for variable in input_variables]
 
         # Create output variable snapshots
-        output_vss_create = [self.create_variable_snapshot(k, False) for k in created_and_modified_variables]
-        output_vss_delete = [self.create_variable_snapshot(k, True) for k in deleted_variables]
+        output_vss_create = [self.create_variable_snapshot(k, version, False) for k in created_and_modified_variables]
+        output_vss_delete = [self.create_variable_snapshot(k, version, True) for k in deleted_variables]
 
         # Add the newly created CE to the graph.
         self.add_cell_execution(cell, cell_runtime_s, input_vss, output_vss_create + output_vss_delete)

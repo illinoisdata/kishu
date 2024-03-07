@@ -27,9 +27,9 @@ def test_optimizer(enable_slow_network_bandwidth):
     ahg = AHG()
 
     # Variable snapshots
-    vs1 = ahg.create_variable_snapshot("x", deleted=False)
-    vs2 = ahg.create_variable_snapshot("y", deleted=False)
-    vs3 = ahg.create_variable_snapshot("z", deleted=True)
+    vs1 = ahg.create_variable_snapshot("x", 3, deleted=False)
+    vs2 = ahg.create_variable_snapshot("y", 2, deleted=False)
+    vs3 = ahg.create_variable_snapshot("z", 1, deleted=True)
     vs1.size = 2
     vs2.size = 2
     active_vss = [vs1, vs2]
@@ -61,9 +61,9 @@ def test_optimizer_with_already_stored_variables(enable_slow_network_bandwidth):
     ahg = AHG()
 
     # Variable snapshots
-    vs1 = ahg.create_variable_snapshot("x", deleted=False)
-    vs2 = ahg.create_variable_snapshot("y", deleted=False)
-    vs3 = ahg.create_variable_snapshot("z", deleted=True)
+    vs1 = ahg.create_variable_snapshot("x", 3, deleted=False)
+    vs2 = ahg.create_variable_snapshot("y", 2, deleted=False)
+    vs3 = ahg.create_variable_snapshot("z", 1, deleted=True)
     vs1.size = 2
     vs2.size = 2
     active_vss = [vs1, vs2]

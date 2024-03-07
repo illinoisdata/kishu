@@ -6,14 +6,14 @@ def test_create_variable_snapshot():
         Test graph correctly handles versioning of VSs with the same and different names.
     """
     ahg = AHG()
-    vs1 = ahg.create_variable_snapshot("x", False)
-    vs2 = ahg.create_variable_snapshot("x", False)
-    vs3 = ahg.create_variable_snapshot("y", False)
+    vs1 = ahg.create_variable_snapshot("x", 1, False)
+    vs2 = ahg.create_variable_snapshot("x", 2, False)
+    vs3 = ahg.create_variable_snapshot("y", 3, False)
 
     # VSs are versioned correcly
-    assert vs1.version == 0
-    assert vs2.version == 1  # vs2 is second VS for variable x
-    assert vs3.version == 0
+    assert vs1.version == 1
+    assert vs2.version == 2  # vs2 is second VS for variable x
+    assert vs3.version == 3
 
     variable_snapshots = ahg.get_variable_snapshots()
 
@@ -25,8 +25,8 @@ def test_create_variable_snapshot():
 
 def test_add_cell_execution():
     ahg = AHG()
-    vs1 = ahg.create_variable_snapshot("x", False)
-    vs2 = ahg.create_variable_snapshot("y", False)
+    vs1 = ahg.create_variable_snapshot("x", 1, False)
+    vs2 = ahg.create_variable_snapshot("y", 1, False)
 
     ahg.add_cell_execution("", 1, [vs1], [vs2])
 
@@ -42,11 +42,11 @@ def test_add_cell_execution():
 
 def test_update_graph():
     ahg = AHG()
-    vs1 = ahg.create_variable_snapshot("x", False)
-    _ = ahg.create_variable_snapshot("y", False)
+    vs1 = ahg.create_variable_snapshot("x", 1, False)
+    _ = ahg.create_variable_snapshot("y", 1, False)
 
     # x is read and modified, z is created, y is deleted
-    ahg.update_graph("", 1, {"x"}, {"x", "z"}, {"y"})
+    ahg.update_graph("", 2, 1, {"x"}, {"x", "z"}, {"y"})
 
     variable_snapshots = ahg.get_variable_snapshots()
     cell_executions = ahg.get_cell_executions()
