@@ -1,32 +1,10 @@
-from kishu.planning.ahg import AHG, VariableSnapshot, VersionedName, VsConnectedComponents
-
-
-def test_create_variable_snapshot():
-    """
-        Test graph correctly handles versioning of VSs with the same and different names.
-    """
-    ahg = AHG()
-    vs1 = ahg.create_variable_snapshot("x", 1, False)
-    vs2 = ahg.create_variable_snapshot("x", 2, False)
-    vs3 = ahg.create_variable_snapshot("y", 3, False)
-
-    # VSs are versioned correcly
-    assert vs1.version == 1
-    assert vs2.version == 2  # vs2 is second VS for variable x
-    assert vs3.version == 3
-
-    variable_snapshots = ahg.get_variable_snapshots()
-
-    # VSs are stored in the graph correctly
-    assert variable_snapshots.keys() == {"x", "y"}
-    assert len(variable_snapshots["x"]) == 2
-    assert len(variable_snapshots["y"]) == 1
+from kishu.planning.ahg import AHG, VariableSnapshot
 
 
 def test_add_cell_execution():
     ahg = AHG()
-    vs1 = ahg.create_variable_snapshot("x", 1, False)
-    vs2 = ahg.create_variable_snapshot("y", 1, False)
+    vs1 = VariableSnapshot(frozenset("x"), 1)
+    vs2 = VariableSnapshot(frozenset("y"), 1)
 
     ahg.add_cell_execution("", 1, [vs1], [vs2])
 
@@ -42,56 +20,50 @@ def test_add_cell_execution():
 
 def test_update_graph():
     ahg = AHG()
-    vs1 = ahg.create_variable_snapshot("x", 1, False)
-    _ = ahg.create_variable_snapshot("y", 1, False)
+
+    # x and y are created
+    ahg.update_graph("", 1, 1, {}, {"x", "y"}, [], {}, {})
 
     # x is read and modified, z is created, y is deleted
-    ahg.update_graph("", 2, 1, {"x"}, {"x", "z"}, {"y"})
+    ahg.update_graph("", 2, 1, {"x"}, {"x", "z"}, [], {"x"}, {"y"})
 
     variable_snapshots = ahg.get_variable_snapshots()
+    active_variable_snapshots = ahg.get_active_variable_snapshots()
     cell_executions = ahg.get_cell_executions()
 
     # Check contents of AHG are correct
-    assert len(cell_executions) == 1
-    assert variable_snapshots.keys() == {"x", "y", "z"}
-    assert len(variable_snapshots["x"]) == 2
-    assert len(variable_snapshots["y"]) == 2
-    assert len(variable_snapshots["z"]) == 1
+    assert len(variable_snapshots) == 5
+    assert len(active_variable_snapshots) == 2
+    assert len(cell_executions) == 2
+
+    # x and z are active
+    assert set(vs.name for vs in active_variable_snapshots) == set({frozenset("x"), frozenset("z")})
 
     # Check links between AHG contents are correct
-    assert vs1.input_ces[0] == cell_executions[0]
-    assert len(cell_executions[0].src_vss) == 1
-    assert len(cell_executions[0].dst_vss) == 3
+    assert len(cell_executions[1].src_vss) == 1
+    assert len(cell_executions[1].dst_vss) == 3
 
 
-def test_create_vs_connected_component_from_vses():
+def test_update_graph_with_connected_components():
     """
         Connected components:
         a---b---c  d---e  f
     """
-    vs_a = VariableSnapshot("a", 1)
-    vs_b = VariableSnapshot("b", 1)
-    vs_c = VariableSnapshot("c", 1)
-    vs_d = VariableSnapshot("d", 1)
-    vs_e = VariableSnapshot("e", 1)
-    vs_f = VariableSnapshot("f", 1)
+    ahg = AHG()
 
-    vs_connected_components = VsConnectedComponents.create_from_vses(
-        [vs_a, vs_b, vs_c, vs_d, vs_e, vs_f],
-        [(vs_a, vs_b), (vs_b, vs_c), (vs_d, vs_e)]
-    )
+    current_variables = {"a", "b", "c", "d", "e", "f"}
+    linked_variable_pairs = [("a", "b"), ("b", "c"), ("d", "e")]
+    ahg.update_graph("", 2, 1, {}, current_variables, linked_variable_pairs, {}, {})
 
-    # 3 connected components
-    assert len(vs_connected_components.get_connected_components()) == 3
-    assert {VersionedName("a", 1),
-            VersionedName("b", 1),
-            VersionedName("c", 1)} in vs_connected_components.get_connected_components()
-    assert {VersionedName("d", 1),
-            VersionedName("e", 1)} in vs_connected_components.get_connected_components()
-    assert {VersionedName("f", 1)} in vs_connected_components.get_connected_components()
+    active_variable_snapshots = ahg.get_active_variable_snapshots()
 
-    # 6 VSes in total
-    assert vs_connected_components.get_variable_names() == {"a", "b", "c", "d", "e", "f"}
+    # 3 variable snapshots
+    assert len(active_variable_snapshots) == 3
+    assert set(vs.name for vs in active_variable_snapshots) == \
+        {frozenset({"a", "b", "c"}), frozenset({"d", "e"}), frozenset("f")}
+
+    # 6 variables in total
+    assert ahg.get_variable_names() == {"a", "b", "c", "d", "e", "f"}
 
 
 def test_create_vs_merge_connected_components():
@@ -102,44 +74,21 @@ def test_create_vs_merge_connected_components():
          / |  |
         b--c  e--f
     """
-    vs_a = VariableSnapshot("a", 1)
-    vs_b = VariableSnapshot("b", 1)
-    vs_c = VariableSnapshot("c", 1)
-    vs_d = VariableSnapshot("d", 1)
-    vs_e = VariableSnapshot("e", 1)
-    vs_f = VariableSnapshot("f", 1)
+    ahg = AHG()
+
+    current_variables = {"a", "b", "c", "d", "e", "f"}
+    linked_variable_pairs = [("a", "b"), ("b", "c"), ("a", "c"), ("d", "e"), ("f", "e"), ("a", "f")]
 
     # components 'abc' and 'def' are merged.
-    vs_connected_components = VsConnectedComponents.create_from_vses(
-        [vs_a, vs_b, vs_c, vs_d, vs_e, vs_f],
-        [(vs_a, vs_b), (vs_b, vs_c), (vs_a, vs_c), (vs_d, vs_e), (vs_f, vs_e), (vs_a, vs_f)]
-    )
+    ahg.update_graph("", 2, 1, {}, current_variables, linked_variable_pairs, {}, {})
+
+    active_variable_snapshots = ahg.get_active_variable_snapshots()
+
+    # 1 variable snapshot
+    assert len(active_variable_snapshots) == 1
 
     # 1 connected component
-    assert {
-                VersionedName("a", 1),
-                VersionedName("b", 1),
-                VersionedName("c", 1),
-                VersionedName("d", 1),
-                VersionedName("e", 1),
-                VersionedName("f", 1)
-           } in vs_connected_components.get_connected_components()
+    assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"a", "b", "c", "d", "e", "f"})}
 
-    # 6 VSes in total
-    assert vs_connected_components.get_variable_names() == {"a", "b", "c", "d", "e", "f"}
-
-
-def test_is_subset_of_component():
-    """
-        Connected components:
-        a---b---c  d---e  f
-    """
-    vs_connected_components = VsConnectedComponents.create_from_component_list(
-        [[VersionedName("a", 1), VersionedName("b", 1), VersionedName("c", 1)],
-         [VersionedName("d", 1), VersionedName("e", 1)], [VersionedName("f", 1)]]
-    )
-
-    assert vs_connected_components.contains_component(
-        {VersionedName("a", 1), VersionedName("b", 1)})
-    assert not vs_connected_components.contains_component(
-        {VersionedName("f", 1), VersionedName("g", 1)})
+    # 6 variables in total
+    assert ahg.get_variable_names() == {"a", "b", "c", "d", "e", "f"}

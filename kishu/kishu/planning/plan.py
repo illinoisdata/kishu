@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from kishu.exceptions import CommitIdNotExistError, DuplicateRestoreActionError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import VsConnectedComponents
+from kishu.planning.ahg import VariableSnapshot
 from kishu.storage.checkpoint import KishuCheckpoint
 
 
@@ -100,13 +100,13 @@ class IncrementalWriteCheckpointAction(CheckpointAction):
     """
     Stores VarNamesToObjects into database incrementally.
     """
-    def __init__(self, vs_connected_components: VsConnectedComponents, filename: str, exec_id: str) -> None:
-        self.vs_connected_components = vs_connected_components
+    def __init__(self, vses_to_store: List[VariableSnapshot], filename: str, exec_id: str) -> None:
+        self.vses_to_store = vses_to_store
         self.filename = filename
         self.exec_id = exec_id
 
     def run(self, user_ns: Namespace):
-        KishuCheckpoint(self.filename).store_variable_kv(self.exec_id, self.vs_connected_components, user_ns)
+        KishuCheckpoint(self.filename).store_variable_snapshots(self.exec_id, self.vses_to_store, user_ns)
 
 
 class CheckpointPlan:
@@ -183,14 +183,14 @@ class IncrementalCheckpointPlan:
         user_ns: Namespace,
         checkpoint_file: str,
         exec_id: str,
-        vs_connected_components: VsConnectedComponents
+        vses_to_store: List[VariableSnapshot]
     ):
         """
         @param user_ns  A dictionary representing a target variable namespace. In Jupyter, this
                 can be optained by `get_ipython().user_ns`.
         @param checkpoint_file  A file where checkpointed data will be stored to.
         """
-        actions = IncrementalCheckpointPlan.set_up_actions(user_ns, checkpoint_file, exec_id, vs_connected_components)
+        actions = IncrementalCheckpointPlan.set_up_actions(user_ns, checkpoint_file, exec_id, vses_to_store)
         return IncrementalCheckpointPlan(checkpoint_file, actions)
 
     @classmethod
@@ -199,20 +199,21 @@ class IncrementalCheckpointPlan:
         user_ns: Namespace,
         checkpoint_file: str,
         exec_id: str,
-        vs_connected_components: VsConnectedComponents
+        vses_to_store: List[VariableSnapshot]
     ) -> List[CheckpointAction]:
         if user_ns is None or checkpoint_file is None:
             raise ValueError("Fields are not properly initialized.")
 
         # Check all variables to checkpoint exist in the namespace.
         key_set = user_ns.keyset()
-        for var_name in vs_connected_components.get_variable_names():
-            if var_name not in key_set:
-                raise ValueError("Checkpointing a non-existenting var: {}".format(var_name))
+        for vs in vses_to_store:
+            for var_name in vs.name:
+                if var_name not in key_set:
+                    raise ValueError("Checkpointing a non-existenting var: {}".format(var_name))
 
         return [
             IncrementalWriteCheckpointAction(
-                vs_connected_components,
+                vses_to_store,
                 checkpoint_file,
                 exec_id,
             )

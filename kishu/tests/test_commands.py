@@ -599,6 +599,7 @@ class TestKishuCommand:
         # Starting second notebook session
         with jupyter_server.start_session(notebook_path) as notebook_session:
             # Run all notebook cells, note no init cell ran
+            print("run problematic cell")
             notebook_session.run_code(f"{var_to_compare} = {value_of_var}")
 
             # Get commit id of commit which we want to restore
@@ -606,7 +607,9 @@ class TestKishuCommand:
             assert len(log_result.commit_graph) == len(contents)  # Nothing on this session should have been tracked
 
             # Prior to recent fix, this commit is where a KeyError would occur as the variable set changed while untracked
+            print("commit start")
             commit_result = KishuCommand.commit(notebook_path, "Reattatch_commit")
+            print("commit done")
             assert commit_result.reattachment.status == InstrumentStatus.reattach_succeeded
 
             log_result = KishuCommand.log_all(notebook_key)

@@ -5,7 +5,8 @@ import time
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from itertools import chain
+from typing import Dict, FrozenSet, List, Optional, Set, Tuple
 
 from kishu.exceptions import MissingHistoryError
 from kishu.jupyter.namespace import Namespace
@@ -34,7 +35,7 @@ class VersionedName:
     """
         Simplified name-version representation of a Variable Snapshot. Hashable and immutable.
     """
-    name: str
+    name: FrozenSet[str]
     version: int
 
 
@@ -44,105 +45,20 @@ class VariableSnapshot:
         A variable snapshot in the dependency graph corresponds to a version of a variable.
         I.e. if variable 'x' has been assigned 3 times (x = 1, x = 2, x = 3), then 'x' will have 3 corresponding
         variable snapshots.
+        Multiple variables sharing references are treated as 1 'large' variable, e.g., ('x', 'y', 'z').
 
-        @param name: variable name.
+        @param name: one or more variable names sharing references forming a connected component.
         @param version: time of creation or update to the corresponding variable name.
         @param deleted: whether this VS is created for the deletion of a variable, i.e., 'del x'.
         @param input_ces: Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
         @param output_ce: The (unique) cell execution creating this variable snapshot.
     """
-    name: str
+    name: FrozenSet[str]
     version: int
     deleted: bool = False
     size: float = 0.0
     input_ces: List[CellExecution] = field(default_factory=lambda: [])
     output_ce: CellExecution = field(default_factory=lambda: CellExecution(0, "", 0.0, [], []))
-
-
-class VsConnectedComponents:
-    def __init__(self) -> None:
-        """
-            Class for representing the connected components of a set of Variable Snapshots.
-        """
-        # VSes are internally stored as name-version pairs as they are not hashable.
-        self.roots: Dict[VersionedName, VersionedName] = {}
-        self.connected_components: List[Set[VersionedName]] = []
-
-    def union_find(self, vs_list: List[VersionedName], linked_vs_pairs: List[Tuple[VersionedName, VersionedName]]):
-        def find_root(vs: VersionedName) -> VersionedName:
-            if self.roots.get(vs, vs) == vs:
-                return vs
-            self.roots[vs] = find_root(self.roots[vs])
-            return self.roots[vs]
-
-        # Union find iterations.
-        for vs1, vs2 in linked_vs_pairs:
-            root_vs1 = find_root(vs1)
-            root_vs2 = find_root(vs2)
-            self.roots[root_vs2] = root_vs1
-
-        # Finally, flatten all connected components.
-        self.roots = {vs: find_root(vs) for vs in vs_list}
-
-    def compute_connected_components(self) -> None:
-        connected_components_dict = defaultdict(set)
-        for vs, vs_root in self.roots.items():
-            connected_components_dict[vs_root].add(vs)
-        self.connected_components = list(connected_components_dict.values())
-
-    def get_connected_components(self) -> List[Set[VersionedName]]:
-        return self.connected_components
-
-    def get_variable_names(self) -> Set[str]:
-        # Return all variable KVs in components as a flattened set.
-        return set(versioned_name.name for versioned_name in self.roots.keys())
-
-    def get_versioned_names(self) -> Set[VersionedName]:
-        # Return all versioned names in components as a flattened set.
-        return set(self.roots.keys())
-
-    def contains_component(self, other_component: Set[VersionedName]) -> bool:
-        """
-            Tests if other_component is a subset of any of the current connected components.
-        """
-        return any(other_component.issubset(component) for component in self.connected_components)
-
-    @staticmethod
-    def create_from_vses(
-        vs_list: List[VariableSnapshot],
-        linked_vs_pairs: Optional[List[Tuple[VariableSnapshot, VariableSnapshot]]] = None
-    ):
-        """
-            @param vs_list: all Variable Snapshots of interest.
-            @param linked_vs_pairs: pairs of linked Variable Snapshots.
-        """
-        vs_connected_components = VsConnectedComponents()
-
-        # Union find.
-        if linked_vs_pairs is not None:
-            vs_connected_components.union_find(
-                [VersionedName(vs.name, vs.version) for vs in vs_list],
-                [(VersionedName(vs1.name, vs1.version), VersionedName(vs2.name, vs2.version)) for vs1, vs2 in linked_vs_pairs]
-            )
-
-        # Compute connected components from union find results.
-        vs_connected_components.compute_connected_components()
-
-        return vs_connected_components
-
-    @staticmethod
-    def create_from_component_list(
-        component_list: List[List[VersionedName]]
-    ):
-        vs_connected_components = VsConnectedComponents()
-
-        # Manually populate the roots and connected_components variables as we already have them.
-        for component in component_list:
-            for vs in component:
-                vs_connected_components.roots[vs] = component[0]
-        vs_connected_components.compute_connected_components()
-
-        return vs_connected_components
 
 
 class AHG:
@@ -158,10 +74,13 @@ class AHG:
         # Cell executions in chronological order.
         self._cell_executions: List[CellExecution] = []
 
-        # Dict of variable snapshots.
-        # Keys are variable names, while values are lists of the actual VSs.
-        # i.e. {"x": [(x, 1), (x, 2)], "y": [(y, 1), (y, 2), (y, 3)]}
-        self._variable_snapshots: Dict[str, List[VariableSnapshot]] = defaultdict(list)
+        # All variable snapshots in the session.
+        self._variable_snapshots: List[VariableSnapshot] = []
+
+        # Variable snapshots that are currently active, i.e., their values are currently in the namespace.
+        # The keys are the names of the variable snapshots for fast lookup.
+        # The values are a subset of self._variable_snapshots.
+        self._active_variable_snapshots: Dict[FrozenSet[str], VariableSnapshot] = {}
 
     @staticmethod
     def from_existing(user_ns: Namespace) -> AHG:
@@ -174,27 +93,37 @@ class AHG:
 
         # First cell execution has no input variables and outputs all existing variables.
         if existing_cell_executions:
-            ahg.update_graph(existing_cell_executions[0], time.monotonic_ns(), 1.0, set(), user_ns.keyset(), set())
+            # Assume that all variables in the namespace form 1 giant connected component.
+            linked_variable_pairs = []
+            if len(user_ns.keyset()) >= 2:
+                keyset_list = list(user_ns.keyset())
+                linked_variable_pairs = [(keyset_list[i], keyset_list[i + 1]) for i in range(len(keyset_list) - 1)]
+
+            ahg.update_graph(
+                existing_cell_executions[0],
+                time.monotonic_ns(),
+                1.0,
+                set(),
+                user_ns.keyset(),
+                linked_variable_pairs,
+                set(),
+                set()
+            )
 
             # Subsequent cell executions has all existing variables as input and output variables.
             for i in range(1, len(existing_cell_executions)):
                 ahg.update_graph(
-                    existing_cell_executions[i], time.monotonic_ns(), 1.0, user_ns.keyset(), user_ns.keyset(), set())
+                    existing_cell_executions[0],
+                    time.monotonic_ns(),
+                    1.0,
+                    set(),
+                    user_ns.keyset(),
+                    linked_variable_pairs,
+                    user_ns.keyset(),
+                    set()
+                )
 
         return ahg
-
-    def create_variable_snapshot(self, variable_name: str, version: int, deleted: bool) -> VariableSnapshot:
-        """
-            Creates a new variable snapshot for a given variable.
-
-            @param variable_name: name of variable.
-            @param version: version of variable snapshot.
-            @param deleted: Whether this VS is created for the deletion of a variable, i.e. 'del x'.
-        """
-        # Create a new VS instance and store it in the graph.
-        vs = VariableSnapshot(variable_name, version, deleted)
-        self._variable_snapshots[variable_name].append(vs)
-        return vs
 
     def add_cell_execution(
         self,
@@ -225,8 +154,15 @@ class AHG:
         for dst_vs in dst_vss:
             dst_vs.output_ce = ce
 
-    def update_graph(self, cell: Optional[str], version: int, cell_runtime_s: float, input_variables: Set[str],
-                     created_and_modified_variables: Set[str], deleted_variables: Set[str]) -> None:
+    def update_graph(self,
+                     cell: Optional[str],
+                     version: int,
+                     cell_runtime_s: float,
+                     input_variables: Set[str],
+                     current_variables: Set[str],
+                     linked_variable_pairs: List[Tuple[str, str]],
+                     modified_variables: Set[str],
+                     deleted_variables: Set[str]) -> None:
         """
             Updates the graph according to the newly executed cell and its input and output variables.
 
@@ -239,21 +175,54 @@ class AHG:
         """
         cell = "" if not cell else cell
 
-        # Retrieve input variable snapshots
-        input_vss = [self._variable_snapshots[variable][-1] for variable in input_variables]
+        # Retrieve input variable snapshots. A VS is an input if any of the names in its connected component are accessed.
+        input_vss = [vs for vs in self._active_variable_snapshots.values() if vs.name.intersection(input_variables)]
 
-        # Create output variable snapshots
-        output_vss_create = [self.create_variable_snapshot(k, version, False) for k in created_and_modified_variables]
-        output_vss_delete = [self.create_variable_snapshot(k, version, True) for k in deleted_variables]
+        # Compute the set of current connected components of variables in the namespace.
+        connected_components_set = AHG.union_find(current_variables, linked_variable_pairs)
+
+        # If a new component does not exactly match an existing component, it is treated as a created variable.
+        output_vss_create = [VariableSnapshot(k, version, False) for k in connected_components_set if
+                             k not in self._active_variable_snapshots.keys()]
+
+        # Filter: if an active variable's connected component no longer exists, it is no longer active.
+        self._active_variable_snapshots = {
+            k: v for k, v in self._active_variable_snapshots.items() if k in connected_components_set}
+
+        # A variable is modified if any name in its connected component is modified.
+        output_vss_modify = [VariableSnapshot(frozenset(vs.name), version, False)
+                             for vs in self._active_variable_snapshots.values() if
+                             vs.name.intersection(modified_variables)]
+
+        # Filter: if an active variable's connected component has been modified, it is no longer active.
+        self._active_variable_snapshots = {k: v for k, v in self._active_variable_snapshots.items()
+                                           if not k.intersection(modified_variables)}
+
+        output_vss_delete = [VariableSnapshot(frozenset(k), version, False) for k in deleted_variables]
 
         # Add the newly created CE to the graph.
-        self.add_cell_execution(cell, cell_runtime_s, input_vss, output_vss_create + output_vss_delete)
+        self.add_cell_execution(cell, cell_runtime_s, input_vss, output_vss_create + output_vss_modify + output_vss_delete)
+
+        # Add created and modified VSes to the active variables list.
+        self._active_variable_snapshots.update({vs.name: vs for vs in output_vss_create})
+        self._active_variable_snapshots.update({vs.name: vs for vs in output_vss_modify})
+        self._variable_snapshots += output_vss_create + output_vss_modify + output_vss_delete
 
     def get_cell_executions(self) -> List[CellExecution]:
         return self._cell_executions
 
-    def get_variable_snapshots(self) -> Dict[str, List[VariableSnapshot]]:
+    def get_variable_snapshots(self) -> List[VariableSnapshot]:
         return self._variable_snapshots
+
+    def get_active_variable_snapshots(self) -> List[VariableSnapshot]:
+        return list(self._active_variable_snapshots.values())
+
+    def get_active_variable_snapshots_dict(self) -> Dict[FrozenSet[str], VariableSnapshot]:
+        return self._active_variable_snapshots
+
+    def get_variable_names(self) -> Set[str]:
+        # Return all variable KVs in components as a flattened set.
+        return set(chain.from_iterable(self._active_variable_snapshots.keys()))
 
     def serialize(self) -> str:
         """
@@ -268,3 +237,28 @@ class AHG:
             Returns the AHG object from serialized AHG in string format.
         """
         return dill.loads(ahg_string.encode('latin1'))
+
+    @staticmethod
+    def union_find(variables: Set[str], linked_variables: List[Tuple[str, str]]) -> Set[FrozenSet[str]]:
+        roots: Dict[str, str] = {}
+
+        def find_root(var: str) -> str:
+            if roots.get(var, var) == var:
+                return var
+            roots[var] = find_root(roots[var])
+            return roots[var]
+
+        # Union find iterations.
+        for var1, var2 in linked_variables:
+            root_var1 = find_root(var1)
+            root_var2 = find_root(var2)
+            roots[root_var2] = root_var1
+
+        # Flatten all connected components.
+        roots = {var: find_root(var) for var in variables}
+
+        # Return the list of connected components.
+        connected_components_dict = defaultdict(set)
+        for var, var_root in roots.items():
+            connected_components_dict[var_root].add(var)
+        return set(frozenset(v) for v in connected_components_dict.values())

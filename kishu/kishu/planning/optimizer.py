@@ -3,7 +3,7 @@ import numpy as np
 
 from dataclasses import dataclass
 from networkx.algorithms.flow import shortest_augmenting_path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 
 from kishu.planning.ahg import AHG, CellExecution, VariableSnapshot, VersionedName
 from kishu.storage.config import Config
@@ -30,7 +30,6 @@ class Optimizer():
     def __init__(
         self, ahg: AHG,
         active_vss: List[VariableSnapshot],
-        linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
         already_stored_vss: Optional[Set[VersionedName]] = None
     ) -> None:
         """
@@ -39,14 +38,11 @@ class Optimizer():
 
             @param ahg: Application History Graph.
             @param active_vss: active Variable Snapshots at time of checkpointing.
-            @param linked_vs_pairs: pairs of variables sharing underlying objects. They must be migrated
-                or recomputed together.
             @param already_stored_vss: A List of Variable snapshots already stored in previous plans. They can be
                 loaded as part of the restoration plan to save restoration time.
         """
         self.ahg = ahg
         self.active_vss = active_vss
-        self.linked_vs_pairs = linked_vs_pairs
 
         # Optimizer context containing flags for optimizer parameters.
         self._optimizer_context = PlannerContext(
@@ -102,7 +98,7 @@ class Optimizer():
                 self.dfs_helper(ce, set(), prerequisite_ces)
                 self.req_func_mapping[ce.cell_num] = prerequisite_ces
 
-    def compute_plan(self) -> Tuple[Set[str], Set[int]]:
+    def compute_plan(self) -> Tuple[Set[FrozenSet[str]], Set[int]]:
         """
             Returns the optimal replication plan for the stored AHG consisting of
             variables to migrate and cells to rerun.
@@ -141,11 +137,6 @@ class Optimizer():
         for active_vs in self.active_vss:
             for cell_num in self.req_func_mapping[active_vs.output_ce.cell_num]:
                 flow_graph.add_edge(active_vs.name, cell_num, capacity=np.inf)
-
-        # Add constraints: overlapping variables must either be migrated or recomputed together.
-        for vs_pair in self.linked_vs_pairs:
-            flow_graph.add_edge(vs_pair[0].name, vs_pair[1].name, capacity=np.inf)
-            flow_graph.add_edge(vs_pair[1].name, vs_pair[0].name, capacity=np.inf)
 
         # Prune CEs which produce no active variables to speedup computation.
         for ce in self.ahg.get_cell_executions():
