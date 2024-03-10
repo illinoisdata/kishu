@@ -19,15 +19,6 @@ from kishu.storage.config import Config
 
 
 @dataclass
-class PlannerContext:
-    """
-        Planner-related config options.
-    """
-    incremental_store: bool
-    incremental_load: bool  # Not used yet
-
-
-@dataclass
 class ChangedVariables:
     created_vars: Set[str]
 
@@ -61,10 +52,7 @@ class CheckpointRestorePlanner:
         self._pre_run_cell_vars: Set[str] = set()
 
         # C/R plan configs.
-        self._planner_context = PlannerContext(
-            incremental_store=Config.get('PLANNER', 'incremental_store', False),
-            incremental_load=Config.get('PLANNER', 'incremental_load', False)  # Not used yet
-        )
+        self._incremental_cr = Config.get('PLANNER', 'incremental_cr', False)
 
         # Used by instrumentation to compute whether data has changed.
         self._modified_vars_structure: Set[str] = set()
@@ -137,7 +125,12 @@ class CheckpointRestorePlanner:
 
         return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
 
-    def generate_checkpoint_restore_plans(self, database_path: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
+    def generate_checkpoint_restore_plans(
+        self,
+        database_path: str,
+        commit_id: str,
+        parent_commit_ids: Optional[List[str]]=None
+    ) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = self._ahg.get_active_variable_snapshots()
         for vs in active_vss:
@@ -154,11 +147,14 @@ class CheckpointRestorePlanner:
             else:
                 active_vs.size = profile_variable_size([self._user_ns[varname] for varname in active_vs.name][0])
 
-        # If incremental storage is enabled, retrieve list of currently stored VSes and compute VSes to
+        # If incremental storage is enabled, retrieve list of currently stored VSes in parent commits and compute VSes to
         # NOT migrate as they are already stored.
-        if self._planner_context.incremental_store:
-            stored_versioned_names = KishuCheckpoint(database_path).get_stored_versioned_names()
-            active_vss = [vs for vs in active_vss if VersionedName(vs.name, vs.version) not in stored_versioned_names]
+        if self._incremental_cr:
+            if parent_commit_ids is None:
+                raise ValueError("parent_commit_ids cannot be none if incremental CR is enabled.")
+            stored_versioned_names = KishuCheckpoint(database_path).get_stored_versioned_names(parent_commit_ids)
+            active_vss = [vs for vs in active_vss if
+                          VersionedName(vs.name, vs.version) not in stored_versioned_names.keys()]
 
         # Initialize optimizer.
         # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
@@ -166,7 +162,7 @@ class CheckpointRestorePlanner:
         optimizer = Optimizer(
             self._ahg,
             active_vss,
-            stored_versioned_names if self._planner_context.incremental_store else None
+            stored_versioned_names if self._incremental_cr else None
         )
 
         # Use the optimizer to compute the checkpointing configuration.
@@ -177,7 +173,7 @@ class CheckpointRestorePlanner:
         for vs_name in vss_to_migrate:
             ce_to_vs_map[self._ahg.get_active_variable_snapshots_dict()[vs_name].output_ce.cell_num].extend(list(vs_name))
 
-        if self._planner_context.incremental_store:
+        if self._incremental_cr:
             # Create incremental checkpoint plan using optimization results.
             checkpoint_plan = IncrementalCheckpointPlan.create(
                 self._user_ns,
@@ -241,15 +237,44 @@ class CheckpointRestorePlanner:
         """
         return self._ahg.serialize()
 
-    def replace_state(self, new_ahg_string: str, new_user_ns: Namespace) -> None:
+    def restore_state(
+        self,
+        new_ahg_string: str,
+        restore_plan: RestorePlan,
+        database_path: str,
+        commit_id: str,
+        parent_commit_ids: Optional[List[str]]=None,
+        lca_ahg_string: Optional[str] = None
+    ) -> None:
         """
             Replace the current AHG with new_ahg_bytes and user namespace with new_user_ns.
             Called when a checkout is performed.
         """
-        self._ahg = AHG.deserialize(new_ahg_string)
-        self._user_ns = new_user_ns
+        if not self._incremental_cr:
+            result_ns = restore_plan.run(database_path, commit_id)
+    
+            self._ahg = AHG.deserialize(new_ahg_string)
+            self._user_ns = result_ns
+    
+            # Also clear the old ID graphs and pre-run cell info.
+            # TODO: only clear ID graphs of variables which have changed between pre and post-checkout.
+            self._id_graph_map = {}
+            self._pre_run_cell_vars = set()
+    
+            return result_ns
 
-        # Also clear the old ID graphs and pre-run cell info.
-        # TODO: only clear ID graphs of variables which have changed between pre and post-checkout.
-        self._id_graph_map = {}
-        self._pre_run_cell_vars = set()
+        # Incremental restore: dynamically recompute the restore plan.
+        if lca_ahg_string is None:
+            raise ValueError("lca_ahg_string cannot be None if incremental CR is enabled.")
+
+        if parent_commit_ids is None:
+            raise ValueError("parent_commit_ids cannot be None if incremental CR is enabled.")
+
+        # If an active VS in the current session exists as an active VS in the session of the LCA,
+        # the active vs can contribute toward restoration.
+        lca_ahg = AHG.deserialize(lca_ahg_string)
+        useful_active_vses = set(self._ahg.get_active_variable_snapshots_dict().keys()).intersection(
+                set(lca_ahg.get_active_variable_snapshots_dict().keys()))
+
+        useful_stored_vses = KishuCheckpoint(database_path).get_stored_versioned_names(parent_commit_ids)
+        target_ahg = AHG.deserialize(new_ahg_string)

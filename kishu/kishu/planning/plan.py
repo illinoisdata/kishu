@@ -276,6 +276,36 @@ class LoadVariableRestoreAction(RestoreAction):
         return self.__repr__()
 
 
+class MoveVariableRestoreAction(RestoreAction): 
+    """
+    Move a variable currently in the namespace to the new namespace.
+    """
+    def __init__(
+        self,
+        step_order: StepOrder,
+        vars_to_move: Dict[str, Any] = {}
+    ):
+        """
+        @param step_order: the order (i.e., when to run) of this restore action.
+        @param vars_to_move: Variables to move to the new namespace.
+        """
+        self.step_order = step_order
+        self.vars_to_move = vars_to_move
+
+    def run(self, ctx: RestoreActionContext):
+        """
+        @param user_ns  A target space where the existing variable will be moved to.
+        """
+        ctx.shell.user_ns.update(self.vars_to_move)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(step_order={self.step_order}, \
+        vars_to_move={list(self.vars_to_move.keys())}"
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+
 class RerunCellRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).

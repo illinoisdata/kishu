@@ -74,7 +74,7 @@ def test_optimizer_with_already_stored_variables(enable_slow_network_bandwidth):
     ahg.add_cell_execution("", 0.1, [vs3], [vs2])
 
     # Setup optimizer
-    opt = Optimizer(ahg, active_vss, already_stored_vss=[VersionedName(vs3.name, vs3.version)])
+    opt = Optimizer(ahg, active_vss, already_stored_vss={VersionedName(vs3.name, vs3.version): 1})
 
     # c1 is not recomputed as z is already stored.
     vss_to_migrate, ces_to_recompute = opt.compute_plan()

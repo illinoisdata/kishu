@@ -167,6 +167,6 @@ def test_incremental_store(enable_incremental_store):
     checkpoint.run(user_ns)
 
     # Read stored connected components
-    stored_versioned_names = KishuCheckpoint(filename).get_stored_versioned_names()
+    stored_versioned_names = KishuCheckpoint(filename).get_stored_versioned_names([exec_id])
 
     assert VersionedName(frozenset({"a", "b"}), 1), VersionedName("c", 1) in stored_versioned_names

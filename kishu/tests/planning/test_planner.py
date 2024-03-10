@@ -1,6 +1,6 @@
 import pytest
 
-from typing import Any, Dict, Generator, Set, Tuple
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
@@ -43,8 +43,8 @@ class PlannerManager:
         # Return changed variables from post run cell update.
         return self.planner.post_run_cell_update(cell_code, cell_runtime)
 
-    def checkpoint_session(self, filename: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
-        checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(filename, "1:1")
+    def checkpoint_session(self, filename: str, commit_id: str, parent_commit_ids: Optional[List[str]]=None) -> Tuple[CheckpointPlan, RestorePlan]:
+        checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(filename, commit_id, parent_commit_ids)
         checkpoint_plan.run(self.planner._user_ns)
         return checkpoint_plan, restore_plan
 
@@ -169,13 +169,13 @@ def test_checkpoint_restore_planner_incremental_store_simple(enable_incremental_
     planner_manager.run_cell({"x": 1}, "x = 1")
 
     # Create and run checkpoint plan for cell 1.
-    planner_manager.checkpoint_session(filename, "1:1")
+    planner_manager.checkpoint_session(filename, "1:1", [])
 
     # Run cell 2.
     planner_manager.run_cell({"y": 2}, "y = x + 1")
 
     # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2")
+    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
 
     # Assert that only 'y' is stored in the checkpoint plan - 'x' was stored in cell 1.
     assert len(checkpoint_plan_cell2.actions) == 1
@@ -197,13 +197,13 @@ def test_checkpoint_restore_planner_incremental_store_not_subset(enable_incremen
     planner_manager.run_cell({"x": x, "y": [x]}, "x = 1\ny = [x]")
 
     # Create and run checkpoint plan for cell 1.
-    planner_manager.checkpoint_session(filename, "1:1")
+    planner_manager.checkpoint_session(filename, "1:1", [])
 
     # Run cell 2.
     planner_manager.run_cell({"z": [x]}, "z = [x]")
 
     # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2")
+    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
 
     # Assert that everything is stored again.
     # x and y are linked; since {x, y, z} is not a subset of the stored {x, y}, we need to store everything again.
@@ -226,13 +226,13 @@ def test_checkpoint_restore_planner_incremental_store_is_subset(enable_increment
     planner_manager.run_cell({"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
     # Create and run checkpoint plan for cell 1.
-    planner_manager.checkpoint_session(filename, "1:1")
+    planner_manager.checkpoint_session(filename, "1:1", [])
 
     # Run cell 2.
     planner_manager.run_cell({}, "del z", {"z"})
 
     # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2")
+    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
 
     # Assert that everything is stored again.
     # The connected component of 'x, y, z' is already stored, since 'x, y' is a subset, its storage is skipped.

@@ -118,9 +118,9 @@ def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
 
 @pytest.fixture()
 def enable_incremental_store(tmp_kishu_path) -> Generator[type, None, None]:
-    Config.set('PLANNER', 'incremental_store', True)
+    Config.set('PLANNER', 'incremental_cr', True)
     yield Config
-    Config.set('PLANNER', 'incremental_store', False)
+    Config.set('PLANNER', 'incremental_cr', False)
 
 
 @pytest.fixture()

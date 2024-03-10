@@ -515,6 +515,22 @@ class KishuCommitGraph:
         """
         return list(self.iter_history(commit_id))
 
+    def get_common_ancestor(self, commit_id1: CommitId, commit_id2: CommitId) -> CommitId:
+        """
+        Find the common ancestor commit of commit_id1 and commit_id2.
+        """
+        commit_id1_history = [node.commit_id for node in self.list_history(commit_id1)]
+        commit_id2_history = [node.commit_id for node in self.list_history(commit_id2)]
+
+        for i in range(min(len(commit_id1_history), len(commit_id2_history))):
+            if commit_id1_history[i] != commit_id2_history:
+                return commit_id1_history[i - 1]
+
+        # If the above statement does not return, then id1 is an ancestor of id2 or vice versa.
+        if len(commit_id1_history) <= len(commit_id2_history):
+            return commit_id1_history[-1]
+        return commit_id2_history[-1]
+
     def list_all_history(self) -> List[CommitNodeInfo]:
         """
         Lists all existing commit(s).

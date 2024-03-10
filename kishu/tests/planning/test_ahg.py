@@ -92,3 +92,80 @@ def test_create_vs_merge_connected_components():
 
     # 6 variables in total
     assert ahg.get_variable_names() == {"a", "b", "c", "d", "e", "f"}
+
+
+def test_create_vs_split_connected_component():
+    """
+        Test modification detection for splitting comoponents:
+
+        a---b
+
+        split
+
+        a   b
+    """
+    ahg = AHG()
+
+    current_variables = {"a", "b"}
+    linked_variable_pairs = [("a", "b")]
+
+    # 'ab' is in 1 component.
+    ahg.update_graph("", 1, 1, {}, current_variables, linked_variable_pairs, {}, {})
+
+    active_variable_snapshots = ahg.get_active_variable_snapshots()
+
+    # 1 active variable snapshot
+    assert len(active_variable_snapshots) == 1
+
+    # 1 connected component
+    assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"a", "b"})}
+
+    # 'ab' is split into 2 components.
+    ahg.update_graph("", 2, 1, {}, current_variables, [], {"b"}, {})
+
+    active_variable_snapshots = ahg.get_active_variable_snapshots()
+
+    # 2 active variable snapshots. Even though 'a' was not modified directly, we still count
+    # it as modified as b was split from it.
+    assert len(active_variable_snapshots) == 2
+
+    # 2 connected components
+    assert set(vs.name for vs in active_variable_snapshots) == {frozenset("a"), frozenset("b")}
+
+
+def test_create_vs_split_connected_component():
+    """
+        Test modification detection for splitting comoponents:
+
+        a---b
+
+        split
+
+        a   b
+    """
+    ahg = AHG()
+
+    current_variables = {"a", "b", "c"}
+    linked_variable_pairs = [("a", "b")]
+
+    # 2 components: 'ab' and 'c'.
+    ahg.update_graph("", 1, 1, {}, current_variables, linked_variable_pairs, {}, {})
+
+    active_variable_snapshots = ahg.get_active_variable_snapshots()
+
+    # 2 active variable snapshots: ab and c.
+    assert len(active_variable_snapshots) == 2
+
+    # 2 connected components
+    assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"a", "b"}, frozenset("c"))}
+
+    # 'ab' is split into 2 components.
+    ahg.update_graph("", 2, 1, {}, current_variables, [("c", "b")], {"b"}, {})
+
+    active_variable_snapshots = ahg.get_active_variable_snapshots()
+
+    # 2 active variable snapshots.
+    assert len(active_variable_snapshots) == 2
+
+    # 2 connected components
+    assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"c", "b"}, frozenset("a"))}

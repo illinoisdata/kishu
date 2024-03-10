@@ -6,7 +6,7 @@ import dill as pickle
 import sqlite3
 import sys
 
-from typing import List, Set
+from typing import Dict, List, Set
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
@@ -28,9 +28,9 @@ class KishuCheckpoint:
         cur.execute(f'create table if not exists {CHECKPOINT_TABLE} (commit_id text primary key, data blob)')
 
         # Create incremental checkpointing related tables only if the config flag is enabled.
-        if Config.get('PLANNER', 'incremental_store', False):
+        if Config.get('PLANNER', 'incremental_cr', False):
             cur.execute(f'create table if not exists {VARIABLE_SNAPSHOT_TABLE} '
-                        f'(version int, name text, commit_id text, size float, data blob)')
+                        f'(version int, name text, commit_id text, size int, data blob)')
 
         con.commit()
 
@@ -57,14 +57,15 @@ class KishuCheckpoint:
         )
         con.commit()
 
-    def get_stored_versioned_names(self) -> Set[VersionedName]:
+    def get_stored_versioned_names(self, commit_ids: List[str]) -> Dict[VersionedName, int]:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
 
         # Get all namespaces
-        cur.execute(f"select version, name from {VARIABLE_SNAPSHOT_TABLE}")
+        cur.execute(f"select version, name, size from {VARIABLE_SNAPSHOT_TABLE} WHERE commit_id IN (%s)" %
+                           ','.join('?'*len(commit_ids)), commit_ids)
         res: List = cur.fetchall()
-        return set(VersionedName(frozenset(ast.literal_eval(i[1])), i[0]) for i in res)
+        return {VersionedName(frozenset(ast.literal_eval(i[1])), i[0]): i[2] for i in res}
 
     def store_variable_snapshots(self, commit_id: str, vses_to_store: List[VariableSnapshot], user_ns: Namespace) -> None:
         con = sqlite3.connect(self.database_path)

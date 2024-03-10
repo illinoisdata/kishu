@@ -427,14 +427,29 @@ class KishuForJupyter:
         if commit_entry.execution_count is not None:
             self._ip.execution_count = commit_entry.execution_count + 1  # _ip.execution_count is the next count.
 
-        # Restore user-namespace variables.
-        commit_ns = commit_entry.restore_plan.run(database_path, commit_id)
-        self._checkout_namespace(self._user_ns, commit_ns)
-
-        # Update C/R planner with AHG from checkpoint file and new namespace.
+        # Run the restore plan and update C/R planner with AHG from checkpoint file and new namespace.
         if commit_entry.ahg_string is None:
             raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
-        self._cr_planner.replace_state(commit_entry.ahg_string, self._user_ns)
+
+        # Find the lowest common ancestor of current and target commit.
+        current_commit_id = self._kishu_graph.head()
+        lca_commit = self._kishu_graph.get_common_ancestor(commit_id, current_commit_id)
+        lca_commit_entry = self._kishu_commit.get_commit(lca_commit)
+        if lca_commit_entry.ahg_string is None:
+            raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
+
+        parent_commit_ids = [node.commit_id for node in self._kishu_graph.list_history(commit_id)]
+
+        result_ns = self._cr_planner.restore_state(
+            commit_entry.ahg_string,
+            commit_entry.restore_plan,
+            database_path,
+            commit_id,
+            parent_commit_ids,
+            lca_commit_entry.ahg_string
+        )
+        self._checkout_namespace(self._user_ns, result_ns)
+
         self._variable_version_tracker.set_current(self._kishu_variable_version.
                                                    get_variable_version_by_commit_id(commit_id))
 
@@ -634,8 +649,9 @@ class KishuForJupyter:
         TODO: Perform more intelligent checkpointing.
         """
         # Step 1: prepare a restoration plan using results from the optimizer.
+        parent_commit_ids = [node.commit_id for node in self._kishu_graph.list_history()]
         checkpoint_plan, restore_plan = self._cr_planner.generate_checkpoint_restore_plans(
-            self.database_path(), cell_info.commit_id)
+            self.database_path(), cell_info.commit_id, parent_commit_ids)
 
         # Step 2: checkpoint
         checkpoint_plan.run(self._user_ns)

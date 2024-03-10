@@ -113,7 +113,7 @@ class AHG:
             # Subsequent cell executions has all existing variables as input and output variables.
             for i in range(1, len(existing_cell_executions)):
                 ahg.update_graph(
-                    existing_cell_executions[0],
+                    existing_cell_executions[i],
                     time.monotonic_ns(),
                     1.0,
                     set(),
