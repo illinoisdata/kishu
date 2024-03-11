@@ -45,7 +45,7 @@ class TestKishuCommand:
         log_result = KishuCommand.log(notebook_key, basic_execution_ids[-1])
         assert len(log_result.commit_graph) == 3
         assert log_result.commit_graph[0] == CommitSummary(
-            commit_id="0:1",
+            commit_id="0:0:1",
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
@@ -55,8 +55,8 @@ class TestKishuCommand:
             tags=[],
         )
         assert log_result.commit_graph[1] == CommitSummary(
-            commit_id="0:2",
-            parent_id="0:1",
+            commit_id="0:0:2",
+            parent_id="0:0:1",
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
             raw_cell="y = 2",
@@ -65,8 +65,8 @@ class TestKishuCommand:
             tags=[],
         )
         assert log_result.commit_graph[2] == CommitSummary(
-            commit_id="0:3",
-            parent_id="0:2",
+            commit_id="0:0:3",
+            parent_id="0:0:2",
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             raw_cell="y = x + 1",
@@ -78,7 +78,7 @@ class TestKishuCommand:
         log_result = KishuCommand.log(notebook_key, basic_execution_ids[0])
         assert len(log_result.commit_graph) == 1
         assert log_result.commit_graph[0] == CommitSummary(
-            commit_id="0:1",
+            commit_id="0:0:1",
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
@@ -92,7 +92,7 @@ class TestKishuCommand:
         log_all_result = KishuCommand.log_all(notebook_key)
         assert len(log_all_result.commit_graph) == 3
         assert log_all_result.commit_graph[0] == CommitSummary(
-            commit_id="0:1",
+            commit_id="0:0:1",
             parent_id="",
             message=log_all_result.commit_graph[0].message,  # Not tested
             timestamp=log_all_result.commit_graph[0].timestamp,  # Not tested
@@ -102,8 +102,8 @@ class TestKishuCommand:
             tags=[],
         )
         assert log_all_result.commit_graph[1] == CommitSummary(
-            commit_id="0:2",
-            parent_id="0:1",
+            commit_id="0:0:2",
+            parent_id="0:0:1",
             message=log_all_result.commit_graph[1].message,  # Not tested
             timestamp=log_all_result.commit_graph[1].timestamp,  # Not tested
             raw_cell="y = 2",
@@ -112,8 +112,8 @@ class TestKishuCommand:
             tags=[],
         )
         assert log_all_result.commit_graph[2] == CommitSummary(
-            commit_id="0:3",
-            parent_id="0:2",
+            commit_id="0:0:3",
+            parent_id="0:0:2",
             message=log_all_result.commit_graph[2].message,  # Not tested
             timestamp=log_all_result.commit_graph[2].timestamp,  # Not tested
             raw_cell="y = x + 1",
@@ -125,12 +125,12 @@ class TestKishuCommand:
     def test_status(self, notebook_key, basic_execution_ids):
         status_result = KishuCommand.status(notebook_key, basic_execution_ids[-1])
         assert status_result.commit_node_info == CommitNodeInfo(
-            commit_id="0:3",
-            parent_id="0:2",
+            commit_id="0:0:3",
+            parent_id="0:0:2",
         )
         assert status_result.commit_entry == CommitEntry(
             kind=CommitEntryKind.jupyter,
-            commit_id="0:3",
+            commit_id="0:0:3",
             execution_count=3,
             raw_cell="y = x + 1",
             executed_cells=[  # TODO: Missing due to missing IPython kernel.
@@ -165,7 +165,7 @@ class TestKishuCommand:
         log_result = KishuCommand.log(notebook_key, basic_execution_ids[-1])
         assert len(log_result.commit_graph) == 3
         assert log_result.commit_graph[0] == CommitSummary(
-            commit_id="0:1",
+            commit_id="0:0:1",
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
@@ -175,8 +175,8 @@ class TestKishuCommand:
             tags=[],
         )
         assert log_result.commit_graph[1] == CommitSummary(
-            commit_id="0:2",
-            parent_id="0:1",
+            commit_id="0:0:2",
+            parent_id="0:0:1",
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
             raw_cell="y = 2",
@@ -185,8 +185,8 @@ class TestKishuCommand:
             tags=[],
         )
         assert log_result.commit_graph[2] == CommitSummary(
-            commit_id="0:3",
-            parent_id="0:2",
+            commit_id="0:0:3",
+            parent_id="0:0:2",
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             raw_cell="y = x + 1",
@@ -246,7 +246,7 @@ class TestKishuCommand:
 
     def test_auto_detach_commit_branch(self, kishu_jupyter):
         kishu_branch = KishuBranch(kishu_jupyter._notebook_id.key())
-        kishu_branch.update_head(branch_name=None, commit_id="0:1", is_detach=True)
+        kishu_branch.update_head(branch_name=None, commit_id="0:0:1", is_detach=True)
         commit = CommitEntry(kind=CommitEntryKind.manual, execution_count=1, raw_cell="x = 1")
         commit_id = kishu_jupyter.commit(commit)
 
@@ -274,7 +274,7 @@ class TestKishuCommand:
         log_result = KishuCommand.log(notebook_key, basic_execution_ids[-1])
         assert len(log_result.commit_graph) == 3
         assert log_result.commit_graph[0] == CommitSummary(
-            commit_id="0:1",
+            commit_id=basic_execution_ids[0],
             parent_id="",
             message=log_result.commit_graph[0].message,  # Not tested
             timestamp=log_result.commit_graph[0].timestamp,  # Not tested
@@ -284,8 +284,8 @@ class TestKishuCommand:
             tags=[],
         )
         assert log_result.commit_graph[1] == CommitSummary(
-            commit_id="0:2",
-            parent_id="0:1",
+            commit_id=basic_execution_ids[1],
+            parent_id=basic_execution_ids[0],
             message=log_result.commit_graph[1].message,  # Not tested
             timestamp=log_result.commit_graph[1].timestamp,  # Not tested
             raw_cell="y = 2",
@@ -294,8 +294,8 @@ class TestKishuCommand:
             tags=["historical"],
         )
         assert log_result.commit_graph[2] == CommitSummary(
-            commit_id="0:3",
-            parent_id="0:2",
+            commit_id=basic_execution_ids[2],
+            parent_id=basic_execution_ids[1],
             message=log_result.commit_graph[2].message,  # Not tested
             timestamp=log_result.commit_graph[2].timestamp,  # Not tested
             raw_cell="y = x + 1",
@@ -348,8 +348,9 @@ class TestKishuCommand:
         fe_commit_result = KishuCommand.fe_commit(notebook_key, basic_execution_ids[-1], vardepth=0)
         assert fe_commit_result == FESelectedCommit(
             commit=FECommit(
-                oid="0:3",
-                parent_oid="0:2",
+                oid=basic_execution_ids[-1],
+                parent_oid=basic_execution_ids[-2],
+                nb_parent_oid=basic_execution_ids[-2],
                 timestamp=fe_commit_result.commit.timestamp,  # Not tested
                 branches=[fe_commit_result.commit.branches[0]],  # 1 auto branch
                 tags=[],
@@ -512,6 +513,92 @@ class TestKishuCommand:
                 "y = x + 10",
             ]
             assert status_result_2.commit_entry.execution_count == (cell_num_to_restore + 1) + 2
+
+    def test_fe_commit_after_rollback_execution(
+        self,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        # Get the contents of the test notebook.
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        cell_num_to_restore = len(contents) // 2  # Arbitrarily picked one.
+
+        # Start the notebook session.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+
+            # Run the rest of the notebook cells.
+            for i in range(len(contents)):
+                notebook_session.run_code(contents[i])
+
+            # Get the notebook key of the session.
+            notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path)
+
+            # Get commit id of commit which we want to restore
+            log_result = KishuCommand.log(notebook_key)
+            commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
+            parent_commit_id = log_result.commit_graph[cell_num_to_restore - 1].commit_id
+            latest_commit_id = log_result.commit_graph[-1].commit_id
+            fe_commit_result = KishuCommand.fe_commit(notebook_key, commit_id, vardepth=0)
+            assert fe_commit_result == FESelectedCommit(
+                commit=FECommit(
+                    oid=commit_id,
+                    parent_oid=parent_commit_id,
+                    nb_parent_oid=parent_commit_id,
+                    timestamp=fe_commit_result.commit.timestamp,  # Not tested
+                    branches=[],
+                    tags=[],
+                    code_version=fe_commit_result.commit.code_version,  # Not tested
+                    varset_version=fe_commit_result.commit.varset_version,  # Not tested
+                    message="[4] b = 1"
+                ),
+                executed_cells=[  # TODO: Missing due to missing IPython kernel.
+                    "",
+                    "x = 1",
+                    "y = x\nx = x + 1\nz = 1\na = 1\ndel a\na = 2",
+                    "# Record imported libraries\nimport numpy as np\nfrom numpy import random",
+                    "b = 1",
+                ],
+                cells=fe_commit_result.cells,  # Not tested
+                variables=fe_commit_result.variables,  # Not tested
+            )
+
+            # Rollback execution to that commit.
+            KishuCommand.checkout(notebook_path, commit_id, skip_notebook=True)
+
+            # Run a cell. This commit should have different state and notebook parents.
+            notebook_session.run_code("x = 1")
+
+            # Executed cells should work.
+            log_result_2 = KishuCommand.log(notebook_key)
+            commit_id_2 = log_result_2.commit_graph[-1].commit_id
+            fe_commit_result_2 = KishuCommand.fe_commit(notebook_key, commit_id_2, vardepth=0)
+            print(fe_commit_result_2)
+            assert fe_commit_result_2 == FESelectedCommit(
+                commit=FECommit(
+                    oid=commit_id_2,
+                    parent_oid=commit_id,
+                    nb_parent_oid=latest_commit_id,
+                    timestamp=fe_commit_result_2.commit.timestamp,  # Not tested
+                    branches=[fe_commit_result_2.commit.branches[0]],  # 1 auto branch
+                    tags=[],
+                    code_version=fe_commit_result_2.commit.code_version,  # Not tested
+                    varset_version=fe_commit_result_2.commit.varset_version,  # Not tested
+                    message="[5] x = 1"
+                ),
+                executed_cells=[  # TODO: Missing due to missing IPython kernel.
+                    "",
+                    "x = 1",
+                    "y = x\nx = x + 1\nz = 1\na = 1\ndel a\na = 2",
+                    "# Record imported libraries\nimport numpy as np\nfrom numpy import random",
+                    "b = 1",
+                    "x = 1",
+                ],
+                cells=fe_commit_result_2.cells,  # Not tested
+                variables=fe_commit_result_2.variables,  # Not tested
+            )
 
     def test_checkout_reattach(
         self,

@@ -248,6 +248,7 @@ class ListTagResult:
 class FECommit:
     oid: str
     parent_oid: str
+    nb_parent_oid: Optional[str]
     timestamp: str
     branches: List[str]
     tags: List[str]
@@ -623,6 +624,11 @@ class KishuCommand:
         graph_commit_ids = [node.commit_id for node in graph]
         commit_entries = KishuCommit(notebook_id).get_commits(graph_commit_ids)
 
+        # Collect mapping of notebook parents.
+        nb_store = KishuCommitGraph.new_on_file(KishuPath.nb_commit_graph_directory(notebook_id))
+        nb_graph = nb_store.list_all_history()
+        nb_parents = {node.commit_id: node.parent_id for node in nb_graph}
+
         # Collects list of FECommits.
         commits = []
         for node in graph:
@@ -630,6 +636,7 @@ class KishuCommand:
             commits.append(FECommit(
                 oid=node.commit_id,
                 parent_oid=node.parent_id,
+                nb_parent_oid=nb_parents.get(node.commit_id, None),
                 timestamp=KishuCommand._to_datetime(commit_entry.timestamp),
                 branches=[],  # To be set in _branch_commit.
                 tags=[],  # To be set in _tag_commit.
@@ -664,6 +671,9 @@ class KishuCommand:
             KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
                             .iter_history(commit_id)
         )
+        nb_commit_node_info = KishuCommitGraph.new_on_file(
+            KishuPath.nb_commit_graph_directory(notebook_id)
+        ).get_commit(commit_id)
         current_commit_entry = KishuCommit(notebook_id).get_commit(commit_id)
         branches = KishuBranch(notebook_id).branches_for_commit(commit_id)
         tags = KishuTag(notebook_id).tags_for_commit(commit_id)
@@ -671,6 +681,7 @@ class KishuCommand:
             notebook_id,
             commit_id,
             commit_node_info,
+            nb_commit_node_info,
             current_commit_entry,
             branches,
             tags,
@@ -772,6 +783,7 @@ class KishuCommand:
         notebook_id: str,
         commit_id: str,
         commit_node_info: CommitNodeInfo,
+        nb_commit_node_info: Optional[CommitNodeInfo],
         commit_entry: CommitEntry,
         branches: List[BranchRow],
         tags: List[TagRow],
@@ -809,6 +821,7 @@ class KishuCommand:
         commit_summary = FECommit(
             oid=commit_id,
             parent_oid=commit_node_info.parent_id,
+            nb_parent_oid=nb_commit_node_info.parent_id if nb_commit_node_info is not None else None,
             timestamp=KishuCommand._to_datetime(commit_entry.timestamp),
             branches=branch_names,
             tags=tag_names,

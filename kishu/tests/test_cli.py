@@ -112,10 +112,10 @@ class TestKishuApp:
             for i in range(len(contents)):
                 notebook_session.run_code(contents[i])
 
-            result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "1:2"])
+            result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "1:0:2"])
         assert result.exit_code == 0
         checkout_result = result.stdout
-        assert checkout_result == "Checkout 1:2 in detach mode.\n"
+        assert checkout_result == "Checkout 1:0:2 in detach mode.\n"
 
     def test_checkout_reattach(self, runner, nb_simple_path, jupyter_server):
         # Start the notebook session.
@@ -133,7 +133,7 @@ class TestKishuApp:
             # Run some notebook cells, not running init.
             for i in range(len(contents)):
                 notebook_session.run_code(contents[i])
-            result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "1:2"])
+            result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "1:0:2"])
 
         assert result.exit_code == 0
         result_lines = result.stdout.split("\n")
@@ -145,7 +145,7 @@ class TestKishuApp:
             " Kernel Id: .*"
         )
         assert re.search(pattern, result_lines[1]) is not None
-        assert result_lines[2] == "Checkout 1:2 in detach mode."
+        assert result_lines[2] == "Checkout 1:0:2 in detach mode."
 
     def test_checkout_no_metadata(self, runner, nb_simple_path, jupyter_server):
         with jupyter_server.start_session(nb_simple_path):
