@@ -104,6 +104,8 @@ def enclosing_platform() -> str:
         if "docmanager:save" in app_commands:
             # In JupyterLab.
             return "jupyterlab"
+    except KeyboardInterrupt:
+        raise
     except Exception:
         # BUG: run_ui_poll_loop throws when not in a ipython kernel.
         pass

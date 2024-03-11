@@ -86,6 +86,8 @@ class JupyterRuntimeEnv:
                 timeout=1.0,
             )
             return [] if not resp.ok else json.loads(resp.content)
+        except KeyboardInterrupt:
+            raise
         except Exception:
             return []
 

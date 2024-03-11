@@ -13,6 +13,8 @@ def is_pickable(obj) -> bool:
 
         pickle.dumps(obj)
         return True
+    except KeyboardInterrupt:
+        raise
     except Exception:
         return False
 

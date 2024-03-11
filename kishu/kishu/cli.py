@@ -159,6 +159,8 @@ def print_clean_errors(fn):
             return fn(*args, **kwargs)
         try:
             return fn(*args, **kwargs)
+        except KeyboardInterrupt:
+            raise
         except Exception as e:
             print(f"Kishu internal error ({type(e).__name__}).")
     return fn_with_clean_errors

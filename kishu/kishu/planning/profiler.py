@@ -37,6 +37,8 @@ def _is_picklable(obj: Any) -> bool:
         if not is_picklable and Config.get('PROFILER', 'auto_add_unpicklable_object', True):
             _add_to_unserializable_list(obj)
         return is_picklable
+    except KeyboardInterrupt:
+        raise
     except Exception:
         pass
 
@@ -44,6 +46,8 @@ def _is_picklable(obj: Any) -> bool:
     # TODO: remove this in the future, returning false when Dill fails.
     try:
         pickle.dumps(obj)
+    except KeyboardInterrupt:
+        raise
     except Exception:
         # Add the unpicklable object to the config file.
         if Config.get('PROFILER', 'auto_add_unpicklable_object', True):

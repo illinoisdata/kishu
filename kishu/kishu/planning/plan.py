@@ -293,6 +293,8 @@ class RerunCellRestoreAction(RestoreAction):
         """
         try:
             ctx.shell.run_cell(self.cell_code)
+        except KeyboardInterrupt:
+            raise
         except Exception:
             # We don't want to raise exceptions during code rerunning as the code can contain errors.
             pass
@@ -336,6 +338,8 @@ class AtExitContext:
                 atexit.unregister(func)
                 try:
                     func(*args, **kwargs)
+                except KeyboardInterrupt:
+                    raise
                 except Exception:
                     pass
 
@@ -388,6 +392,8 @@ class RestorePlan:
                 for _, action in sorted(self.actions.items(), key=lambda k: k[0]):
                     try:
                         action.run(ctx)
+                    except KeyboardInterrupt:
+                        raise
                     except CommitIdNotExistError as e:
                         # Problem was caused by Kishu itself (specifically, missing file for commit ID).
                         raise e
