@@ -289,7 +289,8 @@ class KishuForJupyter:
         self._enable_auto_commit_when_skip_notebook = Config.get(
             'JUPYTERINT',
             'enable_auto_commit_when_skip_notebook',
-            True)
+            False,
+        )
 
         # Initialize databases.
         self._kishu_commit.init_database()
