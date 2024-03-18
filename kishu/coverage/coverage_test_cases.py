@@ -168,5 +168,5 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
             "clf.fit(X, y)"
         ],
         var_modify_statements=["clf.fit(X1, y1)"]
-    ),
+    )
 ]   
