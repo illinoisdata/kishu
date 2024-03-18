@@ -26,6 +26,11 @@ pip install kishu/
 pytest -vv
 ```
 
+- Running PyTest with benchmarks
+```
+pytest -vv --run-benchmark
+```
+
 ## Using Kishu CLI
 
 **Adding Kishu to your notebook:** Kishu can be added to any notebook through running the following command:
