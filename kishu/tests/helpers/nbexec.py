@@ -30,8 +30,8 @@ from kishu.jupyterint import KISHU_VARS
 KISHU_INIT_STR: str = "from kishu import init_kishu; init_kishu()"
 
 
-def get_kishu_checkout_str(cell_num: int, session_num: int = 1) -> str:
-    return f"_kishu.checkout('{session_num}:{cell_num}')"
+def get_kishu_checkout_str(cell_num: int, session_num: int = 1, checkout_num: int = 0) -> str:
+    return f"_kishu.checkout('{session_num}:{checkout_num}:{cell_num}')"
 
 
 def get_dump_namespace_str(pickle_file_name: str, var_names: Optional[List[str]] = None) -> str:

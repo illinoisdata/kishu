@@ -36,6 +36,13 @@ class KishuPath:
         )
 
     @staticmethod
+    def nb_commit_graph_directory(notebook_key: str) -> str:
+        return KishuPath._create_dir(os.path.join(
+            KishuPath.notebook_directory(notebook_key),
+            "nb_commit_graph")
+        )
+
+    @staticmethod
     def connection_path(notebook_key: str) -> str:
         return os.path.join(KishuPath.notebook_directory(notebook_key), "connection.json")
 
