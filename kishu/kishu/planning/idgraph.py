@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from typing import Any, List, Optional
+from types import GeneratorType
 
 import pandas
 import pickle
+import uuid
 import xxhash
 
 
@@ -172,6 +174,14 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
     elif isinstance(obj, type):
         node = GraphNode(obj_type=type(obj))
+        visited[id(obj)] = node
+        node.children.append(str(obj))
+        node.children.append("/EOC")
+        return node
+
+    elif isinstance(obj, GeneratorType):
+        # Hack for the generator class to make it identify as always modified.
+        node = GraphNode(obj_type=type(obj), id_obj = uuid.uuid4().hex)
         visited[id(obj)] = node
         node.children.append(str(obj))
         node.children.append("/EOC")

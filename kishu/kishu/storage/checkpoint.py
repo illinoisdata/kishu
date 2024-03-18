@@ -6,11 +6,11 @@ import dill as pickle
 import sqlite3
 import sys
 
-from typing import Dict, List, Set
+from typing import Dict, FrozenSet, List, Set, Tuple
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import VariableSnapshot, VersionedName
+from kishu.planning.ahg import VariableSnapshot, VersionedName, VersionedNameContext
 from kishu.storage.config import Config
 
 
@@ -57,15 +57,25 @@ class KishuCheckpoint:
         )
         con.commit()
 
-    def get_stored_versioned_names(self, commit_ids: List[str]) -> Dict[VersionedName, int]:
+    def get_variable_snapshots(self, versioned_names: List[Tuple[VersionedName, VersionedNameContext]]) -> List[bytes]:
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        param_list = [(vn.version, repr(set(vn.name)), vnc.commit_id) for vn, vnc in versioned_names]
+        print("get variable snapshot:", param_list)
+        cur.execute(
+            f"""select data from {VARIABLE_SNAPSHOT_TABLE} where (version, name, commit_id) IN (VALUES {','.join(f'({",".join("?" * len(t))})' for t in param_list)})""", [i for t in param_list for i in t])
+        res: List = cur.fetchall()
+        return [i[0] for i in res]
+
+    def get_stored_versioned_names(self, commit_ids: List[str]) -> Dict[VersionedName, VersionedNameContext]:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
 
         # Get all namespaces
-        cur.execute(f"select version, name, size from {VARIABLE_SNAPSHOT_TABLE} WHERE commit_id IN (%s)" %
+        cur.execute(f"select version, name, size, commit_id from {VARIABLE_SNAPSHOT_TABLE} WHERE commit_id IN (%s)" %
                            ','.join('?'*len(commit_ids)), commit_ids)
         res: List = cur.fetchall()
-        return {VersionedName(frozenset(ast.literal_eval(i[1])), i[0]): i[2] for i in res}
+        return {VersionedName(frozenset(ast.literal_eval(i[1])), i[0]): VersionedNameContext(i[2], i[3]) for i in res}
 
     def store_variable_snapshots(self, commit_id: str, vses_to_store: List[VariableSnapshot], user_ns: Namespace) -> None:
         con = sqlite3.connect(self.database_path)

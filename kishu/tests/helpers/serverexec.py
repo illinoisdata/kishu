@@ -95,6 +95,8 @@ class NotebookHandler:
         except TimeoutError:
             print("Cell execution timed out.")
 
+        print("stream output:", stream_output)
+        print("data output:", data_output)
         return stream_output, data_output
 
     def __exit__(self, exception_type, exception_value, traceback):

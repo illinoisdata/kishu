@@ -133,15 +133,15 @@ def test_create_vs_split_connected_component():
     assert set(vs.name for vs in active_variable_snapshots) == {frozenset("a"), frozenset("b")}
 
 
-def test_create_vs_split_connected_component():
+def test_create_vs_modify_connected_component():
     """
         Test modification detection for splitting comoponents:
 
-        a---b
+        a---b   c
 
         split
 
-        a   b
+        a   b---c
     """
     ahg = AHG()
 
@@ -157,7 +157,7 @@ def test_create_vs_split_connected_component():
     assert len(active_variable_snapshots) == 2
 
     # 2 connected components
-    assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"a", "b"}, frozenset("c"))}
+    assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"a", "b"}), frozenset("c")}
 
     # 'ab' is split into 2 components.
     ahg.update_graph("", 2, 1, {}, current_variables, [("c", "b")], {"b"}, {})

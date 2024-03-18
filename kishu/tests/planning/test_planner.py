@@ -1,10 +1,11 @@
+import copy
 import pytest
 
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
-from kishu.planning.plan import CheckpointPlan, RerunCellRestoreAction, RestorePlan, StepOrder
+from kishu.planning.plan import CheckpointPlan, RerunCellRestoreAction, RestoreActionOrder, RestorePlan, StepOrder
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.config import Config
 from kishu.storage.path import KishuPath
@@ -80,8 +81,8 @@ def test_checkpoint_restore_planner(enable_always_migrate):
     assert len(restore_plan.actions) == 2
 
     # Assert the restore plan has correct fields.
-    assert restore_plan.actions[StepOrder(0, True)].fallback_recomputation == \
-        [RerunCellRestoreAction(StepOrder(0, False), "x = 1")]
+    assert restore_plan.actions[StepOrder(0, RestoreActionOrder.LOAD_VARIABLE)].fallback_recomputation == \
+        [RerunCellRestoreAction(StepOrder(0, RestoreActionOrder.RERUN_CELL), "x = 1")]
 
 
 def test_checkpoint_restore_planner_with_existing_items(enable_always_migrate):
@@ -239,3 +240,36 @@ def test_checkpoint_restore_planner_incremental_store_is_subset(enable_increment
     assert len(checkpoint_plan_cell2.actions) == 1
     assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
     assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset({"x", "y"})
+
+
+def test_checkpoint_restore_planner_incremental_restore(enable_incremental_store, enable_always_migrate):
+    """
+        Test incremental restore with dynamically generated restore plan.
+    """
+    filename = KishuPath.database_path("test")
+    KishuCheckpoint(filename).init_database()
+
+    planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
+
+    # Run cell 1.
+    planner_manager.run_cell({"x": 1, "y": 2}, "x = 1\ny = 2")
+
+    # Create and run checkpoint plan for cell 1.
+    planner_manager.checkpoint_session(filename, "1:1", [])
+
+    # Copy cell 1's AHG as lowest common ancestor AHG.
+    lca_ahg = copy.deepcopy(planner_manager.planner._ahg)
+
+    # Run cell 2.
+    planner_manager.run_cell({"y": 3, "z": 4}, "y += 1\nz = 4")
+
+    # Create and run checkpoint plan for cell 2.
+    planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
+
+    # Generate the incremental restore plan for restoring to cell 1.
+    restore_plan = planner_manager.planner.generate_incremental_restore_plan(lca_ahg, lca_ahg, filename, ["1:1"])
+
+    # The restore plan consists of moving X and loading Y.
+    assert len(restore_plan.actions) == 2
+    assert len(restore_plan.actions[StepOrder(0, RestoreActionOrder.INCREMENTAL_LOAD)].versioned_names) == 1
+    assert restore_plan.actions[StepOrder(0, RestoreActionOrder.MOVE_VARIABLE)].vars_to_move.keyset() == {"x"}

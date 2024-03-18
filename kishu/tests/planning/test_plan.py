@@ -4,7 +4,7 @@ from IPython.core.interactiveshell import InteractiveShell
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import VariableSnapshot, VersionedName
+from kishu.planning.ahg import VariableSnapshot, VersionedName, VersionedNameContext
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.path import KishuPath
@@ -146,7 +146,7 @@ def test_fallback_recomputation():
     assert result_ns["foo"] == user_ns["foo"]
 
 
-def test_incremental_store(enable_incremental_store):
+def test_incremental_cr(enable_incremental_store):
     """
         Tests that the VARIABLE_KV and NAMESPACE tables are populated correctly for incremental storage.
         TODO: add test for loading incrementally once that is implemented.
@@ -166,7 +166,42 @@ def test_incremental_store(enable_incremental_store):
     checkpoint = IncrementalCheckpointPlan.create(user_ns, filename, exec_id, vses_to_store)
     checkpoint.run(user_ns)
 
-    # Read stored connected components
+    # Read stored connected components.
     stored_versioned_names = KishuCheckpoint(filename).get_stored_versioned_names([exec_id])
 
     assert VersionedName(frozenset({"a", "b"}), 1), VersionedName("c", 1) in stored_versioned_names
+
+    # Read stored variable snapshots.
+    query = [(VersionedName(frozenset({"a", "b"}), 1), VersionedNameContext(1, exec_id)),
+             (VersionedName(frozenset("c"), 1), VersionedNameContext(1, exec_id))]
+    result_list = KishuCheckpoint(filename).get_variable_snapshots(query)
+    assert len(result_list) == 2
+
+
+def test_mix_reload_recompute_incremental_restore_plan(enable_incremental_store):
+    user_ns = Namespace({
+        'a': 1,
+        'b': 2,
+        'c': 3
+    })
+    filename = KishuPath.database_path("test")
+    KishuCheckpoint(filename).init_database()
+
+    # save
+    exec_id = 1
+    vses_to_store = [VariableSnapshot(frozenset('b'), 1)]
+    checkpoint = IncrementalCheckpointPlan.create(user_ns, filename, exec_id, vses_to_store)
+    checkpoint.run(user_ns)
+
+    # restore
+    restore_plan = RestorePlan()
+    restore_plan.add_incremental_load_restore_action(
+        1,
+        [(VersionedName('b', 1), VersionedNameContext(1, exec_id))],
+        [(1, "b=2")]
+    )
+    restore_plan.add_move_variable_restore_action(2, Namespace({"a": 1}))
+    restore_plan.add_rerun_cell_restore_action(3, "c=3")
+    result_ns = restore_plan.run(filename, exec_id)
+
+    assert result_ns.to_dict() == user_ns.to_dict()

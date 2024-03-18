@@ -39,6 +39,15 @@ class VersionedName:
     version: int
 
 
+@dataclass(frozen=True)
+class VersionedNameContext:
+    """
+        Info related to a versioned name stored in the databse.
+    """
+    size: int
+    commit_id: str
+
+
 @dataclass
 class VariableSnapshot:
     """

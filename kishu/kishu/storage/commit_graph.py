@@ -521,6 +521,8 @@ class KishuCommitGraph:
         """
         commit_id1_history = [node.commit_id for node in self.list_history(commit_id1)]
         commit_id2_history = [node.commit_id for node in self.list_history(commit_id2)]
+        commit_id1_history.reverse()
+        commit_id2_history.reverse()
 
         for i in range(min(len(commit_id1_history), len(commit_id2_history))):
             if commit_id1_history[i] != commit_id2_history:

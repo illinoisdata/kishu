@@ -436,6 +436,7 @@ class TestKishuCommand:
             # Get the variable value before checkout.
             # The variable is printed so custom objects with no equality defined can be compared.
             _, var_value_before = notebook_session.run_code(f"repr({var_to_compare})")
+            print("var_value_before:", var_value_before)
 
             # Run the rest of the notebook cells.
             for i in range(cell_num_to_restore, len(contents)):
@@ -458,6 +459,68 @@ class TestKishuCommand:
 
             # Get the variable value after checkout.
             _, var_value_after = notebook_session.run_code(f"repr({var_to_compare})")
+            print("var_value_after:", var_value_after)
+            assert var_value_before == var_value_after
+
+    @pytest.mark.parametrize(
+        ("notebook_name", "cell_num_to_restore", "var_to_compare"),
+        [
+            ('numpy.ipynb', 4, "iris_X_train"),
+            ('simple.ipynb', 4, "b"),
+            ('test_unserializable_var.ipynb', 2, "next(gen)"),  # directly printing gen prints out its memory address.
+            ('QiskitDemo_NCSA_May2023.ipynb', 61, "str(qc)")
+        ]
+    )
+    def test_incremental_end_to_end_checkout(
+        self,
+        enable_incremental_store,
+        tmp_nb_path,
+        jupyter_server,
+        notebook_name: str,
+        cell_num_to_restore: int,
+        var_to_compare: str,
+    ):
+        # Get the contents of the test notebook.
+        notebook_path = tmp_nb_path(notebook_name)
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        assert cell_num_to_restore >= 1 and cell_num_to_restore <= len(contents) - 1
+
+        # Start the notebook session.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+
+            # Run some notebook cells.
+            for i in range(cell_num_to_restore):
+                notebook_session.run_code(contents[i])
+
+            # Get the variable value before checkout.
+            # The variable is printed so custom objects with no equality defined can be compared.
+            _, var_value_before = notebook_session.run_code(f"repr({var_to_compare})")
+            print("var_value_before:", var_value_before)
+
+            # Run the rest of the notebook cells.
+            for i in range(cell_num_to_restore, len(contents)):
+                notebook_session.run_code(contents[i])
+
+            # Get the notebook key of the session.
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 1
+            assert list_result.sessions[0].notebook_path is not None
+            assert Path(list_result.sessions[0].notebook_path).name == notebook_name
+            notebook_key = list_result.sessions[0].notebook_key
+
+            # Get commit id of commit which we want to restore
+            log_result = KishuCommand.log_all(notebook_key)
+            assert len(log_result.commit_graph) == len(contents) + 1  # all cells + init cell + print variable cell
+            commit_id = log_result.commit_graph[cell_num_to_restore - 1].commit_id
+
+            # Restore to that commit
+            KishuCommand.checkout(notebook_path, commit_id)
+
+            # Get the variable value after checkout.
+            _, var_value_after = notebook_session.run_code(f"repr({var_to_compare})")
+            print("var_value_after:", var_value_after)
             assert var_value_before == var_value_after
 
     def test_track_executed_cells_with_checkout(

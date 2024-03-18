@@ -183,11 +183,11 @@ class JupyterConnection:
             )
             stdout = stdout_f.getvalue()
             stderr = stderr_f.getvalue()
-        # print("**************************")
-        # print(f"stdout>\n{stdout}")
-        # print("**************************")
-        # print(f"stderr>\n{stderr}")
-        # print("**************************")
+        print("**************************")
+        print(f"stdout>\n{stdout}")
+        print("**************************")
+        print(f"stderr>\n{stderr}")
+        print("**************************")
         return reply, stdout, stderr
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -437,6 +437,7 @@ class KishuForJupyter:
         lca_commit_entry = self._kishu_commit.get_commit(lca_commit)
         if lca_commit_entry.ahg_string is None:
             raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
+        print("checkout commit id:", commit_id)
 
         parent_commit_ids = [node.commit_id for node in self._kishu_graph.list_history(commit_id)]
 
@@ -655,6 +656,7 @@ class KishuForJupyter:
 
         # Step 2: checkpoint
         checkpoint_plan.run(self._user_ns)
+        print("checkpoint commit id:", cell_info.commit_id)
 
         # Extra: generate variable version.
         data_version = hash(pickle.dumps(self._cr_planner.get_ahg().get_variable_snapshots()))
