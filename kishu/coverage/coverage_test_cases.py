@@ -168,5 +168,171 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
             "clf.fit(X, y)"
         ],
         var_modify_statements=["clf.fit(X1, y1)"]
-    )
+    ),
+    LibCoverageTestCase(
+        module_name="sklearn",
+        class_name="sklearn.impute",
+        var_name="imp_mean",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.impute import SimpleImputer"
+        ],
+        var_declare_statements=[
+            "imp_mean = SimpleImputer(missing_values=np.nan, strategy='mean')",
+            "imp_mean.fit([[7, 2, 3], [4, np.nan, 6], [10, 5, 9]])"
+        ],
+        var_modify_statements=["imp_mean.fit([[np.nan, 2, 3], [4, np.nan, 6], [10, 5, np.nan]])"]
+    ),
+    LibCoverageTestCase(
+        module_name="sklearn",
+        class_name="sklearn.impute",
+        var_name="imputer",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.impute import KNNImputer"
+        ],
+        var_declare_statements=[
+            "X = [[7, 2, 3], [4, np.nan, 6], [10, 5, 9]]",
+            "imputer = KNNImputer(n_neighbors=2)",
+            "imputer.fit_transform(X)"
+        ],
+        var_modify_statements=["imputer.fit_transform([[np.nan, 2, 3], [4, np.nan, 6], [10, 5, np.nan]])"]
+    ),
+    LibCoverageTestCase(
+        module_name="sklearn",
+        class_name="sklearn.impute",
+        var_name="imputer",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.impute import KNNImputer"
+        ],
+        var_declare_statements=[
+            "X = [[7, 2, 3], [4, np.nan, 6], [10, 5, 9]]",
+            "imputer = KNNImputer(n_neighbors=2)",
+            "imputer.fit_transform(X)"
+        ],
+        var_modify_statements=["imputer.fit_transform([[np.nan, 2, 3], [4, np.nan, 6], [10, 5, np.nan]])"]
+    ),
+    LibCoverageTestCase(
+        module_name="sklearn",
+        class_name="sklearn.kernel_ridge",
+        var_name="kernel_ridge",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.kernel_ridge import KernelRidge"
+        ],
+        var_declare_statements=[
+            "X = np.array([[1, 2], [3, 4], [5, 6]])",
+            "y = np.array([1, 2, 3])",
+            "kernel_ridge = KernelRidge(kernel='rbf', alpha=0.1)"
+        ],
+        var_modify_statements=[
+            "current_dual_coefficients = kernel_ridge.dual_coef_",
+            "new_dual_coefficients = np.full_like(current_dual_coefficients, fill_value=0.5)",
+            "kernel_ridge.dual_coef_ = new_dual_coefficients"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="sklearn",
+        class_name="sklearn.linear_model",
+        var_name="regression_model",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.linear_model import LinearRegression"
+        ],
+        var_declare_statements=[
+            "X = np.array([[1, 2], [3, 4], [5, 6]])",
+            "y = np.array([1, 2, 3])",
+            "regression_model = LinearRegression()"
+            "regression_model.fit(X, y)",
+        ],
+        var_modify_statements=[
+            "current_coefficients = regression_model.coef_",
+            "new_coefficients = np.full_like(current_coefficients, fill_value=0.5)",
+            "regression_model.coef_ = new_coefficients"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="sklearn",
+        class_name="sklearn.linear_model",
+        var_name="logistic_model",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.linear_model import LogisticRegression"
+        ],
+        var_declare_statements=[
+            "X = np.array([[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]])",
+            "y = np.array([0, 0, 1, 1, 1])",
+            "logistic_model = LogisticRegression()"
+        ],
+        var_modify_statements=[
+            "logistic_model.fit(X, y)",
+            "current_coefficients = logistic_model.coef_",
+            "new_coefficients = np.full_like(current_coefficients, fill_value=0.5)",
+            "logistic_model.coef_ = new_coefficients"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="sklearn",
+        class_name="sklearn.manifold",
+        var_name="embedding",
+        import_statements=[
+            "from sklearn.datasets import load_digits",
+            "from sklearn.manifold import LocallyLinearEmbedding"
+        ],
+        var_declare_statements=[
+            "X, _ = load_digits(return_X_y=True)",
+            "embedding = LocallyLinearEmbedding(n_components=2)"
+        ],
+        var_modify_statements=[
+            "X_transformed = embedding.fit_transform(X[:100])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.sparse",
+        var_name="sparse",
+        import_statements=[
+            "import numpy as np",
+            "from scipy import sparse"
+        ],
+        var_declare_statements=[
+            "dense = np.array([[1, 0, 0, 2], [0, 4, 1, 0], [0, 0, 5, 0]])",
+            "sparse = sparse.coo_array(dense)",
+        ],
+        var_modify_statements=["sparse.tocsr()[1, 2] = 100"]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.spatial",
+        var_name="tri",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.spatial import Delaunay"
+        ],
+        var_declare_statements=[
+            "points = np.array([[0, 0], [0, 1.1], [1, 0], [1, 1]])",
+            "tri = Delaunay(points)"
+        ],
+        var_modify_statements=[
+            "new_points = np.array([[0.5, 0.5], [0.2, 0.8], [0.8, 0.2]])",
+            "tri = Delaunay(np.concatenate((points, new_points)))"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.spatial",
+        var_name="hull",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.spatial import ConvexHull",
+            "rng = np.random.default_rng()"
+        ],
+        var_declare_statements=[
+            "points = rng.random((30, 2))",
+            "hull = ConvexHull(points)"
+        ]
+    ),
+
+
 ]   
