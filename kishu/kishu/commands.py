@@ -287,6 +287,7 @@ class FESelectedCommit:
 class FEInitializeResult:
     commits: List[FECommit]
     head: HeadBranch
+    nb_head: str
 
 
 @dataclass
@@ -628,6 +629,7 @@ class KishuCommand:
         nb_store = KishuCommitGraph.new_on_file(KishuPath.nb_commit_graph_directory(notebook_id))
         nb_graph = nb_store.list_all_history()
         nb_parents = {node.commit_id: node.parent_id for node in nb_graph}
+        nb_head = nb_store.head()
 
         # Collects list of FECommits.
         commits = []
@@ -662,6 +664,7 @@ class KishuCommand:
         return FEInitializeResult(
             commits=commits,
             head=head,
+            nb_head=nb_head,
         )
 
     @staticmethod
