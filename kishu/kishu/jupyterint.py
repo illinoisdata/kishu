@@ -183,6 +183,7 @@ class JupyterConnection:
             )
             stdout = stdout_f.getvalue()
             stderr = stderr_f.getvalue()
+        print("command:", command)
         print("**************************")
         print(f"stdout>\n{stdout}")
         print("**************************")
@@ -655,8 +656,10 @@ class KishuForJupyter:
             self.database_path(), cell_info.commit_id, parent_commit_ids)
 
         # Step 2: checkpoint
+        start = time.time()
         checkpoint_plan.run(self._user_ns)
         print("checkpoint commit id:", cell_info.commit_id)
+        print("------------------checkpoint-time:", time.time() - start)
 
         # Extra: generate variable version.
         data_version = hash(pickle.dumps(self._cr_planner.get_ahg().get_variable_snapshots()))

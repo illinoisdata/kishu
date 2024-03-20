@@ -4,6 +4,12 @@ import pickle
 import sys
 import types
 
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn
+import networkx
+from scipy import sparse
+
 from typing import Any, Optional
 
 from kishu.storage.config import Config
@@ -21,20 +27,35 @@ def _add_to_unserializable_list(obj: Any) -> None:
         Config.set('PROFILER', 'excluded_classes', unserializable_class_list)
 
 
+def _is_exception(obj):
+    """
+        List of objects which _is_picklable_dill returns false (or crashes) but are picklable.
+    """
+    if hasattr(obj, '__module__'):
+        print("attr:", getattr(obj, '__module__', None).split(".")[0])
+    else:
+        print("no module")
+    if hasattr(obj, '__module__') and getattr(obj, '__module__', None).split(".")[0] in {plt.__name__, seaborn.__name__, networkx.__name__, pd.__name__}:
+        return True
+    exceptions = [pd.core.frame.DataFrame, sparse.csr.csr_matrix]
+    return type(obj) in exceptions
+
+
 def _is_picklable(obj: Any) -> bool:
     """
         Checks whether an object is pickleable.
     """
     if _in_exclude_list(obj):
         return False
-    if inspect.ismodule(obj):
+    if inspect.ismodule(obj) or _is_exception(obj):
+        print("exception")
         return True
     try:
         # This function can crash.
         is_picklable = dill.pickles(obj)
 
         # Add the unpicklable object to the config file.
-        if not is_picklable and Config.get('PROFILER', 'auto_add_unpicklable_object', False) and not isinstance(obj, list):
+        if not is_picklable and Config.get('PROFILER', 'auto_add_unpicklable_object', True) and not isinstance(obj, list):
             _add_to_unserializable_list(obj)
         return is_picklable
     except Exception:
@@ -46,7 +67,7 @@ def _is_picklable(obj: Any) -> bool:
         pickle.dumps(obj)
     except Exception:
         # Add the unpicklable object to the config file.
-        if Config.get('PROFILER', 'auto_add_unpicklable_object', False) and not isinstance(obj, list):
+        if Config.get('PROFILER', 'auto_add_unpicklable_object', True) and not isinstance(obj, list):
             _add_to_unserializable_list(obj)
         return False
     return True

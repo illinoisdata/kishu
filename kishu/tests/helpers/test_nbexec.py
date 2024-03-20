@@ -1,4 +1,5 @@
 import pytest
+import time
 
 import numpy as np
 
@@ -89,3 +90,24 @@ def test_notebookrunner_case_four(tmp_nb_path):
     }
 
     assert output == expected
+
+
+def test_dill():
+    start = time.time()
+    notebook = NotebookRunner("tests/notebooks/sklearn_tweet_classification.ipynb")
+    notebook.execute_dill_test(43)
+    print("time:", time.time() - start)
+
+
+def test_incremental_store(enable_incremental_store, tmp_nb_path):
+    start = time.time()
+    notebook = NotebookRunner(str(tmp_nb_path("sklearn_tweet_classification.ipynb")))
+    notebook.execute_incremental_load_test(43)
+    print("time:", time.time() - start)
+
+
+def test_store(tmp_nb_path):
+    start = time.time()
+    notebook = NotebookRunner(str(tmp_nb_path("sklearn_tweet_classification.ipynb")))
+    notebook.execute_incremental_load_test(43)
+    print("time:", time.time() - start)

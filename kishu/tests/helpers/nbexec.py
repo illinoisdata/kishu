@@ -94,6 +94,48 @@ class NotebookRunner:
             data = dill.load(file)
         return data
 
+    def execute_dill_test(self, cell_num_to_restore: int):
+        # Open the notebook.
+        with open(self.test_notebook) as nb_file:
+            notebook = read(nb_file, as_version=4)
+
+        # Strip all non-code (e.g., markdown) cells. We won't be needing them.
+        notebook["cells"] = [x for x in notebook["cells"] if x["cell_type"] == "code"]
+
+        new_cells = []
+        for i in range(len(notebook["cells"])):
+            new_cells.append(notebook["cells"][i])
+            new_cells.append(
+                new_code_cell(source=f"dill.dump_session('/data/elastic-notebook/tmp/aaa_{i}.pkl')"))
+
+        # create a kishu initialization cell and add it to the start of the notebook.
+        new_cells.insert(0, new_code_cell(source="import dill"))
+        new_cells.append(new_code_cell(source=f"dill.load_session('/data/elastic-notebook/tmp/aaa_{cell_num_to_restore - 1}.pkl')"))
+
+        notebook["cells"] = new_cells
+
+        # Execute the notebook cells.
+        exec_prep = ExecutePreprocessor(timeout=1200, kernel_name="python3")
+        exec_prep.preprocess(notebook, {"metadata": {"path": self.path_to_notebook}})
+
+    def execute_incremental_load_test(self, cell_num_to_restore: int):
+        # Open the notebook.
+        with open(self.test_notebook) as nb_file:
+            notebook = read(nb_file, as_version=4)
+
+        # Strip all non-code (e.g., markdown) cells. We won't be needing them.
+        notebook["cells"] = [x for x in notebook["cells"] if x["cell_type"] == "code"]
+
+        # create a kishu initialization cell and add it to the start of the notebook.
+        notebook.cells.insert(0, new_code_cell(source=KISHU_INIT_STR))
+
+        kishu_checkout_code = get_kishu_checkout_str(cell_num_to_restore)
+        notebook.cells.append(new_code_cell(source=kishu_checkout_code))
+
+        # Execute the notebook cells.
+        exec_prep = ExecutePreprocessor(timeout=1200, kernel_name="python3")
+        exec_prep.preprocess(notebook, {"metadata": {"path": self.path_to_notebook}})
+
     def execute_full_checkout_test(self, cell_num_to_restore: int) -> Tuple[Dict, Dict]:
         """
             Executes the full checkout test by storing the namespace at cell_num_to_restore,

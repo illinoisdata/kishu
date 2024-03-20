@@ -187,6 +187,12 @@ class AHG:
         # Retrieve input variable snapshots. A VS is an input if any of the names in its connected component are accessed.
         input_vss = [vs for vs in self._active_variable_snapshots.values() if vs.name.intersection(input_variables)]
 
+        # If a variable is unserializable (i.e., inf size), assume that it is modified on access.
+        unserializable_vars = [vs for vs in self._active_variable_snapshots.values() if vs.size == float('inf')]
+        for vs in unserializable_vars:
+            if vs.name.intersection(input_variables):
+                modified_variables.update(vs.name)
+
         # Compute the set of current connected components of variables in the namespace.
         connected_components_set = AHG.union_find(current_variables, linked_variable_pairs)
 

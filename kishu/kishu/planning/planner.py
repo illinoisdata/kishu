@@ -79,21 +79,35 @@ class CheckpointRestorePlanner:
             @param code_block: code of executed cell.
             @param runtime_s: runtime of cell execution.
         """
+        start = time.time()
         # Use current timestamp as version for new VSes to be created during the update.
         version = time.monotonic_ns()
 
         # Find accessed variables from monkey-patched namespace.
         accessed_vars = self._user_ns.accessed_vars().intersection(self._pre_run_cell_vars)
+        print("accessed vars:", accessed_vars)
         self._user_ns.reset_accessed_vars()
+
+        assigned_vars = self._user_ns.assigned_vars()
+        print("assigned vars:", accessed_vars)
+        self._user_ns.reset_assigned_vars()
 
         # Find created and deleted variables.
         created_vars = self._user_ns.keyset().difference(self._pre_run_cell_vars)
         deleted_vars = self._pre_run_cell_vars.difference(self._user_ns.keyset())
 
+        # Find candidates for modified variables: a variable can only be modified if it was
+        # linked with a variable that was accessed or modified.
+        modified_vars_candidates = set()
+        for vs in self._ahg.get_active_variable_snapshots():
+            if vs.name.intersection(accessed_vars) or vs.name.intersection(assigned_vars):
+                modified_vars_candidates.update(vs.name)
+        print("modified_vars_candidates:", modified_vars_candidates)
+
         # Find modified variables.
         modified_vars_structure = set()
         modified_vars_value = set()
-        for k in filter(self._user_ns.__contains__, self._id_graph_map.keys()):
+        for k in filter(self._user_ns.__contains__, modified_vars_candidates):
             new_idgraph = get_object_state(self._user_ns[k], {})
 
             # Identify objects which have changed by value. For displaying in front end.
@@ -107,9 +121,17 @@ class CheckpointRestorePlanner:
                 self._id_graph_map[k] = new_idgraph
                 modified_vars_structure.add(k)
 
+        print("--------------------modification detection time:", time.time() - start)
+
+        start = time.time()
+
         # Update ID graphs for newly created variables.
         for var in created_vars:
             self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
+
+        print("--------------------create new ID graphs time:", time.time() - start)
+
+        start = time.time()
 
         # Find pairs of linked variables.
         linked_var_pairs = []
@@ -117,11 +139,17 @@ class CheckpointRestorePlanner:
             if self._id_graph_map[x].is_overlap(self._id_graph_map[y]):
                 linked_var_pairs.append((x, y))
 
+        print("--------------------find links time:", time.time() - start)
+
+        start = time.time()
+        
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
 
         self._ahg.update_graph(code_block, version, runtime_s, accessed_vars, self._user_ns.keyset(), linked_var_pairs,
                                modified_vars_structure, deleted_vars)
+
+        print("--------------------update AHG time:", time.time() - start)
 
         return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
 
@@ -132,6 +160,7 @@ class CheckpointRestorePlanner:
         parent_commit_ids: Optional[List[str]]=None
     ) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
+        start = time.time()
         active_vss = self._ahg.get_active_variable_snapshots()
         for vs in active_vss:
             for varname in vs.name:
@@ -149,14 +178,23 @@ class CheckpointRestorePlanner:
             active_vss = [vs for vs in active_vss if
                           VersionedName(vs.name, vs.version) not in stored_versioned_names.keys()]
 
+        print("-------------------preprocessing time:", time.time() - start)
+
+        start = time.time()
+
         # Profile the size of each variable defined in the current session.
         for active_vs in active_vss:
+            if active_vs.size != 0:
+                continue
+            print("profile size:", active_vs.name)
             if len(active_vs.name) == 1:
-                active_vs.size = profile_variable_size([self._user_ns[varname] for varname in active_vs.name])
-            else:
                 active_vs.size = profile_variable_size([self._user_ns[varname] for varname in active_vs.name][0])
-            print("size:", active_vs.name, active_vs.size)
+            else:
+                active_vs.size = profile_variable_size([self._user_ns[varname] for varname in active_vs.name])
 
+        print("-------------------profile size time:", time.time() - start)
+
+        start = time.time()
         # Initialize optimizer.
         # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
         # Currently, a variable is recomputed only if it is unserialzable.
@@ -171,34 +209,56 @@ class CheckpointRestorePlanner:
         print("vss_to_migrate:", vss_to_migrate)
         print("ces_to_recompute:", ces_to_recompute)
 
-        # Sort variables to migrate based on cells they were created in.
-        ce_to_vs_map = defaultdict(list)
-        for vs_name in vss_to_migrate:
-            ce_to_vs_map[self._ahg.get_active_variable_snapshots_dict()[vs_name].output_ce.cell_num].extend(list(vs_name))
-
         if self._incremental_cr:
             # Create incremental checkpoint plan using optimization results.
             checkpoint_plan = IncrementalCheckpointPlan.create(
                 self._user_ns,
                 database_path,
                 commit_id,
-                list(self._ahg.get_active_variable_snapshots_dict()[vs_name] for vs_name in vss_to_migrate)
+                list(self._ahg.get_active_variable_snapshots_dict()[vn.name] for vn in vss_to_migrate)
             )
             print("incremental checkpoint:", vss_to_migrate)
         else:
             # Create checkpoint plan using optimization results.
-            checkpoint_plan = CheckpointPlan.create(self._user_ns, database_path, commit_id,
-                                                    list(chain.from_iterable(vss_to_migrate)))
+            checkpoint_plan = IncrementalCheckpointPlan.create(
+                self._user_ns,
+                database_path,
+                commit_id,
+                list(self._ahg.get_active_variable_snapshots_dict()[vn.name] for vn in vss_to_migrate)
+            )
+
+                # Sort variables to migrate based on cells they were created in.
+        # ce_to_vs_map = defaultdict(list)
+        # for vs_name in vss_to_migrate:
+        #     ce_to_vs_map[self._ahg.get_active_variable_snapshots_dict()[vs_name].output_ce.cell_num].extend(list(vs_name))
+
+        ce_to_vs_map: Dict[int, List[Tuple[VersionedName, VersionedNameContext]]] = defaultdict(list)
+        for versioned_name in vss_to_migrate:
+            versioned_name_context = VersionedNameContext(1, commit_id)
+            ce_to_vs_map[self._ahg.get_active_variable_snapshots_dict()[versioned_name.name].output_ce.cell_num].append((versioned_name, versioned_name_context))
+
+        fallback_recomputation = {}
+        for versioned_name in vss_to_migrate:
+            fallback_recomputation[versioned_name] = optimizer.req_func_mapping[self._ahg.get_active_variable_snapshots_dict()[versioned_name.name].output_ce.cell_num]
+
 
         # Create restore plan using optimization results.
-        restore_plan = self._generate_restore_plan(ces_to_recompute, ce_to_vs_map, optimizer.req_func_mapping)
+        # restore_plan = self._generate_restore_plan(ces_to_recompute, ce_to_vs_map, optimizer.req_func_mapping)
+        restore_plan = self._generate_incremental_restore_plan_helper(
+            ces_to_recompute,
+            defaultdict(list),
+            ce_to_vs_map,
+            fallback_recomputation
+        )
+
+        print("-------------------compute plans time:", time.time() - start)
 
         return checkpoint_plan, restore_plan
 
     def _generate_restore_plan(
         self,
         ces_to_recompute: Set[int],
-        ce_to_vs_map: Dict[int, List[str]],
+        ce_to_vs_map: Dict[int, List[Tuple[VersionedName, VersionedNameContext]]],
         req_func_mapping: Dict[int, Set[int]]
     ) -> RestorePlan:
         """
@@ -219,10 +279,16 @@ class CheckpointRestorePlanner:
 
             # Add a load variable restore action if there are variables from the cell that needs to be stored
             if len(ce_to_vs_map[ce.cell_num]) > 0:
-                restore_plan.add_load_variable_restore_action(
-                        ce.cell_num,
-                        [vs_name for vs_name in ce_to_vs_map[ce.cell_num]],
-                        [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]])
+                # restore_plan.add_load_variable_restore_action(
+                #         ce.cell_num,
+                #         [vs_name for vs_name in ce_to_vs_map[ce.cell_num]],
+                #         [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]])
+                # print("add load variable action:", ce.cell_num, [i[0] for i in load_ce_to_vs_map[ce.cell_num]])
+
+                restore_plan.add_incremental_load_restore_action(
+                    ce.cell_num,
+                    ce_to_vs_map[ce.cell_num],
+                    [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]])
         return restore_plan
 
     def get_ahg(self) -> AHG:
@@ -255,9 +321,12 @@ class CheckpointRestorePlanner:
             Called when a checkout is performed.
         """
         if not self._incremental_cr:
+            print("start restore:")
+            start = time.time()
             # Regular restore: use the provided restore plan.
             result_ns = restore_plan.run(database_path, commit_id)
             self._ahg = AHG.deserialize(new_ahg_string)
+            print("----------------run-restore-time:", time.time() - start)
         else:
             # Incremental restore: dynamically recompute the restore plan.
             if lca_ahg_string is None:
@@ -275,7 +344,9 @@ class CheckpointRestorePlanner:
                 parent_commit_ids
             )
             # run the restore plan.
+            start = time.time()
             result_ns = incremental_restore_plan.run(database_path, commit_id)
+            print("----------------run-incremental-restore-time:", time.time() - start)
             print("result keyset:", result_ns.keyset())
             self._ahg = target_ahg
 
@@ -295,14 +366,11 @@ class CheckpointRestorePlanner:
         database_path: str,
         parent_commit_ids: List[str]
     ) -> RestorePlan:
+        start = time.time()
         # Get the target active VSes to restore.
         target_active_vss = target_ahg.get_active_variable_snapshots()
-        print("target_active_vss:", [(vs.name, vs.version) for vs in target_active_vss])
-
         # Find useful VSes for session restoration.
         useful_active_vses, useful_stored_vses = self._find_useful_vses(lca_ahg, database_path, parent_commit_ids)
-        print("useful_active_vses:", useful_active_vses)
-        print("useful_stored_vses:", set(useful_stored_vses.keys()))
 
         # Compute the incremental load plan.
         opt = IncrementalLoadOptimizer(target_ahg, target_active_vss, useful_active_vses, useful_stored_vses)
@@ -323,6 +391,7 @@ class CheckpointRestorePlanner:
             load_ce_to_vs_map,
             opt.fallback_recomputation
         )
+        print("----------------generate-incremental-restore-time:", time.time() - start)
         return incremental_restore_plan
 
     def _find_useful_vses(

@@ -4,6 +4,7 @@ import pytest
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.io as sio
 import seaborn as sns
 
 from kishu.planning.idgraph import get_object_hash, get_object_state, value_equals
@@ -552,6 +553,16 @@ def test_idgraph_overlap():
     assert idgraph1.is_overlap(idgraph2)
 
 
+def test_idgraph_no_overlap_primitive():
+    a = 1
+    b = 1
+
+    idgraph1 = get_object_state(a, {})
+    idgraph2 = get_object_state(b, {})
+
+    assert not idgraph1.is_overlap(idgraph2)
+
+
 def test_idgraph_no_overlap():
     a, b, c, d = 1, 2, 3, 4
     list1 = [a, b]
@@ -572,3 +583,14 @@ def test_idgraph_nested_overlap():
     idgraph2 = get_object_state(nested_list, {})
 
     assert idgraph1.is_overlap(idgraph2)
+
+
+def test_idgraph_overlap_numpy():
+    digits = sio.loadmat('/data/elastic-notebook/data/krasser-ml/ml-ex3/ex3data1.mat')
+    X = digits['X']
+    y = digits['y'].ravel()
+
+    idgraph1 = get_object_state(digits, {})
+    idgraph2 = get_object_state(y, {})
+
+    assert not idgraph1.is_overlap(idgraph2)

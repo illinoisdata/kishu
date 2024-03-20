@@ -483,6 +483,7 @@ class KishuCommand:
 
         instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
         if (instrument_result.is_success()):
+            print("start checkout:", branch_or_commit_id)
             return CheckoutResult.wrap(JupyterConnection(kernel_id).execute_one_command(
                 f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
             ), instrument_result)

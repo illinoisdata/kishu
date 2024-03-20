@@ -3,10 +3,16 @@ from __future__ import annotations
 from typing import Any, List, Optional
 from types import GeneratorType
 
+import numpy
+import scipy
+import torch
 import pandas
 import pickle
 import uuid
 import xxhash
+
+
+PRIMITIVES = (type(None), int, float, bool, str, bytes)
 
 
 class GraphNode:
@@ -15,14 +21,34 @@ class GraphNode:
         self.id_obj = id_obj
         self.children: List[Any] = []
         self.obj_type = obj_type
+        self.cached_id_set: Optional[Set[Any]] = None
 
-    def convert_to_list(self, check_id_obj=True):
-        ls = []
-        GraphNode._convert_idgraph_to_list(self, ls, set(), check_id_obj)
-        return ls
+        self.cached_list_check_id_obj: Optional[List[Any]] = None
+        self.cached_list_not_check_id_obj: Optional[List[Any]] = None
 
-    def id_set(self):
-        return set([i for i in self.convert_to_list() if isinstance(i, int)])
+    def convert_to_list(self, check_id_obj=True, check_value=True):
+        if check_value:
+            ls = []
+            GraphNode._convert_idgraph_to_list(self, ls, set(), check_id_obj, check_value)
+            return ls
+
+        if check_id_obj:
+            if not self.cached_list_check_id_obj:
+                ls = []
+                GraphNode._convert_idgraph_to_list(self, ls, set(), check_id_obj, check_value)
+                self.cached_list_check_id_obj = ls
+            return self.cached_list_check_id_obj
+
+        if not self.cached_list_not_check_id_obj:
+            ls = []
+            GraphNode._convert_idgraph_to_list(self, ls, set(), check_id_obj, check_value)
+            self.cached_list_not_check_id_obj = ls
+        return self.cached_list_not_check_id_obj
+
+    def id_set(self) -> Set[Any]:
+        if not self.cached_id_set:
+            self.cached_id_set = set([i for i in self.convert_to_list(check_value=False) if isinstance(i, int)])
+        return self.cached_id_set
 
     def is_overlap(self, other: GraphNode) -> bool:
         if self.id_set().intersection(other.id_set()):
@@ -42,7 +68,7 @@ class GraphNode:
         return GraphNode._compare_idgraph(self, other, check_id_obj=True)
 
     @staticmethod
-    def _convert_idgraph_to_list(node: GraphNode, ret_list, visited: set, check_id_obj=True):
+    def _convert_idgraph_to_list(node: GraphNode, ret_list, visited: set, check_id_obj=True, check_value=True):
         # pre oder
 
         if node.id_obj and check_id_obj:
@@ -58,9 +84,10 @@ class GraphNode:
 
         for child in node.children:
             if isinstance(child, GraphNode):
-                GraphNode._convert_idgraph_to_list(child, ret_list, visited, check_id_obj)
+                GraphNode._convert_idgraph_to_list(child, ret_list, visited, check_id_obj, check_value)
             else:
-                ret_list.append(child)
+                if check_value or node.obj_type not in PRIMITIVES: 
+                    ret_list.append(child)
 
     @staticmethod
     def _compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode, check_id_obj=True) -> bool:
@@ -105,7 +132,7 @@ def value_equals(idGraph1: GraphNode, idGraph2: GraphNode):
     return GraphNode._compare_idgraph(idGraph1, idGraph2, check_id_obj=False)
 
 
-def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
+def get_object_state(obj, visited: dict, include_id=True, first_creation=False) -> GraphNode:
 
     if id(obj) in visited.keys():
         return visited[id(obj)]
@@ -119,7 +146,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
     elif isinstance(obj, tuple):
         node = GraphNode(obj_type=type(obj))
         for item in obj:
-            child = get_object_state(item, visited, include_id)
+            child = get_object_state(item, visited, include_id, first_creation)
             node.children.append(child)
 
         node.children.append("/EOC")
@@ -132,7 +159,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
             node.id_obj = id(obj)
 
         for item in obj:
-            child = get_object_state(item, visited, include_id)
+            child = get_object_state(item, visited, include_id, first_creation)
             node.children.append(child)
 
         node.children.append("/EOC")
@@ -144,7 +171,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         if include_id:
             node.id_obj = id(obj)
         for item in obj:
-            child = get_object_state(item, visited, include_id)
+            child = get_object_state(item, visited, include_id, first_creation)
             node.children.append(child)
 
         node.children.append("/EOC")
@@ -157,9 +184,9 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
             node.id_obj = id(obj)
 
         for key, value in obj.items():
-            child = get_object_state(key, visited, include_id)
+            child = get_object_state(key, visited, include_id, first_creation)
             node.children.append(child)
-            child = get_object_state(value, visited, include_id)
+            child = get_object_state(value, visited, include_id, first_creation)
             node.children.append(child)
 
         node.children.append("/EOC")
@@ -179,13 +206,83 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         node.children.append("/EOC")
         return node
 
-    elif isinstance(obj, GeneratorType):
-        # Hack for the generator class to make it identify as always modified.
-        node = GraphNode(obj_type=type(obj), id_obj = uuid.uuid4().hex)
+    elif issubclass(type(obj), numpy.dtype):
+        # Numpy dtypes are dynamically generated. Don't store their memory addresses.
+        node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         node.children.append(str(obj))
         node.children.append("/EOC")
         return node
+
+    if isinstance(obj, pandas.DataFrame):
+        if first_creation:
+            for (_, col) in obj.items():
+                col.__array__().flags.writeable = False
+
+        node = GraphNode(obj_type=type(obj))
+        node.id_obj = id(obj)
+        visited[id(obj)] = node
+        for (_, col) in obj.items():
+            node.children.append(str(col.__array__().flags.writeable))
+            col.__array__().flags.writeable = False
+        node.children.append("/EOC")
+        return node
+
+    if isinstance(obj, pandas.Series):
+        if first_creation:
+            obj.__array__().flags.writeable = False
+
+        node = GraphNode(obj_type=type(obj))
+        node.id_obj = id(obj)
+        visited[id(obj)] = node
+        node.children.append(str(obj.__array__().flags.writeable))
+        obj.__array__().flags.writeable = False
+        node.children.append("/EOC")
+        return node
+
+    if isinstance(obj, numpy.ndarray):
+        node = GraphNode(obj_type=type(obj))
+        node.id_obj = id(obj)
+        visited[id(obj)] = node
+
+        # create hash
+        h = xxhash.xxh3_128()
+        h.update(numpy.ascontiguousarray(obj.data))
+        node.children.append(h.intdigest())
+        node.children.append("/EOC")
+        return node
+
+    if isinstance(obj, scipy.sparse.csr_matrix):
+        node = GraphNode(obj_type=type(obj))
+        node.id_obj = id(obj)
+        visited[id(obj)] = node
+
+        # create hash
+        h = xxhash.xxh3_128()
+        h.update(numpy.ascontiguousarray(obj.data))
+        node.children.append(h.intdigest())
+        node.children.append("/EOC")
+        return node
+
+    if isinstance(obj, torch.Tensor):
+        node = GraphNode(obj_type=type(obj))
+        node.id_obj = id(obj)
+        visited[id(obj)] = node
+
+        # create hash
+        h = xxhash.xxh3_128()
+        h.update(numpy.ascontiguousarray(obj.data))
+        node.children.append(h.intdigest())
+        node.children.append("/EOC")
+        return node
+
+    # elif isinstance(obj, GeneratorType):
+    #     # Hack for the generator class to make it identify as always modified.
+    #     node = GraphNode(obj_type=type(obj), id_obj = uuid.uuid4().hex)
+    #     visited[id(obj)] = node
+    #     node.children.append(str(obj))
+    #     node.children.append("/EOC")
+    #     return node
 
     elif callable(obj):
         node = GraphNode(obj_type=type(obj))
@@ -210,7 +307,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
                 return node
 
             for item in reduced[1:]:
-                child = get_object_state(item, visited, False)
+                child = get_object_state(item, visited, include_id=False, first_creation=first_creation)
                 node.children.append(child)
             node.children.append("/EOC")
         return node
@@ -227,7 +324,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
                 return node
 
             for item in reduced[1:]:
-                child = get_object_state(item, visited, False)
+                child = get_object_state(item, visited, include_id=False, first_creation=first_creation)
                 node.children.append(child)
 
             node.children.append("/EOC")
@@ -240,7 +337,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
         for attr_name, attr_value in obj.__getstate__().items():
             node.children.append(attr_name)
-            child = get_object_state(attr_value, visited, False)
+            child = get_object_state(attr_value, visited, include_id=False, first_creation=first_creation)
             node.children.append(child)
 
         node.children.append("/EOC")
@@ -254,7 +351,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
 
         for attr_name, attr_value in obj.__dict__.items():
             node.children.append(attr_name)
-            child = get_object_state(attr_value, visited)
+            child = get_object_state(attr_value, visited, first_creation=first_creation)
             node.children.append(child)
 
         node.children.append("/EOC")
