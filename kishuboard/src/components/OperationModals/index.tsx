@@ -94,6 +94,7 @@ export function OperationModals(props: OperationModalProps) {
             checkoutVariableHandler={handleCheckoutVariable}
             checkoutBranchID={modelOpenContext.checkoutBranchID}
             setCheckoutBranchID={modelOpenContext.setCheckoutBranchID} //after checkout succeed, the checkoutBranchID will be set to undefined
+            refreshGraphHandler={props.refreshGraphHandler}
         ></CheckoutWaitingModal>}
         {modelOpenContext.isMessageEditorOpen && (<MessageEditor
                 isModalOpen={modelOpenContext.isMessageEditorOpen}

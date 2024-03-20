@@ -361,6 +361,9 @@ function App() {
 
     async function refreshGraph(){
         const newGraph = await BackEndAPI.getCommitGraph();
+        setCurrentHeadBranch(newGraph.currentHeadBranch)
+        setCurrentHeadID(newGraph.currentHead);
+
         //do a deap comparison of the commits
         if(JSON.stringify(newGraph.commits) !== JSON.stringify(commits)){
         setCommits(newGraph.commits);
@@ -371,8 +374,6 @@ function App() {
             });
         });
         setBranchID2CommitMap(newSetBranchID2CommitMap);
-        setCurrentHeadBranch(newGraph.currentHeadBranch)
-        setCurrentHeadID(newGraph.currentHead);
         if(!selectedCommitID || newGraph.commits.length > commits.length) {
             setSelectedCommitID(newGraph.currentHead);
             setSelectedBranchID(newGraph.currentHeadBranch);
