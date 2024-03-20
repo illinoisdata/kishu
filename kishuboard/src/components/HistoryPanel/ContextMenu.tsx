@@ -3,6 +3,7 @@ import {
     AppstoreOutlined,
     CalendarOutlined,
     EditOutlined,
+    UndoOutlined,
 } from "@ant-design/icons";
 import {Menu, message} from "antd";
 import type {MenuProps} from "antd/es/menu";
@@ -39,14 +40,19 @@ function getBranchChildrenItem(branch: string): MenuItem[] {
     ]
 }
 
-function getItems(tags: string[]|undefined, branches: string[]|undefined): MenuItem[] {
+function getItems(tags: string[]|undefined, branches: string[]|undefined,cIDInCurBranch:Set<string>,cOID:string): MenuItem[] {
     let items: MenuItem[] = [];
     items.push(getItem("Add Tag for Selected Commit", "tag", <EditOutlined/>))
     items.push(getItem("Create Branch", "branch", <CalendarOutlined/>))
-    items.push(getItem("Checkout", "rollback", <AppstoreOutlined/>, [
-        getItem("Variables", "states"),
-        getItem("Variables + Code", "both"),
-    ]))
+    // items.push(getItem("Checkout", "rollback", <AppstoreOutlined/>, [
+    //     getItem("Variables", "states"),
+    //     getItem("Variables + Code", "both"),
+    // ]))
+    if(cIDInCurBranch.has(cOID)){
+        items.push(getItem("Rollback Execution","states",<UndoOutlined />))
+    }
+    // items.push(getItem("Rollback Execution","states",<UndoOutlined />))
+    items.push(getItem("Checkout Variables + Code","both", <AppstoreOutlined/> ))
     items.push(getItem("Edit Commit Message", "message", <EditOutlined/>))
     if(tags){
         for (let tag of tags) {
@@ -76,7 +82,14 @@ function ContextMenu({
                      }: ContextMenuProps) {
     const props = useContext(AppContext);
     const operationModelContext = useContext(OperationModelContext)!
-    const items = getItems(props!.selectedCommit?.commit.tags, props!.selectedCommit?.commit.branchIds);
+    let cIDInCurBranch =  new Set<string>()
+    let iterator = props?.currentHeadID
+    while(iterator){
+        cIDInCurBranch.add(iterator)
+        iterator = props?.commits.filter(commit => commit.oid == iterator)?.[0].parentOid;
+    }
+
+    const items = getItems(props!.selectedCommit?.commit.tags, props!.selectedCommit?.commit.branchIds,cIDInCurBranch,props!.selectedCommit!.commit.oid);
     const onClickMenuItem: MenuProps["onClick"] = async ({key, domEvent}) => {
         onClose();
         domEvent.preventDefault();

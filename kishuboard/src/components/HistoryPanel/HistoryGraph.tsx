@@ -33,6 +33,29 @@ function _HistoryGraph(props: HistoryGraphProps) {
             props.setUnfoldedGroup(props.unfoldedGroup.filter((id) => id !== groupID))
         }
     }
+
+    function getSVGLine(pointRenderInfo:[string,PointRenderInfo],pID:string, dashLine:boolean){
+        let me = props.visPoints.get(pointRenderInfo[0]);
+        let parent = props.visPoints.get(pID);
+        let parentCX = props.pointRendererInfos.get(pID!)?.cx;
+        let parentCY = props.pointRendererInfos.get(pID!)?.cy;
+        // let dashLine = me?.point.type===VisPointType.GROUP_FOLD?false:parent?.point.commit.variableVersion === me?.point.commit.variableVersion;
+        //if has parent and parent is not folded in the same date.
+        if (parentCX && parentCY && (parentCY !== pointRenderInfo[1].cy)) {
+            return (
+                <path
+                    strokeDasharray={dashLine ? "3,3" : ""}
+                    stroke={pointRenderInfo[1].color}
+                    fill={"none"}
+                    d={`M ${parentCX} ${parentCY - COMMITHEIGHT / 2 + FONTSIZE / 2} L ${pointRenderInfo[1].cx} ${
+                        (parentCY- COMMITHEIGHT / 2 + FONTSIZE / 2) - COMMITHEIGHT / 2
+                    } L ${pointRenderInfo[1].cx} ${pointRenderInfo[1].cy - COMMITHEIGHT / 2 + FONTSIZE / 2}`}
+                />
+            );
+        }
+        return <></>;
+    }
+
     return (
         <svg
             overflow={"visible"}
@@ -43,23 +66,17 @@ function _HistoryGraph(props: HistoryGraphProps) {
             {Array.from(props.pointRendererInfos).map((pointRenderInfo) => {
                 let me = props.visPoints.get(pointRenderInfo[0]);
                 let parentID = me!.point.parentID;
-                let parent = props.visPoints.get(parentID);
-                let parentCX = props.pointRendererInfos.get(parentID!)?.cx;
-                let parentCY = props.pointRendererInfos.get(parentID!)?.cy;
-                let dashLine = me?.point.type===VisPointType.GROUP_FOLD?false:parent?.point.commit.variableVersion === me?.point.commit.variableVersion;
-                if (parentCX && parentCY && (parentCY !== pointRenderInfo[1].cy)) {
-                    return (
-                        <path
-                            strokeDasharray={dashLine ? "3,3" : ""}
-                            stroke={pointRenderInfo[1].color}
-                            fill={"none"}
-                            d={`M ${parentCX} ${parentCY - COMMITHEIGHT / 2 + FONTSIZE / 2} L ${pointRenderInfo[1].cx} ${
-                                (parentCY- COMMITHEIGHT / 2 + FONTSIZE / 2) - COMMITHEIGHT / 2
-                            } L ${pointRenderInfo[1].cx} ${pointRenderInfo[1].cy - COMMITHEIGHT / 2 + FONTSIZE / 2}`}
-                        />
-                    );
+                let varParentLine =  getSVGLine(pointRenderInfo,parentID,false);
+                let nbParentLine = <></>
+                if(me!.point.nbParentID != me!.point.parentID){
+                    nbParentLine = getSVGLine(pointRenderInfo,me!.point.nbParentID,true);
                 }
-                return <></>;
+                return(
+                    <>
+                        {varParentLine}
+                        {nbParentLine}
+                    </>
+                );
             })}
             {Array.from(props.pointRendererInfos).map((pointRenderInfo) => {
                 // find commit index according to commitID
@@ -127,7 +144,7 @@ function _HistoryGraph(props: HistoryGraphProps) {
                             <rect
                                 x={info.cx - COMMITRADIUS + MESSAGEMARGINX - 3}
                                 y={info.cy + COMMITHEIGHT / 2 - 10 - FONTSIZE}
-                                width={FONTSIZE * 11}
+                                width={FONTSIZE * 7}
                                 height={FONTSIZE + 3}
                                 fill="red"
                             >
@@ -137,7 +154,7 @@ function _HistoryGraph(props: HistoryGraphProps) {
                                 y={info.cy + COMMITHEIGHT / 2 - 10}
                                 fill = "white"
                             >
-                                current notebook state
+                                current state
                             </text>
 
                         </>
