@@ -12,4 +12,5 @@ export interface VisPoint {
     visPointID: string; // if only one point, it's if it's group_fold, it's the commit id of the first commit in the group
     commit: Commit; // if it's group_fold, it's the first commit in the group
     parentID: string; //visPointID of the parent
+    nbParentID: string; //visPointID of the nbParent
 }
