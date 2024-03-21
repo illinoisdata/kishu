@@ -437,6 +437,9 @@ class KishuForJupyter:
         # Restore notebook cells.
         if not skip_notebook and commit_entry.raw_nb is not None:
             self._checkout_notebook(commit_entry.raw_nb)
+        else:
+            # Erase execution counts, assuming only checking out older execution.
+            self._edit_execution_counts(commit_entry)
 
         # Restore list of executed cells.
         if commit_entry.executed_cells is not None:
@@ -783,6 +786,24 @@ class KishuForJupyter:
         nbformat.write(nb, nb_path)
 
         # Reload frontend to reflect checked out notebook. This may prompts a confirmation dialog.
+        self.reload_jupyter_frontend()
+
+    def _edit_execution_counts(self, entry: CommitEntry) -> None:
+        nb_path = self._notebook_id.path()
+
+        # Read current notebook cells.
+        nb = JupyterRuntimeEnv.read_notebook(self._notebook_id.path())
+
+        # Erase lower execution count.
+        for cell in nb.cells:
+            if cell.execution_count is not None and cell.execution_count > entry.execution_count:
+                cell.execution_count = None
+                cell.outputs = []  # Should we erase output?
+
+        # Save change
+        nbformat.write(nb, nb_path)
+
+        # Reload frontend to reflect edited notebook. This may prompts a confirmation dialog.
         self.reload_jupyter_frontend()
 
     def _checkout_namespace(self, user_ns: Namespace, target_ns: Namespace) -> None:
