@@ -9,7 +9,8 @@ import "./Info.css";
 export interface HistoryGraphProps {
     pointRendererInfos: Map<string, PointRenderInfo>;
     visPoints: Map<string, {point:VisPoint,idx:number}>;
-    currentPointID: string | undefined;
+    currentVarID: string | undefined;
+    currentCodeID: string | undefined;
     svgMaxX: number;
     svgMaxY: number;
     selectedPointID: string | undefined;
@@ -54,6 +55,27 @@ function _HistoryGraph(props: HistoryGraphProps) {
             );
         }
         return <></>;
+    }
+
+    function getStateLabel(content:string,info:PointRenderInfo){
+        return <>
+        <rect
+            x={info.cx - COMMITRADIUS + MESSAGEMARGINX - 3}
+            y={info.cy + COMMITHEIGHT / 2 - 10 - FONTSIZE}
+            width={(FONTSIZE - 7) * content.length}
+            height={FONTSIZE + 3}
+            fill="yellow"
+        >
+        </rect>
+        <text
+            x={info.cx - COMMITRADIUS + MESSAGEMARGINX}
+            y={info.cy + COMMITHEIGHT / 2 - 10}
+            fill = "black"
+        >
+            {content}
+        </text>
+
+    </>
     }
 
     return (
@@ -139,26 +161,20 @@ function _HistoryGraph(props: HistoryGraphProps) {
                     >
                         {props.visPoints.get(id)?.point.commit.message}
                     </text>
-                    {id == props.currentPointID &&
+                    {id == props.currentVarID && id == props.currentCodeID &&
                         <>
-                            <rect
-                                x={info.cx - COMMITRADIUS + MESSAGEMARGINX - 3}
-                                y={info.cy + COMMITHEIGHT / 2 - 10 - FONTSIZE}
-                                width={FONTSIZE * 7}
-                                height={FONTSIZE + 3}
-                                fill="red"
-                            >
-                            </rect>
-                            <text
-                                x={info.cx - COMMITRADIUS + MESSAGEMARGINX}
-                                y={info.cy + COMMITHEIGHT / 2 - 10}
-                                fill = "white"
-                            >
-                                current state
-                            </text>
-
+                        {getStateLabel("current code&var state",info)}
                         </>
-
+                    }
+                    {id == props.currentVarID && id != props.currentCodeID &&
+                        <>
+                        {getStateLabel("current var state",info)}
+                        </>
+                    }
+                    {id == props.currentCodeID && id != props.currentVarID &&
+                        <>
+                            {getStateLabel("current code state",info)}
+                        </>
                     }
                     </>
                 );
