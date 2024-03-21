@@ -91,7 +91,7 @@ function _HistoryGraph(props: HistoryGraphProps) {
                 // Calculate the coordinates of the plus icon
                 let radius = COMMITRADIUS;
                 if(point.type === VisPointType.GROUP_FOLD){
-                    radius = COMMITRADIUS + 1;}
+                    radius = COMMITRADIUS;}
                 const x1 = info.cx - radius; // Left
                 const x2 = info.cx + radius; // Right
                 const y1 = info.cy - COMMITHEIGHT / 2 + FONTSIZE / 2 +radius/2 ; // Horizontal line y-coordinate
