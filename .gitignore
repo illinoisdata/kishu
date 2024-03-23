@@ -163,3 +163,6 @@ yarn-error.log*
 
 #ide
 .idea
+
+### jupyterlab_kishu
+jupyterlab_kishu/junit.xml
