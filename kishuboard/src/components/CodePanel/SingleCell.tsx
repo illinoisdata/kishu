@@ -3,6 +3,7 @@ import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
 import "./Cell.css";
+import "./ace-xcode-kishu.css";
 import {useEffect, useRef} from "react";
 import Markdown from 'react-markdown'
 import {FONTSIZE} from "../HistoryPanel/GraphConsts";
@@ -52,7 +53,7 @@ function SingleCell(props: SingleCellProps) {
                     mode="python"
                     theme="xcode"
                     name="blah2"
-                    fontSize={12}
+                    fontSize={13}
                     width="90%"
                     height={(((countLines(props.content)) + 1) * (12 + 3.5)).toString() + "px"}
                     // height="10px"
