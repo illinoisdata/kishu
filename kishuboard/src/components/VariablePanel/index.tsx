@@ -123,6 +123,7 @@ export function VariablePanel(props: VariablePanelProps) {
         </div>
         {queryVarRows}
         {watchVarRows}
+        {(queryVarRows.length > 0 || watchedVars.length > 0) && <hr/>}
         {varRows}
     </div>)
 }

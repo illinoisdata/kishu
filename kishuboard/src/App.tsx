@@ -343,7 +343,7 @@ function App() {
 
     useEffect(() => {
         //initialize the states
-        loadInitialData(setGlobalLoading, setError, setCommits, setBranchID2CommitMap, setSelectedCommitID, setSelectedBranchID, setCurrentHeadID, setNbHeadID,setCurrentHeadBranch);
+        loadInitialData(setGlobalLoading, setError, setCommits, setBranchID2CommitMap, setSelectedCommitID, setSelectedBranchID, setCurrentHeadID, setNbHeadID, setCurrentHeadBranch);
     }, []);
 
     useInterval(() => {
