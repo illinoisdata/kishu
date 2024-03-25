@@ -84,9 +84,6 @@ class GraphNode:
 
 def is_pickable(obj):
     try:
-        if callable(obj):
-            return False
-
         pickle.dumps(obj)
         return True
     except (pickle.PicklingError, AttributeError, TypeError):
@@ -183,7 +180,8 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         if include_id:
             node.id_obj = id(obj)
         # This will break if obj is not pickleable. Commenting out for now.
-        # node.children.append(pickle.dumps(obj))
+        if is_pickable(obj):
+            node.children.append(pickle.dumps(obj))
         node.children.append("/EOC")
         return node
 
