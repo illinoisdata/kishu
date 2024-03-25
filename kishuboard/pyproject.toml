@@ -35,5 +35,8 @@ fields = ["description", "authors", "urls"]
 artifacts = ["kishuboard/build"]
 exclude = ["node_modules"]
 
+[tool.hatch.build.hooks.version]
+path = "kishuboard/_version.py"
+
 [project.scripts]
 kishuboard = "kishuboard.server:main"
