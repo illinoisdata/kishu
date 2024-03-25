@@ -44,6 +44,7 @@ export function parseCommitGraph(object: any) {
     );
     const currentHead = object["head"]["commit_id"];
     const currentHeadBranch = object["head"]["branch_name"];
+    const currentNBHead = object["nb_head"];
     //sorted by time, from newest to oldest
     commits.sort((a, b) => {
         const timestampA = new Date(a.timestamp).getTime();
@@ -54,6 +55,7 @@ export function parseCommitGraph(object: any) {
     return {
         commits: commits,
         currentHead: currentHead,
+        currentNBHead: currentNBHead,
         currentHeadBranch: currentHeadBranch,
     };
 }

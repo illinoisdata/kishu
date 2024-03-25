@@ -51,7 +51,7 @@ export function VariableRow(props: VariableRowProps):JSX.Element{
 
     const parentVariableRow = (
         <div className={"parent-var-row"}>
-            <span style={{color:color}}>{props.result?"result":props.variable.variableName}</span>
+            <span style={{color:color}}>{props.variable.variableName}</span>
             <span> = </span>
             <span style={{color:"darkgray"}}> {"{" + props.variable.type + (props.variable.size?":" + props.variable.size:"") + "}"} </span>
             <span> {props.variable.state} </span>
@@ -64,7 +64,7 @@ export function VariableRow(props: VariableRowProps):JSX.Element{
         <>
             <div className={`variable-row ${props.className}`} style={{marginLeft: 2 + 20 * props.level}} >
                 {props.removeWatchedVariable?<CloseOutlined onClick={props.removeWatchedVariable}/>:undefined}
-                {childrenVariableRows?(fold?<RightOutlined onClick={() => setFold(false)}/>:<DownOutlined onClick={() => setFold(true)}/>):undefined}
+                {childrenVariableRows?(fold?<RightOutlined onClick={() => setFold(false)}/>:<DownOutlined onClick={() => setFold(true)}/>):<span style={{ opacity: 0,width:15}}></span>}
                 <Icon style={{marginLeft:10,marginRight:4,color:yellow[7]}}/>
                 {parentVariableRow}
                 {showDetailButton?<span style={{marginLeft:10,marginRight:4,color:yellow[7],cursor:"pointer"}} onClick={() => setShowDetailModal(true)}>view detail</span>:undefined}

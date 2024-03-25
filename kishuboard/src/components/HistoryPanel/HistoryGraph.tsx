@@ -9,7 +9,8 @@ import "./Info.css";
 export interface HistoryGraphProps {
     pointRendererInfos: Map<string, PointRenderInfo>;
     visPoints: Map<string, {point:VisPoint,idx:number}>;
-    currentPointID: string | undefined;
+    currentVarID: string | undefined;
+    currentCodeID: string | undefined;
     svgMaxX: number;
     svgMaxY: number;
     selectedPointID: string | undefined;
@@ -34,7 +35,7 @@ function _HistoryGraph(props: HistoryGraphProps) {
         }
     }
 
-    function getSVGLine(pointRenderInfo:[string,PointRenderInfo],pID:string, dashLine:boolean){
+    function getSVGLine(pointRenderInfo:[string,PointRenderInfo],pID:string, dashLine:boolean,strokeWidth?:number, color?:string){
         let me = props.visPoints.get(pointRenderInfo[0]);
         let parent = props.visPoints.get(pID);
         let parentCX = props.pointRendererInfos.get(pID!)?.cx;
@@ -44,8 +45,9 @@ function _HistoryGraph(props: HistoryGraphProps) {
         if (parentCX && parentCY && (parentCY !== pointRenderInfo[1].cy)) {
             return (
                 <path
-                    strokeDasharray={dashLine ? "3,3" : ""}
-                    stroke={pointRenderInfo[1].color}
+                    strokeDasharray={dashLine ? "7,3" : ""}
+                    stroke={color?color:pointRenderInfo[1].color}
+                    strokeWidth={strokeWidth?strokeWidth:1}
                     fill={"none"}
                     d={`M ${parentCX} ${parentCY - COMMITHEIGHT / 2 + FONTSIZE / 2} L ${pointRenderInfo[1].cx} ${
                         (parentCY- COMMITHEIGHT / 2 + FONTSIZE / 2) - COMMITHEIGHT / 2
@@ -54,6 +56,28 @@ function _HistoryGraph(props: HistoryGraphProps) {
             );
         }
         return <></>;
+    }
+
+    function getStateLabel(content:string, x:number, y:number, width:number, bgColor:string, txtColor:string, borderColor?:string){
+        return <>
+        <rect
+            x={x - 3}
+            y={y - FONTSIZE - 2}
+            width={width}
+            height={FONTSIZE + 3}
+            fill={bgColor}
+            stroke={borderColor?borderColor:""}
+        >
+        </rect>
+        <text
+            x={x}
+            y={y - 3}
+            fill = {txtColor}
+        >
+            {content}
+        </text>
+
+    </>
     }
 
     return (
@@ -68,13 +92,25 @@ function _HistoryGraph(props: HistoryGraphProps) {
                 let parentID = me!.point.parentID;
                 let varParentLine =  getSVGLine(pointRenderInfo,parentID,false);
                 let nbParentLine = <></>
+                let nbPNotation = <></>
+                let varPNotation = <></>
                 if(me!.point.nbParentID != me!.point.parentID){
-                    nbParentLine = getSVGLine(pointRenderInfo,me!.point.nbParentID,true);
+                    nbParentLine = getSVGLine(pointRenderInfo,me!.point.nbParentID,true,2,props.pointRendererInfos.get(me!.point.nbParentID)!.color);
+                    // if(me?.point.commit.oid === props.selectedPointID){
+                    //     varParentLine = getSVGLine(pointRenderInfo,me!.point.parentID,false,2.5,props.pointRendererInfos.get(parentID)?.color);
+                    //     nbParentLine = getSVGLine(pointRenderInfo,me!.point.nbParentID,true,2.8,props.pointRendererInfos.get(me!.point.nbParentID)!.color);
+                    //     nbPNotation = getStateLabel("code parent",props.pointRendererInfos.get(me!.point.nbParentID)!.cx - COMMITRADIUS + MESSAGEMARGINX, props.pointRendererInfos.get(me!.point.nbParentID)!.cy + COMMITHEIGHT / 2 - 10, 90,"none",COLCODELABEL,COLCODELABEL)
+                    //     varPNotation = getStateLabel("variable parent",props.pointRendererInfos.get(me!.point.parentID)!.cx - COMMITRADIUS + MESSAGEMARGINX, props.pointRendererInfos.get(me!.point.parentID)!.cy + COMMITHEIGHT / 2 - 10, 115,"none",COLVARLABEL,COLVARLABEL)
+                    // }else{
+                    //     nbParentLine = getSVGLine(pointRenderInfo,me!.point.nbParentID,true,1.4);
+                    // }
                 }
                 return(
                     <>
                         {varParentLine}
                         {nbParentLine}
+                        {/*{nbPNotation}*/}
+                        {/*{varPNotation}*/}
                     </>
                 );
             })}
@@ -109,7 +145,8 @@ function _HistoryGraph(props: HistoryGraphProps) {
                         width={point.type === VisPointType.GROUP_FOLD?2 * (radius):2 * COMMITRADIUS}
                         height={point.type === VisPointType.GROUP_FOLD?2 * (radius):2 * COMMITRADIUS}
                         fill={point.type === VisPointType.GROUP_FOLD || point.type === VisPointType.GROUP_UNFOLE?"none":info.color}
-                        stroke={info.color}
+                        stroke={point.parentID == point.nbParentID?info.color:props.pointRendererInfos.get(point.nbParentID)!.color}
+                        strokeWidth={point.parentID == point.nbParentID?1:2}
                         onClick={() => {
                             if(point.type === VisPointType.GROUP_FOLD){
                                 unfoldGroup(point.groupID)
@@ -139,26 +176,15 @@ function _HistoryGraph(props: HistoryGraphProps) {
                     >
                         {props.visPoints.get(id)?.point.commit.message}
                     </text>
-                    {id == props.currentPointID &&
+                    {id == props.currentVarID &&
                         <>
-                            <rect
-                                x={info.cx - COMMITRADIUS + MESSAGEMARGINX - 3}
-                                y={info.cy + COMMITHEIGHT / 2 - 10 - FONTSIZE}
-                                width={FONTSIZE * 7}
-                                height={FONTSIZE + 3}
-                                fill="red"
-                            >
-                            </rect>
-                            <text
-                                x={info.cx - COMMITRADIUS + MESSAGEMARGINX}
-                                y={info.cy + COMMITHEIGHT / 2 - 10}
-                                fill = "white"
-                            >
-                                current state
-                            </text>
-
+                            {getStateLabel("HEAD: Variable",info.cx - COMMITRADIUS + MESSAGEMARGINX,info.cy + COMMITHEIGHT / 2 - 10, 108,info.color,"white")}
                         </>
-
+                    }
+                    {id == props.currentCodeID &&
+                        <>
+                            {getStateLabel("HEAD: Code",id == props.currentVarID?info.cx - COMMITRADIUS + MESSAGEMARGINX + 120:info.cx - COMMITRADIUS + MESSAGEMARGINX,info.cy + COMMITHEIGHT / 2 - 10, 86,"none",info.color,info.color)}
+                        </>
                     }
                     </>
                 );
