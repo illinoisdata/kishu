@@ -729,8 +729,8 @@ class KishuForJupyter:
                     output=None,
                     execution_count=None,
                 ))
-            else:
-                raise ValueError(f"Unknown cell type: {cell.cell_type}")
+            # else:
+            #     raise ValueError(f"Unknown cell type: {cell.cell_type}")
         return nbformat.writes(nb), nb_cells
 
     def _parse_cell_output(self, cell_outputs: List[Dict[Any, Any]]) -> Optional[str]:
@@ -796,6 +796,8 @@ class KishuForJupyter:
 
         # Erase lower execution count.
         for cell in nb.cells:
+            if cell.cell_type != "code":
+                continue
             if cell.execution_count is not None and cell.execution_count > entry.execution_count:
                 cell.execution_count = None
                 cell.outputs = []  # Should we erase output?
