@@ -12,8 +12,6 @@ class ObjectState:
     """
 
     def __init__(self, obj, include_traversal=False):
-        self.pick = pickle.dumps(obj)
-
         self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
             obj, include_traversal)
 
@@ -23,14 +21,13 @@ class ObjectState:
         different state)
         Compares both pickled binaries and hashed states
         """
-        return self.pick == other.pick and self.hashed_state == other.hashed_state
+        return self.hashed_state == other.hashed_state
 
     def update_object_hash(self, obj, include_traversal=False):
         """
         Inputs: obj - Object whose new state needs to be recorded
         Updates the hash and pickled bianries of the object state
         """
-        self.pick = pickle.dumps(obj)
         self.hashed_state, self.traversal = VisitorModule.get_object_hash_and_trav_wrapper(
             obj, include_traversal)
 

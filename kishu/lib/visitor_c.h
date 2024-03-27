@@ -66,6 +66,7 @@ int is_picklable(PyObject *obj);
 int is_pandas_RangeIndex_instance(PyObject *obj);
 int is_plt_Callback_instance(PyObject *obj);
 int is_pickable_using_Python(PyObject *obj);
+PyObject* pickle_dumps(PyObject *obj);
 
 PyMODINIT_FUNC PyInit_VisitorModule(void);
 

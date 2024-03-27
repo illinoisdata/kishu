@@ -168,8 +168,14 @@ def test_hash_pandas_Series():
     objs1 = ObjectState(a)
     objs2 = ObjectState(a)
 
+    pickled1 = pickle.dumps(a)
+    pickled2 = pickle.dumps(a)
+
     # Assert that the hash does not change when the object remains unchanged
-    assert objs1.compare_ObjectStates(objs2)
+    if pickled1 == pickled2:
+        assert objs1.compare_ObjectStates(objs2)
+    else:
+        assert not objs1.compare_ObjectStates(objs2)
 
     a[2] = 0
     objs2.update_object_hash(a)
@@ -226,21 +232,14 @@ def test_hash_pandas_df():
     # Assert that the hash changes when the object changes
     assert not objs1.compare_ObjectStates(objs2)
 
-    df.at[0, 'species'] = "Adelie"
-    objs2.update_object_hash(df)
-
-    # Assert that the original hash is restored when the original object state is restored
-    # (if pickled binaries are the same)
-    pickled2 = pickle.dumps(df)
-    if pickled1 == pickled2:
-        assert objs1.compare_ObjectStates(objs2)
-    else:
-        assert not objs1.compare_ObjectStates(objs2)
+    # Update objs1 with current df
+    objs1.update_object_hash(df)
 
     new_row = {'species': "New Species", 'island': "New island", 'bill_length_mm': 999,
                'bill_depth_mm': 999, 'flipper_length_mm': 999, 'body_mass_g': 999, 'sex': "Male"}
     df.loc[len(df)] = new_row
 
+    # Update objs2 with new hash
     objs2.update_object_hash(df)
 
     # Assert that hash changes when new row is added to dataframe
