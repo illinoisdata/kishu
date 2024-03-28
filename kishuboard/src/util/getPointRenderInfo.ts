@@ -11,6 +11,7 @@ export enum TopologyCommitType {
     NEWDAY4BRANCH,//first commit of a new day for a branch
     ROOT,
     USERIMPL,//manual commit or has tag/branch
+    MERGE,//"visually merge" commit, whose parent and nb_parent are different
     NORMAL
 }
 
@@ -76,12 +77,12 @@ export class VisInfoManager {
             let group = this.commit2Group.get(commit.oid)!
             if(this.group2Commits.get(group)!.length == 1 || !this.groupFolded.get(group)){
                 //group is visible or single element group, not fold.
-                this.visPoints.push({groupID: group, type: this.group2Commits.get(group)!.length == 1?VisPointType.SINGLE:VisPointType.GROUP_UNFOLE, visPointID: commit.oid, commit: commit, parentID: commit.parentOid});
+                this.visPoints.push({groupID: group, type: this.group2Commits.get(group)!.length == 1?VisPointType.SINGLE:VisPointType.GROUP_UNFOLE, visPointID: commit.oid, commit: commit, parentID: commit.parentOid, nbParentID: commit.nbParentOid});
             }else if(!groupAdded[group]){
                 //group is folded
                 const lastCommitIDOfGroup = this.group2Commits.get(group)![this.group2Commits.get(group)!.length - 1];
                 const lastCommitOfGroup = this.commits[this.commitIDIndex.get(lastCommitIDOfGroup)!];
-                this.visPoints.push({groupID: group, type: VisPointType.GROUP_FOLD, visPointID: commit.oid, commit: commit, parentID: lastCommitOfGroup.parentOid});
+                this.visPoints.push({groupID: group, type: VisPointType.GROUP_FOLD, visPointID: commit.oid, commit: commit, parentID: lastCommitOfGroup.parentOid, nbParentID: lastCommitOfGroup.nbParentOid});
             }
             groupAdded[group] = true;
         })
@@ -158,6 +159,14 @@ export class VisInfoManager {
             //if it's the first commit for a branch of the new day, it's visible
             if(extractDateFromString(this.commits[idx].timestamp) !== extractDateFromString(this.commits[prev_idx].timestamp)){
                 this.topologyCommitTypes[idx] = TopologyCommitType.NEWDAY4BRANCH;
+            }
+            //if it's a merge commit, it's visible
+            if(this.commits[idx].parentOid !== this.commits[idx].nbParentOid){
+                this.topologyCommitTypes[idx] = TopologyCommitType.MERGE;
+                //the nb parent of a merged commit should also be visible
+                if(this.commits[idx].nbParentOid!= undefined){
+                    this.topologyCommitTypes[this.commitIDIndex.get(this.commits[idx].nbParentOid)!] = TopologyCommitType.BRANCH;
+                }
             }
             prev_idx = idx
             idx = this.commitIDIndex.get(this.commits[idx].parentOid)

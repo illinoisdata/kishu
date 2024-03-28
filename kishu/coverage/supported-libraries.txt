@@ -12,3 +12,4 @@ nltk
 tqdm
 seaborn
 xgboost
+astropy

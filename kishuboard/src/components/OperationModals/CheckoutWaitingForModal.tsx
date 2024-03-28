@@ -10,6 +10,7 @@ export interface waitingforModalProps {
     checkoutVariableHandler: any;
     checkoutBranchID?: string;
     setCheckoutBranchID?: any;
+    refreshGraphHandler: any;
 }
 
 export function CheckoutWaitingModal(props: waitingforModalProps) {
@@ -22,6 +23,7 @@ export function CheckoutWaitingModal(props: waitingforModalProps) {
             }
             props.setIsWaitingModalOpen(false);
             message.info("checkout succeed");
+            props.refreshGraphHandler();
             props.setCheckoutBranchID(undefined);
         } catch (e) {
             props.setIsWaitingModalOpen(false);

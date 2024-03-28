@@ -52,6 +52,8 @@ interface appContextType {
     setBranchID2CommitMap: any;
     currentHeadID: string | undefined;
     setCurrentHeadID: any;
+    nbHeadID: string | undefined;
+    setNbHeadID: any;
     currentHeadBranch: string | undefined;
     setCurrentHeadBranch: any;
 
@@ -145,7 +147,7 @@ const cells_diff: TabsProps['items'] = [
     },
 ];
 
-async function loadInitialData(setGlobalLoading: any, setError: any, setCommits: any, setBranchID2CommitMap: any, setSelectedCommitID: any, setSelectedBranchID: any, setCurrentHeadID: any, setCurrentHeadBranch: any) {
+async function loadInitialData(setGlobalLoading: any, setError: any, setCommits: any, setBranchID2CommitMap: any, setSelectedCommitID: any, setSelectedBranchID: any, setCurrentHeadID: any, setNBHeadID:any, setCurrentHeadBranch: any) {
     setGlobalLoading(true);
     try {
         const data = await BackEndAPI.getCommitGraph();
@@ -161,6 +163,7 @@ async function loadInitialData(setGlobalLoading: any, setError: any, setCommits:
         setSelectedCommitID(data.currentHead);
         setSelectedBranchID(data.currentHeadBranch);
         setCurrentHeadID(data.currentHead);
+        setNBHeadID(data.currentNBHead);
         setCurrentHeadBranch(data.currentHeadBranch);
         globalThis.NotebookName = await BackEndAPI.getNoteBookName(globalThis.NotebookID!);
     } catch (e) {
@@ -250,6 +253,7 @@ function App() {
     const [selectedCommitID, setSelectedCommitID] = useState<string>();
     const [selectedBranchID, setSelectedBranchID] = useState<string>();
     const [currentHeadID, setCurrentHeadID] = useState<string>();
+    const [nbHeadID, setNbHeadID] = useState<string>();
     const [currentHeadBranch, setCurrentHeadBranch] = useState<string>();
     const [branchID2CommitMap, setBranchID2CommitMap] = useState<
         Map<string, string>
@@ -282,6 +286,8 @@ function App() {
         setBranchID2CommitMap,
         currentHeadID,
         setCurrentHeadID,
+        nbHeadID,
+        setNbHeadID,
         currentHeadBranch,
         setCurrentHeadBranch,
 
@@ -337,7 +343,7 @@ function App() {
 
     useEffect(() => {
         //initialize the states
-        loadInitialData(setGlobalLoading, setError, setCommits, setBranchID2CommitMap, setSelectedCommitID, setSelectedBranchID, setCurrentHeadID, setCurrentHeadBranch);
+        loadInitialData(setGlobalLoading, setError, setCommits, setBranchID2CommitMap, setSelectedCommitID, setSelectedBranchID, setCurrentHeadID, setNbHeadID, setCurrentHeadBranch);
     }, []);
 
     useInterval(() => {
@@ -361,6 +367,10 @@ function App() {
 
     async function refreshGraph(){
         const newGraph = await BackEndAPI.getCommitGraph();
+        setCurrentHeadBranch(newGraph.currentHeadBranch)
+        setCurrentHeadID(newGraph.currentHead);
+        setNbHeadID(newGraph.currentNBHead);
+
         //do a deap comparison of the commits
         if(JSON.stringify(newGraph.commits) !== JSON.stringify(commits)){
         setCommits(newGraph.commits);
@@ -371,8 +381,6 @@ function App() {
             });
         });
         setBranchID2CommitMap(newSetBranchID2CommitMap);
-        setCurrentHeadBranch(newGraph.currentHeadBranch)
-        setCurrentHeadID(newGraph.currentHead);
         if(!selectedCommitID || newGraph.commits.length > commits.length) {
             setSelectedCommitID(newGraph.currentHead);
             setSelectedBranchID(newGraph.currentHeadBranch);

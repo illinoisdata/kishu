@@ -21,7 +21,8 @@ const int TYPE_BYTEARR = 8;
 
 Visitor* get_object_hash(PyObject *obj, const bool include_trav) {
     Visitor* hash_visitor = create_hash_visitor();
-    get_object_state(obj, hash_visitor, true, hash_visitor->state, include_trav);
+    if(!get_object_state(obj, hash_visitor, true, hash_visitor->state, include_trav))
+        return NULL;
     return hash_visitor;
 }
 
@@ -105,7 +106,12 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, const bool 
         }
         else if (PyCallable_Check(obj)) {
             /* Callable object */
-            return visitor->visit_callable(obj, &(visitor->visited), include_id, state, visitor->list_included, include_trav);
+            visitor->visit_callable(obj, &(visitor->visited), include_id, state, visitor->list_included, include_trav);
+            PyObject* pickled_bin = pickle_dumps(obj);
+            if (!pickled_bin)
+                return NULL;
+            return visitor->visit_byte(pickled_bin, &(visitor->visited), include_id, state, visitor->list_included, include_trav);
+            
         }
         else if (PyObject_HasAttrString(obj, "__reduce_ex__")) {
             /* Custom object */
@@ -126,8 +132,12 @@ VisitorReturnType* get_object_state(PyObject *obj, Visitor *visitor, const bool 
                 PyObject *reduced = PyObject_CallMethod(obj, "__reduce_ex__", "(O)", arg);
                 Py_DECREF(arg); // Decrement the reference count for arg
 
-                if (!reduced)
-                    return state;
+                if (!reduced) {
+                    PyObject* pickled_bin = pickle_dumps(obj);
+                    if (!pickled_bin)
+                        return NULL;
+                    return visitor->visit_byte(pickled_bin, &(visitor->visited), include_id, state, visitor->list_included, include_trav);
+                }
 
                 int range_index_instance = is_pandas_RangeIndex_instance(obj);
                 if (range_index_instance == -1)
@@ -219,6 +229,47 @@ int is_picklable(PyObject *obj) {
     // The object is picklable
     Py_DECREF(result); // Decrement reference count for result
     return 1; // True
+}
+
+PyObject* pickle_dumps(PyObject *obj) {
+    static PyObject *dumps_func = NULL;
+
+    // Import pickle and get dumps function only once
+    if (dumps_func == NULL) {
+        PyObject *pickle_module = PyImport_ImportModule("pickle");
+        if (!pickle_module) {
+            // Handle error: unable to import pickle
+            PyErr_Print();
+            return NULL; // Considered not picklable
+        }
+
+        dumps_func = PyObject_GetAttrString(pickle_module, "dumps");
+        Py_DECREF(pickle_module); // Done with pickle module
+        if (!dumps_func) {
+            // Handle error: dumps function not found
+            PyErr_Print();
+            return NULL; // Considered not picklable
+        }
+    }
+
+    // Prepare args
+    PyObject *args = PyTuple_Pack(1, obj);
+    if(!args) {
+        // Failed to create tuple
+        return NULL;
+    }
+
+    // Try to pickle the object
+    PyObject *result = PyObject_CallObject(dumps_func, args);
+    Py_DECREF(args); // Decrement reference count for args
+
+    if (!result) {
+        // An exception occurred, clear it and consider the object not picklable
+        PyErr_Clear();
+        return NULL; // False
+    }
+
+    return result;
 }
 
 /* Uncomment below code if pickle check is removed in python file*/
@@ -320,7 +371,11 @@ static PyObject *get_object_hash_and_trav_wrapper(PyObject *self, PyObject *args
 
     include_trav = temp_include_trav ? true : false;
 
-    Visitor* hash_visitor = get_object_hash(obj, include_trav);    
+    Visitor* hash_visitor = get_object_hash(obj, include_trav);
+    if(!hash_visitor) {
+        free_visitor(hash_visitor);
+        return NULL;
+    }
     unsigned long digest_hash = XXH3_64bits_digest(hash_visitor->state->hashed_state);
 
     free_visitor(hash_visitor);

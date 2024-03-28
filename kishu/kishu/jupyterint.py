@@ -264,6 +264,9 @@ class KishuForJupyter:
         self._kishu_graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
             KishuPath.commit_graph_directory(self._notebook_id.key())
         )
+        self._kishu_nb_graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
+            KishuPath.nb_commit_graph_directory(self._notebook_id.key())
+        )
         self._kishu_variable_version = VariableVersion(self._notebook_id.key())
 
         # Enclosing environment.
@@ -275,6 +278,7 @@ class KishuForJupyter:
 
         self._platform = enclosing_platform()
         self._session_id = 0
+        self._checkout_id = 0
 
         # Stateful trackers.
         self._cr_planner = CheckpointRestorePlanner.from_existing(self._user_ns)
@@ -319,12 +323,14 @@ class KishuForJupyter:
             f"kernel_id: {self._notebook_id.kernel_id()}, "
             f"notebook_path: {self._notebook_id.path()}, "
             f"session_id: {self._session_id}, "
+            f"checkout_id: {self._checkout_id}, "
             f"platform: {self._platform}, "
             f"commit_id_mode: {self._commit_id_mode})"
         )
 
     def set_session_id(self, session_id):
         self._session_id = session_id
+        self._checkout_id = 0
 
     def database_path(self) -> str:
         return KishuPath.database_path(self._notebook_id.key())
@@ -441,11 +447,14 @@ class KishuForJupyter:
 
         # Update Kishu heads.
         self._kishu_graph.jump(commit_id)
+        if not skip_notebook:
+            self._kishu_nb_graph.jump(commit_id)
         self._kishu_branch.update_head(
             branch_name=branch_name,
             commit_id=commit_id,
             is_detach=is_detach,
         )
+        self._checkout_id += 1
 
         # Create new commit when skip restoring notebook.
         if self._enable_auto_commit_when_skip_notebook and skip_notebook:
@@ -610,6 +619,7 @@ class KishuForJupyter:
         # Update other structures.
         self._kishu_commit.store_commit(entry)
         self._kishu_graph.step(entry.commit_id)
+        self._kishu_nb_graph.step(entry.commit_id)
         self._step_branch(entry.commit_id)
 
         # Update variable version tracker.
@@ -625,7 +635,7 @@ class KishuForJupyter:
 
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":
-            return str(self._session_id) + ":" + str(self._last_execution_count)
+            return f"{self._session_id}:{self._checkout_id}:{self._last_execution_count}"
         return uuid.uuid4().hex
 
     def _checkpoint(self, cell_info: CommitEntry) -> Tuple[RestorePlan, int]:

@@ -35,6 +35,7 @@ export function parseCommitGraph(object: any) {
                 branchIds: item["branches"],
                 timestamp: item["timestamp"],
                 parentOid: item["parent_oid"],
+                nbParentOid: item["nb_parent_oid"],
                 tags: item["tags"],
                 codeVersion: item["code_version"],
                 variableVersion: item["varset_version"],
@@ -43,6 +44,7 @@ export function parseCommitGraph(object: any) {
     );
     const currentHead = object["head"]["commit_id"];
     const currentHeadBranch = object["head"]["branch_name"];
+    const currentNBHead = object["nb_head"];
     //sorted by time, from newest to oldest
     commits.sort((a, b) => {
         const timestampA = new Date(a.timestamp).getTime();
@@ -53,6 +55,7 @@ export function parseCommitGraph(object: any) {
     return {
         commits: commits,
         currentHead: currentHead,
+        currentNBHead: currentNBHead,
         currentHeadBranch: currentHeadBranch,
     };
 }
@@ -68,6 +71,7 @@ export function parseCommitDetail(json: any) {
             oid: item["oid"],
             timestamp: item["timestamp"],
             parentOid: item["parent_oid"],
+            nbParentOid: item["nb_parent_oid"],
             branchIds: item["branches"],
             tags: item["tags"],
             message: item["message"],

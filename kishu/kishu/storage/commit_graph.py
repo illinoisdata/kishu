@@ -501,6 +501,17 @@ class KishuCommitGraph:
     def new_on_file(root_path: str) -> KishuCommitGraph:
         return KishuCommitGraph(CommitGraphStore(root_path))
 
+    def get_commit(self, commit_id: Optional[CommitId] = None) -> Optional[CommitNodeInfo]:
+        """
+        Get the historical commit info given commit ID.
+        """
+        if commit_id is None:
+            commit_id = self._store.get_head()
+        try:
+            return next(self._store.begin_read(commit_id))
+        except StopIteration:
+            return None
+
     def iter_history(self, commit_id: Optional[CommitId] = None) -> CommitNodeInfoIterator:
         """
         Makes history iterator from given commit.

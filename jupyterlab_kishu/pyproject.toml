@@ -2,6 +2,9 @@
 requires = ["hatchling>=1.5.0", "jupyterlab>=4.0.0,<5", "hatch-nodejs-version>=0.3.2"]
 build-backend = "hatchling.build"
 
+[tool.setuptools.package-data]
+kishu = ["py.typed"]
+
 [project]
 name = "jupyterlab_kishu"
 readme = "README.md"

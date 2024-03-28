@@ -114,7 +114,8 @@ export function HistoryPanel({highlighted_commit_ids, refreshGraphHandler, width
             <HistoryGraph
                 visPoints={visPointMap}
                 pointRendererInfos={visPointRenderInfos.info}
-                currentPointID={visInfoManager?.getVisPointID(props?.currentHeadID!)}
+                currentVarID={visInfoManager?.getVisPointID(props?.currentHeadID!)}
+                currentCodeID={visInfoManager?.getVisPointID(props?.nbHeadID!)}
                 svgMaxX={svgMaxX}
                 svgMaxY={svgMaxY}
                 svgMessagePosition={svgMessagePosition}

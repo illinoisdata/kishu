@@ -11,6 +11,7 @@ export interface Commit {
   oid: string;
   timestamp: string;
   parentOid: string;
+  nbParentOid: string;
   codeVersion: string;
   variableVersion: string;
   branchIds: string[];
