@@ -45,7 +45,7 @@ export function HistoryPanel({highlighted_commit_ids, refreshGraphHandler, width
         y: number;
     } | null>(null);
 
-    const visInfoManager = new VisInfoManager(props!.commits,unFoldedGroup);
+    const visInfoManager = new VisInfoManager(props!.commits,unFoldedGroup,props!.nbHeadID!,props!.currentHeadID!);
     const visPoints = visInfoManager.getVisPoints();
     const visPointRenderInfos = new RenderInfoCalculator(visPoints,isDateFolded).getPointRenderInfo();
     const svgMaxX = visPointRenderInfos.maxX;
@@ -127,7 +127,7 @@ export function HistoryPanel({highlighted_commit_ids, refreshGraphHandler, width
                    renderPoints={renderPoints} setSelectedCommitID={props!.setSelectedCommitID}
                    setSelectedBranchID={props?.setSelectedBranchID} isDateFolded={isDateFolded} setIsDateFolded={setIsDateFolded} dateCommitNumber={dateCommitNumebr}/>
             {!props?.diffDestCommitID && <div className={"highlight select-highlight"} style={{top: `${selectTop}px`}}></div>}
-            <FilterHighlights pointRenderInfos={visPointRenderInfos.info} highlightedPointsIds={visInfoManager?highlighted_commit_ids.map((commit_id) => visInfoManager!.getVisPointID(commit_id)):undefined}/>
+            <FilterHighlights pointRenderInfos={visPointRenderInfos.info} highlightedPointsIds={visInfoManager?highlighted_commit_ids.map((commit_id) => visInfoManager!.getVisPointID(commit_id)):undefined} visInfoManager={visInfoManager}/>
             {props?.diffDestCommitID && (
                 <div className={"highlight select-highlight "} style={{top: `${currentTop}px`}}> <div className={"diff-notation"}> <div className={"diff-to"}>Destination</div></div> </div>)}
             {props?.diffDestCommitID && (

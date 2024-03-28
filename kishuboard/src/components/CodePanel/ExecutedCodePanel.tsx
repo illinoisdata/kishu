@@ -9,7 +9,7 @@ export function ExecutedCodePanel() {
     const length = props!.selectedCommit!.historyExecCells.length;
 
     return (
-        <div className="executed-code">
+        <div>
             {props!.selectedCommit!.historyExecCells.map((code, i) => (
                 <div key={i}>
                     <SingleCell execNumber={(length - i - 1).toString()} content={code.content} cssClassNames={"notebook"}/>
