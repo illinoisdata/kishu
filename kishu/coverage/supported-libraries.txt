@@ -13,3 +13,4 @@ tqdm
 seaborn
 xgboost
 astropy
+pooch

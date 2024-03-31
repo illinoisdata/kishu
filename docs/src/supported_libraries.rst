@@ -25,6 +25,7 @@ This is the current list of libraries, their versions, and their classes support
     ✅ astropy==5.2.2, astropy.nddata.NDData
     ✅ astropy==5.2.2, astropy.nddata.NDDataRef
     ✅ astropy==5.2.2, astropy.stats.SigmaClip
+    ✅ astropy==5.2.2, astropy.table.QTable
     ✅ astropy==5.2.2, astropy.units.Quantity
     ✅ astropy==5.2.2, astropy.visualization.PercentileInterval
     ✅ astropy==5.2.2, astropy.visualization.mpl_normalize.ImageNormalize
@@ -70,13 +71,21 @@ This is the current list of libraries, their versions, and their classes support
     ✅ scikit-learn==1.3.2, sklearn.tree
     ✅ scikit-learn==1.3.2, sklearn.utils
     ✅ scipy==1.10.1, scipy.interpolate
+    ✅ scipy==1.10.1, scipy.ndimage
+    ✅ scipy==1.10.1, scipy.ndimage.interpolate
+    ✅ scipy==1.10.1, scipy.optimize
+    ✅ scipy==1.10.1, scipy.signal
+    ✅ scipy==1.10.1, scipy.signal.windows
     ✅ scipy==1.10.1, scipy.sparse
     ✅ scipy==1.10.1, scipy.spatial
     ✅ scipy==1.10.1, scipy.spatial
+    ✅ scipy==1.10.1, scipy.spatial.distance
+    ✅ scipy==1.10.1, scipy.spatial.distance._hausdorff
+    ✅ scipy==1.10.1, scipy.special
+    ✅ scipy==1.10.1, scipy.stats
     ✅ xgboost==2.0.3, xgboost.XGBRegressor
 
     ❌ astropy==5.2.2, astropy.coordinates.SkyCoord
-    ❌ astropy==5.2.2, astropy.table.QTable
     ❌ matplotlib==3.6.2, matplotlib.Axes
     ❌ matplotlib==3.6.2, matplotlib.lines.Line2D
     ❌ scikit-learn==1.3.2, sklearn.ensemble

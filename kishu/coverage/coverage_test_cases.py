@@ -684,6 +684,152 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ]
     ),
     LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.ndimage",
+        var_name="a",
+        import_statements=[
+            "import numpy as np",
+            "from scipy import ndimage"
+        ],
+        var_declare_statements=[
+            "a = np.array([[1, 2, 0, 0], [5, 3, 0, 4], [0, 0, 0, 7], [9, 3, 0, 0]])",
+            "k = np.array([[1, 1, 1], [1, 1, 0], [1, 0, 0]])"
+        ],
+        var_modify_statements=[
+            "a = ndimage.convolve(a, k, mode='constant', cval=0.0)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.ndimage.interpolate",
+        var_name="img",
+        import_statements=[
+            "import numpy as np",
+            "from scipy import ndimage, datasets"
+        ],
+        var_declare_statements=[
+            "img = datasets.ascent()"
+        ],
+        var_modify_statements=[
+            "img = ndimage.rotate(img, 45, reshape=False)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.optimize",
+        var_name="x",
+        import_statements=[
+            "from scipy.optimize import minimize, rosen"
+        ],
+        var_declare_statements=[
+            "x= [1.3, 0.7, 0.8, 1.9, 1.2]",
+            "res = minimize(rosen, x, method='Nelder-Mead', tol=1e-6)"
+        ],
+        var_modify_statements=[
+            "x = res.x"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.signal",
+        var_name="filt",
+        import_statements=[
+            "from scipy import signal",
+            "import numpy as np"
+        ],
+        var_declare_statements=[
+            "fs = 100",
+            "bf = 2 * np.pi * np.array([7, 13])",
+            "filt = signal.lti(*signal.butter(4, bf, btype='bandpass',analog=True))",
+        ],
+        var_modify_statements=[
+            "filt = signal.lti(*signal.bilinear(filt.num, filt.den, fs))"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.signal.windows",
+        var_name="window",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.signal.windows import general_cosine, gaussian"
+        ],
+        var_declare_statements=[
+            "HFT90D = [1, 1.942604, 1.340318, 0.440811, 0.043097]",
+            "window = general_cosine(1000, HFT90D, sym=False)"
+        ],
+        var_modify_statements=[
+            "window = gaussian(51, std=7)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.spatial.distance._hausdorff",
+        var_name="dh",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.spatial.distance import directed_hausdorff",
+        ],
+        var_declare_statements=[
+            "u = np.array([(1.0, 0.0),(0.0, 1.0), (-1.0, 0.0), (0.0, -1.0)])",
+            "v = np.array([(2.0, 0.0),(0.0, 2.0), (-2.0, 0.0), (0.0, -4.0)])",
+            "dh = directed_hausdorff(u, v)[0]"
+        ],
+        var_modify_statements=[
+            "dh = directed_hausdorff(v, u)[0]"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.spatial.distance",
+        var_name="eu",
+        import_statements=[
+            "from scipy.spatial import distance",
+        ],
+        var_declare_statements=[
+            "eu = distance.euclidean([1,0,0], [0,1,0])"
+        ],
+        var_modify_statements=[
+            "eu = distance.euclidean([1,1,0], [0,1,0])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.special",
+        var_name="result",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.special import rel_entr, kl_div"
+        ],
+        var_declare_statements=[
+            "p = np.array([0.1, 0.2, 0.3, 0.4])",
+            "q = np.array([0.15, 0.25, 0.3, 0.3])",
+            "result = rel_entr(p, q)"
+        ],
+        var_modify_statements=[
+            "result = kl_div(p, q)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.stats",
+        var_name="result",
+        import_statements=[
+            "import numpy as np",
+            "from scipy import stats"
+        ],
+        var_declare_statements=[
+            "rng = np.random.default_rng()",
+            "x = rng.random(10)",
+            "y = 1.6*x + rng.random(10)",
+            "result = stats.linregress(x, y)"
+        ],
+        var_modify_statements=[
+            "y[0] += 1",
+            "result = stats.linregress(x, y)"
+        ]
+    ),
+    LibCoverageTestCase(
         module_name="xgboost",
         class_name="xgboost.XGBRegressor",
         var_name="model",
