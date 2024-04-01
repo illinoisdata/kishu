@@ -57,6 +57,17 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         var_modify_statements=["a.set_xlabel('Flipper Length')"]
     ),
     LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="matplotlib.Axes",
+        var_name="a",
+        import_statements=["import seaborn as sns"],
+        var_declare_statements=[
+            "df=sns.load_dataset('penguins')",
+            "a = sns.scatterplot(data=df, x='flipper_length_mm', y='bill_length_mm')",
+        ],
+        var_modify_statements=["a.set_xlabel('Flipper Length')"]
+    ),
+    LibCoverageTestCase(
         module_name="scikit-learn",
         class_name="sklearn.cluster",
         var_name="kmeans",
@@ -886,7 +897,8 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         class_name="matplotlib.lines.Line2D",
         var_name="markerline",
         import_statements=["import matplotlib.pyplot as plt", "import numpy as np"],
-        var_declare_statements=["x = np.linspace(0.1, 2 * np.pi, 41)",
+        var_declare_statements=["plt.close('all')",
+                                "x = np.linspace(0.1, 2 * np.pi, 41)",
                                 "y = np.exp(np.sin(x))",
                                 "markerline, stemlines, baseline = plt.stem(x, y, linefmt='grey', markerfmt='D', bottom=1.1)"],
         var_modify_statements=["markerline.set_markerfacecolor('none')"]
@@ -897,7 +909,8 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         var_name="e1",
         import_statements=["import matplotlib.pyplot as plt",
                            "from matplotlib import patches"],
-        var_declare_statements=["xcenter, ycenter = 0.38, 0.52",
+        var_declare_statements=["plt.close('all')",
+                                "xcenter, ycenter = 0.38, 0.52",
                                 "width, height = 1e-1, 3e-1",
                                 "angle = -30",
                                 "e1 = patches.Ellipse((xcenter, ycenter), width, height,angle=angle, linewidth=2, fill=False, zorder=2)"],
@@ -908,10 +921,55 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         class_name="matplotlib.patches.Arrow",
         var_name="arrow",
         import_statements=["import matplotlib.pyplot as plt", "import matplotlib.patches as mpatches"],
-        var_declare_statements=["x_tail, y_tail = 0.1, 0.5",
+        var_declare_statements=["plt.close('all')",
+                                "x_tail, y_tail = 0.1, 0.5",
                                 "x_head, y_head = 0.9, 0.8",
                                 "arrow = mpatches.FancyArrowPatch((x_tail, y_tail), (x_head, y_head),mutation_scale=100)"],
         var_modify_statements=["arrow.set_linewidth(2.0)"]
+    ),
+    LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="matplotlib.image.AxesImage",
+        var_name="image",
+        import_statements=["import matplotlib.pyplot as plt", "import numpy as np"],
+        var_declare_statements=["plt.close('all')",
+                                "data = np.random.rand(10,10)",
+                                "fig, ax = plt.subplots()",
+                                "image = ax.imshow(data, cmap='viridis')"],
+        var_modify_statements=["image.set_cmap('plasma')"]
+    ),
+    LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="matplotlib.image.FigureImage",
+        var_name="fig_image",
+        import_statements=["import matplotlib.pyplot as plt", "import numpy as np"],
+        var_declare_statements=["plt.close('all')",
+                                "data = np.random.rand(10,10)",
+                                "fig = plt.figure()",
+                                "fig_image = fig.figimage(data)"],
+        var_modify_statements=["fig_image.set_x(100)"]
+    ),
+    LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="matplotlib.offsetbox.AnchoredOffsetbox",
+        var_name="anchored_box",
+        import_statements=["import matplotlib.pyplot as plt", "from matplotlib.offsetbox import AnchoredOffsetbox, TextArea"],
+        var_declare_statements=["plt.close('all')",
+                                "fig, ax = plt.subplots()",
+                                "text_area = TextArea('Hello, World!', textprops=dict(color='r', size=12, ha='left'))",
+                                "anchored_box = AnchoredOffsetbox(loc='upper left', child=text_area, pad=0.5, borderpad=0.5, frameon=True)"],
+        var_modify_statements=["anchored_box.patch.set_facecolor('lightblue')"]
+    ),
+    LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="matplotlib.ticker.AutoLocator",
+        var_name="aut",
+        import_statements=["import matplotlib.pyplot as plt", "from matplotlib.ticker import AutoLocator"],
+        var_declare_statements=["plt.close('all')",
+                                "fig, ax = plt.subplots()",
+                                "ax.plot([0, 5], [0, 200])",
+                                "aut=AutoLocator()"],
+        var_modify_statements=["aut.MAXTICKS=2000"]
     ),
     LibCoverageTestCase(
         module_name="astropy",
@@ -1084,5 +1142,29 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         import_statements=["from astropy.convolution import Gaussian2DKernel"],
         var_declare_statements=["gaussian_2D_kernel = Gaussian2DKernel(10)"],
         var_modify_statements=["gaussian_2D_kernel.array[1][2] = 0.003"]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="numpy.ndarray",
+        var_name="a",
+        import_statements=["import numpy as np"],
+        var_declare_statements=["a = np.arange(6)"],
+        var_modify_statements=["a[1]=20"]
+    ),
+    LibCoverageTestCase(
+        module_name="arrow",
+        class_name="arrow.arrow.Arrow",
+        var_name="utc",
+        import_statements=["import arrow"],
+        var_declare_statements=["utc = arrow.utcnow()"],
+        var_modify_statements=["utc = utc.shift(hours=-1)"]
+    ),
+    LibCoverageTestCase(
+        module_name="bokeh",
+        class_name="bokeh.plotting._figure.figure",
+        var_name="p",
+        import_statements=["from bokeh.plotting import figure, show"],
+        var_declare_statements=["p = figure(width=400, height=400)"],
+        var_modify_statements=["p.height=600"]
     )
 ]
