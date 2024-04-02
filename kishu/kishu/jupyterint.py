@@ -40,6 +40,7 @@ Reference
 """
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import dill as pickle
 import IPython
@@ -49,9 +50,11 @@ import json
 import jupyter_client
 import nbformat
 import os
+import threading
 import time
 import uuid
 
+from asyncio.events import AbstractEventLoop
 from dataclasses import dataclass
 from IPython.core.interactiveshell import InteractiveShell
 from jupyter_ui_poll import run_ui_poll_loop
@@ -285,6 +288,7 @@ class KishuForJupyter:
         self._variable_version_tracker = VariableVersionTracker({})
         self._start_time: Optional[float] = None
         self._last_execution_count = 0
+        self._commit_thread: Optional[threading.Thread] = None
 
         # Configurations.
         self._test_mode = Config.get('JUPYTERINT', 'test_mode', False)
@@ -354,6 +358,11 @@ class KishuForJupyter:
             pass
         del self._ip.user_ns[KISHU_INSTRUMENT]
 
+    def enable_autosave_notebook(self) -> None:
+        if self._test_mode:  # TODO: re-enable notebook saving during tests when possible/supported.
+            return
+        self._ip.run_line_magic("autosave", "1")  # Automatically save every 1 seconds (if dirty).
+
     def save_notebook(self) -> None:
         if self._test_mode:  # TODO: re-enable notebook saving during tests when possible/supported.
             return
@@ -390,6 +399,11 @@ class KishuForJupyter:
         else:
             # In Jupyter Notebook.
             IPython.display.display(IPython.display.Javascript(KishuForJupyter.RELOAD_CMD))
+
+    def wait_until_commit_finishes(self):
+        if self._commit_thread is not None:
+            self._commit_thread.join()
+            self._commit_thread = None
 
     def checkout(self, branch_or_commit_id: str, skip_notebook: bool = False) -> BareReprStr:
         """
@@ -477,11 +491,10 @@ class KishuForJupyter:
         print('info.cell_id =', info.cell_id)
         print(dir(info))
         """
+        # Block cell executoin when a commit is ongoing.
+        self.wait_until_commit_finishes()
+
         self._start_time = time.time()
-
-        # Saving needs to be before cell execution, otherwise stream/print output will disappear.
-        self.save_notebook()
-
         self._cr_planner.pre_run_cell_update()
 
     def post_run_cell(self, result) -> None:
@@ -517,6 +530,25 @@ class KishuForJupyter:
         self._last_execution_count += 1
         self._start_time = None
 
+        # Commit later once IPython returns to Jupyter and Jupyter updates cell information.
+        self._commit_thread = threading.Thread(
+            target=self._async_commit_entry,
+            args=(asyncio.get_event_loop(), entry, changed_vars),
+        )
+        self._commit_thread.start()
+        if self._test_mode:
+            # Join immediately in test mode.
+            self.wait_until_commit_finishes()
+
+    def _async_commit_entry(
+        self,
+        loop: AbstractEventLoop,
+        entry: CommitEntry,
+        changed_vars: Optional[ChangedVariables] = None,
+    ) -> None:
+        if not self._test_mode:  # Skip waiting to speed up testing. TODO: Remove when we acheive frontend testing.
+            time.sleep(1.2)  # Wait until autosaving is completed (200 ms margin).
+        asyncio.set_event_loop(loop)
         self._commit_entry(entry, changed_vars)
 
     @staticmethod
@@ -590,7 +622,6 @@ class KishuForJupyter:
         entry = CommitEntry(kind=CommitEntryKind.manual)
         entry.execution_count = self._ip.execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
-        self.save_notebook()
         self._commit_entry(entry)
         return BareReprStr(entry.commit_id)
 
@@ -767,6 +798,7 @@ def init_kishu(notebook_path: Optional[str] = None) -> None:
     ip = eval('get_ipython()')
     kishu = KishuForJupyter(notebook_id, ip=ip)
     kishu.save_notebook()
+    kishu.enable_autosave_notebook()
 
     # Open notebook file after saving.
     nb = JupyterRuntimeEnv.read_notebook(notebook_id.path())
