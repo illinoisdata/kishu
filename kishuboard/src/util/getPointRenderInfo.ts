@@ -12,7 +12,8 @@ export enum TopologyCommitType {
     ROOT,
     USERIMPL,//manual commit or has tag/branch
     MERGE,//"visually merge" commit, whose parent and nb_parent are different
-    NORMAL
+    NORMAL,
+    HEAD
 }
 
 export class VisInfoManager {
@@ -29,15 +30,20 @@ export class VisInfoManager {
     visPoints: VisPoint[];
     groupFolded: Map<number, boolean>;
 
+    nbHead: string;
+    varHead:string
 
 
-    constructor(commits:Commit[], unfoldedGroup: number[] | undefined){
+
+    constructor(commits:Commit[], unfoldedGroup: number[] | undefined, nbHead:string, varHead:string){
         //a map from commit ID to the index in time-sorted commits， so that we can quickly find out the parent
         this.commitIDIndex = new Map<string, number>();
         for (let i = 0; i < commits.length; i++) {
             this.commitIDIndex.set(commits[i].oid, i);
         }
         this.commits = commits;
+        this.nbHead = nbHead;
+        this.varHead = varHead;
 
         this.commit2Group = new Map<string, number>();
         this.group2Commits = new Map<number, string[]>();
@@ -105,6 +111,11 @@ export class VisInfoManager {
         return this.group2Commits.get(groupID)![0];
     }
 
+    public getVisPoint(commitID:string){
+        const pointID = this.getVisPointID(commitID);
+        return this.visPoints.filter(point => point.visPointID === pointID)[0];
+    }
+
 
     //***************helper functions for group assignment****************
     calGroupInfo(){
@@ -167,6 +178,10 @@ export class VisInfoManager {
                 if(this.commits[idx].nbParentOid!= undefined){
                     this.topologyCommitTypes[this.commitIDIndex.get(this.commits[idx].nbParentOid)!] = TopologyCommitType.BRANCH;
                 }
+            }
+            //if it's code head or variable head, it's visible
+            if(this.commits[idx].oid == this.nbHead || this.commits[idx].oid == this.varHead){
+                this.topologyCommitTypes[idx] = TopologyCommitType.HEAD;
             }
             prev_idx = idx
             idx = this.commitIDIndex.get(this.commits[idx].parentOid)

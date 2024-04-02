@@ -42,7 +42,24 @@
     padding-top: 20px;
 }
 
+.no_commit {
+    height: 100%;
+}
+
 
 .executed_code_panel {
     background-color: #e1e4ea;
+}
+
+.ant-tabs {
+    height: 100%;
+}
+
+.ant-tabs-content-holder {
+    display: flex;
+}
+
+.ant-tabs-tabpane {
+    height: 100%;
+    overflow-y: auto;
 }

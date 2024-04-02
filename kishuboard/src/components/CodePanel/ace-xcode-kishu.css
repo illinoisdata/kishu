@@ -97,7 +97,8 @@
 }
 
 .ace-xcode .ace_comment {
-  color: #418081
+  color: #418081;
+  font-style: italic;
 }
 
 .ace-xcode .ace_indent-guide {
