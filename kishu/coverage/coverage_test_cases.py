@@ -57,6 +57,797 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         var_modify_statements=["a.set_xlabel('Flipper Length')"]
     ),
     LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.cluster",
+        var_name="kmeans",
+        import_statements=["import numpy as np", "from sklearn.cluster import KMeans"],
+        var_declare_statements=[
+            "X = np.array([[1, 2], [1, 4], [1, 0], [10, 0], [10, 4], [10, 0]])",
+            "kmeans = KMeans(n_clusters = 2, random_state = 0, n_init='auto').fit(X)"
+        ],
+        var_modify_statements=["kmeans.n_clusters=4"]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.cluster",
+        var_name="kmeans",
+        import_statements=["import numpy as np", "from sklearn.cluster import MiniBatchKMeans"],
+        var_declare_statements=[
+            "X = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 0], [4, 4], [4, 5], [0, 1], [2, 2], [3, 2], [5, 5], [1, -1]])",
+            "kmeans = MiniBatchKMeans(n_clusters = 2, random_state = 0, batch_size=6, n_init='auto')",
+            "kmeans = kmeans.partial_fit(X[0:6,:])"
+        ],
+        var_modify_statements=["kmeans.batch_size=4"]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.compose",
+        var_name="ct",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.compose import ColumnTransformer",
+            "from sklearn.preprocessing import Normalizer"
+        ],
+        var_declare_statements=[
+            "ct = ColumnTransformer([('norm1', Normalizer(norm='l1'), [0, 1]),('norm2', Normalizer(norm='l1'), slice(2, 4))])",
+            "X = np.array([[0., 1., 2., 2.], [1., 1., 0., 1.]])",
+            "ct.fit_transform(X)"
+        ],
+        var_modify_statements=[
+            "ct.feature_names_in_ = ['feature1', 'feature2', 'feature3', 'feature4']"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.datasets",
+        var_name="data",
+        import_statements=["from sklearn.datasets import fetch_california_housing"],
+        var_declare_statements=[
+            "data = fetch_california_housing()"
+        ],
+        var_modify_statements=["data.data[0,0] = 15"]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.datasets",
+        var_name="X",
+        import_statements=["from sklearn.datasets import make_friedman1"],
+        var_declare_statements=[
+            "X, y = make_friedman1(random_state=42)"
+        ],
+        var_modify_statements=["X[3,2] = 10"]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.decomposition",
+        var_name="transformer",
+        import_statements=[
+            "from sklearn.datasets import load_digits", 
+            "from sklearn.decomposition import IncrementalPCA"
+        ],
+        var_declare_statements=[
+            "X, _ = load_digits(return_X_y=True)",
+            "transformer = IncrementalPCA(n_components=7, batch_size=200)"
+        ],
+        var_modify_statements=["transformer.batch_size = 201", "transformer.n_components=8"]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.discriminant_analysis",
+        var_name="clf",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.discriminant_analysis import LinearDiscriminantAnalysis"
+        ],
+        var_declare_statements=[
+            "X1 = np.array([[-1, -1], [-2, -1], [-3, -2], [1, 1], [2, 1], [3, 2]])",
+            "X2 = np.array([[-1, 11], [-2, -1], [-3, -2], [1, 1], [2, 1], [3, 2]])",
+            "y = np.array([1, 1, 1, 2, 2, 2])",
+            "clf = LinearDiscriminantAnalysis()",
+            "clf.fit(X1, y)"
+        ],
+        var_modify_statements=["clf.fit(X2, y)"]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.dummy",
+        var_name="clf",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.dummy import DummyClassifier"
+        ],
+        var_declare_statements=[
+            "X = np.array([-1, 1, 1, 1])",
+            "y = np.array([0, 1, 1, 1])",
+            "clf = DummyClassifier(strategy='most_frequent')",
+            "clf.fit(X, y)"
+        ],
+        var_modify_statements=["clf.n_classes_ = 11"]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.ensemble",
+        var_name="clf",
+        import_statements=[
+            "from sklearn.ensemble import AdaBoostClassifier",
+            "from sklearn.datasets import make_classification"
+        ],
+        var_declare_statements=[
+            "X, y = make_classification(n_samples=1000, n_features=4, n_informative=2, n_redundant=0, random_state=0, shuffle=False)",
+            "X1, y1 = make_classification(n_samples=1000, n_features=4, n_informative=2, n_redundant=0, random_state=10, shuffle=False)",
+            "clf = AdaBoostClassifier(n_estimators=100, algorithm='SAMME', random_state=42)",
+            "clf.fit(X, y)"
+        ],
+        var_modify_statements=[
+            "clf.n_estimators = 200",
+            "clf.algorithm = 'SAMME.R'",
+            "clf.random_state = 100"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.feature_extraction.text",
+        var_name="vectorizer",
+        import_statements=[
+            "from sklearn.feature_extraction.text import CountVectorizer"
+        ],
+        var_declare_statements=[
+            "corpus = ['This is the first document.','This document is the second document.','And this is the third one.','Is this the first document?']",
+            "vectorizer = CountVectorizer()",
+            "X = vectorizer.fit_transform(corpus)"
+        ],
+        var_modify_statements=[
+            "vectorizer.stop_words_ = {'is', 'the', 'and'}"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.feature_selection",
+        var_name="selector",
+        import_statements=[
+            "from sklearn.datasets import load_digits",
+            "from sklearn.feature_selection import SelectPercentile, chi2"
+        ],
+        var_declare_statements=[
+            "X, y = load_digits(return_X_y=True)",
+            "selector = SelectPercentile(chi2, percentile=10).fit(X, y)",
+            "X_new = selector.transform(X)"
+        ],
+        var_modify_statements=[
+            "selector.pvalues_ = [0.1, 0.05, 0.2, 0.15]"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.impute",
+        var_name="imp_mean",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.impute import SimpleImputer"
+        ],
+        var_declare_statements=[
+            "imp_mean = SimpleImputer(missing_values=np.nan, strategy='mean')",
+            "imp_mean.fit([[7, 2, 3], [4, np.nan, 6], [10, 5, 9]])"
+        ],
+        var_modify_statements=["imp_mean.fit([[np.nan, 2, 3], [4, np.nan, 6], [10, 5, np.nan]])"]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.impute",
+        var_name="imputer",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.impute import KNNImputer"
+        ],
+        var_declare_statements=[
+            "X = [[7, 2, 3], [4, np.nan, 6], [10, 5, 9]]",
+            "imputer = KNNImputer(n_neighbors=2)",
+            "imputer.fit_transform(X)"
+        ],
+        var_modify_statements=["imputer.fit_transform([[np.nan, 2, 3], [4, np.nan, 6], [10, 5, np.nan]])"]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.impute",
+        var_name="imputer",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.impute import KNNImputer"
+        ],
+        var_declare_statements=[
+            "X = [[7, 2, 3], [4, np.nan, 6], [10, 5, 9]]",
+            "imputer = KNNImputer(n_neighbors=2)",
+            "imputer.fit_transform(X)"
+        ],
+        var_modify_statements=["imputer.fit_transform([[np.nan, 2, 3], [4, np.nan, 6], [10, 5, np.nan]])"]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.kernel_ridge",
+        var_name="kernel_ridge",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.kernel_ridge import KernelRidge"
+        ],
+        var_declare_statements=[
+            "X = np.array([[1, 2], [3, 4], [5, 6]])",
+            "y = np.array([1, 2, 3])",
+            "kernel_ridge = KernelRidge(kernel='rbf', alpha=0.1)"
+        ],
+        var_modify_statements=[
+            "kernel_ridge.fit(X, y)",
+            "current_dual_coefficients = kernel_ridge.dual_coef_",
+            "new_dual_coefficients = np.full_like(current_dual_coefficients, fill_value=0.5)",
+            "kernel_ridge.dual_coef_ = new_dual_coefficients"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.linear_model",
+        var_name="regression_model",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.linear_model import LinearRegression"
+        ],
+        var_declare_statements=[
+            "X = np.array([[1, 2], [3, 4], [5, 6]])",
+            "y = np.array([1, 2, 3])",
+            "regression_model = LinearRegression()",
+            "regression_model.fit(X, y)",
+        ],
+        var_modify_statements=[
+            "current_coefficients = regression_model.coef_",
+            "new_coefficients = np.full_like(current_coefficients, fill_value=0.5)",
+            "regression_model.coef_ = new_coefficients"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.linear_model",
+        var_name="logistic_model",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.linear_model import LogisticRegression"
+        ],
+        var_declare_statements=[
+            "X = np.array([[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]])",
+            "y = np.array([0, 0, 1, 1, 1])",
+            "logistic_model = LogisticRegression()"
+        ],
+        var_modify_statements=[
+            "logistic_model.fit(X, y)",
+            "current_coefficients = logistic_model.coef_",
+            "new_coefficients = np.full_like(current_coefficients, fill_value=0.5)",
+            "logistic_model.coef_ = new_coefficients"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.manifold",
+        var_name="embedding",
+        import_statements=[
+            "from sklearn.datasets import load_digits",
+            "from sklearn.manifold import LocallyLinearEmbedding"
+        ],
+        var_declare_statements=[
+            "X, _ = load_digits(return_X_y=True)",
+            "embedding = LocallyLinearEmbedding(n_components=2)"
+        ],
+        var_modify_statements=[
+            "X_transformed = embedding.fit_transform(X[:100])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.metrics",
+        var_name="mse",
+        import_statements=[
+            "from sklearn.metrics import mean_squared_error",
+        ],
+        var_declare_statements=[
+            "y_true = [3, -0.4, 2, 7]",
+            "y_pred = [2.5, 0.0, 2, 8]",
+            "mse = mean_squared_error(y_true, y_pred)"
+        ],
+        var_modify_statements=[
+            "y_pred[0] = 3",
+            "mse = mean_squared_error(y_true, y_pred)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.metrics.pairwise",
+        var_name="distance",
+        import_statements=[
+            "from sklearn.metrics.pairwise import euclidean_distances"
+        ],
+        var_declare_statements=[
+            "X = [[0,1],[1,1]]",
+            "distance = euclidean_distances(X,X)"
+        ],
+        var_modify_statements=[
+            "distance = euclidean_distances(X, [[0,0]])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.mixture",
+        var_name="gm",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.mixture import GaussianMixture"
+        ],
+        var_declare_statements=[
+            "X = np.array([[1, 2], [1, 4], [1, 0], [10, 2], [10, 4], [10, 0]])",
+            "gm = GaussianMixture(n_components=2, random_state=0).fit(X)"
+        ],
+        var_modify_statements=[
+            "gm.weights_ = np.array([0.6, 0.4])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.model_selection",
+        var_name="group_kfold",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.model_selection import GroupKFold"
+        ],
+        var_declare_statements=[
+            "X = np.array([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12]])",
+            "y = np.array([1, 2, 3, 4, 5, 6])",
+            "groups = np.array([0, 0, 2, 2, 3, 3])",
+            "group_kfold = GroupKFold(n_splits=2)",
+            "value = group_kfold.split(X, y, groups)"
+        ],
+        var_modify_statements=[
+            "group_kfold.n_splits = 3",
+            "value = group_kfold.split(X, y, groups)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.multiclass",
+        var_name="clf",
+        import_statements=[
+            "from sklearn.datasets import load_iris",
+            "from sklearn.model_selection import train_test_split",
+            "from sklearn.multiclass import OneVsOneClassifier",
+            "from sklearn.svm import LinearSVC"
+        ],
+        var_declare_statements=[
+            "X, y = load_iris(return_X_y=True)",
+            "X_train, X_test, y_train, y_test = train_test_split( X, y, test_size=0.33, shuffle=True, random_state=0)",
+            "clf = OneVsOneClassifier(LinearSVC(dual='auto', random_state=0)).fit(X_train, y_train)"
+        ],
+        var_modify_statements=[
+            "clf.feature_names_in_ = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.naive_bayes",
+        var_name="clf",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.naive_bayes import GaussianNB"
+        ],
+        var_declare_statements=[
+            "X = np.array([[-1, -1], [-2, -1], [-3, -2], [1, 1], [2, 1], [3, 2]])",
+            "Y = np.array([1, 1, 1, 2, 2, 2])",
+            "clf = GaussianNB()",
+            "clf.fit(X, Y)"
+        ],
+        var_modify_statements=[
+            "clf.class_prior_ = [0.3, 0.7]"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.neighbors",
+        var_name="neigh",
+        import_statements=[
+            "from sklearn.neighbors import KNeighborsClassifier"
+        ],
+        var_declare_statements=[
+            "X = [[0], [1], [2], [3]]",
+            "y = [0, 0, 1, 1]",
+            "neigh = KNeighborsClassifier(n_neighbors=3)",
+            "neigh.fit(X, y)"
+        ],
+        var_modify_statements=[
+            "neigh.effective_metric_ = 'manhattan'"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.neural_network",
+        var_name="clf",
+        import_statements=[
+            "from sklearn.neural_network import MLPClassifier",
+            "from sklearn.datasets import make_classification",
+            "from sklearn.model_selection import train_test_split"
+        ],
+        var_declare_statements=[
+            "X, y = make_classification(n_samples=100, random_state=1)",
+            "X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=1)",
+            "clf = MLPClassifier(random_state=1, max_iter=300).fit(X_train, y_train)"
+        ],
+        var_modify_statements=[
+            "clf.n_iter_ = 200",
+            "clf.hidden_layer_sizes = (100,)",
+            "clf.learning_rate_init = 0.01"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.pipeline",
+        var_name="pipeline",
+        import_statements=[
+            "from sklearn.naive_bayes import GaussianNB",
+            "from sklearn.preprocessing import StandardScaler",
+            "from sklearn.pipeline import make_pipeline"
+        ],
+        var_declare_statements=[
+            "pipeline = make_pipeline(StandardScaler(), GaussianNB(priors=None))"
+        ],
+        var_modify_statements=[
+            "pipeline.steps[1] = ('gaussian_nb', GaussianNB(priors=[0.3, 0.7]))"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.preprocessing",
+        var_name="drop_enc",
+        import_statements=[
+            "from sklearn.preprocessing import OneHotEncoder"
+        ],
+        var_declare_statements=[
+            "X = [['Female', 1], ['Male', 2]]",
+            "drop_enc = OneHotEncoder(drop='first').fit(X)"
+        ],
+        var_modify_statements=[
+            "drop_enc.drop = 'if_binary'"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.random_projection",
+        var_name="transformer",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.random_projection import GaussianRandomProjection"
+        ],
+        var_declare_statements=[
+            "rng = np.random.RandomState(42)",
+            "X = rng.rand(25, 3000)",
+            "transformer = GaussianRandomProjection(random_state=rng)",
+            "X_new = transformer.fit_transform(X)"
+        ],
+        var_modify_statements=[
+            "transformer.n_components = 1000",
+            "transformer.eps = 0.1"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.svm",
+        var_name="clf",
+        import_statements=[
+            "from sklearn.svm import LinearSVC",
+            "from sklearn.pipeline import make_pipeline",
+            "from sklearn.preprocessing import StandardScaler",
+            "from sklearn.datasets import make_classification"
+        ],
+        var_declare_statements=[
+            "X, y = make_classification(n_features=4, random_state=0)",
+            "clf = make_pipeline(StandardScaler(),LinearSVC(dual='auto', random_state=0, tol=1e-5))",
+            "clf.fit(X, y)"
+        ],
+        var_modify_statements=[
+            "clf.named_steps['linearsvc'].C = 0.1",
+            "clf.named_steps['standardscaler'].with_mean = False"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.tree",
+        var_name="clf",
+        import_statements=[
+            "from sklearn.datasets import load_iris",
+            "from sklearn.model_selection import cross_val_score",
+            "from sklearn.tree import DecisionTreeClassifier"
+        ],
+        var_declare_statements=[
+            "clf = DecisionTreeClassifier(random_state=0)",
+            "iris = load_iris()",
+            "scores = cross_val_score(clf, iris.data, iris.target, cv=10)"
+        ],
+        var_modify_statements=[
+            "clf.max_depth = 5",
+            "clf.min_samples_split = 2"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.utils",
+        var_name="y",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.sparse import coo_matrix",
+            "from sklearn.utils import shuffle"
+        ],
+        var_declare_statements=[
+            "X = np.array([[1., 0.], [2., 1.], [0., 0.]])",
+            "y = np.array([0, 1, 2])",
+            "X_sparse = coo_matrix(X)"
+        ],
+        var_modify_statements=[
+            "X, X_sparse, y = shuffle(X, X_sparse, y, random_state=0)",
+            "shuffle(y, n_samples=2, random_state=0)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-learn",
+        class_name="sklearn.base",
+        var_name="estimator",
+        import_statements=[
+            "import numpy as np",
+            "from sklearn.base import BaseEstimator"
+        ],
+        var_declare_statements=[
+            '''class MyEstimator(BaseEstimator):
+                def __init__(self, *, param=1):
+                    self.param = param
+                def fit(self, X, y=None):
+                    self.is_fitted_ = True
+                    return self
+                def predict(self, X):
+                    import numpy as np
+                    return np.full(shape=X.shape[0], fill_value=self.param)
+            ''',
+            "estimator = MyEstimator(param=2)"
+        ],
+        var_modify_statements=[
+           # "X = np.array([[1, 2], [2, 3], [3, 4]])",
+           # "y = np.array([1, 0, 1])",
+           # "estimator.fit(X, y)",
+           # "y2 = np.array([12, 0, 1])",
+            "estimator.param = 3"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.sparse",
+        var_name="sparse",
+        import_statements=[
+            "import numpy as np",
+            "from scipy import sparse"
+        ],
+        var_declare_statements=[
+            "dense = np.array([[1, 0, 0, 2], [0, 4, 1, 0], [0, 0, 5, 0]])",
+            "sparse = sparse.coo_array(dense)",
+        ],
+        var_modify_statements=["sparse.data[2] = 100"]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.spatial",
+        var_name="tri",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.spatial import Delaunay"
+        ],
+        var_declare_statements=[
+            "points = np.array([[0, 0], [0, 1.1], [1, 0], [1, 1]])",
+            "tri = Delaunay(points)"
+        ],
+        var_modify_statements=[
+            "new_points = np.array([[0.5, 0.5], [0.2, 0.8], [0.8, 0.2]])",
+            "tri = Delaunay(np.concatenate((points, new_points)))"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.spatial",
+        var_name="hull",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.spatial import ConvexHull",
+            "rng = np.random.default_rng()"
+        ],
+        var_declare_statements=[
+            "points = rng.random((30, 2))",
+            "hull = ConvexHull(points)"
+        ],
+        var_modify_statements=[
+            "new_points = rng.random((10, 2))", 
+            "hull = ConvexHull(np.concatenate((points, new_points)))"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.interpolate",
+        var_name="y",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.interpolate import CubicSpline"
+        ],
+        var_declare_statements=[
+            "x = np.linspace(0, 10, 10)",
+            "y = np.sin(x)",
+            "cs = CubicSpline(x, y)"
+        ],
+        var_modify_statements=[
+            "x_new = np.linspace(0, 10, 100)",
+            "y = cs(x_new)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.ndimage",
+        var_name="a",
+        import_statements=[
+            "import numpy as np",
+            "from scipy import ndimage"
+        ],
+        var_declare_statements=[
+            "a = np.array([[1, 2, 0, 0], [5, 3, 0, 4], [0, 0, 0, 7], [9, 3, 0, 0]])",
+            "k = np.array([[1, 1, 1], [1, 1, 0], [1, 0, 0]])"
+        ],
+        var_modify_statements=[
+            "a = ndimage.convolve(a, k, mode='constant', cval=0.0)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.ndimage.interpolate",
+        var_name="img",
+        import_statements=[
+            "import numpy as np",
+            "from scipy import ndimage, datasets"
+        ],
+        var_declare_statements=[
+            "img = datasets.ascent()"
+        ],
+        var_modify_statements=[
+            "img = ndimage.rotate(img, 45, reshape=False)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.optimize",
+        var_name="x",
+        import_statements=[
+            "from scipy.optimize import minimize, rosen"
+        ],
+        var_declare_statements=[
+            "x= [1.3, 0.7, 0.8, 1.9, 1.2]",
+            "res = minimize(rosen, x, method='Nelder-Mead', tol=1e-6)"
+        ],
+        var_modify_statements=[
+            "x = res.x"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.signal",
+        var_name="filt",
+        import_statements=[
+            "from scipy import signal",
+            "import numpy as np"
+        ],
+        var_declare_statements=[
+            "fs = 100",
+            "bf = 2 * np.pi * np.array([7, 13])",
+            "filt = signal.lti(*signal.butter(4, bf, btype='bandpass',analog=True))",
+        ],
+        var_modify_statements=[
+            "filt = signal.lti(*signal.bilinear(filt.num, filt.den, fs))"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.signal.windows",
+        var_name="window",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.signal.windows import general_cosine, gaussian"
+        ],
+        var_declare_statements=[
+            "HFT90D = [1, 1.942604, 1.340318, 0.440811, 0.043097]",
+            "window = general_cosine(1000, HFT90D, sym=False)"
+        ],
+        var_modify_statements=[
+            "window = gaussian(51, std=7)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.spatial.distance._hausdorff",
+        var_name="dh",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.spatial.distance import directed_hausdorff",
+        ],
+        var_declare_statements=[
+            "u = np.array([(1.0, 0.0),(0.0, 1.0), (-1.0, 0.0), (0.0, -1.0)])",
+            "v = np.array([(2.0, 0.0),(0.0, 2.0), (-2.0, 0.0), (0.0, -4.0)])",
+            "dh = directed_hausdorff(u, v)[0]"
+        ],
+        var_modify_statements=[
+            "dh = directed_hausdorff(v, u)[0]"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.spatial.distance",
+        var_name="eu",
+        import_statements=[
+            "from scipy.spatial import distance",
+        ],
+        var_declare_statements=[
+            "eu = distance.euclidean([1,0,0], [0,1,0])"
+        ],
+        var_modify_statements=[
+            "eu = distance.euclidean([1,1,0], [0,1,0])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.special",
+        var_name="result",
+        import_statements=[
+            "import numpy as np",
+            "from scipy.special import rel_entr, kl_div"
+        ],
+        var_declare_statements=[
+            "p = np.array([0.1, 0.2, 0.3, 0.4])",
+            "q = np.array([0.15, 0.25, 0.3, 0.3])",
+            "result = rel_entr(p, q)"
+        ],
+        var_modify_statements=[
+            "result = kl_div(p, q)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scipy",
+        class_name="scipy.stats",
+        var_name="result",
+        import_statements=[
+            "import numpy as np",
+            "from scipy import stats"
+        ],
+        var_declare_statements=[
+            "rng = np.random.default_rng()",
+            "x = rng.random(10)",
+            "y = 1.6*x + rng.random(10)",
+            "result = stats.linregress(x, y)"
+        ],
+        var_modify_statements=[
+            "y[0] += 1",
+            "result = stats.linregress(x, y)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="xgboost",
+        class_name="xgboost.XGBRegressor",
+        var_name="model",
+        import_statements=[
+            "import numpy as np",
+            "import xgboost"
+        ],
+        var_declare_statements=[
+            "X_train = np.random.rand(100, 10)",
+            "y_train = np.random.rand(100)",
+            "model = xgboost.XGBRegressor()",
+            "model.fit(X_train, y_train)"
+        ],
+        var_modify_statements=[
+            "model.learning_rate = 0.1",
+        ]
+    ),
+    LibCoverageTestCase(
         module_name="matplotlib",
         class_name="matplotlib.colors.ListedColormap",
         var_name="cmap",
