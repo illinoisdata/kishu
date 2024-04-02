@@ -18,7 +18,7 @@ pip install kishu
 Installing Kishu in the editable mode.
 
 ```bash
-pip install -e kishu/[dev]
+pip install -e .[dev]
 ```
 
 Running PyTest.
