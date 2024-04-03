@@ -61,6 +61,7 @@ class CommitEntry:
 
     checkpoint_runtime_s: Optional[float] = None
     executed_cells: Optional[List[str]] = None
+    executed_outputs: Optional[Dict[int, str]] = None
     raw_nb: Optional[str] = None
     formatted_cells: Optional[List[FormattedCell]] = None
     restore_plan: Optional[kishu.planning.plan.RestorePlan] = None

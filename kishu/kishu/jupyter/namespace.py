@@ -78,6 +78,9 @@ class Namespace:
     def ipython_in(self) -> Optional[List[str]]:
         return self._tracked_namespace["In"] if "In" in self._tracked_namespace else None
 
+    def ipython_out(self) -> Optional[Dict[int, Any]]:
+        return self._tracked_namespace["Out"] if "Out" in self._tracked_namespace else None
+
     def subset(self, varnames: Set[str]) -> Namespace:
         return Namespace({k: self._tracked_namespace[k] for k in varnames if k in self})
 

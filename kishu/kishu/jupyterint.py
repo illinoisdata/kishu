@@ -444,6 +444,17 @@ class KishuForJupyter:
             if current_executed_cells is not None:
                 current_executed_cells[:] = commit_entry.executed_cells[:]
 
+        # Restore IPython output maps.
+        # Currently, this restores string representation of the outputs.
+        # TODO: Restore the original object.
+        if commit_entry.executed_outputs is not None:
+            current_executed_outputs = self._user_ns.ipython_out()
+            if current_executed_outputs is not None:
+                current_executed_outputs.update(commit_entry.executed_outputs)
+                for key in current_executed_outputs.keys():
+                    if key not in commit_entry.executed_outputs:
+                        del current_executed_outputs[key]
+
         # Restore execution count.
         if commit_entry.execution_count is not None:
             self._ip.execution_count = commit_entry.execution_count + 1  # _ip.execution_count is the next count.
@@ -632,6 +643,8 @@ class KishuForJupyter:
 
         # Observe all cells and extract notebook informations.
         entry.executed_cells = self._user_ns.ipython_in()
+        executed_outputs = self._user_ns.ipython_out()
+        entry.executed_outputs = {k: str(v) for k, v in executed_outputs.items()} if executed_outputs is not None else None
         entry.raw_nb, entry.formatted_cells = self._all_notebook_cells()
         if entry.formatted_cells is not None:
             code_cells = []
