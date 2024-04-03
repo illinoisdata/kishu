@@ -82,6 +82,7 @@ export function parseCommitDetail(json: any) {
                     content: item["content"],
                     execNum: item["exec_num"] === "None" ? "-1" : item["exec_num"],
                     type: item["cell_type"],
+                    output:item["output"]
                 }) as Cell,
         ),
         variables: json["variables"].map((variable: any) =>
@@ -90,13 +91,14 @@ export function parseCommitDetail(json: any) {
             return a.type==="module" ? 1 : -1
         }),
         // historyExecCells: json["cells"]
-        historyExecCells: json["executed_cells"].reverse().map(
-            (item: any) => ({
+        historyExecCells: json["executed_cells"].map(
+            (item: any,idx:number) => ({
                 content: item,
                 execNum: "-1",
-                type: "code"
+                type: "code",
+                output:json["executed_outputs"][idx.toString()]
             }) as Cell
-        ),
+        ).reverse(),
     };
     return commitDetail;
 }
