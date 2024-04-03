@@ -27,7 +27,7 @@ export function parseCommitGraph(object: any) {
     // logger.silly("git graph from backend", object)
     console.log("git graph from backend", object)
     const items = object["commits"];
-    const commits: Commit[] = items.map(
+    let commits: Commit[] = items.map(
         (item: any) =>
             ({
                 oid: item["oid"],
@@ -40,6 +40,8 @@ export function parseCommitGraph(object: any) {
                 codeVersion: item["code_version"],
                 variableVersion: item["varset_version"],
                 message: item["message"].replace("Auto-commit after executing",""),
+                belongCodeBranchIds:new Set<string>(),
+                belongVarBranchIds:new Set<string>()
             }) as Commit,
     );
     const currentHead = object["head"]["commit_id"];
@@ -51,6 +53,8 @@ export function parseCommitGraph(object: any) {
         const timestampB = new Date(b.timestamp).getTime();
         return timestampB - timestampA;
     });
+    calBelongBranches(commits, currentHead, currentNBHead)
+    commits = commits.filter((commit)=> commit.belongCodeBranchIds.size != 0 || commit.belongVarBranchIds.size != 0)
 
     return {
         commits: commits,
@@ -63,19 +67,22 @@ export function parseCommitGraph(object: any) {
 export function parseCommitDetail(json: any) {
     // logger.silly("commit detail from backend",json)
     const item = json["commit"];
+    let commit:Commit = {
+        codeVersion: item["code_version"],
+        variableVersion: item["variable_version"],
+        oid: item["oid"],
+        timestamp: item["timestamp"],
+        parentOid: item["parent_oid"],
+        nbParentOid: item["nb_parent_oid"],
+        branchIds: item["branches"],
+        tags: item["tags"],
+        message: item["message"],
+        belongVarBranchIds: new Set<string>(),
+        belongCodeBranchIds: new Set<string>(),
+    }
 
     const commitDetail: CommitDetail = {
-        commit: {
-            codeVersion: item["code_version"],
-            variableVersion: item["variable_version"],
-            oid: item["oid"],
-            timestamp: item["timestamp"],
-            parentOid: item["parent_oid"],
-            nbParentOid: item["nb_parent_oid"],
-            branchIds: item["branches"],
-            tags: item["tags"],
-            message: item["message"],
-        },
+        commit: commit,
         codes: json["cells"].map(
             (item: any) =>
                 ({
@@ -166,6 +173,37 @@ function parseDiffHunk(json: any) {
         content: _content,
         subDiffHunks: _sub_diff_hunks?.map((item: any) => parseDiffHunk(item))
     } as DiffCodeHunk;
+}
+
+function calBelongBranches(commits:Commit[],currentHead:string, currentNBHead:string){
+    let commit:Commit
+    let varPCommit:Commit
+    let nbPCommit:Commit
+    for (let i = 0; i < commits.length; i++){
+        commit = commits[i]
+        commit.branchIds.forEach((branchID) => {
+            commit.belongVarBranchIds.add(branchID)
+            commit.belongCodeBranchIds.add(branchID)
+        })
+        if(commit.oid === currentHead){
+            commit.belongVarBranchIds.add("var_head")
+        }
+        if(commit.oid === currentNBHead){
+            commit.belongCodeBranchIds.add("nb_head")
+        }
+        nbPCommit = commits.filter(commit => commit.oid == commits[i].nbParentOid)[0]
+        varPCommit = commits.filter(commit => commit.oid == commits[i].parentOid)[0]
+        if (varPCommit!= undefined){
+            commit.belongVarBranchIds.forEach((branchID)=>{
+                varPCommit.belongVarBranchIds.add(branchID)
+            })
+        }
+        if(nbPCommit!=undefined){
+            commit.belongCodeBranchIds.forEach((branchID) => {
+                nbPCommit.belongCodeBranchIds.add(branchID)
+            })
+        }
+    }
 }
 
 export function parseFilteredCommitIDs(json: any): string[] {
