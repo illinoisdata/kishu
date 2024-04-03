@@ -36,21 +36,19 @@ def install_submit_cell_execution() -> None:
 def check_train_test_dataset(X_train, Y_train, X_test, Y_test):
     expected_rows = 16512 + 4128
     if X_train.shape[0] + X_test.shape[0] != expected_rows:
-        cprint(f"CHECK FAILED: X_train ({X_train.shape[0]} rows) and X_test ({X_test.shape[0]} rows) should contain {expected_rows} rows in total", "light_red", attrs=["underline", "bold"])
-        cprint(f"Hint: Maybe rows in housing have been dropped. Find when housing has fewer than {expected_rows} rows", "light_red", attrs=["underline", "bold"])
+        cprint(f"CHECK FAILED: Rows in variable `housing` have been dropped accidentally. `X_train` and `X_test` should contain {expected_rows} rows in total. Find when `housing` has fewer than {expected_rows} rows", "light_red", attrs=["underline", "bold"])
         return False
     if Y_train.shape[0] + Y_test.shape[0] != expected_rows:
-        cprint(f"CHECK FAILED: Y_train ({Y_train.shape[0]} rows) and Y_test ({Y_test.shape[0]} rows) should contain {expected_rows} rows in total", "light_red", attrs=["underline", "bold"])
-        cprint(f"Hint: Maybe rows in housing have been dropped. Find when housing has fewer than {expected_rows} rows", "light_red", attrs=["underline", "bold"])
+        cprint(f"CHECK FAILED: Rows in variable `housing` have been dropped accidentally. `Y_train` and `Y_test` should contain {expected_rows} rows in total. Find when `housing` has fewer than {expected_rows} rows", "light_red", attrs=["underline", "bold"])
         return False
     null_cols = X_train.columns[X_train.isnull().any()].tolist()
     if len(null_cols) > 0:
-        cprint(f"CHECK FAILED: X_train contains a missing value {null_cols}", "light_red", attrs=["underline", "bold"])
+        cprint(f"CHECK FAILED: `X_train` contains a missing value {null_cols}", "light_red", attrs=["underline", "bold"])
         cprint(f"Hint: Imputation should have replaced these missing values", "light_red", attrs=["underline", "bold"])
         return False
     null_cols = X_test.columns[X_test.isnull().any()].tolist()
     if len(null_cols) > 0:
-        cprint(f"CHECK FAILED: X_test contains a missing value {null_cols}", "light_red", attrs=["underline", "bold"])
+        cprint(f"CHECK FAILED: `X_test` contains a missing value {null_cols}", "light_red", attrs=["underline", "bold"])
         cprint(f"Hint: Imputation should have replaced these missing values", "light_red", attrs=["underline", "bold"])
         return False
     cprint("CHECK PASSED", "light_green", attrs=["underline", "bold"])

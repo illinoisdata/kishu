@@ -561,7 +561,7 @@ class KishuForJupyter:
         changed_vars: Optional[ChangedVariables] = None,
     ) -> None:
         if not self._test_mode:  # Skip waiting to speed up testing. TODO: Remove when we acheive frontend testing.
-            time.sleep(1.2)  # Wait until autosaving is completed (200 ms margin).
+            time.sleep(0.2)  # Wait until autosaving is completed (200 ms margin).
         asyncio.set_event_loop(loop)
         self._commit_entry(entry, changed_vars)
 
