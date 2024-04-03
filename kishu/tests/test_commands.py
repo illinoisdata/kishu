@@ -139,6 +139,7 @@ class TestKishuCommand:
                 # "y = 2",
                 # "y = x + 1",
             ],
+            executed_outputs={},
             message=status_result.commit_entry.message,  # Not tested,
             timestamp=status_result.commit_entry.timestamp,  # Not tested
             ahg_string=status_result.commit_entry.ahg_string,  # Not tested
@@ -364,6 +365,7 @@ class TestKishuCommand:
                 # "y = 2",
                 # "y = x + 1",
             ],
+            executed_outputs={},
             cells=fe_commit_result.cells,  # Not tested
             variables=[],
         )
@@ -561,6 +563,7 @@ class TestKishuCommand:
                     "# Record imported libraries\nimport numpy as np\nfrom numpy import random",
                     "b = 1",
                 ],
+                executed_outputs={},
                 cells=fe_commit_result.cells,  # Not tested
                 variables=fe_commit_result.variables,  # Not tested
             )
@@ -596,6 +599,7 @@ class TestKishuCommand:
                     "b = 1",
                     "x = 1",
                 ],
+                executed_outputs={},
                 cells=fe_commit_result_2.cells,  # Not tested
                 variables=fe_commit_result_2.variables,  # Not tested
             )

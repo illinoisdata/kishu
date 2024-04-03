@@ -279,6 +279,7 @@ class FESelectedCommitVariable:
 class FESelectedCommit:
     commit: FECommit
     executed_cells: List[str]
+    executed_outputs: Dict[int, str]
     cells: List[FESelectedCommitCell]
     variables: List[FESelectedCommitVariable]
 
@@ -802,8 +803,9 @@ class KishuCommand:
             for key, value in commit_ns.to_dict().items()
         ]
 
-        # Compile list of executed cells.
+        # Compile list of executed cells and outputs.
         executed_cells = [] if commit_entry.executed_cells is None else commit_entry.executed_cells
+        executed_outputs = {} if commit_entry.executed_outputs is None else commit_entry.executed_outputs
 
         # Compile list of cells.
         cells: List[FESelectedCommitCell] = []
@@ -835,6 +837,7 @@ class KishuCommand:
         return FESelectedCommit(
             commit=commit_summary,
             executed_cells=executed_cells,
+            executed_outputs=executed_outputs,
             variables=variables,
             cells=cells,
         )
