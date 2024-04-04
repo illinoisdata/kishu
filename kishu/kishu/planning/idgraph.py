@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, List, Optional
-from types import GeneratorType
+from types import GeneratorType, FunctionType
 
+import matplotlib.pyplot as plt
 import numpy
 import scipy
 import torch
@@ -10,6 +11,8 @@ import pandas
 import pickle
 import uuid
 import xxhash
+import dill
+import cloudpickle
 
 
 PRIMITIVES = (type(None), int, float, bool, str, bytes)
@@ -21,29 +24,31 @@ class GraphNode:
         self.id_obj = id_obj
         self.children: List[Any] = []
         self.obj_type = obj_type
+        
         self.cached_id_set: Optional[Set[Any]] = None
-
-        self.cached_list_check_id_obj: Optional[List[Any]] = None
+        self.cached_list: Optional[List[Any]] = None
+        self.cached_list_not_check_value: Optional[List[Any]] = None
         self.cached_list_not_check_id_obj: Optional[List[Any]] = None
 
     def convert_to_list(self, check_id_obj=True, check_value=True):
-        if check_value:
+        # initialize
+        if not self.cached_list:
             ls = []
-            GraphNode._convert_idgraph_to_list(self, ls, set(), check_id_obj, check_value)
-            return ls
+            ls_no_check_value = []
+            ls_no_check_id_obj = []
+            GraphNode._convert_idgraph_to_list(self, ls, ls_no_check_value, ls_no_check_id_obj, set(), check_id_obj, check_value)
+            self.cached_list = ls
+            self.cached_list_not_check_value = ls_no_check_value
+            self.cached_list_not_check_id_obj = ls_no_check_id_obj
+            
+        if check_value and check_id_obj:
+            return self.cached_list
 
         if check_id_obj:
-            if not self.cached_list_check_id_obj:
-                ls = []
-                GraphNode._convert_idgraph_to_list(self, ls, set(), check_id_obj, check_value)
-                self.cached_list_check_id_obj = ls
-            return self.cached_list_check_id_obj
+            return self.cached_list_not_check_value
 
-        if not self.cached_list_not_check_id_obj:
-            ls = []
-            GraphNode._convert_idgraph_to_list(self, ls, set(), check_id_obj, check_value)
-            self.cached_list_not_check_id_obj = ls
-        return self.cached_list_not_check_id_obj
+        if check_value:
+            return self.cached_list_not_check_id_obj
 
     def id_set(self) -> Set[Any]:
         if not self.cached_id_set:
@@ -68,26 +73,40 @@ class GraphNode:
         return GraphNode._compare_idgraph(self, other, check_id_obj=True)
 
     @staticmethod
-    def _convert_idgraph_to_list(node: GraphNode, ret_list, visited: set, check_id_obj=True, check_value=True):
+    def _convert_idgraph_to_list(
+        node: GraphNode,
+        ret_list,
+        no_check_value_ret_list,
+        no_check_id_obj_ret_list,
+        visited: set,
+        check_id_obj=True,
+        check_value=True
+    ):
         # pre oder
 
         if node.id_obj and check_id_obj:
             ret_list.append(node.id_obj)
+            no_check_value_ret_list.append(node.id_obj)
 
         ret_list.append(node.obj_type)
+        no_check_value_ret_list.append(node.obj_type)
+        no_check_id_obj_ret_list.append(node.obj_type)
 
         if id(node) in visited:
             ret_list.append("CYCLIC_REFERENCE")
+            no_check_value_ret_list.append("CYCLIC_REFERENCE")
+            no_check_id_obj_ret_list.append("CYCLIC_REFERENCE")
             return
 
         visited.add(id(node))
 
         for child in node.children:
             if isinstance(child, GraphNode):
-                GraphNode._convert_idgraph_to_list(child, ret_list, visited, check_id_obj, check_value)
+                GraphNode._convert_idgraph_to_list(child, ret_list, no_check_value_ret_list, no_check_id_obj_ret_list, visited, check_id_obj, check_value)
             else:
                 if check_value or node.obj_type not in PRIMITIVES: 
                     ret_list.append(child)
+                    no_check_id_obj_ret_list.append(child)
 
     @staticmethod
     def _compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode, check_id_obj=True) -> bool:
@@ -118,7 +137,8 @@ def is_pickable(obj):
 
         pickle.dumps(obj)
         return True
-    except (pickle.PicklingError, AttributeError, TypeError):
+    #except (pickle.PicklingError, AttributeError, TypeError):
+    except:
         return False
 
 
@@ -137,7 +157,7 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
     if id(obj) in visited.keys():
         return visited[id(obj)]
 
-    if isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
+    if isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis), FunctionType)):
         node = GraphNode(obj_type=type(obj))
         node.children.append(obj)
         node.children.append("/EOC")
@@ -228,17 +248,17 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         node.children.append("/EOC")
         return node
 
-    if isinstance(obj, pandas.Series):
-        if first_creation:
-            obj.__array__().flags.writeable = False
+    # if isinstance(obj, pandas.Series):
+    #     if first_creation:
+    #         obj.__array__().flags.writeable = False
 
-        node = GraphNode(obj_type=type(obj))
-        node.id_obj = id(obj)
-        visited[id(obj)] = node
-        node.children.append(str(obj.__array__().flags.writeable))
-        obj.__array__().flags.writeable = False
-        node.children.append("/EOC")
-        return node
+    #     node = GraphNode(obj_type=type(obj))
+    #     node.id_obj = id(obj)
+    #     visited[id(obj)] = node
+    #     node.children.append(str(obj.__array__().flags.writeable))
+    #     obj.__array__().flags.writeable = False
+    #     node.children.append("/EOC")
+    #     return node
 
     if isinstance(obj, numpy.ndarray):
         node = GraphNode(obj_type=type(obj))
@@ -273,6 +293,15 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         h = xxhash.xxh3_128()
         h.update(numpy.ascontiguousarray(obj.data))
         node.children.append(h.intdigest())
+        node.children.append("/EOC")
+        return node
+
+    if isinstance(obj, plt.Figure):
+        node = GraphNode(obj_type=type(obj))
+        node.id_obj = id(obj)
+        visited[id(obj)] = node
+
+        node.children.append(cloudpickle.dumps(obj))
         node.children.append("/EOC")
         return node
 

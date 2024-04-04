@@ -107,7 +107,7 @@ def nb_simple_path(tmp_nb_path: Callable[[str], Path]) -> Path:
     return tmp_nb_path("simple.ipynb")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture()
 def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
     prev_config_path = Config.CONFIG_PATH
     Config.CONFIG_PATH = os.path.join(

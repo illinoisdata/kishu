@@ -11,6 +11,18 @@ from kishu.storage.config import Config
 from kishu.storage.path import KishuPath
 
 
+FUNCTION = """
+def ewm_features(dataframe, alphas, lags):
+    dataframe = dataframe.copy()
+    for alpha in alphas:
+        for lag in lags:
+            dataframe['sales_ewm_alpha_' + str(alpha).replace(".", "") + "_lag_" + str(lag)] = \
+                dataframe.groupby(["store_nbr", "family"])['sales']. \
+                    transform(lambda x: x.shift(lag).ewm(alpha=alpha).mean())
+    return dataframe
+"""
+
+
 @pytest.fixture()
 def enable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
     Config.set('OPTIMIZER', 'always_migrate', True)
@@ -182,6 +194,28 @@ def test_checkpoint_restore_planner_incremental_store_simple(enable_incremental_
     assert len(checkpoint_plan_cell2.actions) == 1
     assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
     assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset("y")
+
+
+def test_checkpoint_restore_planner_function(enable_incremental_store, enable_always_migrate):
+    """
+        Test incremental store.
+    """
+    filename = KishuPath.database_path("test")
+    KishuCheckpoint(filename).init_database()
+
+    planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
+
+    # Run cell 1.
+    def foo():
+        pass
+    planner_manager.run_cell({"foo": foo}, FUNCTION)
+
+    # Create and run checkpoint plan for cell 1.
+    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:1", [])
+
+    assert len(checkpoint_plan_cell2.actions) == 1
+    assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
+
 
 
 def test_checkpoint_restore_planner_incremental_store_not_subset(enable_incremental_store, enable_always_migrate):

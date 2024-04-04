@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import atexit
+import cloudpickle
 import dill
 import functools
 import sys
@@ -235,8 +236,10 @@ class IncrementalCheckpointPlan:
         ]
 
     def run(self, user_ns: Namespace) -> None:
+        user_ns.turn_off_track()
         for action in self.actions:
             action.run(user_ns)
+        user_ns.turn_on_track()
 
 
 class RestoreAction:
@@ -322,7 +325,12 @@ class IncrementalLoadRestoreAction(RestoreAction):
         """
         data: List[bytes] = KishuCheckpoint(ctx.checkpoint_file).get_variable_snapshots(self.versioned_names)
         print("start load namespaces")
-        dictionaries: List[Dict] = [dill.loads(i) for i in data]
+        dictionaries = []
+        for i in data:
+            try:
+                dictionaries.append(cloudpickle.loads(i))
+            except:
+                dictioanries.append(dill.loads(i))
         print("finish load namespaces")
         for dictionary in dictionaries:
             print("load keyset:", dictionary.keys())

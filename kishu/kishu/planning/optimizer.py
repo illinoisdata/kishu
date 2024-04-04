@@ -9,8 +9,8 @@ from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 from kishu.planning.ahg import AHG, CellExecution, VariableSnapshot, VersionedName, VersionedNameContext
 from kishu.storage.config import Config
 
-
-REALLY_FAST_BANDWIDTH_10GBPS = 400_000_000
+REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000
+# REALLY_FAST_BANDWIDTH_10GBPS = 400_000_000
 # REALLY_FAST_BANDWIDTH_10GBPS = 1
 
 

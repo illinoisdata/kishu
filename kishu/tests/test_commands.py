@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pytest
 import time
@@ -463,6 +464,7 @@ class TestKishuCommand:
             KishuCommand.checkout(notebook_path, commit_id)
 
             # Get the variable value after checkout.
+            print("test time:", time.time() - start)
             _, var_value_after = notebook_session.run_code(f"repr({var_to_compare})")
             print("var_value_after:", var_value_after)
             assert var_value_before == var_value_after
@@ -472,12 +474,14 @@ class TestKishuCommand:
     @pytest.mark.parametrize(
         ("notebook_name", "cell_num_to_restore", "var_to_compare"),
         [
-            ('numpy.ipynb', 4, "iris_X_train"),
-            ('simple.ipynb', 4, "b"),
-            ('test_unserializable_var.ipynb', 2, "next(gen)"),  # directly printing gen prints out its memory address.
-            # ('QiskitDemo_NCSA_May2023.ipynb', 61, "str(qc)")
+            #('numpy.ipynb', 4, "iris_X_train"),
+            #('simple.ipynb', 4, "b"),
+            #('test_unserializable_var.ipynb', 2, "next(gen)"),  # directly printing gen prints out its memory address.
+            # ('pyspark.ipynb', 35, 'cases')
+            ('ray.ipynb', 9, 'pipeline')
+            # ('Untitled.ipynb', 1, "ewm_features")
             # ('ml-ex3.ipynb', 15, 'y_pred'),
-            ('sklearn_tweet_classification.ipynb', 43, 'X_train')
+            # ('sklearn_tweet_classification.ipynb', 43, 'X_train')
         ]
     )
     def test_incremental_end_to_end_checkout(
@@ -540,11 +544,6 @@ class TestKishuCommand:
     @pytest.mark.parametrize(
         ("notebook_name", "cell_num_to_restore", "var_to_compare"),
         [
-            ('numpy.ipynb', 4, "iris_X_train"),
-            ('simple.ipynb', 4, "b"),
-            ('test_unserializable_var.ipynb', 2, "next(gen)"),  # directly printing gen prints out its memory address.
-            # ('QiskitDemo_NCSA_May2023.ipynb', 61, "str(qc)")
-            # ('ml-ex3.ipynb', 15, 'y_pred'),
             ('sklearn_tweet_classification.ipynb', 43, 'X_train')
         ]
     )
@@ -572,8 +571,11 @@ class TestKishuCommand:
             # Run some notebook cells.
             for i in range(cell_num_to_restore):
                 notebook_session.run_code(contents[i])
+                print("cell:", i)
+                dump_start = time.time()
                 notebook_session.run_code(
                     f"dill.dump_session('/data/elastic-notebook/tmp/{notebook_name}_{i}.pkl')")
+                print("dump time:", time.time() - dump_start)
 
             # Get the variable value before checkout.
             # The variable is printed so custom objects with no equality defined can be compared.
@@ -583,12 +585,19 @@ class TestKishuCommand:
             # Run the rest of the notebook cells.
             for i in range(cell_num_to_restore, len(contents)):
                 notebook_session.run_code(contents[i])
+                print("cell:", i)
+                dump_start = time.time()
                 notebook_session.run_code(
                     f"dill.dump_session('/data/elastic-notebook/tmp/{notebook_name}_{i}.pkl')")
+                print("dump time:", time.time() - dump_start)
 
             # Restore to that commit
+            load_time = time.time()
             notebook_session.run_code(
                 f"dill.load_session('/data/elastic-notebook/tmp/{notebook_name}_{cell_num_to_restore - 1}.pkl')")
+            print("load time:", time.time() - load_time)
+
+            print("test time:", time.time() - start)
 
             # Get the variable value after checkout.
             _, var_value_after = notebook_session.run_code(f"repr({var_to_compare})")

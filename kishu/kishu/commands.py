@@ -24,6 +24,7 @@ from kishu.jupyterint import (
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
+from kishu.storage.config import Config
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.storage.commit import CommitEntry, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
@@ -492,6 +493,10 @@ class KishuCommand:
             message="Error re-attaching kishu instrumentation to notebook",
             reattachment=instrument_result,
         )
+
+    @staticmethod
+    def set_config(config_category: str, config_entry: str, config_value: Any):
+        Config.set(config_category, config_entry, config_value)
 
     @staticmethod
     def branch(

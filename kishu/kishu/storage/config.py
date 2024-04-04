@@ -13,7 +13,7 @@ class Config:
     last_read_time = -1.0
 
     # Default config categories.
-    DEFAULT_CATEGORIES = ['CLI', 'COMMIT_GRAPH', 'JUPYTERINT', 'OPTIMIZER', 'PLANNER', 'PROFILER']
+    DEFAULT_CATEGORIES = ['CLI', 'COMMIT_GRAPH', 'EXPERIMENT', 'JUPYTERINT', 'OPTIMIZER', 'PLANNER', 'PROFILER']
 
     @staticmethod
     def _create_config_file() -> None:
@@ -40,17 +40,17 @@ class Config:
         # Only re-read the config file if it was modified since last read.
         # Note: the granularity of st_mtime_ns depends on the system (e.g., 1ms) and can result in very
         # recent updates being missed.
-        if Config.last_read_time < last_modify_time:
-            Config.config.read(Config.CONFIG_PATH)
+        # if Config.last_read_time < last_modify_time:
+        Config.config.read(Config.CONFIG_PATH)
 
-            # If the config category is supposed to exists but doesn't exist (e.g., config file created
-            # in earlier version of kishu), create it.
-            for config_category in Config.DEFAULT_CATEGORIES:
-                if config_category not in Config.config:
-                    Config.config[config_category] = {}
+        # If the config category is supposed to exists but doesn't exist (e.g., config file created
+        # in earlier version of kishu), create it.
+        for config_category in Config.DEFAULT_CATEGORIES:
+            if config_category not in Config.config:
+                Config.config[config_category] = {}
 
-            # Update the last read time.
-            Config.last_read_time = last_modify_time
+        # Update the last read time.
+        Config.last_read_time = last_modify_time
 
     @staticmethod
     def _write_config_file() -> None:

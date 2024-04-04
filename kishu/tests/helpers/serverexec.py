@@ -21,10 +21,10 @@ class CellExecutionError(Exception):
 
 class NotebookHandler:
     # Number of seconds to wait on kernel connection.
-    CONNECTION_TIMEOUT = 5
+    CONNECTION_TIMEOUT = 20
 
     # Number of seconds to wait on receiving output from cell executions.
-    CELL_EXECUTION_TIMEOUT = 600
+    CELL_EXECUTION_TIMEOUT = 1200
     """
         Class for running notebook code in Jupyter Sessions hosted in Jupyter Notebook servers.
     """
@@ -38,9 +38,10 @@ class NotebookHandler:
         self.websocket: Optional[websocket.WebSocket] = None
 
     def __enter__(self):
+        # self.websocket = websocket.WebSocketApp(self.request_url, header=self.header)
         self.websocket = websocket.create_connection(self.request_url, header=self.header,
                                                      timeout=NotebookHandler.CONNECTION_TIMEOUT,
-                                                     close_timeout=NotebookHandler.CONNECTION_TIMEOUT)
+                                                             close_timeout=NotebookHandler.CONNECTION_TIMEOUT)
         self.websocket.settimeout(NotebookHandler.CELL_EXECUTION_TIMEOUT)
         return self
 
@@ -60,19 +61,20 @@ class NotebookHandler:
                "content": content}
         return req, msg_id
 
+
     def run_code(self, cell_code: str, silent: bool = False) -> Tuple[str, str]:
         if self.websocket is None:
             raise RuntimeError("Websocket is not initialized")
 
-        # Execute cell code.
         req, msg_id = NotebookHandler.make_execute_request(cell_code, silent)
         self.websocket.send(json.dumps(req))
-
+            
         # Read output.
         stream_output = ""
         data_output = ""
         try:
-            while True:
+            while True:  
+
                 # Only listen to relevant message.
                 msg = json.loads(self.websocket.recv())
                 if msg["parent_header"].get("msg_id") != msg_id:

@@ -45,17 +45,17 @@ def _is_picklable(obj: Any) -> bool:
     """
         Checks whether an object is pickleable.
     """
-    if _in_exclude_list(obj):
-        return False
-    if inspect.ismodule(obj) or _is_exception(obj):
+    if inspect.ismodule(obj) or inspect.isfunction(obj) or _is_exception(obj):
         print("exception")
         return True
+    if _in_exclude_list(obj):
+        return False
     try:
         # This function can crash.
         is_picklable = dill.pickles(obj)
 
         # Add the unpicklable object to the config file.
-        if not is_picklable and Config.get('PROFILER', 'auto_add_unpicklable_object', True) and not isinstance(obj, list):
+        if not is_picklable and Config.get('PROFILER', 'auto_add_unpicklable_object', False) and not isinstance(obj, list):
             _add_to_unserializable_list(obj)
         return is_picklable
     except Exception:
@@ -67,7 +67,7 @@ def _is_picklable(obj: Any) -> bool:
         pickle.dumps(obj)
     except Exception:
         # Add the unpicklable object to the config file.
-        if Config.get('PROFILER', 'auto_add_unpicklable_object', True) and not isinstance(obj, list):
+        if Config.get('PROFILER', 'auto_add_unpicklable_object', False) and not isinstance(obj, list):
             _add_to_unserializable_list(obj)
         return False
     return True

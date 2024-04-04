@@ -11,20 +11,23 @@ class TrackedNamespace(dict):
         dict.__init__(self, *args, **kwargs)
         self._accessed_vars: Set[str] = set()
         self._assigned_vars: Set[str] = set()
+        self.track_access_assign: bool = True
 
     def __getitem__(self, name: str) -> Any:
-        if name in self:
+        if name in self and self.track_access_assign:
             self._accessed_vars.add(name)
         return dict.__getitem__(self, name)
 
     def __setitem__(self, name: str, obj: Any) -> None:
         if not self._assigned_vars:
             self._assigned_vars = set()
-        self._assigned_vars.add(name)
+        if self.track_access_assign:
+            self._assigned_vars.add(name)
         return dict.__setitem__(self, name, obj)
 
     def __iter__(self):
-        self._accessed_vars = set(self.keys())  # TODO: Use enum for this.
+        if self.track_access_assign:
+            self._accessed_vars = set(self.keys())  # TODO: Use enum for this.
         return dict.__iter__(self)
 
     def setitem_proxy(self, name: str, obj: Any):
@@ -102,6 +105,12 @@ class Namespace:
 
     def subset(self, varnames: Set[str]) -> Namespace:
         return Namespace({k: self._tracked_namespace[k] for k in varnames if k in self})
+
+    def turn_on_track(self):
+        self._tracked_namespace.track_access_assign = True
+
+    def turn_off_track(self):
+        self._tracked_namespace.track_access_assign = False
 
     @staticmethod
     def no_ipython_var(name_obj: Tuple[str, Any]) -> bool:

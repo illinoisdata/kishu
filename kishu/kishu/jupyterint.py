@@ -639,6 +639,10 @@ class KishuForJupyter:
             self._kishu_variable_version.store_variable_version_table(changed_vars.added()
                                                                       | changed_vars.deleted(), entry.commit_id)
 
+        file_sizes = sum(f.stat().st_size for f in Path(self.database_path()).parents[0].glob('**/*') if f.is_file())
+        self._cr_planner.write_row("checkpoint-size", file_sizes)
+        print("------------------checkpoint-size:", file_sizes)
+
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":
             return str(self._session_id) + ":" + str(self._last_execution_count)
@@ -659,6 +663,7 @@ class KishuForJupyter:
         start = time.time()
         checkpoint_plan.run(self._user_ns)
         print("checkpoint commit id:", cell_info.commit_id)
+        self._cr_planner.write_row("checkpoint-time", time.time() - start)
         print("------------------checkpoint-time:", time.time() - start)
 
         # Extra: generate variable version.
