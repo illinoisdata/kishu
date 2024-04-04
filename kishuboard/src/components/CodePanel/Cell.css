@@ -74,3 +74,15 @@
     text-align: left;
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
+
+.jp-RenderedText {
+    text-align: left;
+    line-height: 1.3077;
+    font-family: menlo, consolas, 'DejaVu Sans Mono', monospace;
+}
+
+.jp-OutputArea-output {
+    padding-top: 5px;
+    border-top: 1px solid transparent;
+    margin-left: 40px;
+}

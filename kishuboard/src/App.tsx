@@ -382,7 +382,7 @@ function App() {
             });
         });
         setBranchID2CommitMap(newSetBranchID2CommitMap);
-        if(!selectedCommitID || newGraph.commits.length > commits.length) {
+        if(!selectedCommitID || newGraph.commits.length != commits.length) {
             setSelectedCommitID(newGraph.currentHead);
             setSelectedBranchID(newGraph.currentHeadBranch);
             await refreshSelectedCommit(newGraph.currentHead);

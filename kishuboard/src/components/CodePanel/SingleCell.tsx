@@ -15,6 +15,7 @@ export interface SingleCellProps {
     cssClassNames?: string;
     isMarkdown?: boolean;
     color?: string;
+    output?:string;
 }
 
 //helper functions
@@ -48,7 +49,7 @@ function SingleCell(props: SingleCellProps) {
                     className={"cell-code"}
                     style={{backgroundColor: props.color}}
                     // className={!props.execNumber ? "code unexcecuted" : "code executed"}
-                    placeholder="Jupyter Startup"
+                    placeholder={props.execNumber == '0'?"Jupyter Startup":""}
                     mode="python"
                     theme="xcode"
                     name="blah2"
@@ -74,8 +75,20 @@ function SingleCell(props: SingleCellProps) {
             </div>
         )
     }
+
+    let output = <></>
+    if(props.output != undefined){
+        output = <div className={"jp-OutputArea-output jp-RenderedText"}>
+            <pre>
+              {props.output}
+            </pre>
+        </div>
+    }
     return (
-     singleCell
+        <>
+            {singleCell}
+            {output}
+        </>
     );
 }
 
