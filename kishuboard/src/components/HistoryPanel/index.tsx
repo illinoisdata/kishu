@@ -101,8 +101,9 @@ export function HistoryPanel({highlighted_commit_ids, refreshGraphHandler, width
     const currentPointID = visInfoManager?.getVisPointID(props?.diffDestCommitID?props?.diffDestCommitID:props?.currentHeadID!);
     const selectTop = selectVisPointID?visPointRenderInfos.info.get(selectVisPointID)?.cy! - COMMITHEIGHT / 2:undefined;
     const currentTop = currentPointID?visPointRenderInfos.info.get(currentPointID)?.cy! - COMMITHEIGHT / 2:undefined;
-    const highlightedTops = visInfoManager?highlighted_commit_ids.length > 0?visPointRenderInfos.info.get(visInfoManager.getVisPointID(highlighted_commit_ids[0]))?.cy! - COMMITHEIGHT / 2:undefined:undefined;
-
+    // const highlightedTops = visInfoManager?highlighted_commit_ids.length > 0?visPointRenderInfos.info.get(visInfoManager.getVisPointID(highlighted_commit_ids[0]))?.cy! - COMMITHEIGHT / 2:undefined:undefined;
+    const firstHighlight = highlighted_commit_ids.map(id => visInfoManager.getVisPointID(id)).filter(point => point !== undefined)[0]
+    const highlightedTops = visInfoManager?firstHighlight?visPointRenderInfos.info.get(firstHighlight)?.cy! - COMMITHEIGHT / 2:undefined:undefined;
 
     const visPointMap: Map<string, {point:VisPoint,idx:number}> = new Map()
     visPoints.forEach((point,index) => {
