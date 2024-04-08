@@ -16,3 +16,9 @@ astropy
 pooch
 arrow
 bokeh
+pooch
+photoutils
+scikit-image
+optuna
+keras
+tensorflow

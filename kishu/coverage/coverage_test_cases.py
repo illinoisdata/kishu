@@ -1166,5 +1166,85 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         import_statements=["from bokeh.plotting import figure, show"],
         var_declare_statements=["p = figure(width=400, height=400)"],
         var_modify_statements=["p.height=600"]
+    ),
+    LibCoverageTestCase(
+        module_name="bokeh",
+        class_name="bokeh.models.renderers.glyph_renderer.GlyphRenderer",
+        var_name="r",
+        import_statements=["from bokeh.plotting import figure"],
+        var_declare_statements=["plot = figure(title='Example Plot', x_axis_label='X-Axis', y_axis_label='Y-Axis')",
+                                "r = plot.circle([1,2,3], [4,5,6])"],
+        var_modify_statements=["r.tags = ['foo', 10]"]
+    ),
+    LibCoverageTestCase(
+        module_name="photoutils",
+        class_name="photutils.utils.CutoutImage",
+        var_name="cutout",
+        import_statements=["import numpy as np",
+                           "from photutils.utils import CutoutImage"],
+        var_declare_statements=["data = np.arange(20.0).reshape(5, 4)",
+                                "cutout = CutoutImage(data, (2, 2), (3, 3))"],
+        var_modify_statements=["cutout.position = (2,3)"]
+    ),
+    LibCoverageTestCase(
+        module_name="photoutils",
+        class_name="photutils.utils.ImageDepth",
+        var_name="depth",
+        import_statements=["from astropy.convolution import convolve",
+                           "from astropy.visualization import simple_norm", 
+                           "from photutils.datasets import make_100gaussians_image",
+                           "from photutils.segmentation import SourceFinder, make_2dgaussian_kernel",
+                           "from photutils.utils import ImageDepth"],
+        var_declare_statements=["bkg = 5.0", 
+                                "data = make_100gaussians_image() - bkg", 
+                                "kernel = make_2dgaussian_kernel(3.0, size=5)", 
+                                "convolved_data = convolve(data, kernel)",
+                                "npixels = 10",
+                                "threshold = 3.2", 
+                                "finder = SourceFinder(npixels=npixels, progress_bar=False)", 
+                                "segment_map = finder(convolved_data, threshold)", 
+                                "mask = segment_map.make_source_mask()", 
+                                "radius = 4",
+                                "depth = ImageDepth(radius, nsigma=5.0, napers=500, niters=2,overlap=False, seed=123, zeropoint=23.9,progress_bar=False)"],
+        var_modify_statements=["depth.aper_radius = 10"]
+    ),
+    LibCoverageTestCase(
+        module_name="photoutils",
+        class_name="photutils.psf.matching.HanningWindow",
+        var_name="taper",
+        import_statements=["import matplotlib.pyplot as plt",
+                           "from photutils.psf import HanningWindow"],
+        var_declare_statements=["taper = HanningWindow()"],
+        var_modify_statements=["taper.alpha = 2.0"]
+    ),
+    LibCoverageTestCase(
+        module_name="photoutils",
+        class_name="photutils.psf.matching.CosineBellWindow",
+        var_name="taper",
+        import_statements=["import matplotlib.pyplot as plt",
+                           "from photutils.psf import CosineBellWindow"],
+        var_declare_statements=["taper = CosineBellWindow(alpha=0.3)"],
+        var_modify_statements=["taper.beta = 1.0"]
+    ),
+    LibCoverageTestCase(
+        module_name="optuna",
+        class_name="optuna.Study",
+        var_name="study",
+        import_statements=["import optuna"],
+        var_declare_statements=["def objective(trial):\n    x = trial.suggest_float('x', -10, 10)\n    return (x - 2) ** 2",
+                                "study = optuna.create_study()"],
+        var_modify_statements=["study.optimize(objective, n_trials=100)"]
+    ),
+    LibCoverageTestCase(
+        module_name="keras",
+        class_name="'keras.src.layers.core.dense.Dense",
+        var_name="layer",
+        import_statements=["from keras import layers",
+                           "import numpy as np"],
+        var_declare_statements=["layer = layers.Dense(units=64)",
+                                "layer.build((10,))"],
+        var_modify_statements=["weights = np.random.rand(10, 64)",
+                               "biases = np.random.rand(64)",
+                               "layer.set_weights([weights, biases])"]
     )
 ]

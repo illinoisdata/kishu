@@ -43,14 +43,20 @@ This is the current list of libraries, their versions, and their classes support
     ✅ scikit-learn==1.3.2, sklearn.cluster
     ✅ scikit-learn==1.3.2, sklearn.cluster
     ✅ scikit-learn==1.3.2, sklearn.compose
+    ✅ keras==2.13.1, 'keras.src.layers.core.dense.Dense
     ✅ matplotlib==3.7.5, matplotlib.colors.ListedColormap
     ✅ matplotlib==3.7.5, matplotlib.dates.AutoDateFormatter
     ✅ matplotlib==3.7.5, matplotlib.dates.WeekdayLocator
     ✅ matplotlib==3.7.5, matplotlib.ticker.AutoLocator
-    ✅ numpy==1.24.4, numpy.ndarray
-    ✅ numpy==1.24.4, numpy.ndarray
+    ✅ numpy==1.24.3, numpy.ndarray
+    ✅ numpy==1.24.3, numpy.ndarray
+    ✅ optuna==3.6.1, optuna.Study
     ✅ pandas==2.0.3, pandas.DataFrame
     ✅ pandas==2.0.3, pandas.Series
+    ✅ photoutils==0.0.1, photutils.psf.matching.CosineBellWindow
+    ✅ photoutils==0.0.1, photutils.psf.matching.HanningWindow
+    ✅ photoutils==0.0.1, photutils.utils.CutoutImage
+    ✅ photoutils==0.0.1, photutils.utils.ImageDepth
     ✅ scikit-learn==1.3.2, sklearn.cluster
     ✅ scikit-learn==1.3.2, sklearn.datasets
     ✅ scikit-learn==1.3.2, sklearn.datasets
