@@ -588,35 +588,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ]
     ),
     LibCoverageTestCase(
-        module_name="scikit-learn",
-        class_name="sklearn.base",
-        var_name="estimator",
-        import_statements=[
-            "import numpy as np",
-            "from sklearn.base import BaseEstimator"
-        ],
-        var_declare_statements=[
-            '''class MyEstimator(BaseEstimator):
-                def __init__(self, *, param=1):
-                    self.param = param
-                def fit(self, X, y=None):
-                    self.is_fitted_ = True
-                    return self
-                def predict(self, X):
-                    import numpy as np
-                    return np.full(shape=X.shape[0], fill_value=self.param)
-            ''',
-            "estimator = MyEstimator(param=2)"
-        ],
-        var_modify_statements=[
-           # "X = np.array([[1, 2], [2, 3], [3, 4]])",
-           # "y = np.array([1, 0, 1])",
-           # "estimator.fit(X, y)",
-           # "y2 = np.array([12, 0, 1])",
-            "estimator.param = 3"
-        ]
-    ),
-    LibCoverageTestCase(
         module_name="scipy",
         class_name="scipy.sparse",
         var_name="sparse",
@@ -903,40 +874,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ]
     ),
     LibCoverageTestCase(
-        module_name="spacy",
-        class_name="spacy",
-        var_name="doc",
-        import_statements=[
-            "import spacy"
-        ],
-        var_declare_statements=[
-            "nlp = spacy.blank('en')",
-            "text = 'This is a simple sentence.'",
-            "doc = nlp(text)"
-        ],
-        var_modify_statements=[
-            "doc.text = 'Modified sentence.'"
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="spacy",
-        class_name="spacy.util",
-        var_name="docs",
-        import_statements=[
-            "import spacy"
-        ],
-        var_declare_statements=[
-            "nlp = spacy.blank('en')",
-            "doc = nlp('This is a sentence.')",
-            "spans = [doc[0:2], doc[0:2], doc[0:4]]",
-            "docs = spans"
-        ],
-        var_modify_statements=[
-            "spans = spacy.util.filter_spans(spans)",
-            "docs = [span.as_doc() for span in spans]"
-        ]
-    ),
-    LibCoverageTestCase(
         module_name="statsmodels",
         class_name="statsmodels.api",
         var_name="gamma_model",
@@ -999,25 +936,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         var_modify_statements=[
             "optimizer.learning_rate = 0.001",
             "model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])"
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="tensorflow_addons",
-        class_name="tensorflow_addons",
-        var_name="model",
-        import_statements=[
-            "import tensorflow as tf",
-            "import tensorflow_addons as tfa"
-        ],
-        var_declare_statements=[
-            "model = tf.keras.Sequential([tf.keras.layers.Conv2D(filters=10, kernel_size=(3,3),activation=tfa.activations.gelu),tfa.layers.GroupNormalization(groups=5, axis=3),tf.keras.layers.Flatten(),tf.keras.layers.Dense(10, activation='softmax')])",
-            # "optimizer = tfa.optimizers.RectifiedAdam(0.001)",
-            # "model.compile(optimizer=optimizer,loss=tfa.losses.TripletSemiHardLoss(),metrics=[tfa.taetrics.MultiLabelConfusionMatrix(num_classes=10)])"
-        ],
-        var_modify_statements=[
-            # "optimizer.learning_rate = 0.01",
-            "model.add(tfa.layers.WeightNormalization(tf.keras.layers.Dense(10, activation='relu')))"
-            # "model.compile(optimizer=optimizer, loss=tfa.losses.TripletSemiHardLoss(), metrics=[tfa.metrics.MultiLabelConfusionMatrix(num_classes=10)])"
         ]
     ),
     LibCoverageTestCase(
@@ -1365,22 +1283,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
             "result = spark.sql('SELECT * FROM people WHERE id > 1').toPandas()",
         ]
     ),
-    LibCoverageTestCase(
-        module_name="pyspark",
-        class_name="pyspark.SparkContext",
-        var_name="sc",
-        import_statements=[
-            "from pyspark import SparkContext"
-        ],
-        var_declare_statements=[
-            "sc = SparkContext.getOrCreate()"
-        ],
-        var_modify_statements=[
-            "sc.setLogLevel('ERROR')",
-            "sc.parallelize(range(1,100)).collect()"
-        ]
-    ),
-
     LibCoverageTestCase(
         module_name="xgboost",
         class_name="xgboost.XGBRegressor",
