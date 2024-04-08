@@ -14,3 +14,17 @@ seaborn
 xgboost
 astropy
 pooch
+shap
+scikit-image
+spacy
+statsmodels
+tensorflow
+tensorflow_addons
+transformers
+tokenizers
+torch
+torchvision
+plotly
+polars
+prophet
+pyspark

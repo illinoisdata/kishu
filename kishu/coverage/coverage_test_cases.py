@@ -830,6 +830,558 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ]
     ),
     LibCoverageTestCase(
+        module_name="seaborn",
+        class_name="seaborn",
+        var_name="ax",
+        import_statements=[
+            "import seaborn as sns"
+        ],
+        var_declare_statements=[
+            "tips = sns.load_dataset('tips')",
+            "ax = sns.histplot(data=tips, x='total_bill', bins=10)"
+        ],
+        var_modify_statements=[
+            "ax = sns.histplot(data=tips, x='total_bill', bins=11)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="shap",
+        class_name="shap",
+        var_name="explainer",
+        import_statements=[
+            "import xgboost",
+            "import shap",
+        ],
+        var_declare_statements=[
+            "X, y = shap.datasets.adult()",
+            "model = xgboost.XGBClassifier()",
+            "model.fit(X, y)",
+            "explainer = shap.explainers.Exact(model.predict_proba, X)",
+            "new_model = xgboost.XGBRegressor()",
+            "new_model.fit(X, y)",
+        ],
+        var_modify_statements=[
+            "explainer.model = new_model"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-image",
+        class_name="skimage",
+        var_name="image",
+        import_statements=[
+            "from skimage.data import astronaut",
+            "from skimage.filters import gaussian"
+        ],
+        var_declare_statements=[
+            "image = astronaut()"
+        ],
+        var_modify_statements=[
+            "image = gaussian(image, sigma=1, channel_axis=-1)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="scikit-image",
+        class_name="skimage.morphology",
+        var_name="f",
+        import_statements=[
+            "import numpy as np",
+            "from skimage.morphology import area_opening"
+        ],
+        var_declare_statements=[
+            "w = 12",
+            "x, y = np.mgrid[0:w,0:w]",
+            "f = 20 - 0.2*((x - w/2)**2 + (y-w/2)**2)",
+            "f[2:3,1:5] = 40",
+            "f[2:4,9:11] = 60",
+            "f[9:11,2:4] = 80",
+            "f[9:10,9:11] = 100",
+            "f[10,10] = 100",
+            "f = f.astype(int)"
+        ],
+        var_modify_statements=[
+            "f = area_opening(f, 8, connectivity=1)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="spacy",
+        class_name="spacy",
+        var_name="doc",
+        import_statements=[
+            "import spacy"
+        ],
+        var_declare_statements=[
+            "nlp = spacy.blank('en')",
+            "text = 'This is a simple sentence.'",
+            "doc = nlp(text)"
+        ],
+        var_modify_statements=[
+            "doc.text = 'Modified sentence.'"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="spacy",
+        class_name="spacy.util",
+        var_name="docs",
+        import_statements=[
+            "import spacy"
+        ],
+        var_declare_statements=[
+            "nlp = spacy.blank('en')",
+            "doc = nlp('This is a sentence.')",
+            "spans = [doc[0:2], doc[0:2], doc[0:4]]",
+            "docs = spans"
+        ],
+        var_modify_statements=[
+            "spans = spacy.util.filter_spans(spans)",
+            "docs = [span.as_doc() for span in spans]"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="statsmodels",
+        class_name="statsmodels.api",
+        var_name="gamma_model",
+        import_statements=[
+            "import statsmodels.api as sm"
+        ],
+        var_declare_statements=[
+            "data = sm.datasets.scotland.load()",
+            "data.exog = sm.add_constant(data.exog)",
+            "gamma_model = sm.GLM(data.endog, data.exog, family=sm.families.Gamma())"
+        ],
+        var_modify_statements=[
+            "gamma_model.family = sm.families.InverseGaussian()"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="tensorflow",
+        class_name="tensorflow",
+        var_name="tensor",
+        import_statements=[
+            "import tensorflow as tf"
+        ],
+        var_declare_statements=[
+            "tensor = tf.constant([[1, 2], [3, 4]])"
+        ],
+        var_modify_statements=[
+            "tensor = tf.tensor_scatter_nd_update(tensor, indices=[[0, 0]], updates=[5])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="tensorflow",
+        class_name="tensorflow.keras.models",
+        var_name="model",
+        import_statements=[
+            "import tensorflow as tf",
+            "from tensorflow.keras.models import Sequential",
+            "from tensorflow.keras.layers import Dense"
+        ],
+        var_declare_statements=[
+            "model = Sequential([Dense(10, input_shape=(784,), activation='relu'), Dense(10, activation='softmax')])"
+        ],
+        var_modify_statements=[
+            "model.add(Dense(5, activation='sigmoid'))"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="tensorflow",
+        class_name="tensorflow.keras.optimizers",
+        var_name="model",
+        import_statements=[
+            "import tensorflow as tf",
+            "from tensorflow.keras.models import Sequential",
+            "from tensorflow.keras.layers import Dense"
+        ],
+        var_declare_statements=[
+            "model = Sequential([Dense(10, input_shape=(784,), activation='relu'), Dense(10, activation='softmax')])",
+            "optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)",
+            "model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])"
+        ],
+        var_modify_statements=[
+            "optimizer.learning_rate = 0.001",
+            "model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="tensorflow_addons",
+        class_name="tensorflow_addons",
+        var_name="model",
+        import_statements=[
+            "import tensorflow as tf",
+            "import tensorflow_addons as tfa"
+        ],
+        var_declare_statements=[
+            "model = tf.keras.Sequential([tf.keras.layers.Conv2D(filters=10, kernel_size=(3,3),activation=tfa.activations.gelu),tfa.layers.GroupNormalization(groups=5, axis=3),tf.keras.layers.Flatten(),tf.keras.layers.Dense(10, activation='softmax')])",
+            # "optimizer = tfa.optimizers.RectifiedAdam(0.001)",
+            # "model.compile(optimizer=optimizer,loss=tfa.losses.TripletSemiHardLoss(),metrics=[tfa.taetrics.MultiLabelConfusionMatrix(num_classes=10)])"
+        ],
+        var_modify_statements=[
+            # "optimizer.learning_rate = 0.01",
+            "model.add(tfa.layers.WeightNormalization(tf.keras.layers.Dense(10, activation='relu')))"
+            # "model.compile(optimizer=optimizer, loss=tfa.losses.TripletSemiHardLoss(), metrics=[tfa.metrics.MultiLabelConfusionMatrix(num_classes=10)])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="transformers",
+        class_name="transformers",
+        var_name="tokenizer",
+        import_statements=[
+            "from transformers import BertTokenizer"
+        ],
+        var_declare_statements=[
+            "tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')"
+        ],
+        var_modify_statements=[
+            "tokenizer.do_basic_tokenize = False", 
+            "tokenizer = BertTokenizer.from_pretrained('bert-base-cased')"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="tokenizers",
+        class_name="tokenizers",
+        var_name="tokenizer",
+        import_statements=[
+            "from tokenizers import Tokenizer",
+            "from tokenizers.models import BPE"
+        ],
+        var_declare_statements=[
+            "tokenizer = Tokenizer(BPE())"
+        ],
+        var_modify_statements=[
+            "tokenizer.enable_truncation(max_length=128)",
+            "tokenizer = Tokenizer(BPE())"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="torch",
+        class_name="torch",
+        var_name="tensor",
+        import_statements=[
+            "import torch"
+        ],
+        var_declare_statements=[
+            "tensor = torch.tensor([[1, 2], [3, 4]])"
+        ],
+        var_modify_statements=[
+            "tensor[0, 0] = 5"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="torch",
+        class_name="torch.nn",
+        var_name="model",
+        import_statements=[
+            "import torch",
+            "import torch.nn as nn"
+        ],
+        var_declare_statements=[
+            "model = nn.Sequential(nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),nn.ReLU(),nn.MaxPool2d(kernel_size=2, stride=2),nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),nn.ReLU(),nn.MaxPool2d(kernel_size=2, stride=2),nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),nn.ReLU(),nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),nn.ReLU(), nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1), nn.ReLU())"
+        ],
+        var_modify_statements=[
+            "model[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)",
+            "model[-1] = nn.Conv2d(512, 1024, kernel_size=3, stride=1, padding=1)",
+            "model.add_module('dropout', nn.Dropout(0.5))"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="torch",
+        class_name="torch.nn.functional",
+        var_name="output",
+        import_statements=[
+            "import torch",
+            "import torch.nn.functional as F"
+        ],
+        var_declare_statements=[
+            "output = torch.randn(1, 1, 28, 28)"
+        ],
+        var_modify_statements=[
+            "output = F.conv2d(output, torch.randn(16, 1, 3, 3), stride=1, padding=1)",
+            "output = F.max_pool2d(output, kernel_size=2, stride=2)" 
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="torch",
+        class_name="torch.optim",
+        var_name="optimizer",
+        import_statements=[
+            "import torch",
+            "import torch.nn as nn",
+            "import torch.optim as optim"
+        ],
+        var_declare_statements=[
+            "model = nn.Linear(10, 1)",
+            "optimizer = optim.SGD(model.parameters(), lr=0.01)",
+            "input = torch.randn(1, 10)",
+            "target = torch.randn(1)"
+        ],
+        var_modify_statements=[
+            "optimizer.zero_grad()",
+            "output = model(input)",
+            "loss = nn.MSELoss()(output, target)",
+            "loss.backward()",
+            "optimizer.step()",
+            "optimizer.param_groups[0]['lr'] = 0.001"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="torch",
+        class_name="torch.utils.data",
+        var_name="subset",
+        import_statements=[
+            "import torch",
+            "from torch.utils.data import TensorDataset, Subset"
+        ],
+        var_declare_statements=[
+            "data = torch.randn(100, 3, 32, 32)",
+            "targets = torch.randint(0, 10, (100,))",
+            "dataset = TensorDataset(data, targets)",
+            "indices = torch.arange(50)",
+            "subset = Subset(dataset, indices)"
+        ],
+        var_modify_statements=[
+            "indices = torch.arange(25)",
+            "subset.indices = indices"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="torchvision",
+        class_name="torchvision.datasets",
+        var_name="cifar_dataset",
+        import_statements=[
+            "import torch",
+            "from torchvision.datasets import CIFAR10",
+            "import torchvision.transforms as tvtf"
+        ],
+        var_declare_statements=[
+            "cifar_dataset = CIFAR10(root='./data', train=True, download=True)"
+        ],
+        var_modify_statements=[
+            "cifar_dataset.transform = tvtf.Compose([tvtf.ToTensor(), tvtf.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="torchvision",
+        class_name="torchvision.transforms",
+        var_name="cifar_dataset",
+        import_statements=[
+            "import torch",
+            "from torchvision.datasets import CIFAR10",
+            "import torchvision.transforms as tvtf"
+        ],
+        var_declare_statements=[
+            "cifar_dataset = CIFAR10(root='./data', train=True, download=True)"
+        ],
+        var_modify_statements=[
+            "cifar_dataset.transform = tvtf.Compose([tvtf.ToTensor(), tvtf.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="torchvision",
+        class_name="torchvision.utils",
+        var_name="image",
+        import_statements=[
+            "import torchvision.utils as utils",
+            "import torch",
+        ],
+        var_declare_statements=[
+            "image = torch.zeros((3, 100, 100), dtype=torch.uint8)"
+        ],
+        var_modify_statements=[
+            "keypoints = [(20, 30), (50, 70), (80, 10)]",
+            "image = utils.draw_keypoints(image, keypoints)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="plotly",
+        class_name="plotly.express",
+        var_name="fig",
+        import_statements=[
+            "import plotly.express as px"
+        ],
+        var_declare_statements=[
+            "data = px.data.iris()",
+            "fig = px.scatter(data, x='sepal_width', y='sepal_length', color='species')"
+        ],
+        var_modify_statements=[
+            "fig.update_traces(marker=dict(size=10))"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="plotly",
+        class_name="plotly.graph_objects",
+        var_name="bar_chart",
+        import_statements=[
+            "import plotly.graph_objects as go"
+        ],
+        var_declare_statements=[
+            "bar_chart = go.Figure(data=[go.Bar(x=['A', 'B', 'C'], y=[1, 2, 3])])"
+        ],
+        var_modify_statements=[
+            "bar_chart.update_layout(title='My Bar Chart', xaxis_title='Categories', yaxis_title='Values')"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="plotly",
+        class_name="plotly.figure_factory",
+        var_name="table_fig",
+        import_statements=[
+            "import plotly.figure_factory as ff"
+        ],
+        var_declare_statements=[
+            "data_matrix = [['Country', 'Year', 'Population'], ['US', 2020, 331002651], ['India', 2020, 1380004385], ['China', 2020, 1444216107]]",
+            "table_fig = ff.create_table(data_matrix)"
+        ],
+        var_modify_statements=[
+            "table_fig.update_layout(title='Population Data')"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="plotly",
+        class_name="plotly.graph_objs",
+        var_name="line_chart",
+        import_statements=[
+            "import plotly.graph_objs as go"
+        ],
+        var_declare_statements=[
+            "line_chart = go.Figure(data=go.Scatter(x=[1, 2, 3], y=[4, 5, 6]))"
+        ],
+        var_modify_statements=[
+            "line_chart.update_layout(title='Line Chart', xaxis_title='X-axis', yaxis_title='Y-axis')"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="plotly",
+        class_name="plotly.io",
+        var_name="html_fig",
+        import_statements=[
+            "import plotly.io as pio",
+            "import plotly.graph_objects as go"
+        ],
+        var_declare_statements=[
+            "fig = go.Figure(data=go.Scatter(x=[1, 2, 3], y=[4, 5, 6]))",
+            "html_fig = pio.to_html(fig)"
+        ],
+        var_modify_statements=[
+            "html_fig += '<p>This is an HTML plot.</p>'"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="plotly",
+        class_name="plotly.offline",
+        var_name="offline_fig",
+        import_statements=[
+            "import plotly.offline as pyo",
+            "import plotly.graph_objects as go"
+        ],
+        var_declare_statements=[
+            "fig = go.Figure(data=go.Scatter(x=[1, 2, 3], y=[4, 5, 6]))",
+            "offline_fig = pyo.plot(fig, output_type='div')"
+        ],
+        var_modify_statements=[
+            "offline_fig += '<p>This is an offline plot.</p>'"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="plotly",
+        class_name="plotly.subplots",
+        var_name="subplot_fig",
+        import_statements=[
+            "from plotly.subplots import make_subplots",
+            "import plotly.graph_objects as go"
+        ],
+        var_declare_statements=[
+            "subplot_fig = make_subplots(rows=2, cols=2, subplot_titles=('Plot 1', 'Plot 2', 'Plot 3', 'Plot 4'))",
+            "subplot_fig.add_trace(go.Scatter(x=[1, 2, 3], y=[4, 5, 6]), row=1, col=1)",
+            "subplot_fig.add_trace(go.Scatter(x=[1, 2, 3], y=[6, 5, 4]), row=1, col=2)",
+            "subplot_fig.add_trace(go.Scatter(x=[1, 2, 3], y=[2, 4, 6]), row=2, col=1)",
+            "subplot_fig.add_trace(go.Scatter(x=[1, 2, 3], y=[8, 6, 4]), row=2, col=2)"
+        ],
+        var_modify_statements=[
+            "subplot_fig.update_layout(title='Subplot Title')"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="polars",
+        class_name="polars.DataFrame",
+        var_name="df",
+        import_statements=[
+            "import polars as pl"
+        ],
+        var_declare_statements=[
+            "df = pl.DataFrame({'A': [1, 2, 3, 4], 'B': [5, 6, 7, 8]})"
+        ],
+        var_modify_statements=[
+            "df = df.select(['B', 'A'])" 
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="polars",
+        class_name="polars.LazyFrame",
+        var_name="lf",
+        import_statements=[
+            "import polars as pl"
+        ],
+        var_declare_statements=[
+            "lf = pl.DataFrame({'A': [1, 2, 3, 4], 'B': [5, 6, 7, 8]}).lazy()"
+        ],
+        var_modify_statements=[
+            "lf = lf.filter(pl.col('A') > 2)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="prophet",
+        class_name="prophet.Prophet",
+        var_name="m",
+        import_statements=[
+            "from prophet import Prophet",
+            "import pandas as pd",
+            "import numpy as np"
+        ],
+        var_declare_statements=[
+            "np.random.seed(42)",
+            "dates = pd.date_range(start='2022-01-01', end='2022-12-31', freq='D')",
+            "df = pd.DataFrame({'ds': dates, 'y': np.random.randn(len(dates))})",
+            "m = Prophet()"
+        ],
+        var_modify_statements=[
+            "m.add_seasonality(name='monthly', period=30.5, fourier_order=5)",
+            "m.fit(df)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="pyspark",
+        class_name="pyspark.sql",
+        var_name="result",
+        import_statements=[
+            "import pandas as pd",
+            "from pyspark.sql import SparkSession"
+        ],
+        var_declare_statements=[
+            "spark = SparkSession.builder.master('local[2]').appName('test').getOrCreate()",
+            "df = spark.createDataFrame([(1, 'Alice'), (2, 'Bob'), (3, 'Charlie')], ['id', 'name'])",
+            "df.createOrReplaceTempView('people')",
+            "result = spark.sql('SELECT * FROM people').toPandas()"
+        ],
+        var_modify_statements=[
+            "result = spark.sql('SELECT * FROM people WHERE id > 1').toPandas()",
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="pyspark",
+        class_name="pyspark.SparkContext",
+        var_name="sc",
+        import_statements=[
+            "from pyspark import SparkContext"
+        ],
+        var_declare_statements=[
+            "sc = SparkContext.getOrCreate()"
+        ],
+        var_modify_statements=[
+            "sc.setLogLevel('ERROR')",
+            "sc.parallelize(range(1,100)).collect()"
+        ]
+    ),
+
+    LibCoverageTestCase(
         module_name="xgboost",
         class_name="xgboost.XGBRegressor",
         var_name="model",
