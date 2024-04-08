@@ -17,6 +17,8 @@ export interface Commit {
   branchIds: string[];
   tags: string[];
   message:string;
+  belongVarBranchIds: Set<string>;
+  belongCodeBranchIds: Set<string>;
 }
 
 export interface CommitDetail {

@@ -104,12 +104,16 @@ const cells_loading: TabsProps['items'] = [
     {
         key: '1',
         label: 'executed cells',
-        children: 'No commit',
+        children:<div className="center-page">
+            <p>No commit</p>
+        </div>
     },
     {
         key: '2',
         label: 'notebook cells',
-        children: 'No commit',
+        children: <div className="center-page">
+            <p>No commit</p>
+        </div>
     },
 ];
 
@@ -127,6 +131,10 @@ const cells: TabsProps['items'] = [
         children: <div className="tile-xy notebook_panel">
             {<NotebookFilePanel/>}
         </div>,
+    // children:
+    // <iframe src="http://localhost:8888/notebooks/task2_solution.ipynb"
+    //         height="500px" width="1000px">
+    // </iframe>
     },
 ];
 
@@ -351,13 +359,6 @@ function App() {
         refreshGraph();
     }, 1000);
 
-    // useMemo(() => {
-    //     loadCommitDetail(selectedCommitID!, setSelectedCommit, setError);
-    //     if (inDiffMode && currentHeadID) {
-    //         loadDiffCommitDetail(selectedCommitID!, diffDestCommitID?diffDestCommitID:currentHeadID!, setDiffCodeDetail, setDiffVarDetail, setError)
-    //     }
-    // }, [selectedCommitID, currentHeadID, inDiffMode, diffDestCommitID]);
-
     useMemo(() => {
         loadCommitDetail(selectedCommitID!, setSelectedCommit, setError);
         if (diffDestCommitID && currentHeadID) {
@@ -381,7 +382,7 @@ function App() {
             });
         });
         setBranchID2CommitMap(newSetBranchID2CommitMap);
-        if(!selectedCommitID || newGraph.commits.length > commits.length) {
+        if(!selectedCommitID || newGraph.commits.length != commits.length) {
             setSelectedCommitID(newGraph.currentHead);
             setSelectedBranchID(newGraph.currentHeadBranch);
             await refreshSelectedCommit(newGraph.currentHead);
@@ -431,7 +432,7 @@ function App() {
                                 }}
                                 gutterClassName="custom_gutter"
                             >
-                                <Tabs defaultActiveKey="1" items={cells_loading}/>
+                                <Tabs defaultActiveKey="1" items={cells_loading} tabBarStyle={{marginBottom:0, paddingLeft:40}}/>
                                 <div className="tile-xy">
                                     <div className="center-page">
                                         <p>No commit</p>

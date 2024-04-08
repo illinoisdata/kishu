@@ -32,6 +32,21 @@
 
 .type_markdown{
     width: 93%;
+    background-color: white;
+    border: none;
+    margin: 0px;
+    padding: 0px;
+    font-family: system-ui, -apple-system, blinkmacsystemfont,
+    'Segoe UI', helvetica, arial, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol'
+}
+
+.type_markdown p {
+    margin: 10px; /* Adjust the margin value as needed */
+}
+
+.type_markdown h1 {
+    margin: 1px; /* Adjust the margin value as needed */
 }
 
 .add-row-marker {
@@ -58,4 +73,16 @@
     direction: ltr;
     text-align: left;
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+.jp-RenderedText {
+    text-align: left;
+    line-height: 1.3077;
+    font-family: menlo, consolas, 'DejaVu Sans Mono', monospace;
+}
+
+.jp-OutputArea-output {
+    padding-top: 5px;
+    border-top: 1px solid transparent;
+    margin-left: 40px;
 }

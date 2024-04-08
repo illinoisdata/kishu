@@ -14,6 +14,8 @@ export interface SingleCellProps {
     content: string;
     cssClassNames?: string;
     isMarkdown?: boolean;
+    color?: string;
+    output?:string;
 }
 
 //helper functions
@@ -28,9 +30,6 @@ function SingleCell(props: SingleCellProps) {
     if(props.isMarkdown){
         singleCell = (
             <div className="singleCellLayout" style={{marginLeft:40}}>
-                {/*{!props.execNumber ? <span className="executionOrder">*/}
-                {/*    [&nbsp;&nbsp;]:*/}
-                {/*</span>: <span className="executionOrder">[{props.execNumber}]: </span>}*/}
                 <Markdown
                     className={"cell-code type_markdown"}
                 >
@@ -47,9 +46,10 @@ function SingleCell(props: SingleCellProps) {
       </div>: <div className="executionOrder">[{props.execNumber}]: </div>}
                 <AceEditor
                     ref = {aceRef}
-                    className={"cell-code markdown"}
+                    className={"cell-code"}
+                    style={{backgroundColor: props.color}}
                     // className={!props.execNumber ? "code unexcecuted" : "code executed"}
-                    placeholder="Jupyter Startup"
+                    placeholder={props.execNumber == '0'?"Jupyter Startup":""}
                     mode="python"
                     theme="xcode"
                     name="blah2"
@@ -75,8 +75,20 @@ function SingleCell(props: SingleCellProps) {
             </div>
         )
     }
+
+    let output = <></>
+    if(props.output != undefined){
+        output = <div className={"jp-OutputArea-output jp-RenderedText"}>
+            <pre>
+              {props.output}
+            </pre>
+        </div>
+    }
     return (
-     singleCell
+        <>
+            {singleCell}
+            {output}
+        </>
     );
 }
 
