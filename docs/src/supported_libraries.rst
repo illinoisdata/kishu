@@ -35,10 +35,20 @@ This is the current list of libraries, their versions, and their classes support
     ✅ matplotlib==3.6.2, matplotlib.dates.AutoDateFormatter
     ✅ matplotlib==3.6.2, matplotlib.dates.WeekdayLocator
     ✅ matplotlib==3.6.2, matplotlib.patches.Arrow
-    ✅ matplotlib==3.6.2, matplotlib.patches.Ellipse
     ✅ numpy==1.23.4, numpy.ndarray
     ✅ pandas==1.5.1, pandas.DataFrame
     ✅ pandas==1.5.1, pandas.Series
+    ✅ plotly==5.20.0, plotly.figure_factory
+    ✅ plotly==5.20.0, plotly.graph_objects
+    ✅ plotly==5.20.0, plotly.graph_objs
+    ✅ plotly==5.20.0, plotly.io
+    ✅ plotly==5.20.0, plotly.offline
+    ✅ plotly==5.20.0, plotly.subplots
+    ✅ polars==0.20.18, polars.LazyFrame
+    ✅ prophet==1.1.5, prophet.Prophet
+    ✅ pyspark==3.5.1, pyspark.sql
+    ✅ scikit-image==0.21.0, skimage
+    ✅ scikit-image==0.21.0, skimage.morphology
     ✅ scikit-learn==1.3.2, sklearn.cluster
     ✅ scikit-learn==1.3.2, sklearn.cluster
     ✅ scikit-learn==1.3.2, sklearn.compose
@@ -83,9 +93,31 @@ This is the current list of libraries, their versions, and their classes support
     ✅ scipy==1.10.1, scipy.spatial.distance._hausdorff
     ✅ scipy==1.10.1, scipy.special
     ✅ scipy==1.10.1, scipy.stats
+    ✅ shap==0.44.1, shap
+    ✅ statsmodels==0.14.1, statsmodels.api
+    ✅ tensorflow==2.13.1, tensorflow
+    ✅ tensorflow==2.13.1, tensorflow.keras.models
+    ✅ tensorflow==2.13.1, tensorflow.keras.optimizers
+    ✅ torch==2.2.2, torch.nn
+    ✅ torchvision==0.17.2, torchvision.datasets
+    ✅ torchvision==0.17.2, torchvision.transforms
+    ✅ transformers==4.39.3, transformers
     ✅ xgboost==2.0.3, xgboost.XGBRegressor
 
     ❌ astropy==5.2.2, astropy.coordinates.SkyCoord
     ❌ matplotlib==3.6.2, matplotlib.Axes
     ❌ matplotlib==3.6.2, matplotlib.lines.Line2D
+    ❌ matplotlib==3.6.2, matplotlib.patches.Ellipse
+    ❌ plotly==5.20.0, plotly.express
+    ❌ polars==0.20.18, polars.DataFrame
+    ❌ pyspark==3.5.1, pyspark.SparkContext
     ❌ scikit-learn==1.3.2, sklearn.ensemble
+    ❌ seaborn==0.13.2, seaborn
+    ❌ spacy==3.7.4, spacy
+    ❌ spacy==3.7.4, spacy.util
+    ❌ tokenizers==0.15.2, tokenizers
+    ❌ torch==2.2.2, torch
+    ❌ torch==2.2.2, torch.nn.functional
+    ❌ torch==2.2.2, torch.optim
+    ❌ torch==2.2.2, torch.utils.data
+    ❌ torchvision==0.17.2, torchvision.utils
