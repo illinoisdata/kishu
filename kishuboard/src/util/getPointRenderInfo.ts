@@ -95,13 +95,13 @@ export class VisInfoManager {
         return this.visPoints;
     }
 
-    public getVisPointID(commitID:string):string{
+    public getVisPointID(commitID:string){
         if(!this.groupFolded){
             throw("visPoints is not calculated yet")
         }
         const groupID = this.commit2Group.get(commitID);
         if(groupID === undefined){
-            throw("commitID not found")
+            return undefined
         }
         // if the group is not folded, return the commitID itself
         if(!this.groupFolded.get(groupID)!){
