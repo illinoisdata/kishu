@@ -96,6 +96,8 @@ function _HistoryGraph(props: HistoryGraphProps) {
                 let nbPNotation = <></>
                 let varPNotation = <></>
                 if(me!.point.nbParentID != me!.point.parentID){
+                    console.log(me!.point.nbParentID)
+                    console.log(props.pointRendererInfos)
                     nbParentLine = getSVGLine(pointRenderInfo,me!.point.nbParentID,true,2,props.pointRendererInfos.get(me!.point.nbParentID)!.color);
                     // if(me?.point.commit.oid === props.selectedPointID){
                     //     varParentLine = getSVGLine(pointRenderInfo,me!.point.parentID,false,2.5,props.pointRendererInfos.get(parentID)?.color);

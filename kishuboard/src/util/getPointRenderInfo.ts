@@ -128,6 +128,7 @@ export class VisInfoManager {
             //assign commit type to a new branch
             this.assTopoType2Branch(idx, visited);
         }
+        console.log(this.commits)
         this.topologyCommitTypes[this.commits.length - 1] = TopologyCommitType.ROOT;
         console.log(this.topologyCommitTypes)
 
@@ -157,12 +158,13 @@ export class VisInfoManager {
      * @param topologyCommitTypes an array to record the topology commit type of each commit
      */
     assTopoType2Branch(start_idx:number, visited:boolean[]){
-        this.topologyCommitTypes[start_idx] = TopologyCommitType.LEAF; //leaf is visible
-        visited[start_idx] = true;
-        let idx = this.commitIDIndex.get(this.commits[start_idx].parentOid);
+        let idx: number|undefined = start_idx;
         let prev_idx = start_idx;
         while(idx !== undefined && !visited[idx]){
             visited[idx] = true;
+            if(idx === start_idx){
+                this.topologyCommitTypes[start_idx] = TopologyCommitType.LEAF; //leaf is visible
+            }
             //If it's a manual commit or has tag/branch, it's visible
             if(this.commits[idx].tags.length > 0 || this.commits[idx].branchIds.length > 0 || !this.containsDigitsPattern(this.commits[idx].message)){
                 this.topologyCommitTypes[idx] = TopologyCommitType.USERIMPL;
