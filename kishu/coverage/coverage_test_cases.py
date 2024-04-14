@@ -1237,7 +1237,7 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
     ),
     LibCoverageTestCase(
         module_name="keras",
-        class_name="'keras.src.layers.core.dense.Dense",
+        class_name="keras.src.layers.core.dense.Dense",
         var_name="layer",
         import_statements=["from keras import layers",
                            "import numpy as np"],
@@ -1246,5 +1246,93 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         var_modify_statements=["weights = np.random.rand(10, 64)",
                                "biases = np.random.rand(64)",
                                "layer.set_weights([weights, biases])"]
+    ),
+    LibCoverageTestCase(
+        module_name="keras",
+        class_name="keras.src.initializers.initializers.RandomNormal",
+        var_name="kernel_initializer",
+        import_statements=["from keras import layers",
+                           "from keras import initializers"],
+        var_declare_statements=["kernel_initializer=initializers.RandomNormal(stddev=0.01)"],
+        var_modify_statements=["kernel_initializer.mean = 1.0"]
+    ),
+    LibCoverageTestCase(
+        module_name="keras",
+        class_name="keras.src.initializers.initializers.RandomUniform",
+        var_name="kernel_initializer",
+        import_statements=["from keras import layers",
+                           "from keras import initializers"],
+        var_declare_statements=["kernel_initializer = initializers.RandomUniform(minval=-0.05, maxval=0.05, seed=None)"],
+        var_modify_statements=["kernel_initializer.seed = 1"]
+    ),
+    LibCoverageTestCase(
+        module_name="keras",
+        class_name="keras.src.optimizers.adam.Adam",
+        var_name="opt",
+        import_statements=["import keras"],
+        var_declare_statements=["opt = keras.optimizers.Adam(learning_rate=0.01)"],
+        var_modify_statements=["opt.ema_momentum = 0.9"]
+    ),
+    LibCoverageTestCase(
+        module_name="keras",
+        class_name="keras.src.optimizers.schedules.learning_rate_schedule.ExponentialDecay",
+        var_name="lr_schedule",
+        import_statements=["import keras"],
+        var_declare_statements=["lr_schedule = keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=1e-2,decay_steps=10000,decay_rate=0.9)"],
+        var_modify_statements=["lr_schedule.decay_rate = 0.5"]
+    ),
+    LibCoverageTestCase(
+        module_name="llm",
+        class_name="llm.default_plugins.openai_models.Chat",
+        var_name="model",
+        import_statements=["import llm"],
+        var_declare_statements=["model = llm.get_model('gpt-3.5-turbo')"],
+        var_modify_statements=["model.key = 'ABCD'"]
+    ),
+    LibCoverageTestCase(
+        module_name="lmfit",
+        class_name="lmfit.parameter.Parameters",
+        var_name="params",
+        import_statements=["from lmfit import Parameters"],
+        var_declare_statements=["params = Parameters()"],
+        var_modify_statements=["params.add('amp', value=10, vary=False)"]
+    ),
+    LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="'mpl_toolkits.mplot3d.art3d.Line3DCollection",
+        var_name="pl1",
+        import_statements=["import numpy as np",
+                           "import matplotlib.pyplot as plt",
+                           "from matplotlib import cm",
+                           "from mpl_toolkits.mplot3d.axes3d import get_test_data"],
+        var_declare_statements=["fig = plt.figure(figsize=plt.figaspect(0.5))",
+                                "ax = fig.add_subplot(1, 2, 2, projection='3d')",
+                                "X, Y, Z = get_test_data(0.05)",
+                                "pl1 = ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)"],
+        var_modify_statements=["pl1.set_linewidth(2.5)"]
+    ),
+    LibCoverageTestCase(
+        module_name="networkx",
+        class_name="networkx.classes.graph.Graph",
+        var_name="G",
+        import_statements=["import networkx as nx"],
+        var_declare_statements=["G = nx.Graph()"],
+        var_modify_statements=["G.add_node(1)"]
+    ),
+    LibCoverageTestCase(
+        module_name="networkx",
+        class_name="networkx.classes.digraph.DiGraph",
+        var_name="DG",
+        import_statements=["import networkx as nx"],
+        var_declare_statements=["DG = nx.DiGraph()"],
+        var_modify_statements=["DG.add_edge(2, 1)"]
+    ),
+    LibCoverageTestCase(
+        module_name="nltk",
+        class_name="nltk.stem.porter.PorterStemmer",
+        var_name="stemmer",
+        import_statements=["from nltk.stem.porter import *"],
+        var_declare_statements=["stemmer = PorterStemmer()"],
+        var_modify_statements=["stemmer.mode='MARTIN_EXTENSIONS'"]
     )
 ]

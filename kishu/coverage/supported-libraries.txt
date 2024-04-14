@@ -22,3 +22,7 @@ scikit-image
 optuna
 keras
 tensorflow
+llm
+lmfit
+networkx
+nltk

@@ -29,35 +29,32 @@ This is the current list of libraries, their versions, and their classes support
     ✅ astropy==5.2.2, astropy.table.QTable
     ✅ astropy==5.2.2, astropy.units.Quantity
     ✅ astropy==5.2.2, astropy.visualization.PercentileInterval
-    ✅ astropy==5.2.2, astropy.visualization.mpl_normalize.ImageNormalize
     ✅ astropy==5.2.2, astropy.wcs.WCS
-    ✅ matplotlib==3.6.2, matplotlib.colors.BoundaryNorm
-    ✅ matplotlib==3.6.2, matplotlib.colors.ListedColormap
-    ✅ matplotlib==3.6.2, matplotlib.dates.AutoDateFormatter
-    ✅ matplotlib==3.6.2, matplotlib.dates.WeekdayLocator
-    ✅ matplotlib==3.6.2, matplotlib.patches.Arrow
-    ✅ matplotlib==3.6.2, matplotlib.patches.Ellipse
-    ✅ numpy==1.23.4, numpy.ndarray
-    ✅ pandas==1.5.1, pandas.DataFrame
-    ✅ pandas==1.5.1, pandas.Series
-    ✅ scikit-learn==1.3.2, sklearn.cluster
-    ✅ scikit-learn==1.3.2, sklearn.cluster
-    ✅ scikit-learn==1.3.2, sklearn.compose
-    ✅ keras==2.13.1, 'keras.src.layers.core.dense.Dense
+    ✅ bokeh==2.4.3, bokeh.plotting._figure.figure
+    ✅ keras==2.13.1, keras.src.initializers.initializers.RandomNormal
+    ✅ keras==2.13.1, keras.src.initializers.initializers.RandomUniform
+    ✅ keras==2.13.1, keras.src.layers.core.dense.Dense
+    ✅ keras==2.13.1, keras.src.optimizers.schedules.learning_rate_schedule.ExponentialDecay
+    ✅ llm==0.13.1, llm.default_plugins.openai_models.Chat
+    ✅ lmfit==1.3.0, lmfit.parameter.Parameters
     ✅ matplotlib==3.7.5, matplotlib.colors.ListedColormap
     ✅ matplotlib==3.7.5, matplotlib.dates.AutoDateFormatter
     ✅ matplotlib==3.7.5, matplotlib.dates.WeekdayLocator
     ✅ matplotlib==3.7.5, matplotlib.ticker.AutoLocator
+    ✅ networkx==3.1, networkx.classes.digraph.DiGraph
+    ✅ networkx==3.1, networkx.classes.graph.Graph
+    ✅ nltk==3.8.1, nltk.stem.porter.PorterStemmer
     ✅ numpy==1.24.3, numpy.ndarray
     ✅ numpy==1.24.3, numpy.ndarray
     ✅ optuna==3.6.1, optuna.Study
-    ✅ pandas==2.0.3, pandas.DataFrame
-    ✅ pandas==2.0.3, pandas.Series
+    ✅ pandas==1.5.3, pandas.DataFrame
+    ✅ pandas==1.5.3, pandas.Series
     ✅ photoutils==0.0.1, photutils.psf.matching.CosineBellWindow
     ✅ photoutils==0.0.1, photutils.psf.matching.HanningWindow
     ✅ photoutils==0.0.1, photutils.utils.CutoutImage
     ✅ photoutils==0.0.1, photutils.utils.ImageDepth
     ✅ scikit-learn==1.3.2, sklearn.cluster
+    ✅ scikit-learn==1.3.2, sklearn.compose
     ✅ scikit-learn==1.3.2, sklearn.datasets
     ✅ scikit-learn==1.3.2, sklearn.datasets
     ✅ scikit-learn==1.3.2, sklearn.decomposition
@@ -79,10 +76,8 @@ This is the current list of libraries, their versions, and their classes support
     ✅ scikit-learn==1.3.2, sklearn.multiclass
     ✅ scikit-learn==1.3.2, sklearn.naive_bayes
     ✅ scikit-learn==1.3.2, sklearn.neighbors
-    ✅ scikit-learn==1.3.2, sklearn.neural_network
     ✅ scikit-learn==1.3.2, sklearn.pipeline
     ✅ scikit-learn==1.3.2, sklearn.preprocessing
-    ✅ scikit-learn==1.3.2, sklearn.random_projection
     ✅ scikit-learn==1.3.2, sklearn.svm
     ✅ scikit-learn==1.3.2, sklearn.tree
     ✅ scikit-learn==1.3.2, sklearn.utils
@@ -100,15 +95,6 @@ This is the current list of libraries, their versions, and their classes support
     ✅ scipy==1.10.1, scipy.special
     ✅ scipy==1.10.1, scipy.stats
     ✅ xgboost==2.0.3, xgboost.XGBRegressor
-
-    ❌ astropy==5.2.2, astropy.coordinates.SkyCoord
-    ❌ matplotlib==3.6.2, matplotlib.Axes
-    ❌ matplotlib==3.6.2, matplotlib.lines.Line2D
-    ✅ scipy==1.10.1, scipy.interpolate
-    ✅ scipy==1.10.1, scipy.sparse
-    ✅ scipy==1.10.1, scipy.spatial
-    ✅ scipy==1.10.1, scipy.spatial
-    ✅ xgboost==2.0.3, xgboost.XGBRegressor
     ❓ matplotlib==3.7.5, matplotlib.Axes
     ❓ matplotlib==3.7.5, matplotlib.Axes
     ❓ matplotlib==3.7.5, matplotlib.colors.BoundaryNorm
@@ -119,6 +105,9 @@ This is the current list of libraries, their versions, and their classes support
     ❓ matplotlib==3.7.5, matplotlib.image.FigureImage
     ❓ matplotlib==3.7.5, matplotlib.offsetbox.AnchoredOffsetbox
     ❓ astropy==5.2.2, astropy.visualization.mpl_normalize.ImageNormalize
+    ❓ matplotlib==3.7.5, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
     ❌ astropy==5.2.2, astropy.coordinates.SkyCoord
     ❌ scikit-learn==1.3.2, sklearn.cluster
     ❌ scikit-learn==1.3.2, sklearn.ensemble
+    ❌ scikit-learn==1.3.2, sklearn.neural_network
+    ❌ scikit-learn==1.3.2, sklearn.random_projection
