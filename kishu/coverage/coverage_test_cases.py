@@ -1302,6 +1302,86 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ]
     ),
     LibCoverageTestCase(
+        module_name="catboost",
+        class_name="catboost",
+        var_name="clf",
+        import_statements=[
+            "from catboost import CatBoostClassifier",
+            "from sklearn.datasets import make_classification",
+            "from sklearn.model_selection import train_test_split"
+        ],
+        var_declare_statements=[
+            "X, y = make_classification(n_samples=1000, n_features=20, random_state=42)",
+            "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)",
+            "clf = CatBoostClassifier(iterations=50, depth=3, learning_rate=0.1, random_seed=42)"
+        ],
+        var_modify_statements=[
+            "clf.learning_rate = 0.05", 
+            "clf.fit(X_train, y_train)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="opencv-python",
+        class_name="cv2",
+        var_name="image",
+        import_statements=[
+            "import cv2"
+        ],
+        var_declare_statements=[
+            "image = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'",
+        ],
+        var_modify_statements=[
+            "image = cv2.CascadeClassifier(image)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="gensim",
+        class_name="gensim",
+        var_name="model",
+        import_statements=[
+            "import gensim"
+        ],
+        var_declare_statements=[
+            "data = [['this', 'is', 'the', 'first', 'sentence', 'for', 'word2vec'],['this', 'is', 'the', 'second', 'sentence'],['yet', 'another', 'sentence'],['one', 'more', 'sentence'],['and', 'the', 'final', 'sentence']]",
+            "model = gensim.models.Word2Vec(data, min_count=1)"
+        ],
+        var_modify_statements=[
+            "model.min_count = 2"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="gym",
+        class_name="gym",
+        var_name="env",
+        import_statements=[
+            "import gym"
+        ],
+        var_declare_statements=[
+            "env = gym.make('CartPole-v1')"
+        ],
+        var_modify_statements=[
+            "env.max_episode_steps = 500"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="transformers",
+        class_name="huggingface",
+        var_name="model",
+        import_statements=[
+            "from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer"
+        ],
+        var_declare_statements=[
+            "classifier = pipeline('sentiment-analysis')",
+            "text = 'I love using Hugging Face Transformers!'",
+            "model_name = 'distilbert-base-uncased'",
+            "model = AutoModelForSequenceClassification.from_pretrained(model_name)"
+        ],
+        var_modify_statements=[
+            "model.config.num_labels = 3"
+        ]
+    ),
+
+    LibCoverageTestCase(
         module_name="matplotlib",
         class_name="matplotlib.colors.ListedColormap",
         var_name="cmap",
