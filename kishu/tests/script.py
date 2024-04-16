@@ -42,11 +42,15 @@ def run_test(notebook_path, cell_num_to_restore: int, enable_incremental_store):
         Config.set('EXPERIMENT', 'notebook_name', notebook_path)
         Config.set('EXPERIMENT', 'csv_path', '/data/elastic-notebook/tmp/kishu_results.csv')
         Config.set('EXPERIMENT', 'method', f'kishu_incremental_{str(enable_incremental_store)}')
+        if enable_incremental_store:
+            Config.set('OPTIMIZER', 'network_bandwidth', 10_000_000_000)
+        else:
+            Config.set('OPTIMIZER', 'network_bandwidth', 20_000_000)
         notebook = NotebookRunner(tmp_nb_path)
-
+    
     # Get notebook namespace contents at cell execution X and contents after checking out cell execution X.
     
-        namespace_before_checkout, namespace_after_checkout = notebook.execute_full_checkout_test(cell_num_to_restore)
+        notebook.execute_full_checkout_test3(cell_num_to_restore)
     except Exception as e:
         print(e)
 
@@ -62,21 +66,21 @@ def run_test(notebook_path, cell_num_to_restore: int, enable_incremental_store):
     #     assert dill.dumps(namespace_before_checkout[key]) == dill.dumps(namespace_after_checkout[key])
 
 
-def run_dill_test(notebook_path, cell_num_to_restore: int):
+def run_dill_test(notebook_path, cell_nums_to_restore: int):
     start = time.time()
     try:
         notebook = NotebookRunner(NOTEBOOK_DIR + notebook_path, notebook_path)
-        notebook.execute_dill_test(cell_num_to_restore)
+        notebook.execute_dill_test(cell_nums_to_restore)
     except Exception as e:
         print(e)
     print("total time:", time.time() - start)
 
 
-def run_criu_test(notebook_path, incremental_dump, cell_num_to_restore: int):
+def run_criu_test(notebook_path, incremental_dump, cell_nums_to_restore: int):
     start = time.time()
     try:
         notebook = NotebookRunner(NOTEBOOK_DIR + notebook_path, notebook_path)
-        notebook.execute_criu_test(cell_num_to_restore, incremental_dump)
+        notebook.execute_criu_test(cell_nums_to_restore, incremental_dump)
     except Exception as e:
         print(e)
     print("total time:", time.time() - start)
@@ -89,26 +93,30 @@ def run_criu_test(notebook_path, incremental_dump, cell_num_to_restore: int):
 
 if __name__ == "__main__":
     for nb, cell in [
-        #('bruteforce-clustering.ipynb', 16),  # great, 400M
+        # ('simple.ipynb', [1])
+        
         #('building-an-asset-trading-strategy.ipynb', 25),
-        #('model-stacking-feature-engineering-and-eda.ipynb', 69),  # great, 400M
+        # ('model-stacking-feature-engineering-and-eda.ipynb', [69]),  # great, 400M
         # ('nlp-glove-bert-tf-idf-lstm-explained.ipynb', 67),  # doesn't work
-        # ('04_training_linear_models.ipynb', 80),
-        # ('ml-ex3.ipynb', 10),
-        #('basic-eda-cleaning-and-glove.ipynb', 37),  # not good
-        # ('agricultural-drought-prediction.ipynb', 10),
-        #('store-sales-ts-forecasting-a-comprehensive-guide.ipynb', 35),  # great, 400M 
-        #('sklearn_tweet_classification.ipynb', 42),  # not good
-        #('tps-mar-fast-workflow-using-scikit-learn-intelex.ipynb', 43),  # great, 200M
+        #('04_training_linear_models.ipynb', 64),
+        #('ml-ex3.ipynb', [10]),
+        #('basic-eda-cleaning-and-glove.ipynb', [37]),  # not good
+        #('agricultural-drought-prediction.ipynb', [10]),
+        ('store-sales-ts-forecasting-a-comprehensive-guide.ipynb', 25),  # great, 400M 
+        #('sklearn_tweet_classification.ipynb', 32),  # not good
+        #('tps-mar-fast-workflow-using-scikit-learn-intelex.ipynb', 34),  # great, 200M
+        #('bruteforce-clustering.ipynb', 11),  # great, 400M
+        # ('arxiv-data-processing.ipynb',[2])
         # ('time-series-forecasting-with-prophet.ipynb', 26)  # doesn't work
         #('pyspark.ipynb', 35)
-        ('ray.ipynb', 9)
+        #('ray.ipynb', 9)
+        #('nfl.ipynb', 1)
     ]:
         default_n_threads = 8
         os.environ['OPENBLAS_NUM_THREADS'] = f"{default_n_threads}"
         os.environ['MKL_NUM_THREADS'] = f"{default_n_threads}"
         os.environ['OMP_NUM_THREADS'] = f"{default_n_threads}"
         print("run test:", nb)
-        #run_test(nb, cell, True)
+        run_test(nb, cell, True)
         #run_test(nb, cell, False)
-        run_dill_test(nb, cell)
+        # run_dill_test(nb, cell)

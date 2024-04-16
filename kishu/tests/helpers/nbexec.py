@@ -140,9 +140,9 @@ def get_dill_dumpsession_str(notebook_name, filename, cell_num):
 def get_dill_loadsession_str(notebook_name, filename, cell_num):
     return "\n".join(
         [
-            "start = time.time()",
+            "start2 = time.time()",
             f"dill.load_session('/data/elastic-notebook/tmp/{notebook_name}_{cell_num}.pkl')",
-            "end = time.time() - start",
+            "end = time.time() - start2",
             "end_format = '{:.8f}'.format(end)",
             f"with open('{filename}', 'a', newline='') as results_file:",
             f"    half_str = 'dill,{notebook_name},{cell_num}'",
@@ -200,7 +200,7 @@ class NotebookRunner:
             data = dill.load(file)
         return data
 
-    def execute_dill_test(self, cell_num_to_restore: int):
+    def execute_dill_test(self, cell_nums_to_restore: List[int]):
         # Open the notebook.
         with open(self.test_notebook) as nb_file:
             notebook = read(nb_file, as_version=4)
@@ -214,11 +214,13 @@ class NotebookRunner:
         for i in range(len(notebook["cells"])):
             new_cells.append(notebook["cells"][i])
             new_cells.append(
-                new_code_cell(source=get_dill_dumpsession_str(self.notebook_name, filename, i)))
+                new_code_cell(source=get_dill_dumpsession_str(self.notebook_name, filename, i + 1)))
 
         # create a kishu initialization cell and add it to the start of the notebook.
         new_cells.insert(0, new_code_cell(source="import dill, time"))
-        new_cells.append(new_code_cell(source=get_dill_loadsession_str(self.notebook_name, filename, i)))
+        for i in range(len(notebook["cells"]), 0, -1):
+        # for i in cell_nums_to_restore:
+            new_cells.append(new_code_cell(source=get_dill_loadsession_str(self.notebook_name, filename, i)))
 
         notebook["cells"] = new_cells
 
@@ -283,7 +285,7 @@ class NotebookRunner:
         exec_prep = ExecutePreprocessor(timeout=1200, kernel_name="python3")
         exec_prep.preprocess(notebook, {"metadata": {"path": self.path_to_notebook}})
 
-    def execute_full_checkout_test(self, cell_num_to_restore: int) -> Tuple[Dict, Dict]:
+    def execute_full_checkout_test(self, cell_nums_to_restore: List[int]) -> Tuple[Dict, Dict]:
         """
             Executes the full checkout test by storing the namespace at cell_num_to_restore,
             and namespace after checking out cell_num_to_restore after completely executing the notebook.
@@ -302,8 +304,8 @@ class NotebookRunner:
         assert len(notebook["cells"]) >= 2
 
         # The cell num to restore to should be valid. (the +1 is from the inserted kishu init cell below).
-        cell_num_to_restore += 1
-        assert cell_num_to_restore >= 2 and cell_num_to_restore <= len(notebook["cells"]) - 1
+        # cell_num_to_restore += 1
+        # assert cell_num_to_restore >= 2 and cell_num_to_restore <= len(notebook["cells"]) - 1
 
         # create a kishu initialization cell and add it to the start of the notebook.
         notebook.cells.insert(0, new_code_cell(source=KISHU_INIT_STR))
@@ -313,8 +315,9 @@ class NotebookRunner:
         # notebook.cells.insert(cell_num_to_restore, new_code_cell(source=dumpsession_code_middle))
 
         # Insert kishu checkout code at end of notebook.
-        kishu_checkout_code = get_kishu_checkout_str(cell_num_to_restore)
-        notebook.cells.append(new_code_cell(source=kishu_checkout_code))
+        for i in cell_nums_to_restore:
+            kishu_checkout_code = get_kishu_checkout_str(i + 1)
+            notebook.cells.append(new_code_cell(source=kishu_checkout_code))
 
         # Insert dump session code at end of notebook after kishu checkout.
         # dumpsession_code_end = get_dump_namespace_str(self.pickle_file + ".end")
@@ -322,6 +325,123 @@ class NotebookRunner:
 
         # Execute the notebook cells.
         start = time.time()
+        exec_prep = ExecutePreprocessor(timeout=6000, kernel_name="python3")
+        exec_prep.preprocess(notebook, {"metadata": {"path": self.path_to_notebook}})
+        print("runtime:", time.time() - start)
+
+        # get the output dumped namespace dictionaries.
+        # data_middle = dill.load(open(self.pickle_file + '.middle', "rb"))
+        # data_end = dill.load(open(self.pickle_file + '.end', "rb"))
+
+        return None, None
+
+    def execute_full_checkout_test2(self, cell_nums_to_restore: List[int]) -> Tuple[Dict, Dict]:
+        """
+            Executes the full checkout test by storing the namespace at cell_num_to_restore,
+            and namespace after checking out cell_num_to_restore after completely executing the notebook.
+            Returns a tuple containing the namespace dict before/after checking out, respectively.
+
+            @param cell_num_to_restore: the cell execution number to restore to.
+        """
+        # Open the notebook.
+        with open(self.test_notebook) as nb_file:
+            notebook = read(nb_file, as_version=4)
+
+        # Strip all non-code (e.g., markdown) cells. We won't be needing them.
+        notebook["cells"] = [x for x in notebook["cells"] if x["cell_type"] == "code"]
+
+        # The notebook should have at least 2 cells to run this test.
+        assert len(notebook["cells"]) >= 2
+
+        # The cell num to restore to should be valid. (the +1 is from the inserted kishu init cell below).
+        # cell_num_to_restore += 1
+        # assert cell_num_to_restore >= 2 and cell_num_to_restore <= len(notebook["cells"]) - 1
+
+        # create a kishu initialization cell and add it to the start of the notebook.
+        notebook.cells.insert(0, new_code_cell(source=KISHU_INIT_STR))
+
+        # Insert dump session code at middle of notebook after the **cell_num_to_restore**th code cell.
+        # dumpsession_code_middle = get_dump_namespace_str(self.pickle_file + ".middle")
+        # notebook.cells.insert(cell_num_to_restore, new_code_cell(source=dumpsession_code_middle))
+
+        # Insert kishu checkout code at end of notebook.
+        # for i in range(len(notebook["cells"]) - 1, 0, -1):
+        #     kishu_checkout_code = get_kishu_checkout_str(i)
+        #     notebook.cells.append(new_code_cell(source=kishu_checkout_code))
+
+        # Insert dump session code at end of notebook after kishu checkout.
+        # dumpsession_code_end = get_dump_namespace_str(self.pickle_file + ".end")
+        # notebook.cells.append(new_code_cell(source=dumpsession_code_end))
+
+        # Execute the notebook cells.
+        start = time.time()
+        exec_prep = ExecutePreprocessor(timeout=6000, kernel_name="python3")
+        exec_prep.preprocess(notebook, {"metadata": {"path": self.path_to_notebook}})
+        print("runtime:", time.time() - start)
+
+        # get the output dumped namespace dictionaries.
+        # data_middle = dill.load(open(self.pickle_file + '.middle', "rb"))
+        # data_end = dill.load(open(self.pickle_file + '.end', "rb"))
+
+        return None, None
+
+    def execute_full_checkout_test3(self, cell_num_to_branch: int) -> Tuple[Dict, Dict]:
+        """
+            Executes the full checkout test by storing the namespace at cell_num_to_restore,
+            and namespace after checking out cell_num_to_restore after completely executing the notebook.
+            Returns a tuple containing the namespace dict before/after checking out, respectively.
+
+            @param cell_num_to_restore: the cell execution number to restore to.
+        """
+        # Open the notebook.
+        with open(self.test_notebook) as nb_file:
+            notebook = read(nb_file, as_version=4)
+
+        # Strip all non-code (e.g., markdown) cells. We won't be needing them.
+        notebook["cells"] = [x for x in notebook["cells"] if x["cell_type"] == "code"]
+
+        # The notebook should have at least 2 cells to run this test.
+        assert len(notebook["cells"]) >= 2
+
+        original_cells = []
+        for i in notebook["cells"]:
+            original_cells.append(i)
+
+        
+
+        # The cell num to restore to should be valid. (the +1 is from the inserted kishu init cell below).
+        # cell_num_to_restore += 1
+        # assert cell_num_to_restore >= 2 and cell_num_to_restore <= len(notebook["cells"]) - 1
+
+        # create a kishu initialization cell and add it to the start of the notebook.
+        original_cells.insert(0, new_code_cell(source=KISHU_INIT_STR))
+
+        # Insert dump session code at middle of notebook after the **cell_num_to_restore**th code cell.
+        # dumpsession_code_middle = get_dump_namespace_str(self.pickle_file + ".middle")
+        # notebook.cells.insert(cell_num_to_restore, new_code_cell(source=dumpsession_code_middle))
+
+        # Insert kishu checkout code at end of notebook.
+        kishu_checkout_code = get_kishu_checkout_str(cell_num_to_branch)
+        original_cells.append(new_code_cell(source=kishu_checkout_code))
+
+        branch_cells = []
+        for i in range(cell_num_to_branch, len(notebook["cells"])):
+            branch_cells.append(notebook["cells"][i])
+
+        original_cells.extend(branch_cells)
+        kishu_checkout_code = get_kishu_checkout_str(len(notebook["cells"]) - 4)
+        original_cells.append(new_code_cell(source=kishu_checkout_code))
+        # for i in range(len(notebook["cells"]) - 1, 0, -1):
+        #     kishu_checkout_code = get_kishu_checkout_str(i)
+        #     notebook.cells.append(new_code_cell(source=kishu_checkout_code))
+
+        # Insert dump session code at end of notebook after kishu checkout.
+        # dumpsession_code_end = get_dump_namespace_str(self.pickle_file + ".end")
+        # notebook.cells.append(new_code_cell(source=dumpsession_code_end))
+
+        # Execute the notebook cells.
+        start = time.time()
+        notebook.cells = original_cells
         exec_prep = ExecutePreprocessor(timeout=6000, kernel_name="python3")
         exec_prep.preprocess(notebook, {"metadata": {"path": self.path_to_notebook}})
         print("runtime:", time.time() - start)

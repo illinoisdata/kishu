@@ -3,7 +3,8 @@ Sqlite interface for storing checkpoints.
 """
 import ast
 import dill
-import cloudpickle as pickle
+import pickle
+import cloudpickle
 import sqlite3
 import sys
 import time
@@ -99,11 +100,14 @@ class KishuCheckpoint:
 
             print("store vs:", (vs.version, repr(sorted(vs.name))))
             try:
-                data_dump = pickle.dumps(ns_subset.to_dict())
+                data_dump = cloudpickle.dumps(ns_subset.to_dict())
             except:
                 data_dump = dill.dumps(ns_subset.to_dict())
-            cur.execute(
-                f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?, ?, ?)",
-                (vs.version, repr(sorted(vs.name)), commit_id, sys.getsizeof(data_dump), memoryview(data_dump))
-            )
-            con.commit()
+            try:
+                cur.execute(
+                    f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?, ?, ?)",
+                    (vs.version, repr(sorted(vs.name)), commit_id, sys.getsizeof(data_dump), memoryview(data_dump))
+                )
+                con.commit()
+            except:
+                pass

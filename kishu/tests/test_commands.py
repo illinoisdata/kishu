@@ -474,14 +474,15 @@ class TestKishuCommand:
     @pytest.mark.parametrize(
         ("notebook_name", "cell_num_to_restore", "var_to_compare"),
         [
-            #('numpy.ipynb', 4, "iris_X_train"),
+            # ('numpy.ipynb', 4, "iris_X_train"),
             #('simple.ipynb', 4, "b"),
             #('test_unserializable_var.ipynb', 2, "next(gen)"),  # directly printing gen prints out its memory address.
             # ('pyspark.ipynb', 35, 'cases')
-            ('ray.ipynb', 9, 'pipeline')
+            #('ray.ipynb', 9, 'pipeline')
             # ('Untitled.ipynb', 1, "ewm_features")
             # ('ml-ex3.ipynb', 15, 'y_pred'),
-            # ('sklearn_tweet_classification.ipynb', 43, 'X_train')
+            ('tps-mar-fast-workflow-using-scikit-learn-intelex.ipynb', 33, 'eli5')
+            #('04_training_linear_models.ipynb', 18, "np"),
         ]
     )
     def test_incremental_end_to_end_checkout(

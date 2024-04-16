@@ -20,6 +20,9 @@ from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.config import Config
 
 
+from pympler import asizeof
+
+
 @dataclass
 class ChangedVariables:
     created_vars: Set[str]
@@ -107,7 +110,6 @@ class CheckpointRestorePlanner:
             @param code_block: code of executed cell.
             @param runtime_s: runtime of cell execution.
         """
-        self.write_row(self._incremental_cr, 1)
         self._user_ns.turn_off_track()
         self.cell_count += 1
 
@@ -141,6 +143,8 @@ class CheckpointRestorePlanner:
         modified_vars_structure = set()
         modified_vars_value = set()
         for k in filter(self._user_ns.__contains__, modified_vars_candidates):
+        #for k in filter(lambda x: x not in created_vars, self._user_ns.keyset()):
+            start2 = time.time()
             new_idgraph = get_object_state(self._user_ns[k], {})
 
             # Identify objects which have changed by value. For displaying in front end.
@@ -153,6 +157,7 @@ class CheckpointRestorePlanner:
                     accessed_vars.add(k)
                 self._id_graph_map[k] = new_idgraph
                 modified_vars_structure.add(k)
+            print("detect:", k, time.time() - start2)
 
         self.write_row("modification_detection_time", time.time() - start)
         print("--------------------modification detection time:", time.time() - start)
@@ -170,12 +175,20 @@ class CheckpointRestorePlanner:
 
         # Find pairs of linked variables.
         linked_var_pairs = []
-        for x, y in combinations(filter(self._user_ns.__contains__, self._id_graph_map.keys()), 2):
+        for x, y in combinations(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)), 2):
+        #for x, y in combinations(self._user_ns.keyset(), 2):
             if self._id_graph_map[x].is_overlap(self._id_graph_map[y]):
                 linked_var_pairs.append((x, y))
 
         self.write_row("find_links_time", time.time() - start)
         print("--------------------find links time:", time.time() - start)
+
+        # Var profiling
+        # candidates = set(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)))
+        # self.write_row("profiled_variables", len(candidates))
+        # self.write_row("total_variables", len(self._user_ns.keyset()))
+        # self.write_row("profiled_variable_size", asizeof.asizeof(self._user_ns.subset(candidates)))
+        # self.write_row("total_variable_size", asizeof.asizeof(self._user_ns))
 
         start = time.time()
         
@@ -246,6 +259,7 @@ class CheckpointRestorePlanner:
             active_vss,
             stored_versioned_names if self._incremental_cr else None
         )
+        self.write_row(optimizer._optimizer_context.network_bandwidth, 1)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()

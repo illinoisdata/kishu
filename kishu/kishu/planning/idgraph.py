@@ -4,6 +4,7 @@ from typing import Any, List, Optional
 from types import GeneratorType, FunctionType
 
 import matplotlib.pyplot as plt
+from matplotlib.contour import QuadContourSet
 import numpy
 import scipy
 import torch
@@ -13,6 +14,9 @@ import uuid
 import xxhash
 import dill
 import cloudpickle
+import sklearn.tree
+import sklearn.feature_extraction
+import sklearn.ensemble
 
 
 PRIMITIVES = (type(None), int, float, bool, str, bytes)
@@ -248,6 +252,27 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         node.children.append("/EOC")
         return node
 
+    if isinstance(obj, sklearn.tree._classes.DecisionTreeRegressor):
+        node = GraphNode(obj_type=type(obj))
+        node.id_obj = id(obj)
+        visited[id(obj)] = node
+
+        node.children.append(cloudpickle.dumps(obj))
+        if hasattr(obj, 'tree_'):
+            child = get_object_state(obj.tree_, visited, include_id, first_creation)
+            node.children.append(child)
+        node.children.append("/EOC")
+        return node
+
+    if isinstance(obj, (sklearn.ensemble.RandomForestRegressor, sklearn.feature_extraction.text.CountVectorizer)):
+        node = GraphNode(obj_type=type(obj))
+        node.id_obj = id(obj)
+        visited[id(obj)] = node
+
+        node.children.append(cloudpickle.dumps(obj))
+        node.children.append("/EOC")
+        return node
+
     # if isinstance(obj, pandas.Series):
     #     if first_creation:
     #         obj.__array__().flags.writeable = False
@@ -296,7 +321,7 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         node.children.append("/EOC")
         return node
 
-    if isinstance(obj, plt.Figure):
+    if isinstance(obj, (plt.Figure, QuadContourSet)):
         node = GraphNode(obj_type=type(obj))
         node.id_obj = id(obj)
         visited[id(obj)] = node

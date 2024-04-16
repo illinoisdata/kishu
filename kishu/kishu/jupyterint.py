@@ -690,7 +690,7 @@ class KishuForJupyter:
                     output=self._parse_cell_output(cell.outputs),
                     execution_count=cell.execution_count,
                 ))
-            elif cell.cell_type == "markdown":
+            elif cell.cell_type == "markdown" or cell.cell_type == "raw":
                 nb_cells.append(FormattedCell(
                     cell_type=cell.cell_type,
                     source=cell.source,
