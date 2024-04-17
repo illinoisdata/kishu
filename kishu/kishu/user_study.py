@@ -36,10 +36,10 @@ def install_submit_cell_execution() -> None:
 def check_train_test_dataset(X_train, Y_train, X_test, Y_test):
     expected_rows = 16512 + 4128
     if X_train.shape[0] + X_test.shape[0] != expected_rows:
-        cprint(f"CHECK FAILED: Rows in variable `housing` have been dropped accidentally. `X_train` and `X_test` should contain {expected_rows} rows in total. Find when `housing` has fewer than {expected_rows} rows", "light_red", attrs=["underline", "bold"])
+        cprint(f"CHECK FAILED: Rows in variable `housing` have been dropped accidentally. Find when `housing` has fewer than {expected_rows} rows", "light_red", attrs=["underline", "bold"])
         return False
     if Y_train.shape[0] + Y_test.shape[0] != expected_rows:
-        cprint(f"CHECK FAILED: Rows in variable `housing` have been dropped accidentally. `Y_train` and `Y_test` should contain {expected_rows} rows in total. Find when `housing` has fewer than {expected_rows} rows", "light_red", attrs=["underline", "bold"])
+        cprint(f"CHECK FAILED: Rows in variable `housing` have been dropped accidentally. Find when `housing` has fewer than {expected_rows} rows", "light_red", attrs=["underline", "bold"])
         return False
     null_cols = X_train.columns[X_train.isnull().any()].tolist()
     if len(null_cols) > 0:
