@@ -6,7 +6,7 @@ import "./Cell.css";
 import "./ace-xcode-kishu.css";
 import {useEffect, useRef} from "react";
 import Markdown from 'react-markdown'
-import {FONTSIZE} from "../HistoryPanel/GraphConsts";
+import {GRAPHFONTSIZE} from "../HistoryPanel/GraphConsts";
 
 
 export interface SingleCellProps {

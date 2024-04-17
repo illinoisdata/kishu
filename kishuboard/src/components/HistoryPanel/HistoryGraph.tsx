@@ -1,7 +1,7 @@
 // input PointRenderer[], return an SVG
 import {PointRenderInfo} from "../../util/PointRenderInfo";
 import {VisPoint, VisPointType} from "../../util/VisPoint";
-import {COMMITHEIGHT, COMMITRADIUS, FONTSIZE, MESSAGEMARGINX} from "./GraphConsts";
+import {COMMITHEIGHT, COMMITRADIUS, GRAPHFONTSIZE, MARGINMESSAGE, MESSAGEMARGINX} from "./GraphConsts";
 import React from "react";
 import "./historyPanel.css";
 import "./Info.css";
@@ -49,9 +49,9 @@ function _HistoryGraph(props: HistoryGraphProps) {
                     stroke={color?color:pointRenderInfo[1].color}
                     strokeWidth={strokeWidth?strokeWidth:1}
                     fill={"none"}
-                    d={`M ${parentCX} ${parentCY - COMMITHEIGHT / 2 + FONTSIZE / 2} L ${pointRenderInfo[1].cx} ${
-                        (parentCY- COMMITHEIGHT / 2 + FONTSIZE / 2) - COMMITHEIGHT / 2
-                    } L ${pointRenderInfo[1].cx} ${pointRenderInfo[1].cy - COMMITHEIGHT / 2 + FONTSIZE / 2}`}
+                    d={`M ${parentCX} ${parentCY - COMMITHEIGHT / 2 + GRAPHFONTSIZE / 2 + MARGINMESSAGE} L ${pointRenderInfo[1].cx} ${
+                        (parentCY- COMMITHEIGHT / 2 + GRAPHFONTSIZE / 2 + MARGINMESSAGE) - COMMITHEIGHT / 2
+                    } L ${pointRenderInfo[1].cx} ${pointRenderInfo[1].cy - COMMITHEIGHT / 2 + GRAPHFONTSIZE / 2 + MARGINMESSAGE}`}
                 />
             );
         }
@@ -62,9 +62,9 @@ function _HistoryGraph(props: HistoryGraphProps) {
         return <>
         <rect
             x={x - 3}
-            y={y - FONTSIZE - 2}
+            y={y - GRAPHFONTSIZE - 2}
             width={width}
-            height={FONTSIZE + 3}
+            height={GRAPHFONTSIZE + 3}
             fill={bgColor}
             stroke={borderColor?borderColor:""}
         >
@@ -73,6 +73,7 @@ function _HistoryGraph(props: HistoryGraphProps) {
             x={x}
             y={y - 3}
             fill = {txtColor}
+            fontSize={GRAPHFONTSIZE}
         >
             {content}
         </text>
@@ -95,6 +96,8 @@ function _HistoryGraph(props: HistoryGraphProps) {
                 let nbPNotation = <></>
                 let varPNotation = <></>
                 if(me!.point.nbParentID != me!.point.parentID){
+                    console.log(me!.point.nbParentID)
+                    console.log(props.pointRendererInfos)
                     nbParentLine = getSVGLine(pointRenderInfo,me!.point.nbParentID,true,2,props.pointRendererInfos.get(me!.point.nbParentID)!.color);
                     // if(me?.point.commit.oid === props.selectedPointID){
                     //     varParentLine = getSVGLine(pointRenderInfo,me!.point.parentID,false,2.5,props.pointRendererInfos.get(parentID)?.color);
@@ -130,18 +133,15 @@ function _HistoryGraph(props: HistoryGraphProps) {
                     radius = COMMITRADIUS;}
                 const x1 = info.cx - radius; // Left
                 const x2 = info.cx + radius; // Right
-                const y1 = info.cy - COMMITHEIGHT / 2 + FONTSIZE / 2 +radius/2 ; // Horizontal line y-coordinate
-                const y2 = info.cy - COMMITHEIGHT / 2 + FONTSIZE / 2 - radius / 2; // Top
-                const y3 = info.cy - COMMITHEIGHT / 2 + FONTSIZE / 2 +(3 * radius) / 2
-                // const y3 = info.cy - COMMITHEIGHT / 2 + FONTSIZE / 2  + COMMITRADIUS + 10; // Bottom
-                // (info.cx,y); (info.cx,y + radius)
-                // (info.cx - radius,y + 1/2 * radius); (info.cx + radius, y + 1/2 radius)
+                const y1 = info.cy - COMMITHEIGHT / 2 + GRAPHFONTSIZE / 2 +radius/2 + MARGINMESSAGE; // Horizontal line y-coordinate
+                const y2 = info.cy - COMMITHEIGHT / 2 + GRAPHFONTSIZE / 2 - radius / 2 + MARGINMESSAGE; // Top
+                const y3 = info.cy - COMMITHEIGHT / 2 + GRAPHFONTSIZE / 2 +(3 * radius) / 2 + MARGINMESSAGE
                 return (
                     <>
                     <rect
                         pointerEvents={"visible"}
                         x={info.cx - radius}
-                        y={info.cy - COMMITHEIGHT / 2 + FONTSIZE / 2 - radius / 2}
+                        y={info.cy - COMMITHEIGHT / 2 + GRAPHFONTSIZE / 2 - radius / 2 + MARGINMESSAGE}
                         width={point.type === VisPointType.GROUP_FOLD?2 * (radius):2 * COMMITRADIUS}
                         height={point.type === VisPointType.GROUP_FOLD?2 * (radius):2 * COMMITRADIUS}
                         fill={point.type === VisPointType.GROUP_FOLD || point.type === VisPointType.GROUP_UNFOLE?"none":info.color}
@@ -171,19 +171,20 @@ function _HistoryGraph(props: HistoryGraphProps) {
 
                     <text
                         x={props.svgMessagePosition[idx!] - COMMITRADIUS + MESSAGEMARGINX}
-                        y={info.cy - COMMITHEIGHT / 2 + FONTSIZE}
+                        y={info.cy - COMMITHEIGHT / 2 + GRAPHFONTSIZE + MARGINMESSAGE}
                         fontWeight={id == props.selectedPointID ? "bold" : "normal"}
+                        fontSize={GRAPHFONTSIZE}
                     >
                         {props.visPoints.get(id)?.point.commit.message}
                     </text>
                     {id == props.currentVarID &&
                         <>
-                            {getStateLabel("HEAD: Variable",info.cx - COMMITRADIUS + MESSAGEMARGINX,info.cy + COMMITHEIGHT / 2 - 10, 108,info.color,"white")}
+                            {getStateLabel("HEAD: Variable",info.cx - COMMITRADIUS + MESSAGEMARGINX,info.cy + COMMITHEIGHT / 2 - MARGINMESSAGE, 108,info.color,"white")}
                         </>
                     }
                     {id == props.currentCodeID &&
                         <>
-                            {getStateLabel("HEAD: Code",id == props.currentVarID?info.cx - COMMITRADIUS + MESSAGEMARGINX + 120:info.cx - COMMITRADIUS + MESSAGEMARGINX,info.cy + COMMITHEIGHT / 2 - 10, 86,"none",info.color,info.color)}
+                            {getStateLabel("HEAD: Code",id == props.currentVarID?info.cx - COMMITRADIUS + MESSAGEMARGINX + 120:info.cx - COMMITRADIUS + MESSAGEMARGINX,info.cy + COMMITHEIGHT / 2 - MARGINMESSAGE, 86,"none",info.color,info.color)}
                         </>
                     }
                     </>
