@@ -28,3 +28,7 @@ plotly
 polars
 prophet
 pyspark
+catboost
+opencv-python
+gensim
+gym
