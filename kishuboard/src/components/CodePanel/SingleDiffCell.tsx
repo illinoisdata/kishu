@@ -7,7 +7,7 @@ import {DiffCodeHunk} from "../../util/DiffHunk";
 import {useEffect, useMemo, useRef, useState} from "react";
 import "ace-builds"
 import {Range} from "ace-builds";
-import {FONTSIZE} from "../HistoryPanel/GraphConsts";
+import {GRAPHFONTSIZE} from "../HistoryPanel/GraphConsts";
 
 
 export interface SingleDiffCellProps {

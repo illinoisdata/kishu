@@ -1,14 +1,17 @@
 :root {
     --COMMIT-HEIGHT: 48px;
     --DATE-HEADER-HEIGHT: 30px;
+    --PADDING-GRAPH: 10px;
+    --GRAPH-FONT-SIZE: 13.5px;
 }
 
 
 .commitInfo {
     height: var(--COMMIT-HEIGHT);
+    font-size: var(--GRAPH-FONT-SIZE);
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
     align-items: flex-end;
     z-index: 99;
     padding-right: 5px;
@@ -37,6 +40,7 @@
 .tags_container {
     white-space: nowrap; /* Prevent content from wrapping */
     display: inline-block; /* Keep the content inline */
+    margin-bottom: 5px;
 }
 
 .new_date{
