@@ -57,6 +57,17 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         var_modify_statements=["a.set_xlabel('Flipper Length')"]
     ),
     LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="matplotlib.Axes",
+        var_name="a",
+        import_statements=["import seaborn as sns"],
+        var_declare_statements=[
+            "df=sns.load_dataset('penguins')",
+            "a = sns.scatterplot(data=df, x='flipper_length_mm', y='bill_length_mm')",
+        ],
+        var_modify_statements=["a.set_xlabel('Flipper Length')"]
+    ),
+    LibCoverageTestCase(
         module_name="scikit-learn",
         class_name="sklearn.cluster",
         var_name="kmeans",
@@ -1420,7 +1431,8 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         class_name="matplotlib.lines.Line2D",
         var_name="markerline",
         import_statements=["import matplotlib.pyplot as plt", "import numpy as np"],
-        var_declare_statements=["x = np.linspace(0.1, 2 * np.pi, 41)",
+        var_declare_statements=["plt.close('all')",
+                                "x = np.linspace(0.1, 2 * np.pi, 41)",
                                 "y = np.exp(np.sin(x))",
                                 "markerline, stemlines, baseline = plt.stem(x, y, linefmt='grey', markerfmt='D', bottom=1.1)"],
         var_modify_statements=["markerline.set_markerfacecolor('none')"]
@@ -1431,7 +1443,8 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         var_name="e1",
         import_statements=["import matplotlib.pyplot as plt",
                            "from matplotlib import patches"],
-        var_declare_statements=["xcenter, ycenter = 0.38, 0.52",
+        var_declare_statements=["plt.close('all')",
+                                "xcenter, ycenter = 0.38, 0.52",
                                 "width, height = 1e-1, 3e-1",
                                 "angle = -30",
                                 "e1 = patches.Ellipse((xcenter, ycenter), width, height,angle=angle, linewidth=2, fill=False, zorder=2)"],
@@ -1442,10 +1455,55 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         class_name="matplotlib.patches.Arrow",
         var_name="arrow",
         import_statements=["import matplotlib.pyplot as plt", "import matplotlib.patches as mpatches"],
-        var_declare_statements=["x_tail, y_tail = 0.1, 0.5",
+        var_declare_statements=["plt.close('all')",
+                                "x_tail, y_tail = 0.1, 0.5",
                                 "x_head, y_head = 0.9, 0.8",
                                 "arrow = mpatches.FancyArrowPatch((x_tail, y_tail), (x_head, y_head),mutation_scale=100)"],
         var_modify_statements=["arrow.set_linewidth(2.0)"]
+    ),
+    LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="matplotlib.image.AxesImage",
+        var_name="image",
+        import_statements=["import matplotlib.pyplot as plt", "import numpy as np"],
+        var_declare_statements=["plt.close('all')",
+                                "data = np.random.rand(10,10)",
+                                "fig, ax = plt.subplots()",
+                                "image = ax.imshow(data, cmap='viridis')"],
+        var_modify_statements=["image.set_cmap('plasma')"]
+    ),
+    LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="matplotlib.image.FigureImage",
+        var_name="fig_image",
+        import_statements=["import matplotlib.pyplot as plt", "import numpy as np"],
+        var_declare_statements=["plt.close('all')",
+                                "data = np.random.rand(10,10)",
+                                "fig = plt.figure()",
+                                "fig_image = fig.figimage(data)"],
+        var_modify_statements=["fig_image.set_x(100)"]
+    ),
+    LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="matplotlib.offsetbox.AnchoredOffsetbox",
+        var_name="anchored_box",
+        import_statements=["import matplotlib.pyplot as plt", "from matplotlib.offsetbox import AnchoredOffsetbox, TextArea"],
+        var_declare_statements=["plt.close('all')",
+                                "fig, ax = plt.subplots()",
+                                "text_area = TextArea('Hello, World!', textprops=dict(color='r', size=12, ha='left'))",
+                                "anchored_box = AnchoredOffsetbox(loc='upper left', child=text_area, pad=0.5, borderpad=0.5, frameon=True)"],
+        var_modify_statements=["anchored_box.patch.set_facecolor('lightblue')"]
+    ),
+    LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="matplotlib.ticker.AutoLocator",
+        var_name="aut",
+        import_statements=["import matplotlib.pyplot as plt", "from matplotlib.ticker import AutoLocator"],
+        var_declare_statements=["plt.close('all')",
+                                "fig, ax = plt.subplots()",
+                                "ax.plot([0, 5], [0, 200])",
+                                "aut=AutoLocator()"],
+        var_modify_statements=["aut.MAXTICKS=2000"]
     ),
     LibCoverageTestCase(
         module_name="astropy",
@@ -1618,5 +1676,197 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         import_statements=["from astropy.convolution import Gaussian2DKernel"],
         var_declare_statements=["gaussian_2D_kernel = Gaussian2DKernel(10)"],
         var_modify_statements=["gaussian_2D_kernel.array[1][2] = 0.003"]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="numpy.ndarray",
+        var_name="a",
+        import_statements=["import numpy as np"],
+        var_declare_statements=["a = np.arange(6)"],
+        var_modify_statements=["a[1]=20"]
+    ),
+    LibCoverageTestCase(
+        module_name="arrow",
+        class_name="arrow.arrow.Arrow",
+        var_name="utc",
+        import_statements=["import arrow"],
+        var_declare_statements=["utc = arrow.utcnow()"],
+        var_modify_statements=["utc = utc.shift(hours=-1)"]
+    ),
+    LibCoverageTestCase(
+        module_name="bokeh",
+        class_name="bokeh.plotting._figure.figure",
+        var_name="p",
+        import_statements=["from bokeh.plotting import figure, show"],
+        var_declare_statements=["p = figure(width=400, height=400)"],
+        var_modify_statements=["p.height=600"]
+    ),
+    LibCoverageTestCase(
+        module_name="bokeh",
+        class_name="bokeh.models.renderers.glyph_renderer.GlyphRenderer",
+        var_name="r",
+        import_statements=["from bokeh.plotting import figure"],
+        var_declare_statements=["plot = figure(title='Example Plot', x_axis_label='X-Axis', y_axis_label='Y-Axis')",
+                                "r = plot.circle([1,2,3], [4,5,6])"],
+        var_modify_statements=["r.tags = ['foo', 10]"]
+    ),
+    LibCoverageTestCase(
+        module_name="photoutils",
+        class_name="photutils.utils.CutoutImage",
+        var_name="cutout",
+        import_statements=["import numpy as np",
+                           "from photutils.utils import CutoutImage"],
+        var_declare_statements=["data = np.arange(20.0).reshape(5, 4)",
+                                "cutout = CutoutImage(data, (2, 2), (3, 3))"],
+        var_modify_statements=["cutout.position = (2,3)"]
+    ),
+    LibCoverageTestCase(
+        module_name="photoutils",
+        class_name="photutils.utils.ImageDepth",
+        var_name="depth",
+        import_statements=["from astropy.convolution import convolve",
+                           "from astropy.visualization import simple_norm", 
+                           "from photutils.datasets import make_100gaussians_image",
+                           "from photutils.segmentation import SourceFinder, make_2dgaussian_kernel",
+                           "from photutils.utils import ImageDepth"],
+        var_declare_statements=["bkg = 5.0", 
+                                "data = make_100gaussians_image() - bkg", 
+                                "kernel = make_2dgaussian_kernel(3.0, size=5)", 
+                                "convolved_data = convolve(data, kernel)",
+                                "npixels = 10",
+                                "threshold = 3.2", 
+                                "finder = SourceFinder(npixels=npixels, progress_bar=False)", 
+                                "segment_map = finder(convolved_data, threshold)", 
+                                "mask = segment_map.make_source_mask()", 
+                                "radius = 4",
+                                "depth = ImageDepth(radius, nsigma=5.0, napers=500, niters=2,overlap=False, seed=123, zeropoint=23.9,progress_bar=False)"],
+        var_modify_statements=["depth.aper_radius = 10"]
+    ),
+    LibCoverageTestCase(
+        module_name="photoutils",
+        class_name="photutils.psf.matching.HanningWindow",
+        var_name="taper",
+        import_statements=["import matplotlib.pyplot as plt",
+                           "from photutils.psf import HanningWindow"],
+        var_declare_statements=["taper = HanningWindow()"],
+        var_modify_statements=["taper.alpha = 2.0"]
+    ),
+    LibCoverageTestCase(
+        module_name="photoutils",
+        class_name="photutils.psf.matching.CosineBellWindow",
+        var_name="taper",
+        import_statements=["import matplotlib.pyplot as plt",
+                           "from photutils.psf import CosineBellWindow"],
+        var_declare_statements=["taper = CosineBellWindow(alpha=0.3)"],
+        var_modify_statements=["taper.beta = 1.0"]
+    ),
+    LibCoverageTestCase(
+        module_name="optuna",
+        class_name="optuna.Study",
+        var_name="study",
+        import_statements=["import optuna"],
+        var_declare_statements=["def objective(trial):\n    x = trial.suggest_float('x', -10, 10)\n    return (x - 2) ** 2",
+                                "study = optuna.create_study()"],
+        var_modify_statements=["study.optimize(objective, n_trials=100)"]
+    ),
+    LibCoverageTestCase(
+        module_name="keras",
+        class_name="keras.src.layers.core.dense.Dense",
+        var_name="layer",
+        import_statements=["from keras import layers",
+                           "import numpy as np"],
+        var_declare_statements=["layer = layers.Dense(units=64)",
+                                "layer.build((10,))"],
+        var_modify_statements=["weights = np.random.rand(10, 64)",
+                               "biases = np.random.rand(64)",
+                               "layer.set_weights([weights, biases])"]
+    ),
+    LibCoverageTestCase(
+        module_name="keras",
+        class_name="keras.src.initializers.initializers.RandomNormal",
+        var_name="kernel_initializer",
+        import_statements=["from keras import layers",
+                           "from keras import initializers"],
+        var_declare_statements=["kernel_initializer=initializers.RandomNormal(stddev=0.01)"],
+        var_modify_statements=["kernel_initializer.mean = 1.0"]
+    ),
+    LibCoverageTestCase(
+        module_name="keras",
+        class_name="keras.src.initializers.initializers.RandomUniform",
+        var_name="kernel_initializer",
+        import_statements=["from keras import layers",
+                           "from keras import initializers"],
+        var_declare_statements=["kernel_initializer = initializers.RandomUniform(minval=-0.05, maxval=0.05, seed=None)"],
+        var_modify_statements=["kernel_initializer.seed = 1"]
+    ),
+    LibCoverageTestCase(
+        module_name="keras",
+        class_name="keras.src.optimizers.adam.Adam",
+        var_name="opt",
+        import_statements=["import keras"],
+        var_declare_statements=["opt = keras.optimizers.Adam(learning_rate=0.01)"],
+        var_modify_statements=["opt.ema_momentum = 0.9"]
+    ),
+    LibCoverageTestCase(
+        module_name="keras",
+        class_name="keras.src.optimizers.schedules.learning_rate_schedule.ExponentialDecay",
+        var_name="lr_schedule",
+        import_statements=["import keras"],
+        var_declare_statements=["lr_schedule = keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=1e-2,decay_steps=10000,decay_rate=0.9)"],
+        var_modify_statements=["lr_schedule.decay_rate = 0.5"]
+    ),
+    LibCoverageTestCase(
+        module_name="llm",
+        class_name="llm.default_plugins.openai_models.Chat",
+        var_name="model",
+        import_statements=["import llm"],
+        var_declare_statements=["model = llm.get_model('gpt-3.5-turbo')"],
+        var_modify_statements=["model.key = 'ABCD'"]
+    ),
+    LibCoverageTestCase(
+        module_name="lmfit",
+        class_name="lmfit.parameter.Parameters",
+        var_name="params",
+        import_statements=["from lmfit import Parameters"],
+        var_declare_statements=["params = Parameters()"],
+        var_modify_statements=["params.add('amp', value=10, vary=False)"]
+    ),
+    LibCoverageTestCase(
+        module_name="matplotlib",
+        class_name="'mpl_toolkits.mplot3d.art3d.Line3DCollection",
+        var_name="pl1",
+        import_statements=["import numpy as np",
+                           "import matplotlib.pyplot as plt",
+                           "from matplotlib import cm",
+                           "from mpl_toolkits.mplot3d.axes3d import get_test_data"],
+        var_declare_statements=["fig = plt.figure(figsize=plt.figaspect(0.5))",
+                                "ax = fig.add_subplot(1, 2, 2, projection='3d')",
+                                "X, Y, Z = get_test_data(0.05)",
+                                "pl1 = ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)"],
+        var_modify_statements=["pl1.set_linewidth(2.5)"]
+    ),
+    LibCoverageTestCase(
+        module_name="networkx",
+        class_name="networkx.classes.graph.Graph",
+        var_name="G",
+        import_statements=["import networkx as nx"],
+        var_declare_statements=["G = nx.Graph()"],
+        var_modify_statements=["G.add_node(1)"]
+    ),
+    LibCoverageTestCase(
+        module_name="networkx",
+        class_name="networkx.classes.digraph.DiGraph",
+        var_name="DG",
+        import_statements=["import networkx as nx"],
+        var_declare_statements=["DG = nx.DiGraph()"],
+        var_modify_statements=["DG.add_edge(2, 1)"]
+    ),
+    LibCoverageTestCase(
+        module_name="nltk",
+        class_name="nltk.stem.porter.PorterStemmer",
+        var_name="stemmer",
+        import_statements=["from nltk.stem.porter import *"],
+        var_declare_statements=["stemmer = PorterStemmer()"],
+        var_modify_statements=["stemmer.mode='MARTIN_EXTENSIONS'"]
     )
 ]
