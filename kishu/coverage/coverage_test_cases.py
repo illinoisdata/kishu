@@ -2143,5 +2143,49 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         import_statements=["from nltk.stem.porter import *"],
         var_declare_statements=["stemmer = PorterStemmer()"],
         var_modify_statements=["stemmer.mode='MARTIN_EXTENSIONS'"]
+    ),
+        LibCoverageTestCase(
+        module_name="dataprep",
+        class_name="dataprep.datasets",
+        var_name="df",
+        import_statements=["from dataprep.datasets import load_dataset"],
+        var_declare_statements=["df = load_dataset('titanic')"],
+        var_modify_statements=["df.at[0, 'Survived'] = 100"]
+    ),
+    LibCoverageTestCase(
+        module_name="dataprep",
+        class_name="dataprep.eda.intermediate.Intermediate",
+        var_name="imdt",
+        import_statements=["from dataprep.eda import compute_correlation",
+                           "from dataprep.datasets import load_dataset"],
+        var_declare_statements=["df = load_dataset('titanic')",
+                                "imdt = compute_correlation(df)"],
+        var_modify_statements=["imdt.save('imdt.json')"]
+    ),
+    LibCoverageTestCase(
+        module_name="lightgbm",
+        class_name="lightgbm.basic.Dataset",
+        var_name="lgb_train",
+        import_statements=["import pandas as pd",
+                           "from sklearn.metrics import mean_squared_error",
+                           "import lightgbm as lgb",
+                           "import seaborn as sns"],
+        var_declare_statements=["df = sns.load_dataset('penguins')",
+                                "df_train = df[:300]",
+                                "df_test = df[300:]",
+                                "y_train = df_train['flipper_length_mm']",
+                                "y_test = df_test['flipper_length_mm']",
+                                "X_train = df_train['bill_depth_mm']",
+                                "X_test = df_test['bill_depth_mm']",
+                                "lgb_train = lgb.Dataset(X_train, y_train)"],
+        var_modify_statements=["lgb_train.weight = 1.0"]
+    ),
+    LibCoverageTestCase(
+        module_name="pathlib",
+        class_name="pathlib.PosixPath",
+        var_name="p",
+        import_statements=["from pathlib import Path"],
+        var_declare_statements=["p = Path('.')"],
+        var_modify_statements=["p = p / 'init.d'"]
     )
 ]

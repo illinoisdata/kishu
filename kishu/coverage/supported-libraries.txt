@@ -50,3 +50,4 @@ qiskit
 ipywidgets
 dill
 dask
+pathlib
