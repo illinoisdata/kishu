@@ -115,8 +115,168 @@ class KishuPrint:
 
     @staticmethod
     def log_all_with_graph(log_all_result: LogAllResult):
-        KishuPrint._print_or_page("Warning: feature not supported. Non-graph option will be displayed instead.")
-        KishuPrint.log_all(log_all_result)
+        
+        colors = {
+            "red": "\033[31m",
+            "green": "\033[32m",
+            "yellow": "\033[33m",
+            "blue": "\033[34m",
+            "magenta": "\033[35m",
+            "cyan": "\033[36m",
+            "white": "\033[37m",
+            "reset": "\033[0m",
+        }
+        
+        sorted_commits = sorted(
+            log_all_result.commit_graph,
+            key=lambda commit: commit.timestamp, reverse=True,                       
+        )
+
+        num_commits = len(sorted_commits)
+        
+        x_values = [None for _ in range(num_commits)]   # index -> index of commit, x_position
+        right_x = [0 for _ in range(num_commits)]    # index -> y, right_x that's occupied
+        free_x = [0 for _ in range(num_commits)]     # index -> x, min_y that's free
+        commit_dict = {commit.commit_id: (index, commit) for index, commit in enumerate(sorted_commits)}    # commit_id -> (index, commit)
+
+        for index, commit in enumerate(sorted_commits):     # index = y
+            # if x_values[index] is not assigned:
+            #  assign x_values[index] = next available x at y (curr_x) ---- keep in mind zig-zagging
+            #  rightmost index at y = max(rightmost index at y, curr_x)
+            #  if parent assigned x:
+            #   update min_y that's free at x to index + 1  ---- keep in mind time order, min_y with interruptions
+            #  while parent not assigned x:
+            #   assign x_values[parent] = next available x at y (curr_x)
+            #   update min_y that's free at x to index + 1
+            #   update rightmost index at y
+            
+            if x_values[index] is None:
+                curr_x = next((x for x, min_y in enumerate(free_x) if index >= min_y), None)        # first available x at y
+                x_values[index] = curr_x
+                right_x[index] = max(right_x[index], curr_x)        # update rightmost x at y
+                # free_x[curr_x] = index + 1
+                if commit.parent_id and x_values[commit_dict[commit.parent_id][0]] is not None:      # parent assigned x   
+                    free_x[curr_x] = index + 1       # update min_y that's free at x, make sure there's no vertical branches being updated (min_y decreasing instead)   
+                while commit.parent_id and x_values[commit_dict[commit.parent_id][0]] is None:      # iterate parent not assigned x
+                    old_index = index
+                    old_x = curr_x
+                    index, commit = commit_dict[commit.parent_id]
+                    curr_x = next((x for x, min_y in enumerate(free_x) if index >= min_y), None)        # first available x at y
+                    x_values[index] = curr_x
+
+                    free_x[curr_x] = index + 1       # update min_y that's free at x
+                    for y in range(old_index, index + 1):       # update rightmost x values between old y and new y
+                        right_x[y] = max(right_x[y], old_x)        # update rightmost x at y
+                        
+                    # OR: right_x[y] = max(right_x[y], curr_x) depending on design implementation (maybe update for only last y = index)
+                    
+                    # consider cases for upper bound (not just min_y)
+                    # if temp_x != curr_x:    # bottom-left branch (will never bottom-right branch)
+                        # TODO: optimal freed up space from diagonal branching
+                    # if parent already assigned, min_y i
+                    
+                    # TODO: should update all right_x values between old y and new y to max(right_x[y], curr_x) --- consider cases of non-vertical lines
+                    
+                    
+
+        # draw graph -> commit takes 6 lines
+        # consider overlapping branches when drawing
+        # "|/|" odd columns used for branching
+        graph_width = max(x_values) + 1
+        output = [[' '] * 2 * graph_width for _ in range(6 * num_commits)]       # output[y][x] = char
+        visited = [False for _ in range(num_commits)]
+        for index, commit in enumerate(sorted_commits):
+            if not visited[index]:
+                visited[index] = True
+                output[6 * index][2 * x_values[index]] = '*'
+                while commit.parent_id:
+                    # apply coloring here
+                    parent_index, commit = commit_dict[commit.parent_id]
+                    visited[parent_index] = True
+                    output[6 * parent_index][2 * x_values[parent_index]] = '*'
+                    # draw line from child to parent
+                    if x_values[parent_index] == x_values[index]:       # vertical branch
+                        for i in range(1, 6 * (parent_index - index)):
+                            output[6 * index + i][2 * x_values[parent_index]] = '|'
+                    else:   # diagonal branch
+                        if x_values[index] - x_values[parent_index] >= (parent_index - index) * 6:    # 1: edge case (need '_' line)
+                            num_slashes = (parent_index - index) * 6 - 1
+                            num_underscores = x_values[index] - x_values[parent_index] - num_slashes
+                            min_num_underscores_per_block = num_underscores // (parent_index - index)
+                            left_over_underscores = num_underscores % (parent_index - index)
+                            curr_x = x_values[index]
+                            for i in range(parent_index - index):
+                                curr_x -= 1
+                                if i > 0:
+                                    output[6 * index + 6 * i][2 * curr_x + 1] = '/'
+                                    curr_x -= 1
+                                for j in range(1, 6):
+                                    output[6 * index + 6 * i + j][2 * curr_x + 1] = '/'
+                                    curr_x -= 1
+                                    if j == 4:
+                                        underscores = min_num_underscores_per_block + (left_over_underscores > 0)
+                                        if left_over_underscores > 0:
+                                            left_over_underscores -= 1
+                                        for k in range(underscores):
+                                            output[6 * index + 6 * i + k][2 * curr_x + 1] = '_'
+                                            curr_x -= 1
+                                
+                        elif x_values[index] - x_values[parent_index] > parent_index - index:    # 2: not enough for single '/' per block
+                            num_slashes = x_values[index] - x_values[parent_index]
+                            min_num_slashes_per_block = num_slashes // (parent_index - index)
+                            left_over_slashes = num_slashes % (parent_index - index)
+                            curr_x = x_values[index]
+                            for i in range(parent_index - index): # loop through blocks
+                                slashes = min_num_slashes_per_block + (left_over_slashes > 0)
+                                if i == 0 and slashes > 5:
+                                    slashes = 5
+                                elif left_over_slashes > 0:
+                                    left_over_slashes -= 1
+
+                                if i > 0:
+                                    if slashes > 5:   # '/' instead of '*'
+                                        output[6 * index + 6 * i][2 * curr_x + 1] = '/'
+                                    # elif output[6 * index + 6 * i][2 * curr_x] != '*':
+                                    else:
+                                        output[6 * index + 6 * i][2 * curr_x] = '|'
+                                curr_x -= 1
+                                for j in range(1, slashes):
+                                    output[6 * index + 6 * i + 1 + j][2 * curr_x + 1] = '/'
+                                    curr_x -= 1
+                                for j in range(slashes, 6):
+                                    output[6 * index + 6 * i + 1 + j][2 * curr_x] = '|'
+                                    
+                        elif x_values[index] - x_values[parent_index] <= parent_index - index:      # 3: single '/' per block or less
+                            num_slashes = x_values[index] - x_values[parent_index]
+                            curr_x = x_values[index]    # should be >= 1
+                            for i in range(parent_index - index):   # loop through blocks
+                                if num_slashes > 0:
+                                    if i > 0:
+                                        output[6 * index + 6 * i][2 * curr_x] = '|'
+                                    curr_x -= 1
+                                    output[6 * index + 6 * i + 1][2 * curr_x + 1] = '/'
+                                    for j in range(2, 6):
+                                        output[6 * index + 6 * i + j][2 * curr_x] = '|'
+                                    num_slashes -= 1
+                                else:
+                                    for j in range(6):  # will never be first block, | replaces *
+                                        output[6 * index + 6 * i + j][2 * curr_x] = '|'
+                        else:
+                            KishuPrint._print_or_page("Warning: unexpected error occurred. Non-graph option will be displayed instead.")
+                            KishuPrint.log_all(log_all_result)
+                            return
+                        
+                    index = parent_index
+                    
+                    # problem: overlapping branches
+        
+        # insert commit details (use right_x values)
+        # join output lines (change to string)
+                
+            
+            
+        
+            
 
     @staticmethod
     def _format_commit(
