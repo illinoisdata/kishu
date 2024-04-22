@@ -18,7 +18,12 @@ Y_test = pd.DataFrame({
 def submit_cell_execution(info) -> None:
     success = False
     try:
-        time.sleep(min(len(info.raw_cell.split("\n")), 10))
+        if "read_csv" in info.raw_cell:
+            time.sleep(50)
+        if "fit" in info.raw_cell:
+            time.sleep(40)
+        else:
+            time.sleep(min(len(info.raw_cell.split("\n")), 10))
         # print(ts)
         success = True
     except KeyboardInterrupt:
