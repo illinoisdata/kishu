@@ -17,7 +17,7 @@ pooch
 arrow
 bokeh
 pooch
-photoutils
+photutils
 scikit-image
 optuna
 keras
@@ -44,3 +44,5 @@ catboost
 opencv-python
 gensim
 gym
+wordcloud
+textblob
