@@ -115,7 +115,6 @@ class KishuPrint:
 
     @staticmethod
     def log_all_with_graph(log_all_result: LogAllResult):
-        
         colors = {
             "red": "\033[31m",
             "green": "\033[32m",
@@ -140,16 +139,6 @@ class KishuPrint:
         commit_dict = {commit.commit_id: (index, commit) for index, commit in enumerate(sorted_commits)}    # commit_id -> (index, commit)
 
         for index, commit in enumerate(sorted_commits):     # index = y
-            # if x_values[index] is not assigned:
-            #  assign x_values[index] = next available x at y (curr_x) ---- keep in mind zig-zagging
-            #  rightmost index at y = max(rightmost index at y, curr_x)
-            #  if parent assigned x:
-            #   update min_y that's free at x to index + 1  ---- keep in mind time order, min_y with interruptions
-            #  while parent not assigned x:
-            #   assign x_values[parent] = next available x at y (curr_x)
-            #   update min_y that's free at x to index + 1
-            #   update rightmost index at y
-            
             if x_values[index] is None:
                 curr_x = next((x for x, min_y in enumerate(free_x) if index >= min_y), None)        # first available x at y
                 x_values[index] = curr_x
@@ -167,17 +156,6 @@ class KishuPrint:
                     free_x[curr_x] = index + 1       # update min_y that's free at x
                     for y in range(old_index, index + 1):       # update rightmost x values between old y and new y
                         right_x[y] = max(right_x[y], old_x)        # update rightmost x at y
-                        
-                    # OR: right_x[y] = max(right_x[y], curr_x) depending on design implementation (maybe update for only last y = index)
-                    
-                    # consider cases for upper bound (not just min_y)
-                    # if temp_x != curr_x:    # bottom-left branch (will never bottom-right branch)
-                        # TODO: optimal freed up space from diagonal branching
-                    # if parent already assigned, min_y i
-                    
-                    # TODO: should update all right_x values between old y and new y to max(right_x[y], curr_x) --- consider cases of non-vertical lines
-                    
-                    
 
         # draw graph -> commit takes 6 lines
         # consider overlapping branches when drawing
@@ -267,16 +245,11 @@ class KishuPrint:
                             return
                         
                     index = parent_index
-                    
+
                     # problem: overlapping branches
-        
+
         # insert commit details (use right_x values)
-        # join output lines (change to string)
-                
-            
-            
-        
-            
+        # join output lines (change to string)       
 
     @staticmethod
     def _format_commit(
