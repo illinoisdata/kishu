@@ -68,6 +68,142 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         var_modify_statements=["a.set_xlabel('Flipper Length')"]
     ),
     LibCoverageTestCase(
+        module_name="typing",
+        class_name="typing",
+        var_name="list",
+        import_statements=[
+            "from typing import List"
+        ],
+        var_declare_statements=[
+            "list: List[int] = [1, 2, 3]"
+        ],
+        var_modify_statements=[
+            "list.append(4)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="wordcloud",
+        class_name="wordcloud.WordCloud",
+        var_name="wc",
+        import_statements=[
+            "import numpy as np",
+            "from wordcloud import WordCloud"
+        ],
+        var_declare_statements=[
+            "text = 'square'",
+            "x, y = np.ogrid[:300, :300]",
+            "mask = (x - 150) ** 2 + (y - 150) ** 2 > 130 ** 2",
+            "mask = 255 * mask.astype(int)",
+            "wc = WordCloud(background_color='white', repeat=True, mask=mask)",
+            "wc.generate(text)"
+        ],
+        var_modify_statements=[
+            "wc.generate('circle')"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="textblob",
+        class_name="textblob.TextBlob",
+        var_name="blob",
+        import_statements=[
+            "from textblob import TextBlob"
+        ],
+        var_declare_statements=[
+            "text = 'I havv a goood fone.'",
+            "blob = TextBlob(text)",
+        ],
+        var_modify_statements=[
+            "blob = blob.correct()"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="uuid.UUID",
+        var_name="uuid_obj",
+        import_statements=["import uuid"],
+        var_declare_statements=[
+            "uuid_obj = uuid.uuid4()"
+        ],
+        var_modify_statements=[
+            "uuid_obj = uuid_obj.hex[:8] + '0000-0000-0000-0000-' + uuid_obj.hex[20:]"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="urllib.request.Request",
+        var_name="req",
+        import_statements=["import urllib.request"],
+        var_declare_statements=[
+            "url = 'https://www.example.com/'",
+            "req = urllib.request.Request(url)"
+        ],
+        var_modify_statements=[
+            "req.data = b'example data'"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="datetime.timedelta",
+        var_name="time_diff",
+        import_statements=[
+            "from datetime import timedelta"
+        ],
+        var_declare_statements=[
+            "time_diff = timedelta(seconds=10)"
+        ],
+        var_modify_statements=[
+            "dif2 = timedelta(minutes=5)",
+            "time_diff = dif2 + time_diff"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="datetime.time",
+        var_name="current_time",
+        import_statements=[
+            "from datetime import time",
+            "from datetime import timedelta",
+            "from datetime import datetime"
+        ],
+        var_declare_statements=[
+            "current_time = time(12, 0, 0)"
+        ],
+        var_modify_statements=[
+            "delta = timedelta(hours=1, minutes=30)",
+            "current_time = (datetime.combine(datetime.min, current_time) + delta).time()"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="random.Random",
+        var_name="rnd",
+        import_statements=[
+            "import random"
+        ],
+        var_declare_statements=[
+            "rnd = random.Random()"
+        ],
+        var_modify_statements=[
+            "rnd.seed(42)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="re.Pattern",
+        var_name="pattern",
+        import_statements=[
+            "import re"
+        ],
+        var_declare_statements=[
+            r"pattern = re.compile(r'\b\w+\b')"
+        ],
+        var_modify_statements=[
+            r"pattern = re.compile(r'\b[A-Z]+\b')"
+        ]
+    ),
+
+    
+    LibCoverageTestCase(
         module_name="scikit-learn",
         class_name="sklearn.cluster",
         var_name="kmeans",
