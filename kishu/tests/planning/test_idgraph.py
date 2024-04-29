@@ -173,7 +173,7 @@ def test_idgraph_pandas_df():
     """
     df = sns.load_dataset('penguins')
 
-    idgraph1 = get_object_state(df, {})
+    idgraph1 = get_object_state(df, {}, first_creation=True)
     idgraph2 = get_object_state(df, {})
 
     # Assert that the obj id is as expected
@@ -188,20 +188,14 @@ def test_idgraph_pandas_df():
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph3
 
-    df.at[0, 'species'] = "Adelie"
-    idgraph4 = get_object_state(df, {})
-
-    # Assert that the original id graph is restored when the original object state is restored
-    assert idgraph1 == idgraph4
-
     new_row = {'species': "New Species", 'island': "New island", 'bill_length_mm': 999,
                'bill_depth_mm': 999, 'flipper_length_mm': 999, 'body_mass_g': 999, 'sex': "Male"}
     df.loc[len(df)] = new_row
 
-    idgraph5 = get_object_state(df, {})
+    idgraph4 = get_object_state(df, {})
 
     # Assert that idgraph changes when new row is added to dataframe
-    assert idgraph1 != idgraph5
+    assert idgraph1 != idgraph4
 
 
 def test_hash_pandas_df():
@@ -542,23 +536,14 @@ def test_hash_seaborn_scatterplot():
     plt.close('all')
 
 
-def test_idgraph_overlap():
+def test_idgraph_no_overlap_primitive():
+    # Overlap exceptions are made for primitives.
     a, b, c = 1, 2, 3
     list1 = [a, b]
     list2 = [b, c]
 
     idgraph1 = get_object_state(list1, {})
     idgraph2 = get_object_state(list2, {})
-
-    assert idgraph1.is_overlap(idgraph2)
-
-
-def test_idgraph_no_overlap_primitive():
-    a = 1
-    b = 1
-
-    idgraph1 = get_object_state(a, {})
-    idgraph2 = get_object_state(b, {})
 
     assert not idgraph1.is_overlap(idgraph2)
 

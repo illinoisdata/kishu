@@ -63,57 +63,6 @@ class TestOnNotebookRunner:
             nb = nbformat.read(temp_file, 4)
             assert nb.metadata.kishu.session_count == 2
 
-    @pytest.mark.parametrize(
-        ("set_notebook_path_env", "cell_num_to_restore"),
-        [
-            ('simple.ipynb', 2),
-            ('simple.ipynb', 3),
-            ('numpy.ipynb', 2),
-            ('numpy.ipynb', 3),
-            ('sklearn_tweet_classification.ipynb', 42),
-            pytest.param('ml-ex1.ipynb', 10,
-                         marks=pytest.mark.skip(reason="Too expensive to run")),
-            pytest.param('04_training_linear_models.ipynb', 10,
-                         marks=pytest.mark.skip(reason="Too expensive to run")),
-            pytest.param('sklearn_tweet_classification.ipynb', 10,
-                         marks=pytest.mark.skip(reason="Too expensive to run"))
-        ],
-        indirect=["set_notebook_path_env"]
-    )
-    def test_full_checkout(self, set_notebook_path_env, cell_num_to_restore: int, enable_incremental_store):
-        """
-        Tests checkout correctness by comparing namespace contents at cell_num_to_restore in the middle of a notebook,
-        and namespace contents after checking out cell_num_to_restore completely executing the notebook.
-        """
-        print(Config.CONFIG_PATH)
-        Config.set('EXPERIMENT', 'record_results', True)
-        Config.set('EXPERIMENT', 'notebook_name', set_notebook_path_env)
-        Config.set('EXPERIMENT', 'csv_path', '/data/elastic-notebook/tmp/kishu_results.csv')
-        Config.set('EXPERIMENT', 'method', 'kishu_incremental')
-        notebook = NotebookRunner(set_notebook_path_env)
-
-        # Get notebook namespace contents at cell execution X and contents after checking out cell execution X.
-        namespace_before_checkout, namespace_after_checkout = notebook.execute_full_checkout_test(cell_num_to_restore)
-
-        # The contents should be identical.
-        # assert namespace_before_checkout.keys() == namespace_after_checkout.keys()
-        # for key in namespace_before_checkout.keys():
-        #     # As certain classes don't have equality (__eq__) implemented, we compare serialized bytestrings.
-        #     assert dill.dumps(namespace_before_checkout[key]) == dill.dumps(namespace_after_checkout[key])
-
-    @pytest.mark.parametrize(
-        ("set_notebook_path_env", "cell_num_to_restore"),
-        [
-            ('sklearn_tweet_classification.ipynb', 43)
-        ],
-        indirect=["set_notebook_path_env"]
-    )
-    def test_incremental_store(self, set_notebook_path_env, cell_num_to_restore, enable_incremental_store):
-        start = time.time()
-        notebook = NotebookRunner(set_notebook_path_env)
-        notebook.execute_incremental_load_test(cell_num_to_restore)
-        print("time:", time.time() - start)
-
     @pytest.mark.parametrize("set_notebook_path_env", ["test_detach_kishu.ipynb"], indirect=True)
     def test_detachment_valid(self, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)

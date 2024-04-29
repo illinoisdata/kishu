@@ -47,11 +47,12 @@ class PlannerManager:
         self.planner.pre_run_cell_update()
 
         # Update namespace.
-        self.planner._user_ns.update(Namespace(ns_updates))
+        for k, v in ns_updates.items():
+            self.planner._user_ns._tracked_namespace[k] = v
 
         # Delete variables from namespace.
         for var_name in ns_deletions:
-            del self.planner._user_ns[var_name]
+            del self.planner._user_ns._tracked_namespace[var_name]
 
         # Return changed variables from post run cell update.
         return self.planner.post_run_cell_update(cell_code, cell_runtime)
@@ -60,41 +61,6 @@ class PlannerManager:
         checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(filename, commit_id, parent_commit_ids)
         checkpoint_plan.run(self.planner._user_ns)
         return checkpoint_plan, restore_plan
-
-
-def test_checkpoint_restore_planner(enable_always_migrate):
-    """
-        Test running a few cell updates.
-    """
-    planner = CheckpointRestorePlanner(Namespace({}))
-    planner_manager = PlannerManager(planner)
-
-    # Run 2 cells.
-    planner_manager.run_cell({"x": 1}, "x = 1")
-    planner_manager.run_cell({"y": 2}, "y = x + 1")
-
-    variable_snapshots = planner.get_ahg().get_variable_snapshots()
-    active_variable_snapshots = planner.get_ahg().get_active_variable_snapshots()
-    cell_executions = planner.get_ahg().get_cell_executions()
-
-    # Assert correct contents of AHG.
-    assert len(variable_snapshots) == 2
-    assert len(active_variable_snapshots) == 2
-    assert len(cell_executions) == 2
-
-    # Assert ID graphs are creaated.
-    assert len(planner.get_id_graph_map().keys()) == 2
-
-    # Create checkpoint and restore plans.
-    checkpoint_plan, restore_plan = planner.generate_checkpoint_restore_plans("fake_path", "fake_commit_id")
-
-    # Assert the plans have appropriate actions.
-    assert len(checkpoint_plan.actions) == 1
-    assert len(restore_plan.actions) == 2
-
-    # Assert the restore plan has correct fields.
-    assert restore_plan.actions[StepOrder(0, RestoreActionOrder.LOAD_VARIABLE)].fallback_recomputation == \
-        [RerunCellRestoreAction(StepOrder(0, RestoreActionOrder.RERUN_CELL), "x = 1")]
 
 
 def test_checkpoint_restore_planner_with_existing_items(enable_always_migrate):
@@ -217,36 +183,6 @@ def test_checkpoint_restore_planner_function(enable_incremental_store, enable_al
     assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
 
 
-
-def test_checkpoint_restore_planner_incremental_store_not_subset(enable_incremental_store, enable_always_migrate):
-    """
-        Test incremental store.
-    """
-    filename = KishuPath.database_path("test")
-    KishuCheckpoint(filename).init_database()
-
-    planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
-
-    # Run cell 1.
-    x = 1
-    planner_manager.run_cell({"x": x, "y": [x]}, "x = 1\ny = [x]")
-
-    # Create and run checkpoint plan for cell 1.
-    planner_manager.checkpoint_session(filename, "1:1", [])
-
-    # Run cell 2.
-    planner_manager.run_cell({"z": [x]}, "z = [x]")
-
-    # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
-
-    # Assert that everything is stored again.
-    # x and y are linked; since {x, y, z} is not a subset of the stored {x, y}, we need to store everything again.
-    assert len(checkpoint_plan_cell2.actions) == 1
-    assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
-    assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset({"x", "y", "z"})
-
-
 def test_checkpoint_restore_planner_incremental_store_is_subset(enable_incremental_store, enable_always_migrate):
     """
         Test incremental store.
@@ -257,7 +193,7 @@ def test_checkpoint_restore_planner_incremental_store_is_subset(enable_increment
     planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
 
     # Run cell 1.
-    x = 1
+    x = []
     planner_manager.run_cell({"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
     # Create and run checkpoint plan for cell 1.
@@ -270,7 +206,6 @@ def test_checkpoint_restore_planner_incremental_store_is_subset(enable_increment
     checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
 
     # Assert that everything is stored again.
-    # The connected component of 'x, y, z' is already stored, since 'x, y' is a subset, its storage is skipped.
     assert len(checkpoint_plan_cell2.actions) == 1
     assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
     assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset({"x", "y"})

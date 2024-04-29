@@ -183,12 +183,12 @@ class JupyterConnection:
             )
             stdout = stdout_f.getvalue()
             stderr = stderr_f.getvalue()
-        print("command:", command)
-        print("**************************")
-        print(f"stdout>\n{stdout}")
-        print("**************************")
-        print(f"stderr>\n{stderr}")
-        print("**************************")
+        # print("command:", command)
+        # print("**************************")
+        # print(f"stdout>\n{stdout}")
+        # print("**************************")
+        # print(f"stderr>\n{stderr}")
+        # print("**************************")
         return reply, stdout, stderr
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -434,21 +434,21 @@ class KishuForJupyter:
 
         # Find the lowest common ancestor of current and target commit.
         current_commit_id = self._kishu_graph.head()
-        lca_commit = self._kishu_graph.get_common_ancestor(commit_id, current_commit_id)
-        lca_commit_entry = self._kishu_commit.get_commit(lca_commit)
-        if lca_commit_entry.ahg_string is None:
-            raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
-        print("checkout commit id:", commit_id)
+        if Config.get('PLANNER', 'incremental_cr', False):
+            lca_commit = self._kishu_graph.get_common_ancestor(commit_id, current_commit_id)
+            lca_commit_entry = self._kishu_commit.get_commit(lca_commit)
+            if lca_commit_entry.ahg_string is None:
+                raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
 
-        parent_commit_ids = [node.commit_id for node in self._kishu_graph.list_history(commit_id)]
+            parent_commit_ids = [node.commit_id for node in self._kishu_graph.list_history(commit_id)]
 
         result_ns = self._cr_planner.restore_state(
             commit_entry.ahg_string,
             commit_entry.restore_plan,
             database_path,
             commit_id,
-            parent_commit_ids,
-            lca_commit_entry.ahg_string
+            parent_commit_ids if Config.get('PLANNER', 'incremental_cr', False) else None,
+            lca_commit_entry.ahg_string if Config.get('PLANNER', 'incremental_cr', False) else None
         )
         self._checkout_namespace(self._user_ns, result_ns)
 
@@ -639,9 +639,10 @@ class KishuForJupyter:
             self._kishu_variable_version.store_variable_version_table(changed_vars.added()
                                                                       | changed_vars.deleted(), entry.commit_id)
 
-        file_sizes = sum(f.stat().st_size for f in Path(self.database_path()).parents[0].glob('**/*') if f.is_file())
-        self._cr_planner.write_row("checkpoint-size", file_sizes)
-        print("------------------checkpoint-size:", file_sizes)
+        # Record cumulative checkpoint size if logging is enabled.
+        if Config.get('EXPERIMENT', 'record_results', False):
+            file_sizes = sum(f.stat().st_size for f in Path(self.database_path()).parents[0].glob('**/*') if f.is_file())
+            self._cr_planner.write_row("checkpoint-size", file_sizes)
 
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":
@@ -662,9 +663,7 @@ class KishuForJupyter:
         # Step 2: checkpoint
         start = time.time()
         checkpoint_plan.run(self._user_ns)
-        print("checkpoint commit id:", cell_info.commit_id)
         self._cr_planner.write_row("checkpoint-time", time.time() - start)
-        print("------------------checkpoint-time:", time.time() - start)
 
         # Extra: generate variable version.
         data_version = hash(pickle.dumps(self._cr_planner.get_ahg().get_variable_snapshots()))

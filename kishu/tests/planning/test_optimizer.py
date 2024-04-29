@@ -10,8 +10,10 @@ from kishu.planning.optimizer import Optimizer, IncrementalLoadOptimizer, REALLY
 @pytest.fixture()
 def enable_slow_network_bandwidth(tmp_kishu_path) -> Generator[type, None, None]:
     Config.set('OPTIMIZER', 'network_bandwidth', 1)
+    Config.set('OPTIMIZER', 'always_migrate', False)
     yield Config
     Config.set('OPTIMIZER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
+    Config.set('OPTIMIZER', 'always_migrate', True)
 
 
 def test_optimizer(enable_slow_network_bandwidth):
@@ -41,6 +43,7 @@ def test_optimizer(enable_slow_network_bandwidth):
 
     # Setup optimizer
     opt = Optimizer(ahg, active_vss)
+    opt._optimizer_context.always_migrate = False
 
     # Tests that the exact optimizer correctly escapes the local minimum by recomputing both x and y.
     vss_to_migrate, ces_to_recompute = opt.compute_plan()
@@ -48,7 +51,7 @@ def test_optimizer(enable_slow_network_bandwidth):
     assert ces_to_recompute == {0, 1, 2}
 
 
-def test_optimizer_with_already_stored_variables(enable_slow_network_bandwidth):
+def test_optimizer_with_already_stored_variables(enable_slow_network_bandwidth, enable_incremental_store):
     """
         Setup test graph.
         (cost:2) "x"  "y" (cost: 2)
@@ -75,6 +78,7 @@ def test_optimizer_with_already_stored_variables(enable_slow_network_bandwidth):
 
     # Setup optimizer
     opt = Optimizer(ahg, active_vss, already_stored_vss={VersionedName(vs3.name, vs3.version): 1})
+    opt._optimizer_context.always_migrate = False
 
     # c1 is not recomputed as z is already stored.
     vss_to_migrate, ces_to_recompute = opt.compute_plan()
@@ -82,7 +86,7 @@ def test_optimizer_with_already_stored_variables(enable_slow_network_bandwidth):
     assert ces_to_recompute == {1, 2}
 
 
-def test_incremental_load_optimizer(enable_slow_network_bandwidth):
+def test_incremental_load_optimizer(enable_slow_network_bandwidth, enable_incremental_store):
     """
         Setup test graph.
         (cost:2) "x"  "y" (cost: 2)
@@ -121,6 +125,5 @@ def test_incremental_load_optimizer(enable_slow_network_bandwidth):
 
     # Assert the correct fallback recomputations exist.
     assert len(opt.fallback_recomputation) == 1
-    print(opt.fallback_recomputation)
     assert opt.fallback_recomputation[VersionedName("z", 1)] == {0}
 

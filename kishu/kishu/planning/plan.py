@@ -3,10 +3,9 @@ from __future__ import annotations
 import atexit
 import cloudpickle
 import dill
-import pickle
 import functools
-import sys
-import time
+import pickle
+
 from dataclasses import dataclass, field
 from enum import IntEnum
 from IPython.core.interactiveshell import InteractiveShell
@@ -64,15 +63,10 @@ class VarNamesToObjects:
 
     @staticmethod
     def loads(data: bytes) -> VarNamesToObjects:
-        print("size:", sys.getsizeof(data))
-        start = time.time()
         object_dict = dill.loads(data)
-        print("-------staticmethod loads time:", time.time() - start)
-        start = time.time()
         res = VarNamesToObjects()
         for key, obj in object_dict.items():
             res[key] = obj
-        print("-------ass time:", time.time() - start)
         return res
 
     def __setitem__(self, key, value) -> None:
@@ -280,15 +274,11 @@ class LoadVariableRestoreAction(RestoreAction):
         @param user_ns  A target space where restored variables will be set.
         """
         data: bytes = KishuCheckpoint(ctx.checkpoint_file).get_checkpoint(ctx.exec_id)
-        start = time.time()
         namespace: VarNamesToObjects = VarNamesToObjects.loads(data)
-        print("-----------------------loads time:", time.time() - start)
-        start = time.time()
         for key, obj in namespace.items():
             # if self.variable_names is set, limit the restoration only to those variables.
             if key in self.variable_names:
                 ctx.shell.user_ns[key] = obj
-        print("-----------------------set time:", time.time() - start)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(step_order={self.step_order}, \
@@ -325,16 +315,13 @@ class IncrementalLoadRestoreAction(RestoreAction):
         @param user_ns  A target space where restored variables will be set.
         """
         data: List[bytes] = KishuCheckpoint(ctx.checkpoint_file).get_variable_snapshots(self.versioned_names)
-        print("start load namespaces")
         dictionaries = []
         for i in data:
             try:
                 dictionaries.append(cloudpickle.loads(i))
             except:
-                dictioanries.append(dill.loads(i))
-        print("finish load namespaces")
+                dictionaries.append(dill.loads(i))
         for dictionary in dictionaries:
-            print("load keyset:", dictionary.keys())
             for k, v in dictionary.items():
                 ctx.shell.user_ns[k] = v
 
@@ -517,10 +504,7 @@ class RestorePlan:
                 # Run restore actions sorted by cell number, then rerun cells before loading variables.
                 for _, action in sorted(self.actions.items(), key=lambda k: k[0]):
                     try:
-                        start = time.time()
-                        print("action:", action)
                         action.run(ctx)
-                        print("time:", time.time() - start)
                     except CommitIdNotExistError as e:
                         # Problem was caused by Kishu itself (specifically, missing file for commit ID).
                         raise e
@@ -528,13 +512,10 @@ class RestorePlan:
                         if not isinstance(action, LoadVariableRestoreAction) \
                         and not isinstance(action, IncrementalLoadRestoreAction):
                             raise e
-                        print("error:", e)
                         # If action is load variable, replace action with fallback recomputation plan
                         self.fallbacked_actions.append(action)
                         del self.actions[action.step_order]
-                        print("fallbacks:", len(action.fallback_recomputation))
                         for rerun_cell_action in action.fallback_recomputation:
-                            print("add fallback:", rerun_cell_action.step_order)
                             self.actions[rerun_cell_action.step_order] = rerun_cell_action
                         break
                 else:

@@ -57,19 +57,13 @@ class CheckpointRestorePlanner:
         self._pre_run_cell_vars: Set[str] = set()
 
         # C/R plan configs.
-        self._incremental_cr = "False" not in Config.get('EXPERIMENT', 'method', 'kishu_regular')
-        print("incremental cr:", self._incremental_cr)
-        # self._incremental_cr = False
+        self._incremental_cr = Config.get('PLANNER', 'incremental_cr', False)
 
         # Used by instrumentation to compute whether data has changed.
         self._modified_vars_structure: Set[str] = set()
 
-        self.results_file: Optional[Any] = None
+        # Used for logging experiment results.
         self.cell_count = 0
-        if Config.get('EXPERIMENT', 'record_results', True):
-            self.results_file = 1
-        else:
-            raise ValueError("no")
             
 
     @staticmethod
@@ -77,12 +71,13 @@ class CheckpointRestorePlanner:
         return CheckpointRestorePlanner(user_ns, AHG.from_existing(user_ns))
 
     def write_row(self, action: str, time: float) -> None:
-        if not self.results_file:
+        if not Config.get('EXPERIMENT', 'record_results', False):
             return
 
         with open(Config.get('EXPERIMENT', 'csv_path', '/data/elastic-notebook/tmp/kishu_results.csv'), 'a', newline='') as results_file:
-            results_file.write(f"{Config.get('EXPERIMENT', 'method', 'kishu_regular')},{Config.get('EXPERIMENT', 'notebook_name', 'test.ipynb')},{self.cell_count},{action},{'{:.8f}'.format(time)}\n")
-            print("write row:", f"{Config.get('EXPERIMENT', 'method', 'kishu_regular')},{Config.get('EXPERIMENT', 'notebook_name', 'test.ipynb')},{self.cell_count},{action},{'{:.8f}'.format(time)}\n")
+            method = Config.get('EXPERIMENT', 'method', 'kishu_regular')
+            nb_name = Config.get('EXPERIMENT', 'notebook_name', 'test.ipynb')
+            results_file.write(f"{method},{nb_name},{self.cell_count},{action},{'{:.8f}'.format(time)}\n")
 
     def pre_run_cell_update(self) -> None:
         """
@@ -113,18 +108,16 @@ class CheckpointRestorePlanner:
         self._user_ns.turn_off_track()
         self.cell_count += 1
 
-        start = time.time()
         # Use current timestamp as version for new VSes to be created during the update.
         version = time.monotonic_ns()
-        self.write_row("cell_execution_time", runtime_s)
+        self.write_row("cell_execution_time", runtime_s if runtime_s else 0)
 
         # Find accessed variables from monkey-patched namespace.
+        start = time.time()
         accessed_vars = self._user_ns.accessed_vars().intersection(self._pre_run_cell_vars)
-        print("accessed vars:", accessed_vars)
         self._user_ns.reset_accessed_vars()
 
         assigned_vars = self._user_ns.assigned_vars()
-        print("assigned vars:", assigned_vars)
         self._user_ns.reset_assigned_vars()
 
         # Find created and deleted variables.
@@ -133,18 +126,16 @@ class CheckpointRestorePlanner:
 
         # Find candidates for modified variables: a variable can only be modified if it was
         # linked with a variable that was accessed or modified.
-        modified_vars_candidates = set()
+        modified_vars_candidates: Set[str] = set()
         for vs in self._ahg.get_active_variable_snapshots():
-            if vs.name.intersection(accessed_vars) or vs.name.intersection(assigned_vars):
+            if vs.name.intersection(accessed_vars) or vs.name.intersection(assigned_vars) or vs.name.intersection(deleted_vars):
                 modified_vars_candidates.update(vs.name)
-        print("modified_vars_candidates:", modified_vars_candidates)
 
         # Find modified variables.
         modified_vars_structure = set()
         modified_vars_value = set()
         for k in filter(self._user_ns.__contains__, modified_vars_candidates):
-        #for k in filter(lambda x: x not in created_vars, self._user_ns.keyset()):
-            start2 = time.time()
+        # for k in filter(lambda x: x not in created_vars, self._user_ns.keyset()):
             new_idgraph = get_object_state(self._user_ns[k], {})
 
             # Identify objects which have changed by value. For displaying in front end.
@@ -157,52 +148,42 @@ class CheckpointRestorePlanner:
                     accessed_vars.add(k)
                 self._id_graph_map[k] = new_idgraph
                 modified_vars_structure.add(k)
-            print("detect:", k, time.time() - start2)
 
         self.write_row("modification_detection_time", time.time() - start)
-        print("--------------------modification detection time:", time.time() - start)
-
-        start = time.time()
 
         # Update ID graphs for newly created variables.
+        start = time.time()
         for var in created_vars:
             self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
-
         self.write_row("create_new_ID_graphs_time", time.time() - start)
-        print("--------------------create new ID graphs time:", time.time() - start)
-
-        start = time.time()
 
         # Find pairs of linked variables.
+        start = time.time()
         linked_var_pairs = []
         for x, y in combinations(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)), 2):
-        #for x, y in combinations(self._user_ns.keyset(), 2):
+        # for x, y in combinations(self._user_ns.keyset(), 2):
             if self._id_graph_map[x].is_overlap(self._id_graph_map[y]):
                 linked_var_pairs.append((x, y))
-
         self.write_row("find_links_time", time.time() - start)
-        print("--------------------find links time:", time.time() - start)
 
-        # Var profiling
-        # candidates = set(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)))
-        # self.write_row("profiled_variables", len(candidates))
-        # self.write_row("total_variables", len(self._user_ns.keyset()))
-        # self.write_row("profiled_variable_size", asizeof.asizeof(self._user_ns.subset(candidates)))
-        # self.write_row("total_variable_size", asizeof.asizeof(self._user_ns))
-
-        start = time.time()
+        # Variable size profiling
+        candidates = set(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)))
+        if Config.get('EXPERIMENT', 'record_results', False):
+            self.write_row("profiled_variables", len(candidates))
+            self.write_row("total_variables", len(self._user_ns.keyset()))
+            self.write_row("profiled_variable_size", asizeof.asizeof(self._user_ns.subset(candidates)))
+            self.write_row("total_variable_size", asizeof.asizeof(self._user_ns))
         
         # Update AHG.
+        start = time.time()
         runtime_s = 0.0 if runtime_s is None else runtime_s
-
         self._ahg.update_graph(code_block, version, runtime_s, accessed_vars, self._user_ns.keyset(), linked_var_pairs,
                                modified_vars_structure, deleted_vars)
-
         self.write_row("update_ahg_time", time.time() - start)
-        print("--------------------update AHG time:", time.time() - start)
 
         self._user_ns.turn_on_track()
 
+        print(modified_vars_structure)
         return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
 
     def generate_checkpoint_restore_plans(
@@ -227,44 +208,36 @@ class CheckpointRestorePlanner:
         # NOT migrate as they are already stored.
         if self._incremental_cr:
             if parent_commit_ids is None:
-                raise ValueError("parent_commit_ids cannot be none if incremental CR is enabled.")
+                parent_commit_ids = []
             stored_versioned_names = KishuCheckpoint(database_path).get_stored_versioned_names(parent_commit_ids)
             active_vss = [vs for vs in active_vss if
                           VersionedName(vs.name, vs.version) not in stored_versioned_names.keys()]
-
         self.write_row("preprocessing_time", time.time() - start)
-        print("-------------------preprocessing time:", time.time() - start)
 
-        start = time.time()
+        # Profile the size of each variable defined in the current session if not storing everything.
+        if not Config.get('OPTIMIZER', 'always_migrate', False):
+            start = time.time()
+            for active_vs in active_vss:
+                if active_vs.size != 0:
+                    continue
+                if len(active_vs.name) == 1:
+                    active_vs.size = profile_variable_size([self._user_ns[varname] for varname in active_vs.name][0])
+                else:
+                    active_vs.size = profile_variable_size([self._user_ns[varname] for varname in active_vs.name])
+            self.write_row("profile_size_time", time.time() - start)
 
-        # Profile the size of each variable defined in the current session.
-        for active_vs in active_vss:
-            if active_vs.size != 0:
-                continue
-            if len(active_vs.name) == 1:
-                active_vs.size = profile_variable_size([self._user_ns[varname] for varname in active_vs.name][0])
-            else:
-                active_vs.size = profile_variable_size([self._user_ns[varname] for varname in active_vs.name])
-            print("profile size:", active_vs.name, active_vs.size)
-
-        self.write_row("profile_size_time", time.time() - start)
-        print("-------------------profile size time:", time.time() - start)
-
-        start = time.time()
         # Initialize optimizer.
-        # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
+        # Migration speed is set to a (finite) large value to prompt the optimizer to store all serializable variables.
         # Currently, a variable is recomputed only if it is unserialzable.
+        start = time.time()
         optimizer = Optimizer(
             self._ahg,
             active_vss,
             stored_versioned_names if self._incremental_cr else None
         )
-        self.write_row(optimizer._optimizer_context.network_bandwidth, 1)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
-        print("vss_to_migrate:", vss_to_migrate)
-        print("ces_to_recompute:", ces_to_recompute)
 
         # Create incremental checkpoint plan using optimization results.
         checkpoint_plan = IncrementalCheckpointPlan.create(
@@ -273,7 +246,6 @@ class CheckpointRestorePlanner:
             commit_id,
             list(self._ahg.get_active_variable_snapshots_dict()[vn.name] for vn in vss_to_migrate)
         )
-        print("incremental checkpoint:", vss_to_migrate)
 
         # Sort variables to migrate based on cells they were created in.
         ce_to_vs_map: Dict[int, List[Tuple[VersionedName, VersionedNameContext]]] = defaultdict(list)
@@ -293,9 +265,7 @@ class CheckpointRestorePlanner:
             ce_to_vs_map,
             fallback_recomputation
         )
-
         self.write_row("compute_plans_time", time.time() - start)
-        print("-------------------compute plans time:", time.time() - start)
 
         self._user_ns.turn_on_track()
 
@@ -331,13 +301,11 @@ class CheckpointRestorePlanner:
             Called when a checkout is performed.
         """
         if not self._incremental_cr:
-            print("start restore:")
-            start = time.time()
             # Regular restore: use the provided restore plan.
+            start = time.time()
             result_ns = restore_plan.run(database_path, commit_id)
             self._ahg = AHG.deserialize(new_ahg_string)
             self.write_row("run_restore_time", time.time() - start)
-            print("----------------run-restore-time:", time.time() - start)
         else:
             # Incremental restore: dynamically recompute the restore plan.
             if lca_ahg_string is None:
@@ -358,8 +326,6 @@ class CheckpointRestorePlanner:
             start = time.time()
             result_ns = incremental_restore_plan.run(database_path, commit_id)
             self.write_row("run_restore_time", time.time() - start)
-            print("----------------run-incremental-restore-time:", time.time() - start)
-            print("result keyset:", result_ns.keyset())
             self._ahg = target_ahg
 
         self._user_ns = result_ns
@@ -404,7 +370,6 @@ class CheckpointRestorePlanner:
             opt.fallback_recomputation
         )
         self.write_row("generate_incremental_restore_time", time.time() - start)
-        print("----------------generate-incremental-restore-time:", time.time() - start)
         return incremental_restore_plan
 
     def _find_useful_vses(
@@ -447,12 +412,10 @@ class CheckpointRestorePlanner:
         for ce in self._ahg.get_cell_executions():
             # Add a rerun cell restore action if the cell needs to be rerun
             if ce.cell_num in ces_to_recompute:
-                print("add rerun cell action:", ce.cell_num)
                 restore_plan.add_rerun_cell_restore_action(ce.cell_num, ce.cell)
 
             # Add a move variable action if variables need to be moved.
             if len(move_ce_to_vs_map[ce.cell_num]) > 0:
-                print("add move variable action:", ce.cell_num, set(chain.from_iterable(move_ce_to_vs_map[ce.cell_num])))
                 restore_plan.add_move_variable_restore_action(
                     ce.cell_num,
                     self._user_ns.subset(set(chain.from_iterable(move_ce_to_vs_map[ce.cell_num])))
@@ -460,7 +423,6 @@ class CheckpointRestorePlanner:
 
             # Add a incremental load restore action if there are variables from the cell that needs to be stored
             if len(load_ce_to_vs_map[ce.cell_num]) > 0:
-                print("add load variable action:", ce.cell_num, [i[0] for i in load_ce_to_vs_map[ce.cell_num]])
                 restore_plan.add_incremental_load_restore_action(
                     ce.cell_num,
                     load_ce_to_vs_map[ce.cell_num],

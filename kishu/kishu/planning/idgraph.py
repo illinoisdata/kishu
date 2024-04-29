@@ -1,22 +1,22 @@
 from __future__ import annotations
 
-from typing import Any, List, Optional
-from types import GeneratorType, FunctionType
-
+import cloudpickle
 import matplotlib.pyplot as plt
-from matplotlib.contour import QuadContourSet
 import numpy
-import scipy
-import torch
 import pandas
 import pickle
-import uuid
-import xxhash
-import dill
-import cloudpickle
+import re
+import scipy
 import sklearn.tree
 import sklearn.feature_extraction
 import sklearn.ensemble
+import torch
+import uuid
+import xxhash
+
+from matplotlib.contour import QuadContourSet
+from typing import Any, List, Optional, Set
+from types import GeneratorType, FunctionType
 
 
 PRIMITIVES = (type(None), int, float, bool, str, bytes)
@@ -28,7 +28,7 @@ class GraphNode:
         self.id_obj = id_obj
         self.children: List[Any] = []
         self.obj_type = obj_type
-        
+
         self.cached_id_set: Optional[Set[Any]] = None
         self.cached_list: Optional[List[Any]] = None
         self.cached_list_not_check_value: Optional[List[Any]] = None
@@ -40,11 +40,11 @@ class GraphNode:
             ls = []
             ls_no_check_value = []
             ls_no_check_id_obj = []
-            GraphNode._convert_idgraph_to_list(self, ls, ls_no_check_value, ls_no_check_id_obj, set(), check_id_obj, check_value)
+            GraphNode._convert_idgraph_to_list(self, ls, ls_no_check_value, ls_no_check_id_obj, set())
             self.cached_list = ls
             self.cached_list_not_check_value = ls_no_check_value
             self.cached_list_not_check_id_obj = ls_no_check_id_obj
-            
+
         if check_value and check_id_obj:
             return self.cached_list
 
@@ -83,12 +83,9 @@ class GraphNode:
         no_check_value_ret_list,
         no_check_id_obj_ret_list,
         visited: set,
-        check_id_obj=True,
-        check_value=True
     ):
-        # pre oder
-
-        if node.id_obj and check_id_obj:
+        # pre order
+        if node.id_obj:
             ret_list.append(node.id_obj)
             no_check_value_ret_list.append(node.id_obj)
 
@@ -106,11 +103,10 @@ class GraphNode:
 
         for child in node.children:
             if isinstance(child, GraphNode):
-                GraphNode._convert_idgraph_to_list(child, ret_list, no_check_value_ret_list, no_check_id_obj_ret_list, visited, check_id_obj, check_value)
+                GraphNode._convert_idgraph_to_list(child, ret_list, no_check_value_ret_list, no_check_id_obj_ret_list, visited)
             else:
-                if check_value or node.obj_type not in PRIMITIVES: 
-                    ret_list.append(child)
-                    no_check_id_obj_ret_list.append(child)
+                ret_list.append(child)
+                no_check_id_obj_ret_list.append(child)
 
     @staticmethod
     def _compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode, check_id_obj=True) -> bool:
@@ -138,10 +134,8 @@ def is_pickable(obj):
     try:
         if callable(obj):
             return False
-
         pickle.dumps(obj)
         return True
-    #except (pickle.PicklingError, AttributeError, TypeError):
     except:
         return False
 
@@ -157,7 +151,6 @@ def value_equals(idGraph1: GraphNode, idGraph2: GraphNode):
 
 
 def get_object_state(obj, visited: dict, include_id=True, first_creation=False) -> GraphNode:
-
     if id(obj) in visited.keys():
         return visited[id(obj)]
 
@@ -224,6 +217,7 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         return node
 
     elif isinstance(obj, type):
+        # dtypes are dynamically generated. Don't store their memory addresses.
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         node.children.append(str(obj))
@@ -239,6 +233,12 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         return node
 
     if isinstance(obj, pandas.DataFrame):
+        """
+            Pandas dataframe dirty bit hack. We can use the writeable flag as a dirty bit to check for updates
+            (as any Pandas operation will flip the bit back to True).
+            notably, this may prevent the usage of certain slicing operations; however, they are rare compared
+            to boolean indexing, hence this tradeoff is acceptable.
+        """
         if first_creation:
             for (_, col) in obj.items():
                 col.__array__().flags.writeable = False
@@ -253,6 +253,11 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         return node
 
     if isinstance(obj, sklearn.tree._classes.DecisionTreeRegressor):
+        """
+            Hack for the sklearn decision tree. It contains only a list of tree splitting boundaries which are unaccesible
+            through member functions, so we early stop and pickle the list instead (as it is very unlikely to be shared via
+            reference with other variables); otherwise ID graph construction may be very slow.
+        """
         node = GraphNode(obj_type=type(obj))
         node.id_obj = id(obj)
         visited[id(obj)] = node
@@ -264,7 +269,30 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         node.children.append("/EOC")
         return node
 
-    if isinstance(obj, (sklearn.ensemble.RandomForestRegressor, sklearn.feature_extraction.text.CountVectorizer)):
+    if isinstance(obj, plt.Figure):
+        """
+            Same hack as sklearn decision tree.
+        """
+        node = GraphNode(obj_type=type(obj))
+        node.id_obj = id(obj)
+        visited[id(obj)] = node
+
+        node.children.append(cloudpickle.dumps(obj))
+        for item in obj.axes:
+            child = get_object_state(item, visited, include_id=False, first_creation=first_creation)
+            node.children.append(child)
+        node.children.append("/EOC")
+        return node
+
+    if isinstance(obj, (
+        sklearn.ensemble.RandomForestRegressor,
+        sklearn.feature_extraction.text.CountVectorizer,
+        plt.Axes,
+        QuadContourSet
+    )):
+        """
+            Same hack as sklearn decision tree.
+        """
         node = GraphNode(obj_type=type(obj))
         node.id_obj = id(obj)
         visited[id(obj)] = node
@@ -272,79 +300,71 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         node.children.append(cloudpickle.dumps(obj))
         node.children.append("/EOC")
         return node
-
-    # if isinstance(obj, pandas.Series):
-    #     if first_creation:
-    #         obj.__array__().flags.writeable = False
-
-    #     node = GraphNode(obj_type=type(obj))
-    #     node.id_obj = id(obj)
-    #     visited[id(obj)] = node
-    #     node.children.append(str(obj.__array__().flags.writeable))
-    #     obj.__array__().flags.writeable = False
-    #     node.children.append("/EOC")
-    #     return node
 
     if isinstance(obj, numpy.ndarray):
-        node = GraphNode(obj_type=type(obj))
-        node.id_obj = id(obj)
-        visited[id(obj)] = node
+        try:
+            node = GraphNode(obj_type=type(obj))
+            node.id_obj = id(obj)
+            visited[id(obj)] = node
 
-        # create hash
-        h = xxhash.xxh3_128()
-        h.update(numpy.ascontiguousarray(obj.data))
-        node.children.append(h.intdigest())
-        node.children.append("/EOC")
-        return node
+            h = xxhash.xxh3_128()
+            h.update(numpy.ascontiguousarray(obj.data))
+            node.children.append(h.intdigest())
+            node.children.append("/EOC")
+            return node
+        except:
+            # If hashing fails, continue recursing into children.
+            pass
 
     if isinstance(obj, scipy.sparse.csr_matrix):
-        node = GraphNode(obj_type=type(obj))
-        node.id_obj = id(obj)
-        visited[id(obj)] = node
-
-        # create hash
-        h = xxhash.xxh3_128()
-        h.update(numpy.ascontiguousarray(obj.data))
-        node.children.append(h.intdigest())
-        node.children.append("/EOC")
-        return node
+        try:
+            node = GraphNode(obj_type=type(obj))
+            node.id_obj = id(obj)
+            visited[id(obj)] = node
+    
+            # create hash
+            h = xxhash.xxh3_128()
+            h.update(numpy.ascontiguousarray(obj.data))
+            node.children.append(h.intdigest())
+            node.children.append("/EOC")
+            return node
+        except:
+            # If hashing fails, continue recursing into children.
+            pass
 
     if isinstance(obj, torch.Tensor):
-        node = GraphNode(obj_type=type(obj))
-        node.id_obj = id(obj)
-        visited[id(obj)] = node
+        try:
+            node = GraphNode(obj_type=type(obj))
+            node.id_obj = id(obj)
+            visited[id(obj)] = node
+    
+            # create hash
+            h = xxhash.xxh3_128()
+            h.update(numpy.ascontiguousarray(obj.cpu().data))
+            node.children.append(h.intdigest())
+            node.children.append("/EOC")
+            return node
+        except:
+            # If hashing fails, continue recursing into children.
+            pass
 
-        # create hash
-        h = xxhash.xxh3_128()
-        h.update(numpy.ascontiguousarray(obj.data))
-        node.children.append(h.intdigest())
+
+    elif isinstance(obj, (GeneratorType, re.Pattern)):
+        # Hack for unobservable unserializable objects to make them identify as always modified on access.
+        node = GraphNode(obj_type=type(obj), id_obj = uuid.uuid4().hex)
+        visited[id(obj)] = node
         node.children.append("/EOC")
         return node
-
-    if isinstance(obj, (plt.Figure, QuadContourSet)):
-        node = GraphNode(obj_type=type(obj))
-        node.id_obj = id(obj)
-        visited[id(obj)] = node
-
-        node.children.append(cloudpickle.dumps(obj))
-        node.children.append("/EOC")
-        return node
-
-    # elif isinstance(obj, GeneratorType):
-    #     # Hack for the generator class to make it identify as always modified.
-    #     node = GraphNode(obj_type=type(obj), id_obj = uuid.uuid4().hex)
-    #     visited[id(obj)] = node
-    #     node.children.append(str(obj))
-    #     node.children.append("/EOC")
-    #     return node
 
     elif callable(obj):
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if include_id:
             node.id_obj = id(obj)
-        # This will break if obj is not pickleable. Commenting out for now.
-        # node.children.append(pickle.dumps(obj))
+        try:
+            node.children.append(pickle.dumps(obj))
+        except:
+            node.children.append(uuid.uuid4().hex)
         node.children.append("/EOC")
         return node
 
@@ -352,17 +372,24 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if is_pickable(obj):
-            reduced = obj.__reduce_ex__(4)
-            if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
-                node.id_obj = id(obj)
-
-            if isinstance(reduced, str):
-                node.children.append(reduced)
-                return node
-
-            for item in reduced[1:]:
-                child = get_object_state(item, visited, include_id=False, first_creation=first_creation)
-                node.children.append(child)
+            try:
+                reduced = obj.__reduce_ex__(4)
+                if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
+                    node.id_obj = id(obj)
+    
+                if isinstance(reduced, str):
+                    node.children.append(reduced)
+                    return node
+    
+                for item in reduced[1:]:
+                    child = get_object_state(item, visited, include_id=False, first_creation=first_creation)
+                    node.children.append(child)
+                node.children.append("/EOC")
+            except:
+                node.children.append(uuid.uuid4().hex)
+                node.children.append("/EOC")
+        else:
+            node.children.append(uuid.uuid4().hex)
             node.children.append("/EOC")
         return node
 
@@ -370,17 +397,24 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if is_pickable(obj):
-            reduced = obj.__reduce__()
-            node.id_obj = id(obj)
-
-            if isinstance(reduced, str):
-                node.children.append(reduced)
-                return node
-
-            for item in reduced[1:]:
-                child = get_object_state(item, visited, include_id=False, first_creation=first_creation)
-                node.children.append(child)
-
+            try:
+                reduced = obj.__reduce__()
+                node.id_obj = id(obj)
+    
+                if isinstance(reduced, str):
+                    node.children.append(reduced)
+                    return node
+    
+                for item in reduced[1:]:
+                    child = get_object_state(item, visited, include_id=False, first_creation=first_creation)
+                    node.children.append(child)
+    
+                node.children.append("/EOC")
+            except:
+                node.children.append(uuid.uuid4().hex)
+                node.children.append("/EOC")
+        else:
+            node.children.append(uuid.uuid4().hex)
             node.children.append("/EOC")
         return node
 
@@ -416,9 +450,23 @@ def get_object_state(obj, visited: dict, include_id=True, first_creation=False) 
         visited[id(obj)] = node
         if include_id:
             node.id_obj = id(obj)
-        node.children.append(pickle.dumps(obj))
+        try:
+            node.children.append(cloudpickle.dumps(obj))
+        except:
+            node.children.append(uuid.uuid4().hex)
         node.children.append("/EOC")
         return node
+
+    node = GraphNode(obj_type=type(obj))
+    visited[id(obj)] = node
+    if include_id:
+        node.id_obj = id(obj)
+    try:
+        node.children.append(cloudpickle.dumps(obj))
+    except:
+        node.children.append(uuid.uuid4().hex)
+    node.children.append("/EOC")
+    return node
 
 
 def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32()):
@@ -525,7 +573,6 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
             hashed.update("/EOC")
 
     else:
-        print("Comes here")
         visited.add(id(obj))
         hashed.update(str(type(obj)))
         if include_id:

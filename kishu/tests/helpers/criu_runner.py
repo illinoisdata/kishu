@@ -1,13 +1,17 @@
 import os
 import time
 from IPython.core.interactiveshell import InteractiveShell
+from ipykernel.zmqshell import ZMQInteractiveShell
+from ipyflow.shell.interactiveshell import IPyflowInteractiveShell
 
 from nbconvert.preprocessors import ExecutePreprocessor
 from nbformat import read
 from nbformat.v4 import new_code_cell
 import argparse
+import pickle
 
 NOTEBOOK_DIR = "tests/notebooks/"
+# NOTEBOOK_DIR = ""
 
 def get_criu_store_str(notebook_name, filename, cell_num, pid) -> str:
     return "\n".join(
@@ -25,7 +29,8 @@ def get_criu_store_str(notebook_name, filename, cell_num, pid) -> str:
             "s.connect('/data/elastic-notebook/criu-rpc')",
             "s.send(req.SerializeToString())",
             "start = time.time()",
-            "data = s.recv(2048)",
+            "resp = rpc.criu_resp()",
+            "resp.ParseFromString(s.recv(2048))",
             "end = time.time() - start",
             "end_format = '{:.8f}'.format(end)",
             "filesize = 0",
@@ -37,6 +42,7 @@ def get_criu_store_str(notebook_name, filename, cell_num, pid) -> str:
             f"    half_str = 'criu_incremental_False,{notebook_name},{cell_num}'",
             """    results_file.write(half_str + ',checkpoint-time,' + end_format + '\\n')""",
             """    results_file.write(half_str + ',checkpoint-size,' + str(filesize) + '\\n')""",
+            """    results_file.write(half_str + ',success,' + str(resp.success) + '\\n')""",
         ]
     )
 
@@ -89,19 +95,20 @@ def execute_criu_test(notebook_name, cell_num_to_restore: int, incremental_dump:
     new_cells = []
     for i in range(len(notebook["cells"])):
         new_cells.append(notebook["cells"][i])
-        if incremental_dump:
-            new_cells.append(
-                new_code_cell(source=get_criu_store_incremental_str(notebook_name, filename, i, os.getpid())))
-        else:
-            new_cells.append(
-                new_code_cell(source=get_criu_store_str(notebook_name, filename, i, os.getpid())))
-    # create a kishu initialization cell and add it to the start of the notebook.
+        if i == len(notebook["cells"]) - 1:
+            if incremental_dump:
+                new_cells.append(
+                    new_code_cell(source=get_criu_store_incremental_str(notebook_name, filename, i, os.getpid())))
+            else:
+                new_cells.append(
+                    new_code_cell(source=get_criu_store_str(notebook_name, filename, i, os.getpid())))
+
+    # Initialize CRIU rpc.
     new_cells.insert(0, new_code_cell(source="""
         import socket, os, sys, time
         from pathlib import Path
         import kishu_criu_pb2 as rpc
     """))
-    #new_cells.append(new_code_cell(source=get_criu_store_str(self.notebook_name, filename, i)))
 
     notebook["cells"] = new_cells
 
@@ -109,6 +116,58 @@ def execute_criu_test(notebook_name, cell_num_to_restore: int, incremental_dump:
 
     for cell in notebook["cells"]:
         shell.run_cell(cell.source)
+
+
+def execute_ipyflow_test(notebook_name, cell_num_to_restore: int, incremental_dump: bool):
+    # Open the notebook.
+    with open(NOTEBOOK_DIR + notebook_name) as nb_file:
+        notebook = read(nb_file, as_version=4)
+
+    filename = "/data/elastic-notebook/tmp/kishu_results.csv"
+
+    # Strip all non-code (e.g., markdown) cells. We won't be needing them.
+    notebook["cells"] = [x for x in notebook["cells"] if x["cell_type"] == "code"]
+
+    new_raw_cells = []
+    new_ipyflow_cells = []
+    for i in range(len(notebook["cells"])):
+        new_raw_cells.append(notebook["cells"][i])
+        new_ipyflow_cells.append(notebook["cells"][i])
+
+    # create a kishu initialization cell and add it to the start of the notebook.
+    new_ipyflow_cells.insert(0, new_code_cell(source="""
+        %load_ext ipyflow
+    """))
+    #new_cells.append(new_code_cell(source=get_criu_store_str(self.notebook_name, filename, i)))
+
+    # shell = InteractiveShell()
+    # for cell in new_raw_cells:
+    #     shell.run_cell(cell.source)
+
+    # raw_times = []
+    # shell = InteractiveShell()
+    # for cell in new_raw_cells:
+    #     start = time.time()
+    #     shell.run_cell(cell.source)
+    #     raw_times.append(time.time() - start)
+
+    ipyflow_times = []
+    shell = IPyflowInteractiveShell().instance()
+    for cell in new_ipyflow_cells[1:]:
+        start = time.time()
+        shell.run_cell(cell.source)
+        ipyflow_times.append(time.time() - start)
+
+    # diff = [ipyflow_times[i] - raw_times[i] for i in range(len(raw_times))]
+    # print(ipyflow_times)
+    # print(raw_times)
+    # print(diff)
+    # print(sum(diff))
+
+    # with open(f'/data/elastic-notebook/tmp/{notebook_name}_ipyflow_diff.pkl', 'wb') as f:  # open a text file
+    #     pickle.dump(diff, f) # serialize the list
+    with open(f'/data/elastic-notebook/tmp/{notebook_name}_ipyflow_diff1.pkl', 'wb') as f:  # open a text file
+        pickle.dump(ipyflow_times, f) # serialize the list
 
     # # Execute the notebook cells.
     # exec_prep = ExecutePreprocessor(timeout=1200, kernel_name="python3")

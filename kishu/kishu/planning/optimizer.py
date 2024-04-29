@@ -10,9 +10,9 @@ from kishu.planning.ahg import AHG, CellExecution, VariableSnapshot, VersionedNa
 from kishu.storage.config import Config
 
 REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
-# REALLY_FAST_BANDWIDTH_10GBPS = 4_000_000
-# REALLY_FAST_BANDWIDTH_10GBPS = 400_000_000
-# REALLY_FAST_BANDWIDTH_10GBPS = 1
+# FAST_BANDWIDTH_400MBPS = 400_000_000
+# SLOW_BANDWIDTH_4MBPS = 4_000_000
+# REALLY_SLOW_BANDWIDTH_1BPS = 1
 
 
 @dataclass
@@ -53,7 +53,6 @@ class Optimizer():
             always_migrate=Config.get('OPTIMIZER', 'always_migrate', False),
             network_bandwidth=Config.get('OPTIMIZER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
         )
-        print("bandwidth:", self._optimizer_context.network_bandwidth)
 
         # Set lookup for active VSs by name and version as VS objects are not hashable.
         self.active_versioned_names = {VersionedName(vs.name, vs.version) for vs in active_vss}

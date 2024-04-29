@@ -168,4 +168,4 @@ def test_create_vs_modify_connected_component():
     assert len(active_variable_snapshots) == 2
 
     # 2 connected components
-    assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"c", "b"}, frozenset("a"))}
+    assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"c", "b"}), frozenset("a")}

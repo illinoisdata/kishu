@@ -74,6 +74,14 @@ def tmp_kishu_path(tmp_path: Path) -> Generator[Type[KishuPath], None, None]:
         del os.environ[ENV_KISHU_PATH_ROOT]
 
 
+@pytest.fixture(autouse=True)
+def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_config_path = Config.CONFIG_PATH
+    Config.CONFIG_PATH = os.path.join(
+        KishuPath.kishu_directory(), "config.ini")
+    yield Config
+    Config.CONFIG_PATH = prev_config_path
+
 """
 Test Resources: notebooks, test cases, data
 """

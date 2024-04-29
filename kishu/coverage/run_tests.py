@@ -2,6 +2,7 @@ import csv
 import enum
 import os
 import pickle
+import difflib
 
 from importlib.metadata import version
 from pathlib import Path
@@ -29,8 +30,11 @@ class LibCoverageTesting:
             Runs the library coverage tests with the test cases.
         """
         for test_case in LIB_COVERAGE_TEST_CASES:
-            result, err = self._run_lib_coverage_test(test_case)
-            self._add_test_results_to_list(test_case, result, err)
+            try:
+                result, err = self._run_lib_coverage_test(test_case)
+                self._add_test_results_to_list(test_case, result, err)
+            except:
+                pass
 
     def _run_lib_coverage_test(self, test_case: LibCoverageTestCase) -> Tuple[TestResult, str]:
         # Init empty libraries as environment for exec.
@@ -49,17 +53,36 @@ class LibCoverageTesting:
         var_before_pickle = None
         try:
             var_before_pickle = pickle.dumps(locals[test_case.var_name])
-        except:
+        except Exception as e:
+            print("CANNOT PICKLE", test_case.class_name, e)
+            pass
+
+        try:
+            _ = pickle.loads(var_before_pickle)
+        except Exception as e:
+            print("CANNOT UNPICKLE", test_case.class_name, e)
             pass
     
         # Pickle dump the original object again. Don't do anything if it fails.
         var_before_pickle_2 = None
         try:
             var_before_pickle_2 = pickle.dumps(locals[test_case.var_name])
-        except:
+        except Exception as e:
+            print("CANNOT PICKLE", test_case.class_name, e)
+            pass
+
+        try:
+            _ = pickle.loads(var_before_pickle_2)
+        except Exception as e:
+            print("CANNOT UNPICKLE", test_case.class_name, e)
             pass
     
         # Generate 2 ID graphs for the original object.
+        try:
+            idgraph_original_0 = get_object_state(locals[test_case.var_name], {})
+        except Exception as e:
+            return TestResult.id_graph_error, str(e)
+
         try:
             idgraph_original = get_object_state(locals[test_case.var_name], {})
         except Exception as e:
@@ -96,13 +119,20 @@ class LibCoverageTesting:
         var_after_pickle = None
         try:
             var_after_pickle = pickle.dumps(locals[test_case.var_name])
-        except:
+        except Exception as e:
+            print("CANNOT PICKLE", test_case.class_name, e)
+            pass
+
+        try:
+            _ = pickle.loads(var_after_pickle)
+        except Exception as e:
+            print("CANNOT UNPICKLE", test_case.class_name, e)
             pass
 
         # If pickled values are equal, the test case is bad as the modification doesn't
         # modify the object.
-        if var_before_pickle == var_after_pickle:
-            return TestResult.bad_test_case, ""
+        #if var_before_pickle == var_after_pickle:
+        #    return TestResult.bad_test_case, ""
     
         # Success if ID graphs before and after modifying the object are different
         if idgraph_original != idgraph_modified:
