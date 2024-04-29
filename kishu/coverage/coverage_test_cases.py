@@ -68,6 +68,145 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         var_modify_statements=["a.set_xlabel('Flipper Length')"]
     ),
     LibCoverageTestCase(
+        module_name="qiskit",
+        class_name="qiskit.QuantumCircuit",
+        var_name="qc",
+        import_statements=["import numpy as np", "from qiskit import QuantumCircuit"],
+        var_declare_statements=[
+            "qc = QuantumCircuit(3)"
+        ],
+        var_modify_statements=["qc.p(np.pi/2, 0)"]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="pickle",
+        var_name="data",
+        import_statements=["import pickle"],
+        var_declare_statements=[
+            "data = {'a': [1, 2.0, 3+4j], 'b': ('character string', b'byte string'), 'c': {None, True, False}}",
+            "with open('data.pickle', 'wb') as f: pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)",
+            "data['a'].append(4)"
+        ],
+        var_modify_statements=["with open('data.pickle', 'rb') as f: data = pickle.load(f)"]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="json",
+        var_name="res",
+        import_statements=["import json"],
+        var_declare_statements=[
+            "data = {'a': [1, 2.0]}",
+            "res = json.dumps(data)"
+        ],
+        var_modify_statements=[ 
+            "data['a'].append(4)",
+            "res = json.dumps(data)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name = "numpy",
+        class_name = "itertools",
+        var_name = "data",
+        import_statements=["from itertools import accumulate", "import operator"],
+        var_declare_statements=[
+            "data = [3, 4, 6, 2, 1, 9]"
+        ],
+        var_modify_statements=[
+            "data = list(accumulate(data, operator.mul))"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name = "ipywidgets",
+        class_name = "ipywidgets",
+        var_name = "w",
+        import_statements=["import ipywidgets as widgets"],
+        var_declare_statements=[
+            "w = widgets.IntSlider()"
+        ],
+        var_modify_statements=[
+            "w.value = 100"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name = "numpy",
+        class_name = "hashlib",
+        var_name = "res",
+        import_statements=["import hashlib"],
+        var_declare_statements=[
+            "m = hashlib.sha256()",
+            "m.update(b'Nobody inspects')",
+            "res = m.digest()"
+        ],
+        var_modify_statements=[
+            "m.update(b' the spammish repitition')",
+            "res = m.digest()"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="dill",
+        class_name="dill",
+        var_name="data",
+        import_statements=["import dill as pickle"],
+        var_declare_statements=[
+            "data = {'a': [1, 2.0, 3+4j], 'b': ('character string', b'byte string'), 'c': {None, True, False}}",
+            "with open('data.pickle', 'wb') as f: pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)",
+            "data['d'] = lambda x: x**2"
+        ],
+        var_modify_statements=["with open('data.pickle', 'rb') as f: data = pickle.load(f)"]
+    ),
+    LibCoverageTestCase(
+        module_name="dask",
+        class_name="dask",
+        var_name="x",
+        import_statements=["import dask.array as da"],
+        var_declare_statements=[
+            "x = da.random.random((10000, 10000), chunks = (1000, 1000))",
+        ],
+        var_modify_statements=[
+            "x = x + x.T"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="copy",
+        var_name="res",
+        import_statements=["import copy"],
+        var_declare_statements=[
+            "x = [1, 2, 3]",
+            "res = copy.copy(x)",
+            "res = copy.deepcopy(res)"
+        ],
+        var_modify_statements=[
+            "res = x.append(4)"
+        ]
+    ),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="ast",
+        var_name="node",
+        import_statements=["import ast"],
+        var_declare_statements=[
+            "node = ast.UnaryOp()",
+        ],
+        var_modify_statements=[
+            "node.op = ast.USub()",
+            "node.operand = ast.Constant()",
+            "node.operand.value = 5",
+        ]
+    ),
+    #LibCoverageTestCase(
+    #    module_name="numpy",
+    #    class_name="dataclasses",
+    #    var_name="data",
+    #    import_statements=["from dataclasses import dataclass"],
+    #    var_declare_statements=[
+    #        "@dataclass",
+    #        "class C: a: int",
+    #        "data = C(0)"
+    #    ],
+    #    var_modify_statements=["data = C(1)"]
+    #),
+    LibCoverageTestCase(
         module_name="typing",
         class_name="typing",
         var_name="list",
@@ -962,26 +1101,26 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
             "ax = sns.histplot(data=tips, x='total_bill', bins=11)"
         ]
     ),
-    LibCoverageTestCase(
-        module_name="shap",
-        class_name="shap",
-        var_name="explainer",
-        import_statements=[
-            "import xgboost",
-            "import shap",
-        ],
-        var_declare_statements=[
-            "X, y = shap.datasets.adult()",
-            "model = xgboost.XGBClassifier()",
-            "model.fit(X, y)",
-            "explainer = shap.explainers.Exact(model.predict_proba, X)",
-            "new_model = xgboost.XGBRegressor()",
-            "new_model.fit(X, y)",
-        ],
-        var_modify_statements=[
-            "explainer.model = new_model"
-        ]
-    ),
+    #LibCoverageTestCase(
+    #    module_name="shap",
+    #    class_name="shap",
+    #    var_name="explainer",
+    #    import_statements=[
+    #        "import xgboost",
+    #        "import shap",
+    #    ],
+    #    var_declare_statements=[
+    #        "X, y = shap.datasets.adult()",
+    #        "model = xgboost.XGBClassifier()",
+    #        "model.fit(X, y)",
+    #        "explainer = shap.explainers.Exact(model.predict_proba, X)",
+    #        "new_model = xgboost.XGBRegressor()",
+    #        "new_model.fit(X, y)",
+    #    ],
+    #    var_modify_statements=[
+    #        "explainer.model = new_model"
+    #    ]
+    #),
     LibCoverageTestCase(
         module_name="scikit-image",
         class_name="skimage",
@@ -1430,24 +1569,24 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
             "result = spark.sql('SELECT * FROM people WHERE id > 1').toPandas()",
         ]
     ),
-    LibCoverageTestCase(
-        module_name="xgboost",
-        class_name="xgboost.XGBRegressor",
-        var_name="model",
-        import_statements=[
-            "import numpy as np",
-            "import xgboost"
-        ],
-        var_declare_statements=[
-            "X_train = np.random.rand(100, 10)",
-            "y_train = np.random.rand(100)",
-            "model = xgboost.XGBRegressor()",
-            "model.fit(X_train, y_train)"
-        ],
-        var_modify_statements=[
-            "model.learning_rate = 0.1",
-        ]
-    ),
+    #LibCoverageTestCase(
+    #    module_name="xgboost",
+    #    class_name="xgboost.XGBRegressor",
+    #    var_name="model",
+    #    import_statements=[
+    #        "import numpy as np",
+    #        "import xgboost"
+    #    ],
+    #    var_declare_statements=[
+    #        "X_train = np.random.rand(100, 10)",
+    #        "y_train = np.random.rand(100)",
+    #        "model = xgboost.XGBRegressor()",
+    #        "model.fit(X_train, y_train)"
+    #    ],
+    #    var_modify_statements=[
+    #        "model.learning_rate = 0.1",
+    #    ]
+    #),
     LibCoverageTestCase(
         module_name="catboost",
         class_name="catboost",

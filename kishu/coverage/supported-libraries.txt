@@ -46,3 +46,7 @@ gensim
 gym
 wordcloud
 textblob
+qiskit
+ipywidgets
+dill
+dask
