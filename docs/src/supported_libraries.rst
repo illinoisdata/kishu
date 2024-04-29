@@ -26,7 +26,6 @@ This is the current list of libraries, their versions, and their classes support
     ✅ astropy==5.2.2, astropy.nddata.NDData
     ✅ astropy==5.2.2, astropy.nddata.NDDataRef
     ✅ astropy==5.2.2, astropy.stats.SigmaClip
-    ✅ astropy==5.2.2, astropy.table.QTable
     ✅ astropy==5.2.2, astropy.units.Quantity
     ✅ astropy==5.2.2, astropy.visualization.PercentileInterval
     ✅ astropy==5.2.2, astropy.visualization.mpl_normalize.ImageNormalize
@@ -35,7 +34,6 @@ This is the current list of libraries, their versions, and their classes support
     ✅ dask==2023.5.0, dask
     ✅ dill==0.3.8, dill
     ✅ gym==0.26.2, gym
-    ✅ ipywidgets==8.1.2, ipywidgets
     ✅ keras==2.13.1, keras.src.initializers.initializers.RandomNormal
     ✅ keras==2.13.1, keras.src.initializers.initializers.RandomUniform
     ✅ keras==2.13.1, keras.src.layers.core.dense.Dense
@@ -141,7 +139,9 @@ This is the current list of libraries, their versions, and their classes support
     ✅ wordcloud==1.9.3, wordcloud.WordCloud
 
     ❌ astropy==5.2.2, astropy.coordinates.SkyCoord
+    ❌ astropy==5.2.2, astropy.table.QTable
     ❌ gensim==4.3.2, gensim
+    ❌ ipywidgets==8.1.2, ipywidgets
     ❌ matplotlib==3.6.2, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
     ❌ matplotlib==3.6.2, matplotlib.Axes
     ❌ matplotlib==3.6.2, matplotlib.Axes

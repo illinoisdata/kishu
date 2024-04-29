@@ -194,18 +194,18 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
             "node.operand.value = 5",
         ]
     ),
-    #LibCoverageTestCase(
-    #    module_name="numpy",
-    #    class_name="dataclasses",
-    #    var_name="data",
-    #    import_statements=["from dataclasses import dataclass"],
-    #    var_declare_statements=[
-    #        "@dataclass",
-    #        "class C: a: int",
-    #        "data = C(0)"
-    #    ],
-    #    var_modify_statements=["data = C(1)"]
-    #),
+    LibCoverageTestCase(
+        module_name="numpy",
+        class_name="dataclasses",
+        var_name="data",
+        import_statements=["from dataclasses import dataclass"],
+        var_declare_statements=[
+            "class C: a: int",
+            "DC = dataclass(C)",
+            "data = DC(0)"
+        ],
+        var_modify_statements=["data.a = 1"]
+    ),
     LibCoverageTestCase(
         module_name="typing",
         class_name="typing",
