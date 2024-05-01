@@ -56,9 +56,3 @@ kishu commit {{notebook name}} [-m {{message}}]
 
 `kishu/tests/notebooks` contains simple data science notebooks for trying Kishu on.
 
-## Learn More
-
-Kishu's efficiency is enabled by its low-overhead session state monitoring, deduplicated variable storage, and optimized recomputation-assisted checkout. Our papers on Kishu can be found here; don't forget to star our repository and cite our papers if you like our work!
-
-- [ElasticNotebook: Enabling Live Migration for Computational Notebooks](https://arxiv.org/abs/2309.11083)
-- [Transactional Python for Durable Machine Learning: Vision, Challenges, and Feasibility](https://dl.acm.org/doi/abs/10.1145/3595360.3595855)
