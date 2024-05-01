@@ -5,7 +5,7 @@ from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
-from kishu.planning.plan import CheckpointPlan, RerunCellRestoreAction, RestoreActionOrder, RestorePlan, StepOrder
+from kishu.planning.plan import CheckpointPlan, RestoreActionOrder, RestorePlan, StepOrder
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.config import Config
 from kishu.storage.path import KishuPath
@@ -57,7 +57,12 @@ class PlannerManager:
         # Return changed variables from post run cell update.
         return self.planner.post_run_cell_update(cell_code, cell_runtime)
 
-    def checkpoint_session(self, filename: str, commit_id: str, parent_commit_ids: Optional[List[str]]=None) -> Tuple[CheckpointPlan, RestorePlan]:
+    def checkpoint_session(
+        self,
+        filename: str,
+        commit_id: str,
+        parent_commit_ids: Optional[List[str]] = None
+    ) -> Tuple[CheckpointPlan, RestorePlan]:
         checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(filename, commit_id, parent_commit_ids)
         checkpoint_plan.run(self.planner._user_ns)
         return checkpoint_plan, restore_plan
@@ -236,7 +241,7 @@ def test_checkpoint_restore_planner_incremental_restore(enable_incremental_store
     planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
 
     # Generate the incremental restore plan for restoring to cell 1.
-    restore_plan = planner_manager.planner.generate_incremental_restore_plan(lca_ahg, lca_ahg, filename, ["1:1"])
+    restore_plan, _ = planner_manager.planner.generate_incremental_restore_plan(lca_ahg, lca_ahg, filename, ["1:1"])
 
     # The restore plan consists of moving X and loading Y.
     assert len(restore_plan.actions) == 2

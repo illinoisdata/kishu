@@ -70,6 +70,7 @@ from kishu.exceptions import (
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
+from kishu.planning.ahg import AHG
 from kishu.planning.plan import RestorePlan
 from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
 from kishu.planning.variable_version_tracker import VariableVersionTracker
@@ -436,11 +437,15 @@ class KishuForJupyter:
         current_commit_id = self._kishu_graph.head()
         if Config.get('PLANNER', 'incremental_cr', False):
             lca_commit = self._kishu_graph.get_common_ancestor(commit_id, current_commit_id)
-            lca_commit_entry = self._kishu_commit.get_commit(lca_commit)
-            if lca_commit_entry.ahg_string is None:
-                raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
-
-            parent_commit_ids = [node.commit_id for node in self._kishu_graph.list_history(commit_id)]
+            if lca_commit:
+                lca_commit_entry = self._kishu_commit.get_commit(lca_commit)
+                if lca_commit_entry.ahg_string is None:
+                    raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
+                lca_ahg_string = lca_commit_entry.ahg_string
+                parent_commit_ids = [node.commit_id for node in self._kishu_graph.list_history(commit_id)]
+            else:
+                lca_ahg_string = AHG.serialize()
+                parent_commit_ids = []
 
         result_ns = self._cr_planner.restore_state(
             commit_entry.ahg_string,
@@ -448,7 +453,7 @@ class KishuForJupyter:
             database_path,
             commit_id,
             parent_commit_ids if Config.get('PLANNER', 'incremental_cr', False) else None,
-            lca_commit_entry.ahg_string if Config.get('PLANNER', 'incremental_cr', False) else None
+            lca_ahg_string if Config.get('PLANNER', 'incremental_cr', False) else None
         )
         self._checkout_namespace(self._user_ns, result_ns)
 

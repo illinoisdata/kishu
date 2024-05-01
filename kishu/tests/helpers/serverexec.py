@@ -41,7 +41,7 @@ class NotebookHandler:
         # self.websocket = websocket.WebSocketApp(self.request_url, header=self.header)
         self.websocket = websocket.create_connection(self.request_url, header=self.header,
                                                      timeout=NotebookHandler.CONNECTION_TIMEOUT,
-                                                             close_timeout=NotebookHandler.CONNECTION_TIMEOUT)
+                                                     close_timeout=NotebookHandler.CONNECTION_TIMEOUT)
         self.websocket.settimeout(NotebookHandler.CELL_EXECUTION_TIMEOUT)
         return self
 
@@ -61,19 +61,18 @@ class NotebookHandler:
                "content": content}
         return req, msg_id
 
-
     def run_code(self, cell_code: str, silent: bool = False) -> Tuple[str, str]:
         if self.websocket is None:
             raise RuntimeError("Websocket is not initialized")
 
         req, msg_id = NotebookHandler.make_execute_request(cell_code, silent)
         self.websocket.send(json.dumps(req))
-            
+
         # Read output.
         stream_output = ""
         data_output = ""
         try:
-            while True:  
+            while True:
 
                 # Only listen to relevant message.
                 msg = json.loads(self.websocket.recv())

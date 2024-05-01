@@ -1,7 +1,6 @@
 import sqlite3
 
 from kishu.storage.checkpoint import CHECKPOINT_TABLE, KishuCheckpoint, VARIABLE_SNAPSHOT_TABLE
-from kishu.storage.config import Config
 from kishu.storage.path import KishuPath
 
 

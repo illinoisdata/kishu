@@ -1,11 +1,9 @@
-import dill
 import nbformat
 import pytest
 
 from typing import List
 
 from kishu.jupyterint import KishuForJupyter
-from kishu.storage.config import Config
 
 from tests.helpers.nbexec import NotebookRunner
 

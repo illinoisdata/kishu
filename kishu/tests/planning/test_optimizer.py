@@ -126,4 +126,3 @@ def test_incremental_load_optimizer(enable_slow_network_bandwidth, enable_increm
     # Assert the correct fallback recomputations exist.
     assert len(opt.fallback_recomputation) == 1
     assert opt.fallback_recomputation[VersionedName("z", 1)] == {0}
-

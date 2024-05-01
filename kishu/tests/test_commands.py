@@ -1,4 +1,3 @@
-import asyncio
 import os
 import pytest
 import time
@@ -532,7 +531,6 @@ class TestKishuCommand:
             assert var_value_before == var_value_after
 
             print("test time:", time.time() - start)
-
 
     def test_track_executed_cells_with_checkout(
         self,

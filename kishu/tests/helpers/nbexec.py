@@ -106,6 +106,7 @@ def get_dump_namespace_str(pickle_file_name: str, var_names: Optional[List[str]]
         ]
     )
 
+
 def get_dill_dumpsession_str(notebook_name, filename, cell_num):
     return "\n".join(
         [
@@ -145,7 +146,7 @@ class NotebookRunner:
         test_notebook (str): Path to the test notebook to be executed.
     """
 
-    def __init__(self, test_notebook: str, notebook_name: str="temp"):
+    def __init__(self, test_notebook: str, notebook_name: str = "temp"):
         """
         Initialize a NotebookRunner instance.
 
@@ -204,9 +205,6 @@ class NotebookRunner:
 
         # create a kishu initialization cell and add it to the start of the notebook.
         new_cells.insert(0, new_code_cell(source="import dill, time"))
-        for i in range(len(notebook["cells"]), 0, -1):
-        # for i in cell_nums_to_restore:
-            new_cells.append(new_code_cell(source=get_dill_loadsession_str(self.notebook_name, filename, i)))
 
         notebook["cells"] = new_cells
 
@@ -241,7 +239,6 @@ class NotebookRunner:
             from pathlib import Path
             import kishu_criu_pb2 as rpc
         """))
-        #new_cells.append(new_code_cell(source=get_criu_store_str(self.notebook_name, filename, i)))
 
         notebook["cells"] = new_cells
 

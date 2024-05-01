@@ -305,6 +305,10 @@ class CheckpointRestorePlanner:
             start = time.time()
             result_ns = restore_plan.run(database_path, commit_id)
             self._ahg = AHG.deserialize(new_ahg_string)
+
+            # Also clear the old ID graphs and pre-run cell info.
+            # TODO: only clear ID graphs of variables which have changed between pre and post-checkout.
+            self._id_graph_map = {}
             self.write_row("run_restore_time", time.time() - start)
         else:
             # Incremental restore: dynamically recompute the restore plan.
@@ -316,7 +320,7 @@ class CheckpointRestorePlanner:
 
             target_ahg = AHG.deserialize(new_ahg_string)
             lca_ahg = AHG.deserialize(lca_ahg_string)
-            incremental_restore_plan = self.generate_incremental_restore_plan(
+            incremental_restore_plan, vss_to_move = self.generate_incremental_restore_plan(
                 target_ahg,
                 lca_ahg,
                 database_path,
@@ -325,14 +329,18 @@ class CheckpointRestorePlanner:
             # run the restore plan.
             start = time.time()
             result_ns = incremental_restore_plan.run(database_path, commit_id)
-            self.write_row("run_restore_time", time.time() - start)
             self._ahg = target_ahg
 
-        self._user_ns = result_ns
+            self._user_ns = result_ns
 
-        # Also clear the old ID graphs and pre-run cell info.
-        # TODO: only clear ID graphs of variables which have changed between pre and post-checkout.
-        self._id_graph_map = {}
+            # Update ID graphs of changed vars.
+            unchanged_vars = set(chain.from_iterable(vss_to_move))
+            for var in self._ahg.get_variable_names():
+                if var not in unchanged_vars and var in self._user_ns:
+                    self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
+
+            self.write_row("run_restore_time", time.time() - start)
+
         self._pre_run_cell_vars = set()
 
         return result_ns
@@ -370,7 +378,7 @@ class CheckpointRestorePlanner:
             opt.fallback_recomputation
         )
         self.write_row("generate_incremental_restore_time", time.time() - start)
-        return incremental_restore_plan
+        return incremental_restore_plan, vss_to_move
 
     def _find_useful_vses(
         self,

@@ -572,7 +572,7 @@ def test_idgraph_nested_overlap():
 
 def test_idgraph_overlap_numpy():
     digits = sio.loadmat('/data/elastic-notebook/data/krasser-ml/ml-ex3/ex3data1.mat')
-    X = digits['X']
+    _ = digits['X']
     y = digits['y'].ravel()
 
     idgraph1 = get_object_state(digits, {})
