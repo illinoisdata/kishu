@@ -16,7 +16,7 @@ class TestResult(str, enum.Enum):
     success = "success"
     fail = "fail"
     skip_nondeterministic = "skip_nondeterministic"
-    fail_nondeterministic = "fail_nondeterministic"
+    false_positive = "false_positive"
     bad_test_case = "bad_test_case"
     id_graph_error = "id_graph_error"
 
@@ -94,12 +94,12 @@ class LibCoverageTesting:
             return TestResult.id_graph_error, str(e)
     
         # If both ID graph generation and pickle dump are non-deterministic, skip test case.
-        # If only ID graph generation is non-deterministic, the test case is a failure.
+        # If only ID graph generation is non-deterministic, the test case is a false positive.
         if idgraph_original != idgraph_original_2:
             if var_before_pickle != var_before_pickle_2:
                 return TestResult.skip_nondeterministic, ""
             else:
-                return TestResult.fail_nondeterministic, ""
+                return TestResult.false_positive, ""
 
         # If the ID graphs are equal but the pickle dumps are not, the test case is bad.
         if var_before_pickle != var_before_pickle_2:
@@ -128,11 +128,6 @@ class LibCoverageTesting:
         except Exception as e:
             print("CANNOT UNPICKLE", test_case.class_name, e)
             pass
-
-        # If pickled values are equal, the test case is bad as the modification doesn't
-        # modify the object.
-        #if var_before_pickle == var_after_pickle:
-        #    return TestResult.bad_test_case, ""
     
         # Success if ID graphs before and after modifying the object are different
         if idgraph_original != idgraph_modified:
