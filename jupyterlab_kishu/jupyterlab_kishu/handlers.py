@@ -23,6 +23,13 @@ def subp_kishu_checkout(notebook_key, commit_id, cookies, queue):
     queue.put(into_json(checkout_result))
 
 
+def subp_kishu_revert(notebook_key, cookies, queue):
+    print(f"try revert {notebook_key}")
+    with JupyterRuntimeEnv.context(cookies=cookies):
+        rollback_result = KishuCommand.revert(notebook_key)
+    queue.put(into_json(rollback_result))
+
+
 def subp_kishu_commit(notebook_key, message, cookies, queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
         commit_result = KishuCommand.commit(notebook_key, message)
@@ -107,6 +114,30 @@ class CommitHandler(APIHandler):
         self.finish(commit_result)
 
 
+class RevertHandler(APIHandler):
+    @tornado.gen.coroutine
+    @tornado.web.authenticated
+    def post(self):
+        input_data = self.get_json_body()
+        cookies = {morsel.key: morsel.value for _, morsel in self.cookies.items()}
+        notebook_key = NotebookId.parse_key_from_path_or_key(input_data["notebook_path"])
+
+        # We need to run KishuCommand.checkout in a separate process to unblock Jupyter Server backend
+        # so that the frontend reload does not cause a deadlock.
+        checkout_queue = multiprocessing.Queue()
+        checkout_process = multiprocessing.Process(
+            target=subp_kishu_revert,
+            args=(notebook_key, cookies, checkout_queue)
+        )
+        checkout_process.start()
+        while checkout_queue.empty():
+            # Awaiting to unblock.
+            yield asyncio.sleep(0.5)
+        checkout_result = checkout_queue.get()
+        checkout_process.join()
+        self.finish(checkout_result)
+
+
 def setup_handlers(web_app):
     host_pattern = ".*$"
     base_url = web_app.settings["base_url"]
@@ -116,5 +147,6 @@ def setup_handlers(web_app):
         (url_path_join(kishu_url, "log_all"), LogAllHandler),
         (url_path_join(kishu_url, "checkout"), CheckoutHandler),
         (url_path_join(kishu_url, "commit"), CommitHandler),
+        (url_path_join(kishu_url, "revert"), RevertHandler)
     ]
     web_app.add_handlers(host_pattern, handlers)

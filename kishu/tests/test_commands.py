@@ -882,3 +882,32 @@ class TestKishuCommand:
             assert diff_result == FEFindVarChangeResult([commits[1].commit_id])
             diff_result = KishuCommand.find_var_change(notebook_key, "a")
             assert diff_result == FEFindVarChangeResult([commits[1].commit_id, commits[5].commit_id])
+
+    def test_revert(self, jupyter_server, tmp_nb_path):
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+            for content in contents[0:2]:
+                notebook_session.run_code(content)
+
+            # Get notebook key
+            list_result = KishuCommand.list()
+            assert len(list_result.sessions) == 1
+            assert list_result.sessions[0].notebook_path is not None
+            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
+            notebook_key = list_result.sessions[0].notebook_key
+
+            commits = KishuCommand.log_all(notebook_key).commit_graph
+
+            # revert and assert the head id is correct
+            revertResult = KishuCommand.revert(notebook_key)
+            assert revertResult.status == "ok"
+            head = KishuBranch(notebook_key).get_head()
+            assert head.commit_id == commits[0].commit_id
+
+            # revert when current node is root and make sure the right error message will be throw out
+            revertResult = KishuCommand.revert(notebook_key)
+            assert revertResult.status == "error"
+            assert revertResult.message == "Current var head is already the root, cannot revert further."

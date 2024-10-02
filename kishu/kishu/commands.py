@@ -488,6 +488,43 @@ class KishuCommand:
         )
 
     @staticmethod
+    def revert(
+        notebook_path_or_key: str,
+    ) -> CheckoutResult:
+        notebook_path = NotebookId.parse_path_from_path_or_key(notebook_path_or_key)
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
+        except FileNotFoundError as e:
+            return CheckoutResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+                reattachment=InstrumentResult(
+                    status=InstrumentStatus.no_kernel,
+                    message=None,
+                )
+            )
+
+        #get the commit to revert to
+        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_path_or_key))
+        head_info = next(store.iter_history())
+        instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
+        if (instrument_result.is_success()):
+            if head_info.parent_id == '':
+                return CheckoutResult(
+                    status="error",
+                    message="Current var head is already the root, cannot revert further.",
+                    reattachment=instrument_result,
+                )
+            return CheckoutResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+                f"_kishu.checkout('{head_info.parent_id}', skip_notebook={True})",
+            ), instrument_result)
+        return CheckoutResult(
+            status="error",
+            message="Error re-attaching kishu instrumentation to notebook",
+            reattachment=instrument_result,
+        )
+
+    @staticmethod
     def branch(
         notebook_id: str,
         branch_name: str,
