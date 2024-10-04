@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import asyncio
 import multiprocessing
+
 import tornado
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
-
 from kishu.commands import KishuCommand, into_json
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
@@ -38,10 +39,7 @@ class InitHandler(APIHandler):
         # We need to run KishuCommand.init in a separate process to unblock Jupyter Server backend
         # so that our later API calls (e.g., session discovery) are unblocked.
         init_queue = multiprocessing.Queue()
-        init_process = multiprocessing.Process(
-            target=subp_kishu_init,
-            args=(input_data["notebook_path"], cookies, init_queue)
-        )
+        init_process = multiprocessing.Process(target=subp_kishu_init, args=(input_data["notebook_path"], cookies, init_queue))
         init_process.start()
         while init_queue.empty():
             # Awaiting to unblock.
@@ -73,8 +71,7 @@ class CheckoutHandler(APIHandler):
         # so that the frontend reload does not cause a deadlock.
         checkout_queue = multiprocessing.Queue()
         checkout_process = multiprocessing.Process(
-            target=subp_kishu_checkout,
-            args=(notebook_key, input_data["commit_id"], cookies, checkout_queue)
+            target=subp_kishu_checkout, args=(notebook_key, input_data["commit_id"], cookies, checkout_queue)
         )
         checkout_process.start()
         while checkout_queue.empty():
@@ -98,8 +95,7 @@ class CommitHandler(APIHandler):
         # so that the frontend reload does not cause a deadlock.
         commit_queue = multiprocessing.Queue()
         commit_process = multiprocessing.Process(
-            target=subp_kishu_commit,
-            args=(notebook_key, input_data["message"], cookies, commit_queue)
+            target=subp_kishu_commit, args=(notebook_key, input_data["message"], cookies, commit_queue)
         )
         commit_process.start()
         while commit_queue.empty():
