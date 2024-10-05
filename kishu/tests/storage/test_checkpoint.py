@@ -26,7 +26,7 @@ def test_create_table_no_incremental_checkpointing():
 
 
 def test_create_table_with_incremental_checkpointing():
-    Config.set('PLANNER', 'incremental_store', True)
+    Config.set("PLANNER", "incremental_store", True)
 
     filename = KishuPath.database_path("test")
     KishuCheckpoint(filename).init_database()

@@ -9,20 +9,20 @@ from kishu.planning.optimizer import Optimizer, REALLY_FAST_BANDWIDTH_10GBPS
 
 @pytest.fixture()
 def enable_slow_network_bandwidth(tmp_kishu_path) -> Generator[type, None, None]:
-    Config.set('OPTIMIZER', 'network_bandwidth', 1)
+    Config.set("OPTIMIZER", "network_bandwidth", 1)
     yield Config
-    Config.set('OPTIMIZER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
+    Config.set("OPTIMIZER", "network_bandwidth", REALLY_FAST_BANDWIDTH_10GBPS)
 
 
 def test_optimizer(enable_slow_network_bandwidth):
     """
-        Setup test graph.
-        (cost:2) "x"  "y" (cost: 2)
-             c3   |    |  c2
-                 "z" "z"
-                   "z"
-                    | c1 (cost: 3)
-                   []
+    Setup test graph.
+    (cost:2) "x"  "y" (cost: 2)
+         c3   |    |  c2
+             "z" "z"
+               "z"
+                | c1 (cost: 3)
+               []
     """
     ahg = AHG()
 
@@ -50,13 +50,13 @@ def test_optimizer(enable_slow_network_bandwidth):
 
 def test_optimizer_with_already_stored_variables(enable_slow_network_bandwidth):
     """
-        Setup test graph.
-        (cost:2) "x"  "y" (cost: 2)
-             c3   |    |  c2
-                 "z" "z"
-                   "z"  (already stored)
-                    | c1 (cost: 3)
-                   []
+    Setup test graph.
+    (cost:2) "x"  "y" (cost: 2)
+         c3   |    |  c2
+             "z" "z"
+               "z"  (already stored)
+                | c1 (cost: 3)
+               []
     """
     ahg = AHG()
 

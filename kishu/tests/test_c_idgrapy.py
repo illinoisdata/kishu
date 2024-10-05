@@ -7,9 +7,9 @@ from lib.idgraph import IDGraph
 
 
 def test_IDGraph_int():
-    '''
+    """
     Test if idgraph can be created for a simple int.
-    '''
+    """
     myint = 5
     id_graph = IDGraph(myint)
 
@@ -20,9 +20,9 @@ def test_IDGraph_int():
 
 
 def test_compare_ints():
-    '''
-        Test if two ints can be accurately compared
-    '''
+    """
+    Test if two ints can be accurately compared
+    """
     int1 = 5
     int2 = 5
     int3 = 6
@@ -40,7 +40,7 @@ def test_compare_ints():
 
 def test_IDGraph_list():
     """
-        Test if idgraph (json rep) is accurately generated for a list
+    Test if idgraph (json rep) is accurately generated for a list
     """
     # Init a list
     list1 = [1, 2, 3]
@@ -58,13 +58,13 @@ def test_IDGraph_list():
     assert expected_type == actual_type
 
     obj = {
-        'obj_id': expected_id,
-        'obj_type': 'list',
-        'children': [
-            {'obj_val': '3', 'obj_type': 'int', 'children': []},
-            {'obj_val': '2', 'obj_type': 'int', 'children': []},
-            {'obj_val': '1', 'obj_type': 'int', 'children': []}
-        ]
+        "obj_id": expected_id,
+        "obj_type": "list",
+        "children": [
+            {"obj_val": "3", "obj_type": "int", "children": []},
+            {"obj_val": "2", "obj_type": "int", "children": []},
+            {"obj_val": "1", "obj_type": "int", "children": []},
+        ],
     }
     expected_id_graph = json.dumps(obj)
     actual_id_graph = json.dumps(json.loads(str(idGraph1)))
@@ -86,7 +86,7 @@ def test_IDGraph_list():
 
 def test_compare_lists():
     """
-        Test if two lists (different objects) are accurately compared
+    Test if two lists (different objects) are accurately compared
     """
 
     # Init first list
@@ -111,7 +111,7 @@ def test_compare_lists():
 
 def test_IDGraph_tuple():
     """
-        Test if idgraph (json rep) is accurately generated for a Tuple
+    Test if idgraph (json rep) is accurately generated for a Tuple
     """
     # Init a tuple
     tuple1 = (1, 2, 3.458)
@@ -129,13 +129,13 @@ def test_IDGraph_tuple():
     assert expected_type == actual_type
 
     obj = {
-        'obj_id': expected_id,
-        'obj_type': expected_type,
-        'children': [
-            {'obj_val': '3.458000', 'obj_type': 'float', 'children': []},
-            {'obj_val': '2', 'obj_type': 'int', 'children': []},
-            {'obj_val': '1', 'obj_type': 'int', 'children': []}
-        ]
+        "obj_id": expected_id,
+        "obj_type": expected_type,
+        "children": [
+            {"obj_val": "3.458000", "obj_type": "float", "children": []},
+            {"obj_val": "2", "obj_type": "int", "children": []},
+            {"obj_val": "1", "obj_type": "int", "children": []},
+        ],
     }
     expected_id_graph = json.dumps(obj)
     actual_id_graph = json.dumps(json.loads(str(idGraph1)))
@@ -148,7 +148,7 @@ def test_IDGraph_tuple():
 
 def test_IDGraph_set():
     """
-        Test if idgraph (json rep) is accurately generated for a set
+    Test if idgraph (json rep) is accurately generated for a set
     """
     # Init a set
     set1 = {"a", "b", 2, True, "c"}
@@ -171,7 +171,7 @@ def test_IDGraph_set():
 
 def test_compare_sets():
     """
-        Test if idgraphs of two sets with same elements in different order can be accurately compared
+    Test if idgraphs of two sets with same elements in different order can be accurately compared
     """
     # Init the first set
     set1 = {1, 2, 3}
@@ -196,7 +196,7 @@ def test_compare_sets():
 
 def test_IDGraph_dictionary():
     """
-        Test if idgraph (json rep) is accurately generated for a dictionary
+    Test if idgraph (json rep) is accurately generated for a dictionary
     """
     # Init a dictionary
     dict1 = {1: "UIUC", 2: "DAIS"}
@@ -213,14 +213,14 @@ def test_IDGraph_dictionary():
     assert expected_type == actual_type
 
     obj = {
-        'obj_id': expected_id,
-        'obj_type': expected_type,
-        'children': [
-            {'obj_val': 'DAIS', 'obj_type': 'string', 'children': []},
-            {'obj_val': '2', 'obj_type': 'int', 'children': []},
-            {'obj_val': 'UIUC', 'obj_type': 'string', 'children': []},
-            {'obj_val': '1', 'obj_type': 'int', 'children': []}
-        ]
+        "obj_id": expected_id,
+        "obj_type": expected_type,
+        "children": [
+            {"obj_val": "DAIS", "obj_type": "string", "children": []},
+            {"obj_val": "2", "obj_type": "int", "children": []},
+            {"obj_val": "UIUC", "obj_type": "string", "children": []},
+            {"obj_val": "1", "obj_type": "int", "children": []},
+        ],
     }
     expected_id_graph = json.dumps(obj)
     actual_id_graph = json.dumps(json.loads(str(idGraph1)))
@@ -233,8 +233,9 @@ def test_IDGraph_dictionary():
 
 def test_IDGraph_class_instance():
     """
-        Test if idgraph (json rep) is accurately generated for a class instance
+    Test if idgraph (json rep) is accurately generated for a class instance
     """
+
     # Define a class
     class test:
 
@@ -287,7 +288,7 @@ def test_IDGraph_class_instance():
 
 def test_create_idgraph_nested_list():
     """
-        Test if idgraph (json rep) is accurately generated for a NESTED list
+    Test if idgraph (json rep) is accurately generated for a NESTED list
     """
     set1 = {"UIUC"}
     expected_set_id = id(set1)
@@ -306,11 +307,11 @@ def test_create_idgraph_nested_list():
     actual_dict_id = 0
     for child in idGraph1_json["children"]:
         if child["obj_type"] == "set":
-            actual_set_id = child['obj_id']
+            actual_set_id = child["obj_id"]
         if child["obj_type"] == "tuple":
-            actual_tup_id = child['obj_id']
+            actual_tup_id = child["obj_id"]
         if child["obj_type"] == "dict":
-            actual_dict_id = child['obj_id']
+            actual_dict_id = child["obj_id"]
 
     assert expected_list_id == actual_list_id
     assert expected_tup_id == actual_tup_id
@@ -323,7 +324,7 @@ def test_create_idgraph_nested_list():
 
 def test_create_idgraph_change_in_nested_dictionary():
     """
-        Test if idgraph (json rep) is accurately generated for a NESTED dictionary
+    Test if idgraph (json rep) is accurately generated for a NESTED dictionary
     """
     tuple1 = ("DAIS", "ELASTIC")
     expected_tup_id = id(tuple1)
@@ -357,7 +358,7 @@ def test_create_idgraph_change_in_nested_dictionary():
 
 def test_create_idgraph_change_in_cyclic_dictionary():
     """
-        Test if idgraph (json rep) is accurately generated for a CYCLIC dictionary
+    Test if idgraph (json rep) is accurately generated for a CYCLIC dictionary
     """
     set1 = {"DAIS", "ELASTIC"}
     expected_set_id = id(set1)

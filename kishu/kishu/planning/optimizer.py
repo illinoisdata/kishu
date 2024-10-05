@@ -1,13 +1,12 @@
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 import networkx as nx
 import numpy as np
-
-from dataclasses import dataclass
 from networkx.algorithms.flow import shortest_augmenting_path
-from typing import Any, Dict, List, Optional, Set, Tuple
 
 from kishu.planning.ahg import AHG, CellExecution, VariableSnapshot, VersionedName
 from kishu.storage.config import Config
-
 
 REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
 
@@ -15,34 +14,37 @@ REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
 @dataclass
 class PlannerContext:
     """
-        Optimizer-related config options.
+    Optimizer-related config options.
     """
+
     always_recompute: bool
     always_migrate: bool
     network_bandwidth: float
 
 
-class Optimizer():
+class Optimizer:
     """
-        The optimizer constructs a flow graph and runs the min-cut algorithm to exactly find the best
-        checkpointing configuration.
+    The optimizer constructs a flow graph and runs the min-cut algorithm to exactly find the best
+    checkpointing configuration.
     """
+
     def __init__(
-        self, ahg: AHG,
+        self,
+        ahg: AHG,
         active_vss: List[VariableSnapshot],
         linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
-        already_stored_vss: Optional[Set[VersionedName]] = None
+        already_stored_vss: Optional[Set[VersionedName]] = None,
     ) -> None:
         """
-            Creates an optimizer with a migration speed estimate. The AHG and active VS fields
-            must be populated prior to calling select_vss.
+        Creates an optimizer with a migration speed estimate. The AHG and active VS fields
+        must be populated prior to calling select_vss.
 
-            @param ahg: Application History Graph.
-            @param active_vss: active Variable Snapshots at time of checkpointing.
-            @param linked_vs_pairs: pairs of variables sharing underlying objects. They must be migrated
-                or recomputed together.
-            @param already_stored_vss: A List of Variable snapshots already stored in previous plans. They can be
-                loaded as part of the restoration plan to save restoration time.
+        @param ahg: Application History Graph.
+        @param active_vss: active Variable Snapshots at time of checkpointing.
+        @param linked_vs_pairs: pairs of variables sharing underlying objects. They must be migrated
+            or recomputed together.
+        @param already_stored_vss: A List of Variable snapshots already stored in previous plans. They can be
+            loaded as part of the restoration plan to save restoration time.
         """
         self.ahg = ahg
         self.active_vss = active_vss
@@ -50,9 +52,9 @@ class Optimizer():
 
         # Optimizer context containing flags for optimizer parameters.
         self._optimizer_context = PlannerContext(
-            always_recompute=Config.get('OPTIMIZER', 'always_recompute', False),
-            always_migrate=Config.get('OPTIMIZER', 'always_migrate', False),
-            network_bandwidth=Config.get('OPTIMIZER', 'network_bandwidth', REALLY_FAST_BANDWIDTH_10GBPS)
+            always_recompute=Config.get("OPTIMIZER", "always_recompute", False),
+            always_migrate=Config.get("OPTIMIZER", "always_migrate", False),
+            network_bandwidth=Config.get("OPTIMIZER", "network_bandwidth", REALLY_FAST_BANDWIDTH_10GBPS),
         )
 
         # Set lookup for active VSs by name and version as VS objects are not hashable.
@@ -67,11 +69,11 @@ class Optimizer():
 
     def dfs_helper(self, current: Any, visited: Set[Any], prerequisite_ces: Set[int]):
         """
-            Perform DFS on the Application History Graph for finding the CEs required to recompute a variable.
+        Perform DFS on the Application History Graph for finding the CEs required to recompute a variable.
 
-            @param current: Name of current nodeset.
-            @param visited: Visited nodesets.
-            @param prerequisite_ces: Set of CEs needing re-execution to recompute the current nodeset.
+        @param current: Name of current nodeset.
+        @param visited: Visited nodesets.
+        @param prerequisite_ces: Set of CEs needing re-execution to recompute the current nodeset.
         """
         if isinstance(current, CellExecution):
             if current.cell_num in self.req_func_mapping:
@@ -81,9 +83,11 @@ class Optimizer():
                 # Else, recurse into input variables of the CE.
                 prerequisite_ces.add(current.cell_num)
                 for vs in current.src_vss:
-                    if (vs.name, vs.version) not in self.active_vss_lookup.items() \
-                            and VersionedName(vs.name, vs.version) not in self.already_stored_vss \
-                            and (vs.name, vs.version) not in visited:
+                    if (
+                        (vs.name, vs.version) not in self.active_vss_lookup.items()
+                        and VersionedName(vs.name, vs.version) not in self.already_stored_vss
+                        and (vs.name, vs.version) not in visited
+                    ):
                         self.dfs_helper(vs, visited, prerequisite_ces)
 
         elif isinstance(current, VariableSnapshot):
@@ -93,7 +97,7 @@ class Optimizer():
 
     def find_prerequisites(self):
         """
-            Find the necessary (prerequisite) cell executions to rerun a cell execution.
+        Find the necessary (prerequisite) cell executions to rerun a cell execution.
         """
         for ce in self.ahg.get_cell_executions():
             # Find prerequisites only if the CE has at least 1 active output.
@@ -104,12 +108,12 @@ class Optimizer():
 
     def compute_plan(self) -> Tuple[Set[str], Set[int]]:
         """
-            Returns the optimal replication plan for the stored AHG consisting of
-            variables to migrate and cells to rerun.
+        Returns the optimal replication plan for the stored AHG consisting of
+        variables to migrate and cells to rerun.
 
-            Test parameters (mutually exclusive):
-            @param always_migrate: migrate all variables.
-            @param always_recompute: rerun all cells.
+        Test parameters (mutually exclusive):
+        @param always_migrate: migrate all variables.
+        @param always_recompute: rerun all cells.
         """
         # Build prerequisite (rec) function mapping.
         self.find_prerequisites()

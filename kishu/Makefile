@@ -38,7 +38,7 @@ lint:             ## Run pep8, black, mypy linters.
 
 .PHONY: test
 test: lint        ## Run tests and generate coverage report.
-	$(ENV_PREFIX)pytest -vv --cov-config .coveragerc --cov=kishu -l --tb=short --maxfail=1 tests/storage
+	$(ENV_PREFIX)pytest -vv --cov-config .coveragerc --cov=kishu -l --tb=short --maxfail=1 tests
 	$(ENV_PREFIX)coverage xml
 	$(ENV_PREFIX)coverage html
 

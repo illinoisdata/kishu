@@ -6,6 +6,7 @@ class Visitor(ABC):
     Class to provide visitor pattern to an algorithm attempting to capture the state of an object.
     Each function is designed to handle different types of objects.
     """
+
     @abstractmethod
     def check_visited(self, visited, obj_id, obj_type, include_id, hash_state):
         pass

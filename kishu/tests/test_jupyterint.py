@@ -50,13 +50,13 @@ class TestOnNotebookRunner:
     def test_checkout(self, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)
         output = notebook.execute([])
-        assert output['a'] == 1
+        assert output["a"] == 1
 
     @pytest.mark.parametrize("set_notebook_path_env", ["test_init_kishu.ipynb"], indirect=True)
     def test_reattatchment(self, set_notebook_path_env):
         notebook = NotebookRunner(set_notebook_path_env)
         output = notebook.execute([])
-        assert output['a'] == 1
+        assert output["a"] == 1
 
         with open(set_notebook_path_env, "r") as temp_file:
             nb = nbformat.read(temp_file, 4)
@@ -65,19 +65,16 @@ class TestOnNotebookRunner:
     @pytest.mark.parametrize(
         ("set_notebook_path_env", "cell_num_to_restore"),
         [
-            ('simple.ipynb', 2),
-            ('simple.ipynb', 3),
-            ('numpy.ipynb', 2),
-            ('numpy.ipynb', 3),
-            ('numpy.ipynb', 4),
-            pytest.param('ml-ex1.ipynb', 10,
-                         marks=pytest.mark.skip(reason="Too expensive to run")),
-            pytest.param('04_training_linear_models.ipynb', 10,
-                         marks=pytest.mark.skip(reason="Too expensive to run")),
-            pytest.param('sklearn_tweet_classification.ipynb', 10,
-                         marks=pytest.mark.skip(reason="Too expensive to run"))
+            ("simple.ipynb", 2),
+            ("simple.ipynb", 3),
+            ("numpy.ipynb", 2),
+            ("numpy.ipynb", 3),
+            ("numpy.ipynb", 4),
+            pytest.param("ml-ex1.ipynb", 10, marks=pytest.mark.skip(reason="Too expensive to run")),
+            pytest.param("04_training_linear_models.ipynb", 10, marks=pytest.mark.skip(reason="Too expensive to run")),
+            pytest.param("sklearn_tweet_classification.ipynb", 10, marks=pytest.mark.skip(reason="Too expensive to run")),
         ],
-        indirect=["set_notebook_path_env"]
+        indirect=["set_notebook_path_env"],
     )
     def test_full_checkout(self, set_notebook_path_env, cell_num_to_restore: int):
         """

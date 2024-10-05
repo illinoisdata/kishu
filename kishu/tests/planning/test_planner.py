@@ -12,24 +12,21 @@ from kishu.storage.path import KishuPath
 
 @pytest.fixture()
 def enable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
-    Config.set('OPTIMIZER', 'always_migrate', True)
+    Config.set("OPTIMIZER", "always_migrate", True)
     yield Config
-    Config.set('OPTIMIZER', 'always_migrate', False)
+    Config.set("OPTIMIZER", "always_migrate", False)
 
 
 class PlannerManager:
     """
-        Class for automating pre and post-run-cell function calls in Planner.
+    Class for automating pre and post-run-cell function calls in Planner.
     """
+
     def __init__(self, planner: CheckpointRestorePlanner):
         self.planner = planner
 
     def run_cell(
-        self,
-        ns_updates: Dict[str, Any],
-        cell_code: str,
-        ns_deletions: Set[str] = set(),
-        cell_runtime: float = 1.0
+        self, ns_updates: Dict[str, Any], cell_code: str, ns_deletions: Set[str] = set(), cell_runtime: float = 1.0
     ) -> ChangedVariables:
         self.planner.pre_run_cell_update()
 
@@ -51,7 +48,7 @@ class PlannerManager:
 
 def test_checkpoint_restore_planner(enable_always_migrate):
     """
-        Test running a few cell updates.
+    Test running a few cell updates.
     """
     planner = CheckpointRestorePlanner(Namespace({}))
     planner_manager = PlannerManager(planner)
@@ -80,13 +77,14 @@ def test_checkpoint_restore_planner(enable_always_migrate):
     assert len(restore_plan.actions) == 2
 
     # Assert the restore plan has correct fields.
-    assert restore_plan.actions[StepOrder(0, True)].fallback_recomputation == \
-        [RerunCellRestoreAction(StepOrder(0, False), "x = 1")]
+    assert restore_plan.actions[StepOrder(0, True)].fallback_recomputation == [
+        RerunCellRestoreAction(StepOrder(0, False), "x = 1")
+    ]
 
 
 def test_checkpoint_restore_planner_with_existing_items(enable_always_migrate):
     """
-        Test running a few cell updates.
+    Test running a few cell updates.
     """
     user_ns = Namespace({"x": 1, "y": 2, "In": ["x = 1", "y = 2"]})
 
@@ -125,20 +123,14 @@ def test_post_run_cell_update_return(enable_always_migrate):
     changed_vars = planner_manager.run_cell({"x": 1}, "x = 1")
 
     assert changed_vars == ChangedVariables(
-        created_vars={"x"},
-        modified_vars_value=set(),
-        modified_vars_structure=set(),
-        deleted_vars=set()
+        created_vars={"x"}, modified_vars_value=set(), modified_vars_structure=set(), deleted_vars=set()
     )
 
     # Run cell 2.
     changed_vars = planner_manager.run_cell({"z": [1, 2], "y": 2, "x": 5}, "z = [1, 2]\ny = x + 1\nx = 5")
 
     assert changed_vars == ChangedVariables(
-        created_vars={"y", "z"},
-        modified_vars_value={"x"},
-        modified_vars_structure={"x"},
-        deleted_vars=set()
+        created_vars={"y", "z"}, modified_vars_value={"x"}, modified_vars_structure={"x"}, deleted_vars=set()
     )
 
     # Run cell 3
@@ -154,7 +146,7 @@ def test_post_run_cell_update_return(enable_always_migrate):
 
 def test_checkpoint_restore_planner_incremental_store_simple(enable_incremental_store, enable_always_migrate):
     """
-        Test incremental store.
+    Test incremental store.
     """
     filename = KishuPath.database_path("test")
     KishuCheckpoint(filename).init_database()
@@ -180,7 +172,7 @@ def test_checkpoint_restore_planner_incremental_store_simple(enable_incremental_
 
 def test_checkpoint_restore_planner_incremental_store_not_subset(enable_incremental_store, enable_always_migrate):
     """
-        Test incremental store.
+    Test incremental store.
     """
     filename = KishuPath.database_path("test")
     KishuCheckpoint(filename).init_database()
@@ -208,7 +200,7 @@ def test_checkpoint_restore_planner_incremental_store_not_subset(enable_incremen
 
 def test_checkpoint_restore_planner_incremental_store_is_subset(enable_incremental_store, enable_always_migrate):
     """
-        Test incremental store.
+    Test incremental store.
     """
     filename = KishuPath.database_path("test")
     KishuCheckpoint(filename).init_database()

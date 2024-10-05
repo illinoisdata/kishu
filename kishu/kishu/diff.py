@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Dict
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -9,8 +9,9 @@ class CodeDiffHunk:
     option: str  # origin_only, destination_only, both
     content: str  # if option is both, but contents of origin and destination is similar but not same, then it will
     # show the content of the origin
-    sub_diff_hunks: Optional[List[
-        CodeDiffHunk]]  # if two similar cells are matched, then sub_diff_hunks will be the line-level Diff-hunk list
+    sub_diff_hunks: Optional[
+        List[CodeDiffHunk]
+    ]  # if two similar cells are matched, then sub_diff_hunks will be the line-level Diff-hunk list
     # inside the matched cell
 
 
@@ -36,11 +37,11 @@ class DiffAlgorithms:
     @staticmethod
     def myre_diff(origin: List[str], destination: List[str]) -> CodeDiffAlgorithmResult:
         """
-           An implementation of the Myers diff algorithm.
-           See http://www.xmailserver.org/diff2.pdf
+        An implementation of the Myers diff algorithm.
+        See http://www.xmailserver.org/diff2.pdf
 
-           @return : list1[3] = 5, means that series1[0] = series2[5],
-                        list2[3] = 5, means that series2[3] = series1[5]
+        @return : list1[3] = 5, means that series1[0] = series2[5],
+                     list2[3] = 5, means that series2[3] = series1[5]
         """
 
         @dataclass
@@ -76,22 +77,27 @@ class DiffAlgorithms:
                 # If we aren't on the top (k != d), then only go down if going down
                 # would take us to territory that hasn't sufficiently been explored
                 # yet.
-                go_down = (k == -d or
-                           (k != d and frontier[k - 1].x < frontier[k + 1].x))
+                go_down = k == -d or (k != d and frontier[k - 1].x < frontier[k + 1].x)
 
                 # Figure out the starting point of this iteration. The diagonal
                 # offsets come from the geometry of the edit grid - if you're going
                 # down, your diagonal is lower, and if you're going right, your
                 # diagonal is higher.
                 if go_down:
-                    old_x, history, same_idxs, matched_num = \
-                        (frontier[k + 1].x, frontier[k + 1].history, frontier[k + 1].same_idxs,
-                         frontier[k + 1].matched_num)
+                    old_x, history, same_idxs, matched_num = (
+                        frontier[k + 1].x,
+                        frontier[k + 1].history,
+                        frontier[k + 1].same_idxs,
+                        frontier[k + 1].matched_num,
+                    )
                     x = old_x
                 else:
-                    old_x, history, same_idxs, matched_num = \
-                        (frontier[k - 1].x, frontier[k - 1].history, frontier[k - 1].same_idxs,
-                         frontier[k - 1].matched_num)
+                    old_x, history, same_idxs, matched_num = (
+                        frontier[k - 1].x,
+                        frontier[k - 1].history,
+                        frontier[k - 1].same_idxs,
+                        frontier[k - 1].matched_num,
+                    )
                     x = old_x + 1
 
                 # We want to avoid modifying the old history, since some other step
@@ -139,18 +145,18 @@ class DiffAlgorithms:
     @staticmethod
     def edr_diff(origin: List[str], destination: List[str], threshold=0.5) -> CodeDiffAlgorithmResult:
         """
-           Used to find the similar cells between two series of cells
-           An implementation of the EDR diff algorithm. It considers both order and numeric distance between elements.
+        Used to find the similar cells between two series of cells
+        An implementation of the EDR diff algorithm. It considers both order and numeric distance between elements.
 
-           @ param series1: the first series of cells
-           @ param series2: the second series of cells
-           @ param threshold: If two str have similarity less than threshold, they'll never be regarded as similar
-           @return : list1[3] = 5, means that series1[0] = series2[5],
-                        list2[3] = 5, means that series2[3] = series1[5]
+        @ param series1: the first series of cells
+        @ param series2: the second series of cells
+        @ param threshold: If two str have similarity less than threshold, they'll never be regarded as similar
+        @return : list1[3] = 5, means that series1[0] = series2[5],
+                     list2[3] = 5, means that series2[3] = series1[5]
         """
         m = len(origin)
         n = len(destination)
-        edr_matrix = [[float('inf')] * (n + 1) for _ in range(m + 1)]
+        edr_matrix = [[float("inf")] * (n + 1) for _ in range(m + 1)]
 
         # base case
         edr_matrix[0][0] = 0
@@ -167,12 +173,14 @@ class DiffAlgorithms:
             for j in range(1, n + 1):
                 myre = DiffAlgorithms.myre_diff(origin[i - 1].split("\n"), destination[j - 1].split("\n"))
                 if myre.similarity < threshold:
-                    cost = float('inf')  # never regard as similar
+                    cost = float("inf")  # never regard as similar
                 else:
                     cost = 1 - myre.similarity  # the more similar, the less cost of edit
-                edr_matrix[i][j] = min((cost + edr_matrix[i - 1][j - 1]),  # match
-                                       (1 + edr_matrix[i][j - 1]),  # insertion
-                                       (1 + edr_matrix[i - 1][j]))  # deletion
+                edr_matrix[i][j] = min(
+                    (cost + edr_matrix[i - 1][j - 1]),  # match
+                    (1 + edr_matrix[i][j - 1]),  # insertion
+                    (1 + edr_matrix[i - 1][j]),
+                )  # deletion
                 # if match
                 if edr_matrix[i][j] == cost + edr_matrix[i - 1][j - 1]:
                     behaviors_matrix[i][j] = 0
@@ -251,7 +259,7 @@ class KishuDiff:
                     # get the corresponding matched hunks from edr_diff of the add_remove groups
                     refined_hunks = DiffAlgorithms.edr_diff(origin=remove_hunks, destination=add_hunks).diff_hunks
                     # replace the add_remove groups with edr_diff result
-                    diff_hunks[_get_new_index(from_idx):_get_new_index(to_idx) + 1] = refined_hunks
+                    diff_hunks[_get_new_index(from_idx) : _get_new_index(to_idx) + 1] = refined_hunks
                     offset_diff += len(refined_hunks) - (to_idx - from_idx + 1)
 
                 # try to find the next group of add-remove
@@ -269,19 +277,22 @@ class KishuDiff:
             # get the corresponding matched hunks from edr_diff of the add_remove groups
             refined_hunks = DiffAlgorithms.edr_diff(origin=remove_hunks, destination=add_hunks).diff_hunks
             # replace the add_remove groups with edr_diff result
-            diff_hunks[_get_new_index(from_idx):_get_new_index(to_idx) + 1] = refined_hunks
+            diff_hunks[_get_new_index(from_idx) : _get_new_index(to_idx) + 1] = refined_hunks
             offset_diff += len(refined_hunks) - (to_idx - from_idx + 1)
 
         return diff_hunks
 
     @staticmethod
     def diff_variables(origin: Dict[str, str], destination: Dict[str, str]) -> List[VariableVersionCompare]:
-        return [KishuDiff._compare_variable_value(name, origin.get(name, None), destination.get(name, None))
-                for name in set(origin.keys()) | set(destination.keys())]
+        return [
+            KishuDiff._compare_variable_value(name, origin.get(name, None), destination.get(name, None))
+            for name in set(origin.keys()) | set(destination.keys())
+        ]
 
     @staticmethod
-    def _compare_variable_value(var_name: str, origin_val: Optional[str],
-                                destination_val: Optional[str]) -> VariableVersionCompare:
+    def _compare_variable_value(
+        var_name: str, origin_val: Optional[str], destination_val: Optional[str]
+    ) -> VariableVersionCompare:
         if origin_val is None:
             return VariableVersionCompare(var_name, "destination_only")
         if destination_val is None:

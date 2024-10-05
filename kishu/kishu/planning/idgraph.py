@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import pickle
 from typing import Any, List, Optional
 
 import pandas
-import pickle
 import xxhash
 
 
@@ -29,8 +29,8 @@ class GraphNode:
 
     def is_root_id_and_type_equals(self, other):
         """
-            Compare only the ID and type fields of root nodes of 2 ID graphs.
-            Used for detecting non-overwrite modifications.
+        Compare only the ID and type fields of root nodes of 2 ID graphs.
+        Used for detecting non-overwrite modifications.
         """
         if other is None:
             return False
@@ -92,10 +92,10 @@ def is_pickable(obj):
 
 def value_equals(idGraph1: GraphNode, idGraph2: GraphNode):
     """
-        Compare only the object values (not memory addresses) of 2 ID graphs.
-        Notably, this identifies two value-wise equal object stored in different memory locations
-        as equal.
-        Used by frontend to display variable diffs.
+    Compare only the object values (not memory addresses) of 2 ID graphs.
+    Notably, this identifies two value-wise equal object stored in different memory locations
+    as equal.
+    Used by frontend to display variable diffs.
     """
     return GraphNode._compare_idgraph(idGraph1, idGraph2, check_id_obj=False)
 
@@ -185,7 +185,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         node.children.append("/EOC")
         return node
 
-    elif hasattr(obj, '__reduce_ex__'):
+    elif hasattr(obj, "__reduce_ex__"):
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if is_pickable(obj):
@@ -203,7 +203,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
             node.children.append("/EOC")
         return node
 
-    elif hasattr(obj, '__reduce__'):
+    elif hasattr(obj, "__reduce__"):
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         if is_pickable(obj):
@@ -221,7 +221,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
             node.children.append("/EOC")
         return node
 
-    elif hasattr(obj, '__getstate__'):
+    elif hasattr(obj, "__getstate__"):
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
         node.id_obj = id(obj)
@@ -234,7 +234,7 @@ def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
         node.children.append("/EOC")
         return node
 
-    elif hasattr(obj, '__dict__'):
+    elif hasattr(obj, "__dict__"):
         # visited.add(id(obj))
         node = GraphNode(obj_type=type(obj))
         visited[id(obj)] = node
@@ -327,7 +327,7 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
 
         hashed.update("/EOC")
 
-    elif hasattr(obj, '__reduce_ex__'):
+    elif hasattr(obj, "__reduce_ex__"):
         visited.add(id(obj))
         hashed.update(str(type(obj)))
 
@@ -345,7 +345,7 @@ def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32())
 
             hashed.update("/EOC")
 
-    elif hasattr(obj, '__reduce__'):
+    elif hasattr(obj, "__reduce__"):
         visited.add(id(obj))
         hashed.update(str(type(obj)))
         if is_pickable(obj):

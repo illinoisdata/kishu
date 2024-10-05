@@ -1,7 +1,6 @@
 import ast
 import configparser
 import os
-
 from typing import Any
 
 from kishu.storage.path import KishuPath
@@ -13,23 +12,23 @@ class Config:
     last_read_time = -1.0
 
     # Default config categories.
-    DEFAULT_CATEGORIES = ['CLI', 'COMMIT_GRAPH', 'JUPYTERINT', 'OPTIMIZER', 'PLANNER', 'PROFILER']
+    DEFAULT_CATEGORIES = ["CLI", "COMMIT_GRAPH", "JUPYTERINT", "OPTIMIZER", "PLANNER", "PROFILER"]
 
     @staticmethod
     def _create_config_file() -> None:
         """
-            Creates a config file with default parameters.
+        Creates a config file with default parameters.
         """
         for category in Config.DEFAULT_CATEGORIES:
             Config.config[category] = {}
 
-        with open(Config.CONFIG_PATH, 'w') as configfile:
+        with open(Config.CONFIG_PATH, "w") as configfile:
             Config.config.write(configfile)
 
     @staticmethod
     def _read_config_file() -> None:
         """
-            Reads the config file.
+        Reads the config file.
         """
         # Create the config file if it doesn't exist.
         if not os.path.isfile(Config.CONFIG_PATH):
@@ -55,9 +54,9 @@ class Config:
     @staticmethod
     def _write_config_file() -> None:
         """
-            Writes the config file.
+        Writes the config file.
         """
-        with open(Config.CONFIG_PATH, 'w') as configfile:
+        with open(Config.CONFIG_PATH, "w") as configfile:
             Config.config.write(configfile)
             configfile.flush()
             os.fsync(configfile.fileno())
@@ -65,13 +64,13 @@ class Config:
     @staticmethod
     def get(config_category: str, config_entry: str, default: Any) -> Any:
         """
-            Gets the value of an entry from the config file.
+        Gets the value of an entry from the config file.
 
-            @param config_category: category of the entry, e.g., PLANNER.
-            @param config_entry: entry to get value of, e.g., migration_speed_bps.
-            @param default: default value if the entry is not set. The return value,
-                if retrieved from the config file, will be converted to the same type
-                as this parameter.
+        @param config_category: category of the entry, e.g., PLANNER.
+        @param config_entry: entry to get value of, e.g., migration_speed_bps.
+        @param default: default value if the entry is not set. The return value,
+            if retrieved from the config file, will be converted to the same type
+            as this parameter.
         """
         Config._read_config_file()
 
@@ -84,11 +83,11 @@ class Config:
     @staticmethod
     def set(config_category: str, config_entry: str, config_value: Any) -> None:
         """
-            Sets the value of an entry in the config file.
+        Sets the value of an entry in the config file.
 
-            @param config_category: category of the entry, e.g., PLANNER.
-            @param config_entry: entry to get value of, e.g., migration_speed_bps.
-            @param config_value: Value to set the entry to.
+        @param config_category: category of the entry, e.g., PLANNER.
+        @param config_entry: entry to get value of, e.g., migration_speed_bps.
+        @param config_value: Value to set the entry to.
         """
         Config._read_config_file()
 

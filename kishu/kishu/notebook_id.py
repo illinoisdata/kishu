@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import json
-import nbformat
-from dataclasses import dataclass, asdict
-from dataclasses_json import dataclass_json
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from kishu.exceptions import (
-    MissingNotebookMetadataError,
-    NotNotebookPathOrKey,
-)
+import nbformat
+from dataclasses_json import dataclass_json
+
+from kishu.exceptions import MissingNotebookMetadataError, NotNotebookPathOrKey
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.storage.path import KishuPath
 
@@ -33,6 +31,7 @@ class NotebookId:
     """
     Holds a notebook's key, path, and kernel id, enabling easy translation between the three
     """
+
     def __init__(self, key: str, path: Path, kernel_id: str):
         self._key = key
         self._path = path
@@ -55,7 +54,7 @@ class NotebookId:
             metadata = NotebookId.read_kishu_metadata(nb)
             key = metadata.notebook_id
         except MissingNotebookMetadataError:
-            key = datetime.now().strftime('%Y%m%dT%H%M%S')
+            key = datetime.now().strftime("%Y%m%dT%H%M%S")
 
         return NotebookId(key=key, path=path, kernel_id=kernel_id)
 
@@ -153,16 +152,18 @@ class NotebookId:
     """
 
     def record_connection(self) -> None:
-        with open(KishuPath.connection_path(self._key), 'w') as f:
-            f.write(JupyterConnectionInfo(  # type: ignore
-                kernel_id=self._kernel_id,
-                notebook_path=str(self._path),
-            ).to_json())
+        with open(KishuPath.connection_path(self._key), "w") as f:
+            f.write(
+                JupyterConnectionInfo(  # type: ignore
+                    kernel_id=self._kernel_id,
+                    notebook_path=str(self._path),
+                ).to_json()
+            )
 
     @staticmethod
     def try_retrieve_connection(key: str) -> Optional[JupyterConnectionInfo]:
         try:
-            with open(KishuPath.connection_path(key), 'r') as f:
+            with open(KishuPath.connection_path(key), "r") as f:
                 json_str = f.read()
                 return JupyterConnectionInfo.from_json(json_str)  # type: ignore
         except (FileNotFoundError, json.decoder.JSONDecodeError):

@@ -28,15 +28,12 @@ Pytest Mods
 
 
 def pytest_addoption(parser):
-    parser.addoption(
-        "--run-benchmark", action="store_true", default=False, help="run benchmark tests"
-    )
+    parser.addoption("--run-benchmark", action="store_true", default=False, help="run benchmark tests")
 
 
 def pytest_collection_modifyitems(config, items):
     if not config.getoption("--run-benchmark"):
-        skip_benchmark = pytest.mark.skip(
-            reason="Enable with --run-benchmark")
+        skip_benchmark = pytest.mark.skip(reason="Enable with --run-benchmark")
         for item in items:
             if "benchmark" in item.keywords:
                 item.add_marker(skip_benchmark)
@@ -49,8 +46,7 @@ Kishu Resources
 
 @pytest.fixture(autouse=True)
 def set_test_mode() -> Generator[None, None, None]:
-    original_test_mode = os.environ.get(
-        KishuForJupyter.ENV_KISHU_TEST_MODE, None)
+    original_test_mode = os.environ.get(KishuForJupyter.ENV_KISHU_TEST_MODE, None)
     os.environ[KishuForJupyter.ENV_KISHU_TEST_MODE] = "true"
     yield None
     if original_test_mode is not None:
@@ -99,6 +95,7 @@ def tmp_nb_path(tmp_path: Path, kishu_test_notebook_dir: Path) -> Callable[[str]
         tmp_nb_path = tmp_path / PurePath(notebook_name)
         shutil.copy(real_nb_path, tmp_nb_path)
         return tmp_nb_path
+
     return _tmp_nb_path
 
 
@@ -110,60 +107,56 @@ def nb_simple_path(tmp_nb_path: Callable[[str], Path]) -> Path:
 @pytest.fixture(autouse=True)
 def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
     prev_config_path = Config.CONFIG_PATH
-    Config.CONFIG_PATH = os.path.join(
-        KishuPath.kishu_directory(), "config.ini")
+    Config.CONFIG_PATH = os.path.join(KishuPath.kishu_directory(), "config.ini")
     yield Config
     Config.CONFIG_PATH = prev_config_path
 
 
 @pytest.fixture()
 def enable_incremental_store(tmp_kishu_path) -> Generator[type, None, None]:
-    Config.set('PLANNER', 'incremental_store', True)
+    Config.set("PLANNER", "incremental_store", True)
     yield Config
-    Config.set('PLANNER', 'incremental_store', False)
+    Config.set("PLANNER", "incremental_store", False)
 
 
 @pytest.fixture()
 def matplotlib_plot() -> Generator[Tuple[Any, List[matplotlib.lines.Line2D]], None, None]:
     # Setup code
-    matplotlib.pyplot.close('all')
-    df = pandas.DataFrame(
-        numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
-    a = matplotlib.pyplot.plot(df['a'], df['b'])
+    matplotlib.pyplot.close("all")
+    df = pandas.DataFrame(numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=["a", "b", "c"])
+    a = matplotlib.pyplot.plot(df["a"], df["b"])
     matplotlib.pyplot.xlabel("XLABEL_1")
     yield matplotlib.pyplot, a
 
     # Teardown code
-    matplotlib.pyplot.close('all')
+    matplotlib.pyplot.close("all")
 
 
 @pytest.fixture()
 def seaborn_distplot() -> Generator[seaborn.axisgrid.FacetGrid, None, None]:
     # Setup code
-    df = seaborn.load_dataset('penguins')
-    plot1 = seaborn.displot(data=df, x="flipper_length_mm",
-                            y="bill_length_mm", kind="kde")
+    df = seaborn.load_dataset("penguins")
+    plot1 = seaborn.displot(data=df, x="flipper_length_mm", y="bill_length_mm", kind="kde")
     plot1.set(xlabel="flipper_length_mm")
 
     yield plot1
 
     # Teardown code
-    matplotlib.pyplot.close('all')
+    matplotlib.pyplot.close("all")
 
 
 @pytest.fixture()
 def seaborn_scatterplot() -> Generator[matplotlib.axes._axes.Axes, None, None]:
     # Setup code
-    df = seaborn.load_dataset('penguins')
-    plot1 = seaborn.scatterplot(
-        data=df, x="flipper_length_mm", y="bill_length_mm")
-    plot1.set_xlabel('flipper_length_mm')
-    plot1.set_facecolor('white')
+    df = seaborn.load_dataset("penguins")
+    plot1 = seaborn.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
+    plot1.set_xlabel("flipper_length_mm")
+    plot1.set_facecolor("white")
 
     yield plot1
 
     # Teardown code
-    matplotlib.pyplot.close('all')
+    matplotlib.pyplot.close("all")
 
 
 """
@@ -175,21 +168,18 @@ Jupyter runtime mocks
 @pytest.fixture
 def mock_server_header():
     return {
-        'url': 'http://localhost:8888/',
-        'token': 'token_value',
-        'pid': 12345,
-        'root_dir': '/root/',
-        'notebook_dir': '/notebooks/'
+        "url": "http://localhost:8888/",
+        "token": "token_value",
+        "pid": 12345,
+        "root_dir": "/root/",
+        "notebook_dir": "/notebooks/",
     }
 
 
 # Mock Jupyter session info.
 @pytest.fixture
 def mock_session_header():
-    return {
-        'notebook': {'path': 'notebook1.ipynb'},
-        'kernel': {'id': 'test_kernel_id'}
-    }
+    return {"notebook": {"path": "notebook1.ipynb"}, "kernel": {"id": "test_kernel_id"}}
 
 
 # Ensures Path.glob() returns the notebook path we want to return
@@ -206,11 +196,13 @@ def mock_servers(mock_server_header, mock_session_header):
     resp = requests.Response()
     resp.status_code = 200
     resp._content = json.dumps([mock_session_header])
-    with patch('kishu.jupyter.runtime.Path.read_bytes', return_value=json.dumps(mock_server_header).encode()), \
-            patch('kishu.jupyter.runtime.psutil.pid_exists', return_value=True), \
-            patch('kishu.jupyter.runtime.Path.glob', side_effect=glob_side_effect), \
-            patch("kishu.jupyter.runtime.jupyter_core.paths.jupyter_runtime_dir", return_value=Path("/")), \
-            patch('kishu.jupyter.runtime.requests.get', return_value=resp):
+    with patch("kishu.jupyter.runtime.Path.read_bytes", return_value=json.dumps(mock_server_header).encode()), patch(
+        "kishu.jupyter.runtime.psutil.pid_exists", return_value=True
+    ), patch("kishu.jupyter.runtime.Path.glob", side_effect=glob_side_effect), patch(
+        "kishu.jupyter.runtime.jupyter_core.paths.jupyter_runtime_dir", return_value=Path("/")
+    ), patch(
+        "kishu.jupyter.runtime.requests.get", return_value=resp
+    ):
         yield [mock_server_header]
 
 
@@ -262,8 +254,7 @@ def notebook_key() -> Generator[str, None, None]:
 @pytest.fixture()
 def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Generator[KishuForJupyter, None, None]:
     ip = InteractiveShell()
-    kishu_jupyter = KishuForJupyter(
-        notebook_id=NotebookId.from_enclosing_with_key(notebook_key), ip=ip)
+    kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key), ip=ip)
     yield kishu_jupyter
 
 
@@ -272,18 +263,15 @@ def basic_execution_ids(kishu_jupyter) -> Generator[List[str], None, None]:
     execution_count = 1
     info = JupyterInfoMock(raw_cell="x = 1")
     kishu_jupyter.pre_run_cell(info)
-    kishu_jupyter.post_run_cell(JupyterResultMock(
-        info=info, execution_count=execution_count))
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
     execution_count = 2
     info = JupyterInfoMock(raw_cell="y = 2")
     kishu_jupyter.pre_run_cell(info)
-    kishu_jupyter.post_run_cell(JupyterResultMock(
-        info=info, execution_count=execution_count))
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
     execution_count = 3
     info = JupyterInfoMock(raw_cell="y = x + 1")
     kishu_jupyter.pre_run_cell(info)
-    kishu_jupyter.post_run_cell(JupyterResultMock(
-        info=info, execution_count=execution_count))
+    kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
     kishu_jupyter.wait_until_commit_finishes()
 
     yield ["0:0:1", "0:0:2", "0:0:3"]  # List of commit IDs

@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 import os
 import pickle
-
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Tuple, Union
+
 from typing_extensions import TypeAlias
 
 from kishu.storage.config import Config
@@ -21,17 +21,17 @@ BlockPosition: TypeAlias = Tuple[int, int]  # (rank, position)
 Block size in number of nodes. Tail block has MAX_BASE_SIZE nodes where each upper rank block is
 MUL_SIZE times larger than its lower rank block (exponential sizes).
 """
-MAX_BASE_SIZE = Config.get('COMMIT_GRAPH', 'MAX_BASE_SIZE', 128)
-MUL_SIZE = Config.get('COMMIT_GRAPH', 'MUL_SIZE', 2)
+MAX_BASE_SIZE = Config.get("COMMIT_GRAPH", "MAX_BASE_SIZE", 128)
+MUL_SIZE = Config.get("COMMIT_GRAPH", "MUL_SIZE", 2)
 
 """
 Node byte format: [ header | serialzied node | padding ] where header contains the serialized node
 size in bytes. Header is an integer encoded in little endian. This assumes each node fits in 200 B.
 """
-NODE_SIZE = Config.get('COMMIT_GRAPH', 'NODE_SIZE', 256)  # bytes
-NODE_HEADER_SIZE = Config.get('COMMIT_GRAPH', 'NODE_HEADER_SIZE', 1)  # bytes
+NODE_SIZE = Config.get("COMMIT_GRAPH", "NODE_SIZE", 256)  # bytes
+NODE_HEADER_SIZE = Config.get("COMMIT_GRAPH", "NODE_HEADER_SIZE", 1)  # bytes
 NODE_DATA_SIZE = NODE_SIZE - NODE_HEADER_SIZE
-NODE_HEADER_BYTEORDER: Literal['little', 'big'] = Config.get('COMMIT_GRAPH', 'NODE_HEADER_BYTEORDER', 'little')
+NODE_HEADER_BYTEORDER: Literal["little", "big"] = Config.get("COMMIT_GRAPH", "NODE_HEADER_BYTEORDER", "little")
 assert 2 ** (8 * NODE_HEADER_SIZE) >= NODE_DATA_SIZE
 
 """
@@ -53,13 +53,10 @@ class CommitNodeInfo:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, CommitNodeInfo):
             return False
-        return (
-            self.commit_id == other.commit_id and
-            self.parent_id == other.parent_id
-        )
+        return self.commit_id == other.commit_id and self.parent_id == other.parent_id
 
     def __repr__(self) -> str:
-        return f"CommitNodeInfo(\"{self.commit_id}\", \"{self.parent_id}\")"
+        return f'CommitNodeInfo("{self.commit_id}", "{self.parent_id}")'
 
     def __str__(self) -> str:
         return f"Commit({self.commit_id})"
@@ -97,9 +94,7 @@ class CommitNode:
         self_bytes = pickle.dumps(self)
         self_bytes_len = len(self_bytes)
         if self_bytes_len > NODE_DATA_SIZE:
-            raise ValueError(
-                f"CommitNode {self.info()} is too large ({self_bytes_len} > {NODE_DATA_SIZE})"
-            )
+            raise ValueError(f"CommitNode {self.info()} is too large ({self_bytes_len} > {NODE_DATA_SIZE})")
         header = self_bytes_len.to_bytes(NODE_HEADER_SIZE, NODE_HEADER_BYTEORDER)
         padding = bytes(NODE_DATA_SIZE - self_bytes_len)
         return header + self_bytes + padding
@@ -107,7 +102,7 @@ class CommitNode:
     @staticmethod
     def deserialize(buffer: bytes) -> CommitNode:
         self_bytes_len = int.from_bytes(buffer[:NODE_HEADER_SIZE], NODE_HEADER_BYTEORDER)
-        self_bytes = buffer[NODE_HEADER_SIZE:NODE_HEADER_SIZE + self_bytes_len]
+        self_bytes = buffer[NODE_HEADER_SIZE : NODE_HEADER_SIZE + self_bytes_len]
         return pickle.loads(self_bytes)
 
 
@@ -256,9 +251,7 @@ class CommitGraphBlockSorted:
 
         # Sort and translate position.
         new_node_offsets = sorted(range(len(nodes)), key=lambda idx: nodes[idx].commit_id())
-        new_other_offset = {
-            old_offset: new_offset for new_offset, old_offset in enumerate(new_node_offsets)
-        }
+        new_other_offset = {old_offset: new_offset for new_offset, old_offset in enumerate(new_node_offsets)}
         for node in nodes:
             rank, offset = node.parent_position()
             if rank == self._rank:
@@ -358,9 +351,7 @@ class CommitGraphStore:
     def _read(self, position: BlockPosition) -> CommitNode:
         rank, offset = position
         if rank < -1 or rank >= len(self._sorted_blocks):
-            raise IndexError(
-                f"Rank {position} out of range ({len(self._sorted_blocks)} sorted blocks)."
-            )
+            raise IndexError(f"Rank {position} out of range ({len(self._sorted_blocks)} sorted blocks).")
         if offset >= MAX_BLOCK_SIZE(rank):
             raise IndexError(f"Offset {offset} out of range for rank {rank}.")
         if rank == -1:
@@ -399,7 +390,7 @@ class CommitGraphStore:
             self._tail_block.clear()
 
             # Clear merged blocks.
-            for sorted_block in self._sorted_blocks[:rank + 1]:
+            for sorted_block in self._sorted_blocks[: rank + 1]:
                 sorted_block.clear()
 
             # Assign new sorted block.
@@ -416,22 +407,15 @@ class CommitGraphStore:
     def _save_meta(self):
         with open(self._meta_path(), "w") as f:
             meta = {}
-            meta["sorted_blocks"] = [
-                sorted_block.to_dict() for sorted_block in self._sorted_blocks
-            ]
+            meta["sorted_blocks"] = [sorted_block.to_dict() for sorted_block in self._sorted_blocks]
             meta["tail_block"] = self._tail_block.to_dict()
             json.dump(meta, f)
 
     def _load_meta(self):
         with open(self._meta_path(), "r") as f:
             meta = json.load(f)
-            self._sorted_blocks = [
-                CommitGraphBlockSorted.from_dict(d, self._root_path)
-                for d in meta["sorted_blocks"]
-            ]
-            self._tail_block = CommitGraphBlockTail.from_dict(
-                meta["tail_block"], self._root_path
-            )
+            self._sorted_blocks = [CommitGraphBlockSorted.from_dict(d, self._root_path) for d in meta["sorted_blocks"]]
+            self._tail_block = CommitGraphBlockTail.from_dict(meta["tail_block"], self._root_path)
 
     def _meta_path(self):
         return os.path.join(self._root_path, "meta.json")

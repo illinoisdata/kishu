@@ -10,7 +10,7 @@ from kishu.storage.config import Config
 
 def test_primitive_size():
     """
-        Profiled size should equal size from sys.getsizeof for primitives and single-level data structures.
+    Profiled size should equal size from sys.getsizeof for primitives and single-level data structures.
     """
     x = 1
     assert profile_variable_size(x) == sys.getsizeof(x)
@@ -25,7 +25,7 @@ def test_primitive_size():
 
 def test_nested_list_size():
     """
-        Profile variable size should work correctly for nested lists.
+    Profile variable size should work correctly for nested lists.
     """
     x1 = [1, 2, 3, 4, 5]
     x2 = [6, 7, 8, 9, 10]
@@ -36,7 +36,7 @@ def test_nested_list_size():
 
 def test_repeated_pointers():
     """
-        Profile variable size should count each unique item only once.
+    Profile variable size should count each unique item only once.
     """
     x1 = [i for i in range(100)]
     y = [x1, x1, x1, x1, x1]
@@ -46,7 +46,7 @@ def test_repeated_pointers():
 
 def test_recursive_list_size():
     """
-        This should terminate correctly.
+    This should terminate correctly.
     """
     a = []
     b = []
@@ -62,8 +62,7 @@ def test_numpy_array():
 
 
 def test_pandas_dataframe():
-    df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-                      columns=['a', 'b', 'c'])
+    df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=["a", "b", "c"])
     assert profile_variable_size(df) < np.inf
 
 
@@ -73,8 +72,8 @@ def test_generator():
 
 
 def test_add_unserializable_variable_to_config(tmp_path: Path):
-    Config.set('PROFILER', 'auto_add_unpicklable_object', True)
-    assert Config.get('PROFILER', 'auto_add_unpicklable_object', False)
+    Config.set("PROFILER", "auto_add_unpicklable_object", True)
+    assert Config.get("PROFILER", "auto_add_unpicklable_object", False)
 
     # Try profiling the size of a generator.
     # Its class will be added to the unserializable list in the config.
@@ -82,5 +81,5 @@ def test_add_unserializable_variable_to_config(tmp_path: Path):
     assert profile_variable_size(gen) == np.inf
 
     # The generator has no module, so it is only added to the class list.
-    assert Config.get('PROFILER', 'excluded_modules', []) == []
-    assert Config.get('PROFILER', 'excluded_classes', []) == ["<class 'generator'>"]
+    assert Config.get("PROFILER", "excluded_modules", []) == []
+    assert Config.get("PROFILER", "excluded_classes", []) == ["<class 'generator'>"]

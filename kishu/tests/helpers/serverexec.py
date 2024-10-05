@@ -28,6 +28,7 @@ class NotebookHandler:
     """
         Class for running notebook code in Jupyter Sessions hosted in Jupyter Notebook servers.
     """
+
     def __init__(self, server_url: str, header: Dict[str, Any], kernel_id: str, session_id: str, persist: bool = False):
         self.server_url = server_url
         self.kernel_id = kernel_id
@@ -38,9 +39,12 @@ class NotebookHandler:
         self.websocket: Optional[websocket.WebSocket] = None
 
     def __enter__(self):
-        self.websocket = websocket.create_connection(self.request_url, header=self.header,
-                                                     timeout=NotebookHandler.CONNECTION_TIMEOUT,
-                                                     close_timeout=NotebookHandler.CONNECTION_TIMEOUT)
+        self.websocket = websocket.create_connection(
+            self.request_url,
+            header=self.header,
+            timeout=NotebookHandler.CONNECTION_TIMEOUT,
+            close_timeout=NotebookHandler.CONNECTION_TIMEOUT,
+        )
         self.websocket.settimeout(NotebookHandler.CELL_EXECUTION_TIMEOUT)
         return self
 
@@ -49,15 +53,15 @@ class NotebookHandler:
         msg_id = str(uuid.uuid4())
         msg_type = "execute_request"
         content = {"code": code, "silent": silent}
-        hdr = {"msg_id": msg_id,
-               "username": "test",
-               "session": str(uuid.uuid4()),
-               "data": datetime.datetime.now().isoformat(),
-               "msg_type": msg_type,
-               "version": "5.0"}
-        req = {"header": hdr, "parent_header": hdr,
-               "metadata": {},
-               "content": content}
+        hdr = {
+            "msg_id": msg_id,
+            "username": "test",
+            "session": str(uuid.uuid4()),
+            "data": datetime.datetime.now().isoformat(),
+            "msg_type": msg_type,
+            "version": "5.0",
+        }
+        req = {"header": hdr, "parent_header": hdr, "metadata": {}, "content": content}
         return req, msg_id
 
     def run_code(self, cell_code: str, silent: bool = False) -> Tuple[str, str]:
@@ -120,9 +124,9 @@ class NotebookHandler:
 
 class JupyterServerRunner:
     """
-        Class for running Jupyter Notebook server processes. Used for hosting Jupyter Sessions,
-        which are in turn used to execute notebooks.
-        Used for end-to-end testing in combination with Kishu commands.
+    Class for running Jupyter Notebook server processes. Used for hosting Jupyter Sessions,
+    which are in turn used to execute notebooks.
+    Used for end-to-end testing in combination with Kishu commands.
     """
 
     # Maximum number of retries each connection is attempted.
@@ -132,9 +136,9 @@ class JupyterServerRunner:
     SLEEP_TIME = 0.1
 
     # Adapter defining retry strategy for get/post requests.
-    ADAPTER = HTTPAdapter(max_retries=Retry(total=MAX_RETRIES,
-                                            backoff_factor=SLEEP_TIME,
-                                            allowed_methods=frozenset(["GET", "POST"])))
+    ADAPTER = HTTPAdapter(
+        max_retries=Retry(total=MAX_RETRIES, backoff_factor=SLEEP_TIME, allowed_methods=frozenset(["GET", "POST"]))
+    )
 
     def __init__(self, server_ip: str = "127.0.0.1", server_token: str = "abcdefg"):
         self.server_ip = server_ip
@@ -163,8 +167,7 @@ class JupyterServerRunner:
         )
 
         # Start the Jupyter Server process and get its URL.
-        self.server_process = subprocess.Popen(command.split(), shell=False,
-                                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.server_process = subprocess.Popen(command.split(), shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.server_url = self.get_server_url()
 
         return self
@@ -193,8 +196,12 @@ class JupyterServerRunner:
             raise RuntimeError("The Jupyter Server is not initialized yet.")
 
         request_url = self.server_url + "/api/sessions"
-        create_session_data = {"kernel": {"name": kernel_name}, "name": notebook_path.name, "type": "notebook",
-                               "path": str(notebook_path)}
+        create_session_data = {
+            "kernel": {"name": kernel_name},
+            "name": notebook_path.name,
+            "type": "notebook",
+            "path": str(notebook_path),
+        }
 
         with requests.Session() as session:
             session.mount("http://", JupyterServerRunner.ADAPTER)

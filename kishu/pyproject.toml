@@ -70,7 +70,9 @@ dependencies = [  # README: Keep in sync with requirements.txt
 [project.optional-dependencies]
 dev = [  # README: Keep in sync with dev-requirements.txt
     # Development tools
+    "black",
     "flake8",
+    "isort",
     "mypy",
     "pytest",
     "pytest-cov",
@@ -97,7 +99,6 @@ dev = [  # README: Keep in sync with dev-requirements.txt
 markers = [
     "benchmark: mark a test as a benchmark test."
 ]
-
 
 [project.scripts]
 kishu = "kishu.cli:main"

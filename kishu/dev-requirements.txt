@@ -2,7 +2,9 @@
 # README: Keep in sync with pyproject.toml
 
 # Development tools
+black
 flake8
+isort
 mypy
 pytest
 pytest-cov

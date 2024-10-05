@@ -80,11 +80,7 @@ class TestKishuCommitGraph:
         graph.step("1")
         graph.step("2")
         graph.step("3")
-        assert graph.list_history() == [
-            CommitNodeInfo("3", "2"),
-            CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
-        ]
+        assert graph.list_history() == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
         assert graph.head() == "3"
 
         graph.step("4")
@@ -94,22 +90,18 @@ class TestKishuCommitGraph:
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
+            CommitNodeInfo("1", ""),
         ]
         assert graph.head() == "5"
 
         graph.jump("3")
-        assert graph.list_history() == [
-            CommitNodeInfo("3", "2"),
-            CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
-        ]
+        assert graph.list_history() == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
         assert graph.list_history("5") == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
+            CommitNodeInfo("1", ""),
         ]
         assert graph.head() == "3"
 
@@ -124,30 +116,24 @@ class TestKishuCommitGraph:
             CommitNodeInfo("3_1", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
+            CommitNodeInfo("1", ""),
         ]
         assert graph.head() == "3_4"
 
         # Jumps to non-existent commit, creating a new commit from empty state.
         graph.jump("A")
-        assert graph.list_history() == [
-            CommitNodeInfo("A", "")
-        ]
+        assert graph.list_history() == [CommitNodeInfo("A", "")]
         assert graph.head() == "A"
 
         graph.step("A_A")
         graph.step("A_B")
-        assert graph.list_history() == [
-            CommitNodeInfo("A_B", "A_A"),
-            CommitNodeInfo("A_A", "A"),
-            CommitNodeInfo("A", "")
-        ]
+        assert graph.list_history() == [CommitNodeInfo("A_B", "A_A"), CommitNodeInfo("A_A", "A"), CommitNodeInfo("A", "")]
         assert graph.list_history("5") == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
+            CommitNodeInfo("1", ""),
         ]
         assert graph.head() == "A_B"
 
@@ -174,29 +160,21 @@ class TestKishuCommitGraph:
         # Create new graph. This should load existing commit graph.
 
         graph = KishuCommitGraph.new_on_file(str(tmp_path))
-        assert graph.list_history("3") == [
-            CommitNodeInfo("3", "2"),
-            CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
-        ]
+        assert graph.list_history("3") == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
         assert graph.list_history("5") == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
+            CommitNodeInfo("1", ""),
         ]
-        assert graph.list_history("3") == [
-            CommitNodeInfo("3", "2"),
-            CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
-        ]
+        assert graph.list_history("3") == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
         assert graph.list_history("5") == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
+            CommitNodeInfo("1", ""),
         ]
         assert graph.list_history("3_4") == [
             CommitNodeInfo("3_4", "3_3"),
@@ -205,23 +183,17 @@ class TestKishuCommitGraph:
             CommitNodeInfo("3_1", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
+            CommitNodeInfo("1", ""),
         ]
-        assert graph.list_history("A") == [
-            CommitNodeInfo("A", "")
-        ]
+        assert graph.list_history("A") == [CommitNodeInfo("A", "")]
 
-        assert graph.list_history("A_B") == [
-            CommitNodeInfo("A_B", "A_A"),
-            CommitNodeInfo("A_A", "A"),
-            CommitNodeInfo("A", "")
-        ]
+        assert graph.list_history("A_B") == [CommitNodeInfo("A_B", "A_A"), CommitNodeInfo("A_A", "A"), CommitNodeInfo("A", "")]
         assert graph.list_history("5") == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
-            CommitNodeInfo("1", "")
+            CommitNodeInfo("1", ""),
         ]
         assert graph.head() == "A_B"
 

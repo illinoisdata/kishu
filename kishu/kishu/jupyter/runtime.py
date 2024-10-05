@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-import ipykernel
 import json
-import jupyter_core.paths
-import nbformat
 import os
-import requests
-import psutil
-
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path, PurePath
 from typing import Dict, Generator, List, Optional, Tuple
+
+import ipykernel
+import jupyter_core.paths
+import nbformat
+import psutil
+import requests
 
 
 class JupyterRuntimeContextHandler:
@@ -51,11 +51,11 @@ class JupyterRuntimeEnv:
             return "test_kernel_id"
         connection_file_path = ipykernel.get_connection_file()
         connection_file = os.path.basename(connection_file_path)
-        if '-' not in connection_file:
+        if "-" not in connection_file:
             # connection_file not in expected format.
             # TODO: Find more stable way to extract kernel ID.
             raise FileNotFoundError("Failed to identify IPython connection file")
-        return connection_file.split('-', 1)[1].split('.')[0]
+        return connection_file.split("-", 1)[1].split(".")[0]
 
     @staticmethod
     def iter_maybe_running_servers() -> Generator[dict, None, None]:
@@ -78,7 +78,7 @@ class JupyterRuntimeEnv:
     def get_sessions(srv: dict):
         try:
             url = f"{srv['url']}api/sessions"
-            if srv['token']:
+            if srv["token"]:
                 url += f"?token={srv['token']}"
             resp = requests.get(
                 url,
@@ -100,8 +100,7 @@ class JupyterRuntimeEnv:
         for srv, sess in JupyterRuntimeEnv.iter_maybe_sessions():
             relative_path = PurePath(sess["notebook"]["path"])
             yield IPythonSession(
-                kernel_id=sess["kernel"]["id"],
-                notebook_path=Path(srv.get("root_dir") or srv["notebook_dir"]) / relative_path
+                kernel_id=sess["kernel"]["id"], notebook_path=Path(srv.get("root_dir") or srv["notebook_dir"]) / relative_path
             )
 
     @staticmethod
@@ -124,7 +123,7 @@ class JupyterRuntimeEnv:
 
     @staticmethod
     def read_notebook(notebook_path: Path) -> nbformat.NotebookNode:
-        with open(notebook_path, 'r') as f:
+        with open(notebook_path, "r") as f:
             return nbformat.read(f, JupyterRuntimeEnv.NBFORMAT_VERSION)
 
     @staticmethod
