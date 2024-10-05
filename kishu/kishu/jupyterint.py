@@ -730,7 +730,8 @@ class KishuForJupyter:
                     execution_count=None,
                 ))
             # else:
-            #     raise ValueError(f"Unknown cell type: {cell.cell_type}")
+            #     # TODO: Logs this as a warning.
+            #     print(f"Unknown cell type: {cell.cell_type}")
         return nbformat.writes(nb), nb_cells
 
     def _parse_cell_output(self, cell_outputs: List[Dict[Any, Any]]) -> Optional[str]:
