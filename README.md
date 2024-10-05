@@ -65,7 +65,9 @@ Kishu's efficiency is enabled by its low-overhead session state monitoring, dedu
 Installing Kishu in the editable mode.
 
 ```bash
-pip install -e kishu/[dev] -e kishuboard/ -e jupyterlab_kishu/
+(cd kishu && pip install -e .[dev])
+(cd kishuboard && pip install -e .)
+(cd jupyterlab_kishu && make install)
 ```
 
 Refer to development notes inside each module for further instructions.

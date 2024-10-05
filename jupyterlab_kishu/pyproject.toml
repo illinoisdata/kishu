@@ -31,6 +31,17 @@ dependencies = [
 ]
 dynamic = ["version", "description", "authors", "urls", "keywords"]
 
+
+[project.optional-dependencies]
+dev = [
+    # Development tools
+    "black",
+    "flake8",
+    "isort",
+    "mypy",
+    "pytest",
+]
+
 [tool.hatch.version]
 source = "nodejs"
 
