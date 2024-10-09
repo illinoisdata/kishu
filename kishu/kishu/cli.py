@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import typer
-
-
 from abc import ABC, abstractmethod
 from functools import wraps
 from typing import List, Tuple
+
+import typer
 
 from kishu import __app_name__, __version__
 from kishu.commands import (
@@ -18,10 +17,10 @@ from kishu.commands import (
     InitResult,
     InstrumentResult,
     InstrumentStatus,
-    into_json,
     KishuCommand,
     LogAllResult,
     LogResult,
+    into_json,
 )
 from kishu.notebook_id import NotebookId
 from kishu.storage.config import Config
@@ -33,7 +32,7 @@ class CommitPrinter(ABC):
         self.output: List[str] = []
 
     def add_line(self, text: str, is_indented: bool = False, prefix: str = ""):
-        indent = self.indentation if is_indented else ''
+        indent = self.indentation if is_indented else ""
         self.output.append(f"{prefix}{indent}{text}")
 
     @abstractmethod
@@ -70,18 +69,14 @@ class GraphCommitPrinter(CommitPrinter):
 class KishuPrint:
     @staticmethod
     def _get_terminal_height():
-        return shutil.get_terminal_size().lines     # fallback (80, 24)
+        return shutil.get_terminal_size().lines  # fallback (80, 24)
 
     @staticmethod
     def _print_or_page(output):
         lines = len(output.splitlines())
         if lines > min(80, KishuPrint._get_terminal_height()):
-            p = subprocess.Popen(
-                ['less', '-R'],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE
-            )
-            p.communicate(input=output.encode('utf-8'))
+            p = subprocess.Popen(["less", "-R"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            p.communicate(input=output.encode("utf-8"))
         else:
             print(output)
 
@@ -90,28 +85,24 @@ class KishuPrint:
         # Sort by timestamp in descending order
         sorted_commits = sorted(
             log_result.commit_graph,
-            key=lambda commit: commit.timestamp, reverse=True,
+            key=lambda commit: commit.timestamp,
+            reverse=True,
         )
 
-        output = [
-            KishuPrint._format_commit(commit, graph=graph)
-            for commit in sorted_commits
-        ]
-        KishuPrint._print_or_page('\n'.join(output))
+        output = [KishuPrint._format_commit(commit, graph=graph) for commit in sorted_commits]
+        KishuPrint._print_or_page("\n".join(output))
 
     @staticmethod
     def log_all(log_all_result: LogAllResult):
         # Sort by timestamp in descending order
         sorted_commits = sorted(
             log_all_result.commit_graph,
-            key=lambda commit: commit.timestamp, reverse=True,
+            key=lambda commit: commit.timestamp,
+            reverse=True,
         )
 
-        output = [
-            KishuPrint._format_commit(commit, include_parent_id=True)
-            for commit in sorted_commits
-        ]
-        KishuPrint._print_or_page('\n'.join(output))
+        output = [KishuPrint._format_commit(commit, include_parent_id=True) for commit in sorted_commits]
+        KishuPrint._print_or_page("\n".join(output))
 
     @staticmethod
     def log_all_with_graph(log_all_result: LogAllResult):
@@ -119,16 +110,11 @@ class KishuPrint:
         KishuPrint.log_all(log_all_result)
 
     @staticmethod
-    def _format_commit(
-        commit: CommitSummary,
-        include_parent_id: bool = False,
-        graph: bool = False
-    ):
+    def _format_commit(commit: CommitSummary, include_parent_id: bool = False, graph: bool = False):
         printer = BasicCommitPrinter() if not graph else GraphCommitPrinter()
-        ref_names = ', '.join(commit.branches + commit.tags)
+        ref_names = ", ".join(commit.branches + commit.tags)
         ref_str = f" ({ref_names})" if ref_names else ""
-        printer.add_commit_line(f"commit {commit.commit_id}{ref_str}",
-                                is_first_line=True)
+        printer.add_commit_line(f"commit {commit.commit_id}{ref_str}", is_first_line=True)
 
         if include_parent_id and commit.parent_id:
             printer.add_commit_line(f"Parent: {commit.parent_id}")
@@ -140,7 +126,7 @@ class KishuPrint:
         printer.add_commit_line(commit.message, is_indented=True)
         printer.add_commit_line("")
 
-        return '\n'.join(printer.output)
+        return "\n".join(printer.output)
 
 
 kishu_app = typer.Typer(add_completion=False)
@@ -155,12 +141,13 @@ def _version_callback(value: bool) -> None:
 def print_clean_errors(fn):
     @wraps(fn)
     def fn_with_clean_errors(*args, **kwargs):
-        if Config.get('CLI', 'KISHU_VERBOSE', True):
+        if Config.get("CLI", "KISHU_VERBOSE", True):
             return fn(*args, **kwargs)
         try:
             return fn(*args, **kwargs)
         except Exception as e:
             print(f"Kishu internal error ({type(e).__name__}).")
+
     return fn_with_clean_errors
 
 
@@ -264,11 +251,7 @@ def list(
 @kishu_app.command()
 @print_clean_errors
 def init(
-    notebook_path: str = typer.Argument(
-        ...,
-        help="Path to the notebook to initialize Kishu on.",
-        show_default=False
-    ),
+    notebook_path: str = typer.Argument(..., help="Path to the notebook to initialize Kishu on.", show_default=False),
 ) -> None:
     """
     Initialize Kishu instrumentation in a notebook.
@@ -279,11 +262,7 @@ def init(
 @kishu_app.command()
 @print_clean_errors
 def detach(
-    notebook_path: str = typer.Argument(
-        ...,
-        help="Path to the notebook to detach Kishu from.",
-        show_default=False
-    ),
+    notebook_path: str = typer.Argument(..., help="Path to the notebook to detach Kishu from.", show_default=False),
 ) -> None:
     """
     Detach Kishu instrumentation from notebook
@@ -294,9 +273,7 @@ def detach(
 @kishu_app.command()
 def log(
     notebook_path_or_key: str = typer.Argument(
-        ...,
-        help="Path to the target notebook or Kishu notebook key.",
-        show_default=False
+        ..., help="Path to the target notebook or Kishu notebook key.", show_default=False
     ),
     commit_id: str = typer.Argument(
         None,
@@ -333,9 +310,7 @@ def log(
 @kishu_app.command()
 def status(
     notebook_path_or_key: str = typer.Argument(
-        ...,
-        help="Path to the target notebook or Kishu notebook key.",
-        show_default=False
+        ..., help="Path to the target notebook or Kishu notebook key.", show_default=False
     ),
     commit_id: str = typer.Argument(..., help="Commit ID to get status.", show_default=False),
 ) -> None:
@@ -350,9 +325,7 @@ def status(
 @print_clean_errors
 def commit(
     notebook_path_or_key: str = typer.Argument(
-        ...,
-        help="Path to the target notebook or Kishu notebook key.",
-        show_default=False
+        ..., help="Path to the target notebook or Kishu notebook key.", show_default=False
     ),
     message: str = typer.Option(
         None,
@@ -376,11 +349,15 @@ def commit(
     Create or edit a Kishu commit.
     """
     if edit_branch_or_commit_id:
-        print(into_json(KishuCommand.edit_commit(
-            notebook_path_or_key,
-            edit_branch_or_commit_id,
-            message=message,
-        )))
+        print(
+            into_json(
+                KishuCommand.edit_commit(
+                    notebook_path_or_key,
+                    edit_branch_or_commit_id,
+                    message=message,
+                )
+            )
+        )
     else:
         print_commit_message(KishuCommand.commit(notebook_path_or_key, message=message))
 
@@ -389,9 +366,7 @@ def commit(
 @print_clean_errors
 def checkout(
     notebook_path_or_key: str = typer.Argument(
-        ...,
-        help="Path to the target notebook or Kishu notebook key.",
-        show_default=False
+        ..., help="Path to the target notebook or Kishu notebook key.", show_default=False
     ),
     branch_or_commit_id: str = typer.Argument(
         ...,
@@ -403,24 +378,24 @@ def checkout(
         "--skip-notebook",
         "--skip_notebook",
         help="Skip recovering notebook cells and outputs.",
-    )
+    ),
 ) -> None:
     """
     Checkout a notebook to a commit.
     """
-    print_checkout_message(KishuCommand.checkout(
-        notebook_path_or_key,
-        branch_or_commit_id,
-        skip_notebook=skip_notebook,
-    ))
+    print_checkout_message(
+        KishuCommand.checkout(
+            notebook_path_or_key,
+            branch_or_commit_id,
+            skip_notebook=skip_notebook,
+        )
+    )
 
 
 @kishu_app.command()
 def branch(
     notebook_path_or_key: str = typer.Argument(
-        ...,
-        help="Path to the target notebook or Kishu notebook key.",
-        show_default=False
+        ..., help="Path to the target notebook or Kishu notebook key.", show_default=False
     ),
     commit_id: str = typer.Argument(
         None,
@@ -459,20 +434,16 @@ def branch(
     if create_branch_name is not None:
         print(into_json(KishuCommand.branch(notebook_key, create_branch_name, commit_id)))
     if delete_branch_name is not None:
-        print(into_json(KishuCommand.delete_branch(
-            notebook_key, delete_branch_name)))
+        print(into_json(KishuCommand.delete_branch(notebook_key, delete_branch_name)))
     if rename_branch != (None, None):
         old_name, new_name = rename_branch
-        print(into_json(KishuCommand.rename_branch(
-            notebook_key, old_name, new_name)))
+        print(into_json(KishuCommand.rename_branch(notebook_key, old_name, new_name)))
 
 
 @kishu_app.command()
 def tag(
     notebook_path_or_key: str = typer.Argument(
-        ...,
-        help="Path to the target notebook or Kishu notebook key.",
-        show_default=False
+        ..., help="Path to the target notebook or Kishu notebook key.", show_default=False
     ),
     tag_name: str = typer.Argument(
         None,
@@ -528,9 +499,7 @@ kishu_experimental_app = typer.Typer(add_completion=False)
 @kishu_experimental_app.command()
 def fegraph(
     notebook_path_or_key: str = typer.Argument(
-        ...,
-        help="Path to the target notebook or Kishu notebook key.",
-        show_default=False
+        ..., help="Path to the target notebook or Kishu notebook key.", show_default=False
     ),
 ) -> None:
     """
@@ -543,9 +512,7 @@ def fegraph(
 @kishu_experimental_app.command()
 def fecommit(
     notebook_path_or_key: str = typer.Argument(
-        ...,
-        help="Path to the target notebook or Kishu notebook key.",
-        show_default=False
+        ..., help="Path to the target notebook or Kishu notebook key.", show_default=False
     ),
     commit_id: str = typer.Argument(..., help="Commit ID to get detail.", show_default=False),
     vardepth: int = typer.Option(
@@ -561,7 +528,7 @@ def fecommit(
     print(into_json(KishuCommand.fe_commit(notebook_key, commit_id, vardepth)))
 
 
-if Config.get('CLI', 'KISHU_ENABLE_EXPERIMENTAL', False):
+if Config.get("CLI", "KISHU_ENABLE_EXPERIMENTAL", False):
     kishu_app.add_typer(kishu_experimental_app, name="experimental")
 
 

@@ -1,6 +1,7 @@
-import pandas
 import pickle
 from typing import Any, List, Optional
+
+import pandas
 
 import kishu.planning.object_state as object_state
 from kishu.planning.visitor import Visitor
@@ -45,8 +46,9 @@ class GraphNode:
 
 
 class idgraph(Visitor):
-    def check_visited(self, visited: dict, obj_id: int, obj_type: type, include_id: bool,
-                      hash_state: None) -> Optional[GraphNode]:
+    def check_visited(
+        self, visited: dict, obj_id: int, obj_type: type, include_id: bool, hash_state: None
+    ) -> Optional[GraphNode]:
         if obj_id in visited.keys():
             return visited[obj_id]
         else:
@@ -63,8 +65,7 @@ class idgraph(Visitor):
         # Not adding tuple objects to visited dict due to failing test case,
         # possibly due to tuple interning by Python
         for item in obj:
-            child = object_state.get_object_state(
-                item, visited, visitor=self, include_id=include_id)
+            child = object_state.get_object_state(item, visited, visitor=self, include_id=include_id)
 
             node.children.append(child)
 
@@ -79,23 +80,20 @@ class idgraph(Visitor):
             node.check_value_only = False
 
         for item in obj:
-            child = object_state.get_object_state(
-                item, visited, visitor=self, include_id=include_id)
+            child = object_state.get_object_state(item, visited, visitor=self, include_id=include_id)
             node.children.append(child)
 
         node.children.append("/EOC")
         return node
 
     def visit_set(self, obj, visited: dict, include_id: bool, hash_state: None) -> GraphNode:
-        node = GraphNode(obj_type=type(obj), id_obj=id(obj),
-                         check_value_only=True)
+        node = GraphNode(obj_type=type(obj), id_obj=id(obj), check_value_only=True)
         visited[id(obj)] = node
         if include_id:
             node.id_obj = id(obj)
             node.check_value_only = False
         for item in sorted(obj):
-            child = object_state.get_object_state(
-                item, visited, visitor=self, include_id=include_id)
+            child = object_state.get_object_state(item, visited, visitor=self, include_id=include_id)
             node.children.append(child)
 
         node.children.append("/EOC")
@@ -110,11 +108,9 @@ class idgraph(Visitor):
             node.check_value_only = False
 
         for key, value in sorted(obj.items()):
-            child = object_state.get_object_state(
-                key, visited, visitor=self, include_id=include_id)
+            child = object_state.get_object_state(key, visited, visitor=self, include_id=include_id)
             node.children.append(child)
-            child = object_state.get_object_state(
-                value, visited, visitor=self, include_id=include_id)
+            child = object_state.get_object_state(value, visited, visitor=self, include_id=include_id)
             node.children.append(child)
 
         node.children.append("/EOC")
@@ -158,8 +154,7 @@ class idgraph(Visitor):
                 return node
 
             for item in reduced[1:]:
-                child = object_state.get_object_state(
-                    item, visited=visited, visitor=self, include_id=False)
+                child = object_state.get_object_state(item, visited=visited, visitor=self, include_id=False)
                 node.children.append(child)
             node.children.append("/EOC")
         return node

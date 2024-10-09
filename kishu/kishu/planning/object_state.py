@@ -32,8 +32,7 @@ def get_object_state(obj, visited, visitor: Visitor, hash_state=None, include_id
              In case of xxhash, the output is hash object which is recursively updated as it
                 traverses the object. Return value is the xxhash object
     """
-    ret = visitor.check_visited(
-        visited, id(obj), type(obj), include_id, hash_state)
+    ret = visitor.check_visited(visited, id(obj), type(obj), include_id, hash_state)
     if ret:
         return ret
 
@@ -61,7 +60,7 @@ def get_object_state(obj, visited, visitor: Visitor, hash_state=None, include_id
     elif callable(obj):
         return visitor.visit_callable(obj, visited, include_id, hash_state)
 
-    elif hasattr(obj, '__reduce_ex__'):
+    elif hasattr(obj, "__reduce_ex__"):
         return visitor.visit_custom_obj(obj, visited, include_id, hash_state)
 
     else:

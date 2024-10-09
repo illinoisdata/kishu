@@ -3,19 +3,15 @@ from __future__ import annotations
 import json
 import random
 import sqlite3
-
 from dataclasses import dataclass
-from dataclasses_json import dataclass_json
 from typing import Dict, List, Optional
 
-from kishu.exceptions import (
-    BranchNotFoundError,
-    BranchConflictError,
-)
+from dataclasses_json import dataclass_json
+
+from kishu.exceptions import BranchConflictError, BranchNotFoundError
 from kishu.storage.path import KishuPath
 
-
-BRANCH_TABLE = 'branch'
+BRANCH_TABLE = "branch"
 
 
 BRANCH_NAME_ADJECTIVES = [
@@ -168,7 +164,7 @@ class KishuBranch:
     def init_database(self):
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(f'create table if not exists {BRANCH_TABLE} (branch_name text primary key, commit_id text)')
+        cur.execute(f"create table if not exists {BRANCH_TABLE} (branch_name text primary key, commit_id text)")
         con.commit()
 
     def get_head(self) -> HeadBranch:
@@ -180,10 +176,7 @@ class KishuBranch:
             return HeadBranch(branch_name=None, commit_id=None)
 
     def update_head(
-        self,
-        branch_name: Optional[str] = None,
-        commit_id: Optional[str] = None,
-        is_detach: bool = False
+        self, branch_name: Optional[str] = None, commit_id: Optional[str] = None, is_detach: bool = False
     ) -> HeadBranch:
         # Get current head.
         head = self.get_head()
@@ -201,7 +194,7 @@ class KishuBranch:
             head.commit_id = commit_id
 
         # Write head.
-        with open(self.head_path, 'w') as f:
+        with open(self.head_path, "w") as f:
             f.write(head.to_json())  # type: ignore
         return head
 
@@ -218,10 +211,7 @@ class KishuBranch:
         query = f"select branch_name, commit_id from {BRANCH_TABLE}"
         try:
             cur.execute(query)
-            return [
-                BranchRow(branch_name=branch_name, commit_id=commit_id)
-                for branch_name, commit_id in cur
-            ]
+            return [BranchRow(branch_name=branch_name, commit_id=commit_id) for branch_name, commit_id in cur]
         except sqlite3.OperationalError:
             # No such table means no branch
             return []
@@ -234,10 +224,7 @@ class KishuBranch:
         query = f"select branch_name, commit_id from {BRANCH_TABLE} where branch_name = ?"
         try:
             cur.execute(query, (branch_name,))
-            return [
-                BranchRow(branch_name=branch_name, commit_id=commit_id)
-                for branch_name, commit_id in cur
-            ]
+            return [BranchRow(branch_name=branch_name, commit_id=commit_id) for branch_name, commit_id in cur]
         except sqlite3.OperationalError:
             # No such table means no branch
             return []
@@ -250,22 +237,21 @@ class KishuBranch:
         query = f"select branch_name, commit_id from {BRANCH_TABLE} where commit_id = ?"
         try:
             cur.execute(query, (commit_id,))
-            return [
-                BranchRow(branch_name=branch_name, commit_id=commit_id)
-                for branch_name, commit_id in cur
-            ]
+            return [BranchRow(branch_name=branch_name, commit_id=commit_id) for branch_name, commit_id in cur]
         except sqlite3.OperationalError:
             # No such table means no branch
             return []
         finally:
             con.close()
 
-    def branches_for_many_commits(self, commit_ids: List[str],) -> Dict[str, List[BranchRow]]:
+    def branches_for_many_commits(
+        self,
+        commit_ids: List[str],
+    ) -> Dict[str, List[BranchRow]]:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         query = "select branch_name, commit_id from {} where commit_id in ({})".format(
-            BRANCH_TABLE,
-            ', '.join('?' * len(commit_ids))
+            BRANCH_TABLE, ", ".join("?" * len(commit_ids))
         )
         try:
             cur.execute(query, commit_ids)
@@ -277,10 +263,12 @@ class KishuBranch:
         for branch_name, commit_id in raw_branches:
             if commit_id not in branch_by_commit:
                 branch_by_commit[commit_id] = []
-            branch_by_commit[commit_id].append(BranchRow(
-                branch_name=branch_name,
-                commit_id=commit_id,
-            ))
+            branch_by_commit[commit_id].append(
+                BranchRow(
+                    branch_name=branch_name,
+                    commit_id=commit_id,
+                )
+            )
         con.close()
         return branch_by_commit
 

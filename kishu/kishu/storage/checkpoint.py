@@ -1,21 +1,21 @@
 """
 Sqlite interface for storing checkpoints.
 """
-import dill as pickle
+
 import sqlite3
 import uuid
-
 from typing import List
+
+import dill as pickle
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import VersionedName, VsConnectedComponents
 from kishu.storage.config import Config
 
-
-CHECKPOINT_TABLE = 'checkpoint'
-VARIABLE_KV_TABLE = 'variable_kv'
-NAMESPACE_TABLE = 'namespace'
+CHECKPOINT_TABLE = "checkpoint"
+VARIABLE_KV_TABLE = "variable_kv"
+NAMESPACE_TABLE = "namespace"
 
 
 class KishuCheckpoint:
@@ -25,22 +25,19 @@ class KishuCheckpoint:
     def init_database(self):
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(f'create table if not exists {CHECKPOINT_TABLE} (commit_id text primary key, data blob)')
+        cur.execute(f"create table if not exists {CHECKPOINT_TABLE} (commit_id text primary key, data blob)")
 
         # Create incremental checkpointing related tables only if the config flag is enabled.
-        if Config.get('PLANNER', 'incremental_store', False):
-            cur.execute(f'create table if not exists {VARIABLE_KV_TABLE} (version int, name text, ns_id text, commit_id text)')
-            cur.execute(f'create table if not exists {NAMESPACE_TABLE} (ns_id text primary key, data blob)')
+        if Config.get("PLANNER", "incremental_store", False):
+            cur.execute(f"create table if not exists {VARIABLE_KV_TABLE} (version int, name text, ns_id text, commit_id text)")
+            cur.execute(f"create table if not exists {NAMESPACE_TABLE} (ns_id text primary key, data blob)")
 
         con.commit()
 
     def get_checkpoint(self, commit_id: str) -> bytes:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(
-            f"select data from {CHECKPOINT_TABLE} where commit_id = ?",
-            (commit_id, )
-        )
+        cur.execute(f"select data from {CHECKPOINT_TABLE} where commit_id = ?", (commit_id,))
         res: tuple = cur.fetchone()
         if not res:
             raise CommitIdNotExistError(commit_id)
@@ -51,10 +48,7 @@ class KishuCheckpoint:
     def store_checkpoint(self, commit_id: str, data: bytes) -> None:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(
-            f"insert into {CHECKPOINT_TABLE} values (?, ?)",
-            (commit_id, memoryview(data))
-        )
+        cur.execute(f"insert into {CHECKPOINT_TABLE} values (?, ?)", (commit_id, memoryview(data)))
         con.commit()
 
     def get_stored_connected_components(self) -> VsConnectedComponents:
@@ -67,10 +61,7 @@ class KishuCheckpoint:
 
         component_list = []
         for ns_id in select_distinct_res:
-            cur.execute(
-                f"select version, name from {VARIABLE_KV_TABLE} where ns_id = ?",
-                ns_id
-            )
+            cur.execute(f"select version, name from {VARIABLE_KV_TABLE} where ns_id = ?", ns_id)
             filter_res: List = cur.fetchall()
             component_list.append([VersionedName(i[1], i[0]) for i in filter_res])
 
@@ -89,13 +80,10 @@ class KishuCheckpoint:
             # Insert the mapping from variable KVs to namespace into database.
             cur.executemany(
                 f"insert into {VARIABLE_KV_TABLE} values (?, ?, ?, ?)",
-                [(versioned_name.version, versioned_name.name, commit_id, ns_id) for versioned_name in component]
+                [(versioned_name.version, versioned_name.name, commit_id, ns_id) for versioned_name in component],
             )
             con.commit()
 
             # Insert namespace to data mapping into database
-            cur.execute(
-                f"insert into {NAMESPACE_TABLE} values (?, ?)",
-                (ns_id, memoryview(pickle.dumps(ns_subset)))
-            )
+            cur.execute(f"insert into {NAMESPACE_TABLE} values (?, ?)", (ns_id, memoryview(pickle.dumps(ns_subset))))
             con.commit()

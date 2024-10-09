@@ -10,7 +10,7 @@ class MissingNotebookMetadataError(Exception):
 
 class NotNotebookPathOrKey(Exception):
     def __init__(self, s: str):
-        super().__init__(f"\"{s}\" is neither a notebook path nor a Kishu notebook key.")
+        super().__init__(f'"{s}" is neither a notebook path nor a Kishu notebook key.')
 
 
 """

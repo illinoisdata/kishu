@@ -5,8 +5,9 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 class TrackedNamespace(dict):
     """
-        Wrapper class for monkey-patching Jupyter namespace to monitor variable accesses.
+    Wrapper class for monkey-patching Jupyter namespace to monitor variable accesses.
     """
+
     def __init__(self, *args, **kwargs) -> None:
         dict.__init__(self, *args, **kwargs)
         self._accessed_vars: Set[str] = set()
@@ -29,9 +30,10 @@ class TrackedNamespace(dict):
 
 class Namespace:
     """
-        Wrapper class around the kernel namespace.
+    Wrapper class around the kernel namespace.
     """
-    IPYTHON_VARS = set(['In', 'Out', 'get_ipython', 'exit', 'quit', 'open'])
+
+    IPYTHON_VARS = set(["In", "Out", "get_ipython", "exit", "quit", "open"])
     KISHU_VARS: Set[str] = set()
 
     @staticmethod
@@ -92,12 +94,12 @@ class Namespace:
         @return  True if name is not an IPython-specific variable.
         """
         name, obj = name_obj
-        if name.startswith('_'):
+        if name.startswith("_"):
             return False
         if name in Namespace.IPYTHON_VARS:
             return False
         if name in Namespace.KISHU_VARS:
             return False
-        if getattr(obj, '__module__', '').startswith('IPython'):
+        if getattr(obj, "__module__", "").startswith("IPython"):
             return False
         return True

@@ -7,7 +7,7 @@ import pickle
 
 def test_idgraph_numpy():
     """
-        Test if idgraph is accurately generated for numpy arrays
+    Test if idgraph is accurately generated for numpy arrays
     """
     a = np.arange(6)
 
@@ -35,7 +35,7 @@ def test_idgraph_numpy():
 
 def test_hash_numpy():
     """
-        Test if hash is accurately generated for numpy arrays
+    Test if hash is accurately generated for numpy arrays
     """
     a = np.arange(6)
 
@@ -60,7 +60,7 @@ def test_hash_numpy():
 
 def test_idgraph_pandas_Series():
     """
-        Test if idgraph is accurately generated for pandas series
+    Test if idgraph is accurately generated for pandas series
     """
     s1 = pd.Series([1, 2, 3, 4])
 
@@ -90,7 +90,7 @@ def test_idgraph_pandas_Series():
 
 def test_hash_pandas_Series():
     """
-        Test if hash is accurately generated for pandas series
+    Test if hash is accurately generated for pandas series
     """
     s1 = pd.Series([1, 2, 3, 4])
 
@@ -117,9 +117,9 @@ def test_hash_pandas_Series():
 
 def test_idgraph_pandas_df():
     """
-        Test if idgraph is accurately generated for panda dataframes
+    Test if idgraph is accurately generated for panda dataframes
     """
-    df = sns.load_dataset('penguins')
+    df = sns.load_dataset("penguins")
 
     idgraph1 = object_state.create_idgraph(df)
     idgraph2 = object_state.create_idgraph(df)
@@ -130,20 +130,27 @@ def test_idgraph_pandas_df():
     # Assert that the id graph does not change when the object remains unchanged
     assert idgraph1 == idgraph2
 
-    df.at[0, 'species'] = "Changed"
+    df.at[0, "species"] = "Changed"
     idgraph3 = object_state.create_idgraph(df)
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph3
 
-    df.at[0, 'species'] = "Adelie"
+    df.at[0, "species"] = "Adelie"
     idgraph4 = object_state.create_idgraph(df)
 
     # Assert that the original id graph is restored when the original object state is restored
     assert idgraph1 == idgraph4
 
-    new_row = {'species': "New Species", 'island': "New island", 'bill_length_mm': 999,
-               'bill_depth_mm': 999, 'flipper_length_mm': 999, 'body_mass_g': 999, 'sex': "Male"}
+    new_row = {
+        "species": "New Species",
+        "island": "New island",
+        "bill_length_mm": 999,
+        "bill_depth_mm": 999,
+        "flipper_length_mm": 999,
+        "body_mass_g": 999,
+        "sex": "Male",
+    }
     df.loc[len(df)] = new_row
 
     idgraph5 = object_state.create_idgraph(df)
@@ -154,9 +161,9 @@ def test_idgraph_pandas_df():
 
 def test_hash_pandas_df():
     """
-        Test if hash is accurately generated for pandas dataframes
+    Test if hash is accurately generated for pandas dataframes
     """
-    df = sns.load_dataset('penguins')
+    df = sns.load_dataset("penguins")
 
     hash1 = object_state.create_hash(df)
     hash2 = object_state.create_hash(df)
@@ -164,20 +171,27 @@ def test_hash_pandas_df():
     # Assert that the hash does not change when the object remains unchanged
     assert hash1.digest() == hash2.digest()
 
-    df.at[0, 'species'] = "Changed"
+    df.at[0, "species"] = "Changed"
     hash3 = object_state.create_hash(df)
 
     # Assert that the hash changes when the object changes
     assert hash1.digest() != hash3.digest()
 
-    df.at[0, 'species'] = "Adelie"
+    df.at[0, "species"] = "Adelie"
     hash4 = object_state.create_hash(df)
 
     # Assert that the original hash is restored when the original object state is restored
     assert hash1.digest() == hash4.digest()
 
-    new_row = {'species': "New Species", 'island': "New island", 'bill_length_mm': 999,
-               'bill_depth_mm': 999, 'flipper_length_mm': 999, 'body_mass_g': 999, 'sex': "Male"}
+    new_row = {
+        "species": "New Species",
+        "island": "New island",
+        "bill_length_mm": 999,
+        "bill_depth_mm": 999,
+        "flipper_length_mm": 999,
+        "body_mass_g": 999,
+        "sex": "Male",
+    }
     df.loc[len(df)] = new_row
 
     hash5 = object_state.create_hash(df)
@@ -188,7 +202,7 @@ def test_hash_pandas_df():
 
 def test_idgraph_matplotlib(matplotlib_plot):
     """
-        Test if idgraph is accurately generated for matplotlib objects
+    Test if idgraph is accurately generated for matplotlib objects
     """
     plt = matplotlib_plot[0]
     a = matplotlib_plot[1]
@@ -219,7 +233,7 @@ def test_idgraph_matplotlib(matplotlib_plot):
 
     line = plt.gca().get_lines()[0]
     line_co = line.get_color()
-    line.set_color('red')
+    line.set_color("red")
     idgraph5 = object_state.create_idgraph(a)
 
     # Assert that the id graph changes when the object changes
@@ -234,7 +248,7 @@ def test_idgraph_matplotlib(matplotlib_plot):
 
 def test_hash_matplotlib(matplotlib_plot):
     """
-        Test if hash is accurately generated for matplotlib objects
+    Test if hash is accurately generated for matplotlib objects
     """
     plt = matplotlib_plot[0]
     a = matplotlib_plot[1]
@@ -262,7 +276,7 @@ def test_hash_matplotlib(matplotlib_plot):
 
     line = plt.gca().get_lines()[0]
     line_co = line.get_color()
-    line.set_color('red')
+    line.set_color("red")
     hash5 = object_state.create_hash(a)
 
     # Assert that the id graph changes when the object changes
@@ -277,7 +291,7 @@ def test_hash_matplotlib(matplotlib_plot):
 
 def test_idgraph_seaborn_displot(seaborn_distplot):
     """
-        Test if idgraph is accurately generated for seaborn displot objects (figure-level object)
+    Test if idgraph is accurately generated for seaborn displot objects (figure-level object)
     """
     plot1 = seaborn_distplot
 
@@ -307,7 +321,7 @@ def test_idgraph_seaborn_displot(seaborn_distplot):
 
 def test_hash_seaborn_displot(seaborn_distplot):
     """
-        Test if hash is accurately generated for seaborn displot objects (figure-level object)
+    Test if hash is accurately generated for seaborn displot objects (figure-level object)
     """
     plot1 = seaborn_distplot
 
@@ -335,7 +349,7 @@ def test_hash_seaborn_displot(seaborn_distplot):
 
 def test_idgraph_seaborn_scatterplot(seaborn_scatterplot):
     """
-        Test if idgraph is accurately generated for seaborn scatterplot objects (axes-level object)
+    Test if idgraph is accurately generated for seaborn scatterplot objects (axes-level object)
     """
     plot1 = seaborn_scatterplot
 
@@ -351,19 +365,19 @@ def test_idgraph_seaborn_scatterplot(seaborn_scatterplot):
     # Assert that the id graph does not change when the object remains unchanged if pickle binaries are same
     assert (pick1 == pick2) == (idgraph1 == idgraph2)
 
-    plot1.set_xlabel('Flipper Length')
+    plot1.set_xlabel("Flipper Length")
     idgraph3 = object_state.create_idgraph(plot1)
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph3
 
-    plot1.set_xlabel('flipper_length_mm')
+    plot1.set_xlabel("flipper_length_mm")
     idgraph4 = object_state.create_idgraph(plot1)
 
     # Assert that the original id graph is restored when the original object state is restored if pickle binaries were same
     assert (pick1 == pick2) == (idgraph1 == idgraph4)
 
-    plot1.set_facecolor('#eafff5')
+    plot1.set_facecolor("#eafff5")
     idgraph5 = object_state.create_idgraph(plot1)
 
     # Assert that the id graph changes when the object changes
@@ -372,7 +386,7 @@ def test_idgraph_seaborn_scatterplot(seaborn_scatterplot):
 
 def test_hash_seaborn_scatterplot(seaborn_scatterplot):
     """
-        Test if hash is accurately generated for seaborn scatterplot objects (axes-level object)
+    Test if hash is accurately generated for seaborn scatterplot objects (axes-level object)
     """
     plot1 = seaborn_scatterplot
 
@@ -385,19 +399,19 @@ def test_hash_seaborn_scatterplot(seaborn_scatterplot):
     # Assert that the hash does not change when the object remains unchanged if pickle binaries are same
     assert (pick1 == pick2) == (hash1.digest() == hash2.digest())
 
-    plot1.set_xlabel('Flipper Length')
+    plot1.set_xlabel("Flipper Length")
     hash3 = object_state.create_hash(plot1)
 
     # Assert that the hash changes when the object changes
     assert hash1.digest() != hash3.digest()
 
-    plot1.set_xlabel('flipper_length_mm')
+    plot1.set_xlabel("flipper_length_mm")
     hash4 = object_state.create_hash(plot1)
 
     # Assert that the original hash is restored when the original object state is restored if pickle binaries were same
     assert (pick1 == pick2) == (hash1.digest() == hash4.digest())
 
-    plot1.set_facecolor('#eafff5')
+    plot1.set_facecolor("#eafff5")
     hash5 = object_state.create_hash(plot1)
 
     # Assert that the hash changes when the object changes

@@ -15,13 +15,14 @@ def benchmark_hash_creation(obj):
 def benchmark_hash_comparison(objs1: ObjectState, objs2: ObjectState):
     return objs1.compare_ObjectStates(objs2)
 
+
 # --------------------------------------- Simple tests -----------------------
 
 
 def test_idgraph_simple_list_compare_by_value():
     """
-        Test if the idgraph comparisons work. Comparing by value only will identify 'a' as equal
-        before and after reassigning, while comparing by structure will report a difference.
+    Test if the idgraph comparisons work. Comparing by value only will identify 'a' as equal
+    before and after reassigning, while comparing by structure will report a difference.
     """
     a = [1, 2]
     objs1 = ObjectState(a)
@@ -46,8 +47,8 @@ def test_idgraph_nested_list_compare_by_value():
 
 def test_idgraph_dict_compare_by_value():
     """
-        Test if the idgraph comparisons work. Comparing by value only will identify 'a' as equal
-        before and after reassigning, while comparing by structure will report a difference.
+    Test if the idgraph comparisons work. Comparing by value only will identify 'a' as equal
+    before and after reassigning, while comparing by structure will report a difference.
     """
     a = {"foo": {"bar": "baz"}}
     objs1 = ObjectState(a)
@@ -110,12 +111,14 @@ def test_idgraph_nested_overlap():
     objs2 = ObjectState(nested_list, True)
 
     assert objs1.is_overlap(objs2)
+
+
 # --------------------------------------- Numpy tests -----------------------
 
 
 def test_hash_numpy():
     """
-        Test if hash is accurately generated for numpy arrays
+    Test if hash is accurately generated for numpy arrays
     """
     a = np.arange(6)
 
@@ -156,12 +159,13 @@ def test_hash_comparison_numpy(benchmark):
     benchmark(benchmark_hash_comparison, objs1, objs2)
     assert True
 
+
 # --------------------------------------- Pandas tests ----------------------
 
 
 def test_hash_pandas_Series():
     """
-        Test if hash is accurately generated for pandas series
+    Test if hash is accurately generated for pandas series
     """
     a = pd.Series([1, 2, 3, 4])
 
@@ -210,9 +214,9 @@ def test_hash_comparison_series(benchmark):
 
 def test_hash_pandas_df():
     """
-        Test if hash is accurately generated for pandas dataframes
+    Test if hash is accurately generated for pandas dataframes
     """
-    df = sns.load_dataset('penguins')
+    df = sns.load_dataset("penguins")
 
     objs1 = ObjectState(df)
     objs2 = ObjectState(df)
@@ -226,7 +230,7 @@ def test_hash_pandas_df():
     else:
         assert not objs1.compare_ObjectStates(objs2)
 
-    df.at[0, 'species'] = "Changed"
+    df.at[0, "species"] = "Changed"
     objs2.update_object_hash(df)
 
     # Assert that the hash changes when the object changes
@@ -235,8 +239,15 @@ def test_hash_pandas_df():
     # Update objs1 with current df
     objs1.update_object_hash(df)
 
-    new_row = {'species': "New Species", 'island': "New island", 'bill_length_mm': 999,
-               'bill_depth_mm': 999, 'flipper_length_mm': 999, 'body_mass_g': 999, 'sex': "Male"}
+    new_row = {
+        "species": "New Species",
+        "island": "New island",
+        "bill_length_mm": 999,
+        "bill_depth_mm": 999,
+        "flipper_length_mm": 999,
+        "body_mass_g": 999,
+        "sex": "Male",
+    }
     df.loc[len(df)] = new_row
 
     # Update objs2 with new hash
@@ -248,14 +259,14 @@ def test_hash_pandas_df():
 
 @pytest.mark.benchmark(group="hash creation")
 def test_hash_creation_df(benchmark):
-    df = sns.load_dataset('penguins')
+    df = sns.load_dataset("penguins")
     benchmark(benchmark_hash_creation, df)
     assert True
 
 
 @pytest.mark.benchmark(group="hash comparison")
 def test_hash_compare_df(benchmark):
-    df = sns.load_dataset('penguins')
+    df = sns.load_dataset("penguins")
 
     objs1 = ObjectState(df)
     objs2 = ObjectState(df)
@@ -263,17 +274,17 @@ def test_hash_compare_df(benchmark):
     benchmark(benchmark_hash_comparison, objs1, objs2)
     assert True
 
+
 # --------------------------------------- matplotlib tests ----------------------
 
 
 def test_hash_matplotlib():
     """
-        Test if hash is accurately generated for matplotlib objects
+    Test if hash is accurately generated for matplotlib objects
     """
-    plt.close('all')
-    df = pd.DataFrame(
-        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
-    a = plt.plot(df['a'], df['b'])
+    plt.close("all")
+    df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=["a", "b", "c"])
+    a = plt.plot(df["a"], df["b"])
     plt.xlabel("XLABEL_1")
 
     objs1 = ObjectState(a)
@@ -308,7 +319,7 @@ def test_hash_matplotlib():
 
     line = plt.gca().get_lines()[0]
     line_co = line.get_color()
-    line.set_color('red')
+    line.set_color("red")
     objs2.update_object_hash(a)
 
     # Assert that the hash changes when the object changes
@@ -326,45 +337,43 @@ def test_hash_matplotlib():
         assert not objs1.compare_ObjectStates(objs2)
 
     # Close all figures
-    plt.close('all')
+    plt.close("all")
 
 
 @pytest.mark.benchmark(group="hash creation")
 def test_hash_creation_matplotlib(benchmark):
-    plt.close('all')
-    df = pd.DataFrame(
-        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
-    a = plt.plot(df['a'], df['b'])
+    plt.close("all")
+    df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=["a", "b", "c"])
+    a = plt.plot(df["a"], df["b"])
     benchmark(benchmark_hash_creation, a)
-    plt.close('all')
+    plt.close("all")
     assert True
 
 
 @pytest.mark.benchmark(group="hash comparison")
 def test_hash_compare_matplotlib(benchmark):
-    plt.close('all')
-    df = pd.DataFrame(
-        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
-    a = plt.plot(df['a'], df['b'])
+    plt.close("all")
+    df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=["a", "b", "c"])
+    a = plt.plot(df["a"], df["b"])
 
     objs1 = ObjectState(a)
     objs2 = ObjectState(a)
 
     benchmark(benchmark_hash_comparison, objs1, objs2)
-    plt.close('all')
+    plt.close("all")
     assert True
+
 
 # --------------------------------------- seaborn tests ----------------------
 
 
 def test_hash_sns_displot():
     """
-        Test if hash is accurately generated for seaborn displot objects (figure-level object)
+    Test if hash is accurately generated for seaborn displot objects (figure-level object)
     """
-    plt.close('all')
-    df = sns.load_dataset('penguins')
-    plot1 = sns.displot(data=df, x="flipper_length_mm",
-                        y="bill_length_mm", kind="kde")
+    plt.close("all")
+    df = sns.load_dataset("penguins")
+    plot1 = sns.displot(data=df, x="flipper_length_mm", y="bill_length_mm", kind="kde")
     plot1.set(xlabel="flipper_length_mm")
 
     objs1 = ObjectState(plot1)
@@ -398,46 +407,44 @@ def test_hash_sns_displot():
         assert not objs1.compare_ObjectStates(objs2)
 
     # Close all figures
-    plt.close('all')
+    plt.close("all")
 
 
 @pytest.mark.benchmark(group="hash creation")
 def test_hash_creation_sns_displot(benchmark):
-    plt.close('all')
-    df = sns.load_dataset('penguins')
-    plot1 = sns.displot(data=df, x="flipper_length_mm",
-                        y="bill_length_mm", kind="kde")
+    plt.close("all")
+    df = sns.load_dataset("penguins")
+    plot1 = sns.displot(data=df, x="flipper_length_mm", y="bill_length_mm", kind="kde")
     plot1.set(xlabel="flipper_length_mm")
     benchmark(benchmark_hash_creation, plot1)
-    plt.close('all')
+    plt.close("all")
     assert True
 
 
 @pytest.mark.benchmark(group="hash comparison")
 def test_compare_hash_sns_displot(benchmark):
-    plt.close('all')
-    df = sns.load_dataset('penguins')
-    plot1 = sns.displot(data=df, x="flipper_length_mm",
-                        y="bill_length_mm", kind="kde")
+    plt.close("all")
+    df = sns.load_dataset("penguins")
+    plot1 = sns.displot(data=df, x="flipper_length_mm", y="bill_length_mm", kind="kde")
     plot1.set(xlabel="flipper_length_mm")
 
     objs1 = ObjectState(plot1)
     objs2 = ObjectState(plot1)
 
     benchmark(benchmark_hash_comparison, objs1, objs2)
-    plt.close('all')
+    plt.close("all")
     assert True
 
 
 def test_hash_sns_scatterplot():
     """
-        Test if hash is accurately generated for seaborn scatterplot objects (axes-level object)
+    Test if hash is accurately generated for seaborn scatterplot objects (axes-level object)
     """
-    plt.close('all')
-    df = sns.load_dataset('penguins')
+    plt.close("all")
+    df = sns.load_dataset("penguins")
     plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
-    plot1.set_xlabel('flipper_length_mm')
-    plot1.set_facecolor('white')
+    plot1.set_xlabel("flipper_length_mm")
+    plot1.set_facecolor("white")
 
     objs1 = ObjectState(plot1)
     objs2 = ObjectState(plot1)
@@ -452,13 +459,13 @@ def test_hash_sns_scatterplot():
     else:
         assert not objs1.compare_ObjectStates(objs2)
 
-    plot1.set_xlabel('Flipper Length')
+    plot1.set_xlabel("Flipper Length")
     objs2.update_object_hash(plot1)
 
     # Assert that the hash changes when the object changes
     assert not objs1.compare_ObjectStates(objs2)
 
-    plot1.set_xlabel('flipper_length_mm')
+    plot1.set_xlabel("flipper_length_mm")
     objs2.update_object_hash(plot1)
 
     # Assert that the original hash is restored when the original object state is restored
@@ -469,42 +476,43 @@ def test_hash_sns_scatterplot():
     else:
         assert not objs1.compare_ObjectStates(objs2)
 
-    plot1.set_facecolor('#eafff5')
+    plot1.set_facecolor("#eafff5")
     objs2.update_object_hash(plot1)
 
     # Assert that the hash changes when the object changes
     assert not objs1.compare_ObjectStates(objs2)
 
     # Close all figures
-    plt.close('all')
+    plt.close("all")
 
 
 @pytest.mark.benchmark(group="hash creation")
 def test_hash_creation_sns_scatterplot(benchmark):
-    plt.close('all')
-    df = sns.load_dataset('penguins')
+    plt.close("all")
+    df = sns.load_dataset("penguins")
     plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
-    plot1.set_xlabel('flipper_length_mm')
-    plot1.set_facecolor('white')
+    plot1.set_xlabel("flipper_length_mm")
+    plot1.set_facecolor("white")
     benchmark(benchmark_hash_creation, plot1)
-    plt.close('all')
+    plt.close("all")
     assert True
 
 
 @pytest.mark.benchmark(group="hash comparison")
 def test_hash_compare_sns_scatterplot(benchmark):
-    plt.close('all')
-    df = sns.load_dataset('penguins')
+    plt.close("all")
+    df = sns.load_dataset("penguins")
     plot1 = sns.scatterplot(data=df, x="flipper_length_mm", y="bill_length_mm")
-    plot1.set_xlabel('flipper_length_mm')
-    plot1.set_facecolor('white')
+    plot1.set_xlabel("flipper_length_mm")
+    plot1.set_facecolor("white")
 
     objs1 = ObjectState(plot1)
     objs2 = ObjectState(plot1)
 
     benchmark(benchmark_hash_comparison, objs1, objs2)
-    plt.close('all')
+    plt.close("all")
     assert True
+
 
 # --------------------------------------- df benchmarks ----------------------
 
@@ -514,7 +522,7 @@ def make_df(rows, cols):
     num_cols = cols
     data = {}
     for i in range(num_cols):
-        col_name = f'col{i+1}'
+        col_name = f"col{i+1}"
         data[col_name] = np.random.randint(low=0, high=100, size=num_rows)
     df = pd.DataFrame(data)
     return df

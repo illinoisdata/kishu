@@ -207,13 +207,11 @@ class TestKishuCommand:
         for commit in log_result.commit_graph:
             assert branch_1 not in commit.branches
 
-    def test_delete_branch_none_existing_branch(
-            self, notebook_key, basic_execution_ids):
+    def test_delete_branch_none_existing_branch(self, notebook_key, basic_execution_ids):
         delete_result = KishuCommand.delete_branch(notebook_key, "non_existing_branch")
         assert delete_result.status == "error"
 
-    def test_delete_checked_out_branch(
-            self, notebook_key, basic_execution_ids):
+    def test_delete_checked_out_branch(self, notebook_key, basic_execution_ids):
         branch_1 = "branch_1"
         KishuCommand.branch(notebook_key, branch_1, None)
 
@@ -224,25 +222,20 @@ class TestKishuCommand:
         branch_1 = "branch_1"
         KishuCommand.branch(notebook_key, branch_1, None)
 
-        rename_branch_result = KishuCommand.rename_branch(
-            notebook_key, branch_1, "new_branch")
+        rename_branch_result = KishuCommand.rename_branch(notebook_key, branch_1, "new_branch")
         head = KishuBranch(notebook_key).get_head()
         assert rename_branch_result.status == "ok"
         assert head.branch_name == "new_branch"
 
-    def test_rename_branch_non_existing_branch(
-            self, notebook_key, basic_execution_ids):
-        rename_branch_result = KishuCommand.rename_branch(
-            notebook_key, "non_existing_branch", "new_branch")
+    def test_rename_branch_non_existing_branch(self, notebook_key, basic_execution_ids):
+        rename_branch_result = KishuCommand.rename_branch(notebook_key, "non_existing_branch", "new_branch")
         assert rename_branch_result.status == "error"
 
-    def test_rename_branch_new_repeating_branch(
-            self, notebook_key, basic_execution_ids):
+    def test_rename_branch_new_repeating_branch(self, notebook_key, basic_execution_ids):
         branch_1 = "branch_1"
         KishuCommand.branch(notebook_key, branch_1, None)
 
-        rename_branch_result = KishuCommand.rename_branch(
-            notebook_key, branch_1, branch_1)
+        rename_branch_result = KishuCommand.rename_branch(notebook_key, branch_1, branch_1)
         assert rename_branch_result.status == "error"
 
     def test_auto_detach_commit_branch(self, kishu_jupyter):
@@ -357,7 +350,7 @@ class TestKishuCommand:
                 tags=[],
                 code_version=fe_commit_result.commit.code_version,  # Not tested
                 varset_version=fe_commit_result.commit.varset_version,  # Not tested
-                message='[3] y = x + 1'
+                message="[3] y = x + 1",
             ),
             executed_cells=[  # TODO: Missing due to missing IPython kernel.
                 "",
@@ -370,10 +363,7 @@ class TestKishuCommand:
             variables=[],
         )
 
-    @pytest.mark.parametrize("notebook_names",
-                             [[],
-                              ["simple.ipynb"],
-                              ["simple.ipynb", "numpy.ipynb"]])
+    @pytest.mark.parametrize("notebook_names", [[], ["simple.ipynb"], ["simple.ipynb", "numpy.ipynb"]])
     def test_list_alive_sessions(
         self,
         tmp_nb_path,
@@ -390,8 +380,9 @@ class TestKishuCommand:
         assert len(list_result.sessions) == len(notebook_names)
 
         # The notebook names reported by Kishu list should match those at the server side.
-        kishu_list_notebook_names = [Path(session.notebook_path).name if session.notebook_path is not None
-                                     else '' for session in list_result.sessions]
+        kishu_list_notebook_names = [
+            Path(session.notebook_path).name if session.notebook_path is not None else "" for session in list_result.sessions
+        ]
         assert set(notebook_names) == set(kishu_list_notebook_names)
 
     def test_list_alive_session_no_init(
@@ -407,12 +398,11 @@ class TestKishuCommand:
     @pytest.mark.parametrize(
         ("notebook_name", "cell_num_to_restore", "var_to_compare"),
         [
-            ('numpy.ipynb', 4, "iris_X_train"),
-            ('simple.ipynb', 4, "b"),
-            ('test_unserializable_var.ipynb', 2, "next(gen)"),  # directly printing gen prints out its memory address.
-            pytest.param('QiskitDemo_NCSA_May2023.ipynb', 61, "qc",
-                         marks=pytest.mark.skip(reason="Flaky"))
-        ]
+            ("numpy.ipynb", 4, "iris_X_train"),
+            ("simple.ipynb", 4, "b"),
+            ("test_unserializable_var.ipynb", 2, "next(gen)"),  # directly printing gen prints out its memory address.
+            pytest.param("QiskitDemo_NCSA_May2023.ipynb", 61, "qc", marks=pytest.mark.skip(reason="Flaky")),
+        ],
     )
     def test_end_to_end_checkout(
         self,
@@ -493,7 +483,7 @@ class TestKishuCommand:
             status_result = KishuCommand.status(notebook_key, commit_id)
             assert status_result.commit_entry.executed_cells == [
                 "",  # PYTHONSTARTUP, https://ipython.readthedocs.io/en/stable/interactive/reference.html
-                *contents[:cell_num_to_restore+1],
+                *contents[: cell_num_to_restore + 1],
             ]
             assert status_result.commit_entry.execution_count == (cell_num_to_restore + 1)
 
@@ -510,7 +500,7 @@ class TestKishuCommand:
             status_result_2 = KishuCommand.status(notebook_key, commit_id_2)
             assert status_result_2.commit_entry.executed_cells == [
                 "",  # PYTHONSTARTUP, https://ipython.readthedocs.io/en/stable/interactive/reference.html
-                *contents[:cell_num_to_restore+1],
+                *contents[: cell_num_to_restore + 1],
                 "x = 1",
                 "y = x + 10",
             ]
@@ -554,7 +544,7 @@ class TestKishuCommand:
                     tags=[],
                     code_version=fe_commit_result.commit.code_version,  # Not tested
                     varset_version=fe_commit_result.commit.varset_version,  # Not tested
-                    message="[4] b = 1"
+                    message="[4] b = 1",
                 ),
                 executed_cells=[  # TODO: Missing due to missing IPython kernel.
                     "",
@@ -589,7 +579,7 @@ class TestKishuCommand:
                     tags=[],
                     code_version=fe_commit_result_2.commit.code_version,  # Not tested
                     varset_version=fe_commit_result_2.commit.varset_version,  # Not tested
-                    message="[5] x = 1"
+                    message="[5] x = 1",
                 ),
                 executed_cells=[  # TODO: Missing due to missing IPython kernel.
                     "",
@@ -638,7 +628,7 @@ class TestKishuCommand:
 
             # Verifying correct number of entries in commit graph
             log_result = KishuCommand.log_all(notebook_key)
-            assert len(log_result.commit_graph) == len(contents)+1  # all contents + init cell
+            assert len(log_result.commit_graph) == len(contents) + 1  # all contents + init cell
             len_log_result_before = len(log_result.commit_graph)
 
         # Starting second notebook session
@@ -701,7 +691,7 @@ class TestKishuCommand:
             assert commit_result.reattachment.status == InstrumentStatus.reattach_succeeded
 
             log_result = KishuCommand.log_all(notebook_key)
-            assert len(log_result.commit_graph) == len(contents)+1  # Addition of the new cell
+            assert len(log_result.commit_graph) == len(contents) + 1  # Addition of the new cell
 
             commit_id = log_result.commit_graph[-1].commit_id
 
@@ -861,10 +851,12 @@ class TestKishuCommand:
             dest_commit_id = commits[-1].commit_id
 
             diff_result = KishuCommand.variable_diff(notebook_key, source_commit_id, dest_commit_id)
-            assert set(diff_result) == {VariableVersionCompare('a', 'destination_only'),
-                                        VariableVersionCompare('z', 'destination_only'),
-                                        VariableVersionCompare('y', 'destination_only'),
-                                        VariableVersionCompare('x', 'both_different_version')}
+            assert set(diff_result) == {
+                VariableVersionCompare("a", "destination_only"),
+                VariableVersionCompare("z", "destination_only"),
+                VariableVersionCompare("y", "destination_only"),
+                VariableVersionCompare("x", "both_different_version"),
+            }
 
     def test_variable_filter(self, jupyter_server, tmp_nb_path):
         notebook_path = tmp_nb_path("simple.ipynb")
@@ -884,9 +876,9 @@ class TestKishuCommand:
 
             commits = KishuCommand.log_all(notebook_key).commit_graph
 
-            diff_result = KishuCommand.find_var_change(notebook_key, 'b')
+            diff_result = KishuCommand.find_var_change(notebook_key, "b")
             assert diff_result == FEFindVarChangeResult([commits[3].commit_id, commits[4].commit_id])
-            diff_result = KishuCommand.find_var_change(notebook_key, 'y')
+            diff_result = KishuCommand.find_var_change(notebook_key, "y")
             assert diff_result == FEFindVarChangeResult([commits[1].commit_id])
-            diff_result = KishuCommand.find_var_change(notebook_key, 'a')
+            diff_result = KishuCommand.find_var_change(notebook_key, "a")
             assert diff_result == FEFindVarChangeResult([commits[1].commit_id, commits[5].commit_id])

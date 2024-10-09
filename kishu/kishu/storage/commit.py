@@ -6,21 +6,21 @@ There three types of information:
 2. checkpoint: the states after each operation.
 3. restore plan: describes how to perform restoration.
 """
+
 from __future__ import annotations
 
-import dill
 import enum
 import sqlite3
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-import kishu.planning.plan
+import dill
 
+import kishu.planning.plan
 from kishu.exceptions import MissingCommitEntryError
 from kishu.storage.path import KishuPath
 
-
-COMMIT_ENTRY_TABLE = 'commit_entry'
+COMMIT_ENTRY_TABLE = "commit_entry"
 
 
 class CommitEntryKind(str, enum.Enum):
@@ -56,6 +56,7 @@ class CommitEntry:
     @param restore_plan  The checkpoint algorithm also sets this restoration plan, which
             when executed, restores all the variables as they are.
     """
+
     commit_id: str = ""
     kind: CommitEntryKind = CommitEntryKind.unspecified
 
@@ -94,17 +95,14 @@ class KishuCommit:
     def init_database(self):
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(f'create table if not exists {COMMIT_ENTRY_TABLE} (commit_id text primary key, data blob)')
+        cur.execute(f"create table if not exists {COMMIT_ENTRY_TABLE} (commit_id text primary key, data blob)")
         con.commit()
 
     def store_commit(self, commit_entry: CommitEntry) -> None:
         commit_entry_dill = dill.dumps(commit_entry)
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(
-            f"insert into {COMMIT_ENTRY_TABLE} values (?, ?)",
-            (commit_entry.commit_id, memoryview(commit_entry_dill))
-        )
+        cur.execute(f"insert into {COMMIT_ENTRY_TABLE} values (?, ?)", (commit_entry.commit_id, memoryview(commit_entry_dill)))
         con.commit()
 
     def update_commit(self, commit_entry: CommitEntry) -> None:
@@ -113,17 +111,14 @@ class KishuCommit:
         cur = con.cursor()
         cur.execute(
             f"update {COMMIT_ENTRY_TABLE} set data = ? where commit_id = ?",
-            (memoryview(commit_entry_dill), commit_entry.commit_id)
+            (memoryview(commit_entry_dill), commit_entry.commit_id),
         )
         con.commit()
 
     def get_commit(self, commit_id: str) -> CommitEntry:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(
-            f"select data from {COMMIT_ENTRY_TABLE} where commit_id = ?",
-            (commit_id, )
-        )
+        cur.execute(f"select data from {COMMIT_ENTRY_TABLE} where commit_id = ?", (commit_id,))
         res: tuple = cur.fetchone()
         if not res:
             raise MissingCommitEntryError(commit_id)
@@ -139,10 +134,7 @@ class KishuCommit:
         result = {}
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        query = (
-            f"select commit_id, data from {COMMIT_ENTRY_TABLE} "
-            f"where commit_id in ({', '.join('?' * len(commit_ids))})"
-        )
+        query = f"select commit_id, data from {COMMIT_ENTRY_TABLE} " f"where commit_id in ({', '.join('?' * len(commit_ids))})"
         cur.execute(query, commit_ids)
         res = cur.fetchall()
         for key, data in res:
@@ -153,10 +145,7 @@ class KishuCommit:
     def keys_like(self, commit_id_like: str) -> List[str]:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(
-            f"select commit_id from {COMMIT_ENTRY_TABLE} where commit_id LIKE ?",
-            (commit_id_like + "%", )
-        )
+        cur.execute(f"select commit_id from {COMMIT_ENTRY_TABLE} where commit_id LIKE ?", (commit_id_like + "%",))
         result = [commit_id for (commit_id,) in cur.fetchall()]
         con.commit()
         return result

@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import time
-
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import combinations
 from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
-
 from kishu.planning.ahg import AHG, VariableSnapshot, VersionedName, VsConnectedComponents
 from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import Optimizer
@@ -21,8 +19,9 @@ from kishu.storage.config import Config
 @dataclass
 class PlannerContext:
     """
-        Planner-related config options.
+    Planner-related config options.
     """
+
     incremental_store: bool
     incremental_load: bool  # Not used yet
 
@@ -48,12 +47,13 @@ class ChangedVariables:
 
 class CheckpointRestorePlanner:
     """
-        The CheckpointRestorePlanner class holds items (e.g., AHG) relevant for creating
-        the checkpoint and restoration plans during notebook runtime.
+    The CheckpointRestorePlanner class holds items (e.g., AHG) relevant for creating
+    the checkpoint and restoration plans during notebook runtime.
     """
+
     def __init__(self, user_ns: Namespace = Namespace(), ahg: Optional[AHG] = None) -> None:
         """
-            @param user_ns  User namespace containing variables in the kernel.
+        @param user_ns  User namespace containing variables in the kernel.
         """
         self._ahg = ahg if ahg else AHG()
         self._user_ns = user_ns
@@ -62,8 +62,8 @@ class CheckpointRestorePlanner:
 
         # C/R plan configs.
         self._planner_context = PlannerContext(
-            incremental_store=Config.get('PLANNER', 'incremental_store', False),
-            incremental_load=Config.get('PLANNER', 'incremental_load', False)  # Not used yet
+            incremental_store=Config.get("PLANNER", "incremental_store", False),
+            incremental_load=Config.get("PLANNER", "incremental_load", False),  # Not used yet
         )
 
         # Used by instrumentation to compute whether data has changed.
@@ -75,7 +75,7 @@ class CheckpointRestorePlanner:
 
     def pre_run_cell_update(self) -> None:
         """
-            Preprocessing steps performed prior to cell execution.
+        Preprocessing steps performed prior to cell execution.
         """
         # Record variables in the user name prior to running cell.
         self._pre_run_cell_vars = self._user_ns.keyset()
@@ -87,9 +87,9 @@ class CheckpointRestorePlanner:
 
     def post_run_cell_update(self, code_block: Optional[str], runtime_s: Optional[float]) -> ChangedVariables:
         """
-            Post-processing steps performed after cell execution.
-            @param code_block: code of executed cell.
-            @param runtime_s: runtime of cell execution.
+        Post-processing steps performed after cell execution.
+        @param code_block: code of executed cell.
+        @param runtime_s: runtime of cell execution.
         """
         # Use current timestamp as version for new VSes to be created during the update.
         version = time.monotonic_ns()
@@ -122,8 +122,9 @@ class CheckpointRestorePlanner:
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
 
-        self._ahg.update_graph(code_block, version, runtime_s, accessed_vars,
-                               created_vars.union(modified_vars_structure), deleted_vars)
+        self._ahg.update_graph(
+            code_block, version, runtime_s, accessed_vars, created_vars.union(modified_vars_structure), deleted_vars
+        )
 
         # Update ID graphs for newly created variables.
         for var in created_vars:
@@ -135,11 +136,11 @@ class CheckpointRestorePlanner:
         self,
         active_vss: List[VariableSnapshot],
         linked_vs_pairs: List[Tuple[VariableSnapshot, VariableSnapshot]],
-        database_path: str
+        database_path: str,
     ) -> Tuple[List[VariableSnapshot], Set[VersionedName]]:
         """
-            Adjust the active variables and optimizer settings according to already stored variables if incremental
-            computation is enabled.
+        Adjust the active variables and optimizer settings according to already stored variables if incremental
+        computation is enabled.
         """
         # Currently stored VSes
         stored_vs_connected_components = KishuCheckpoint(database_path).get_stored_connected_components()
@@ -188,10 +189,7 @@ class CheckpointRestorePlanner:
         # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
         # Currently, a variable is recomputed only if it is unserialzable.
         optimizer = Optimizer(
-            self._ahg,
-            active_vss,
-            linked_vs_pairs,
-            already_stored_vses if self._planner_context.incremental_store else None
+            self._ahg, active_vss, linked_vs_pairs, already_stored_vses if self._planner_context.incremental_store else None
         )
 
         # Use the optimizer to compute the checkpointing configuration.
@@ -206,15 +204,12 @@ class CheckpointRestorePlanner:
             # Find linked variables which are migrated which form connected components.
             vs_connected_components_to_store = VsConnectedComponents.create_from_vses(
                 [vs for vs in active_vss if vs.name in vss_to_migrate],
-                [(vs1, vs2) for vs1, vs2 in linked_vs_pairs if vs1.name in vss_to_migrate and vs2.name in vss_to_migrate]
+                [(vs1, vs2) for vs1, vs2 in linked_vs_pairs if vs1.name in vss_to_migrate and vs2.name in vss_to_migrate],
             )
 
             # Create incremental checkpoint plan using optimization results.
             checkpoint_plan = IncrementalCheckpointPlan.create(
-                self._user_ns,
-                database_path,
-                commit_id,
-                vs_connected_components_to_store
+                self._user_ns, database_path, commit_id, vs_connected_components_to_store
             )
         else:
             # Create checkpoint plan using optimization results.
@@ -226,17 +221,14 @@ class CheckpointRestorePlanner:
         return checkpoint_plan, restore_plan
 
     def _generate_restore_plan(
-        self,
-        ces_to_recompute: Set[int],
-        ce_to_vs_map: Dict[int, List[str]],
-        req_func_mapping: Dict[int, Set[int]]
+        self, ces_to_recompute: Set[int], ce_to_vs_map: Dict[int, List[str]], req_func_mapping: Dict[int, Set[int]]
     ) -> RestorePlan:
         """
-            Generates a restore plan based on results from the optimizer.
-            @param ces_to_recompute: cell executions to rerun upon restart.
-            @param ce_to_vs_map: Mapping from cell number to active variables last modified there
-            @param req_func_mapping: Mapping from a cell number to all prerequisite cell numbers required
-                to rerun it
+        Generates a restore plan based on results from the optimizer.
+        @param ces_to_recompute: cell executions to rerun upon restart.
+        @param ce_to_vs_map: Mapping from cell number to active variables last modified there
+        @param req_func_mapping: Mapping from a cell number to all prerequisite cell numbers required
+            to rerun it
         """
         restore_plan = RestorePlan()
 
@@ -250,9 +242,10 @@ class CheckpointRestorePlanner:
             # Add a load variable restore action if there are variables from the cell that needs to be stored
             if len(ce_to_vs_map[ce.cell_num]) > 0:
                 restore_plan.add_load_variable_restore_action(
-                        ce.cell_num,
-                        [vs_name for vs_name in ce_to_vs_map[ce.cell_num]],
-                        [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]])
+                    ce.cell_num,
+                    [vs_name for vs_name in ce_to_vs_map[ce.cell_num]],
+                    [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]],
+                )
         return restore_plan
 
     def get_ahg(self) -> AHG:
@@ -260,21 +253,21 @@ class CheckpointRestorePlanner:
 
     def get_id_graph_map(self) -> Dict[str, GraphNode]:
         """
-            For testing only.
+        For testing only.
         """
         return self._id_graph_map
 
     def serialize_ahg(self) -> str:
         """
-            Returns the decoded serialized bytestring (str type) of the AHG.
-            Required as the AHG is not JSON serializable by default.
+        Returns the decoded serialized bytestring (str type) of the AHG.
+        Required as the AHG is not JSON serializable by default.
         """
         return self._ahg.serialize()
 
     def replace_state(self, new_ahg_string: str, new_user_ns: Namespace) -> None:
         """
-            Replace the current AHG with new_ahg_bytes and user namespace with new_user_ns.
-            Called when a checkout is performed.
+        Replace the current AHG with new_ahg_bytes and user namespace with new_user_ns.
+        Called when a checkout is performed.
         """
         self._ahg = AHG.deserialize(new_ahg_string)
         self._user_ns = new_user_ns

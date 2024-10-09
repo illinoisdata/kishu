@@ -89,9 +89,7 @@ class TestKishuApp:
 
             init_result = result.stdout
             pattern = (
-                f"Successfully initialized notebook {re.escape(str(nb_simple_path))}."
-                " Notebook key: .*."
-                " Kernel Id: .*"
+                f"Successfully initialized notebook {re.escape(str(nb_simple_path))}." " Notebook key: .*." " Kernel Id: .*"
             )
             assert re.search(pattern, init_result) is not None, f"init_result: {init_result}"
 
@@ -139,11 +137,7 @@ class TestKishuApp:
         result_lines = result.stdout.split("\n")
         assert len(result_lines) == 4 and result_lines[-1] == ""
         assert result_lines[0] == "Notebook instrumentation was present but not initialized, so attempting to re-initialize it"
-        pattern = (
-            f"Successfully reattached notebook {re.escape(str(nb_simple_path))}."
-            " Notebook key: .*."
-            " Kernel Id: .*"
-        )
+        pattern = f"Successfully reattached notebook {re.escape(str(nb_simple_path))}." " Notebook key: .*." " Kernel Id: .*"
         assert re.search(pattern, result_lines[1]) is not None
         assert result_lines[2] == "Checkout 1:0:2 in detach mode."
 
@@ -168,8 +162,7 @@ class TestKishuApp:
         result = runner.invoke(kishu_app, ["log", kishu_jupyter._notebook_id.key()])
         assert result.exit_code == 0
         assert re.search(
-            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n"
-            r"Date:   ([0-9\-:. ]+)\n\n",
+            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n" r"Date:   ([0-9\-:. ]+)\n\n",
             result.stdout,
         )
 
@@ -177,9 +170,7 @@ class TestKishuApp:
         result = runner.invoke(kishu_app, ["log", "--all", kishu_jupyter._notebook_id.key()])
         assert result.exit_code == 0
         assert re.search(
-            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n"
-            r"Parent: ([0-9a-fA-F:]+)\n"
-            r"Date:   ([0-9\-:. ]+)\n\n",
+            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n" r"Parent: ([0-9a-fA-F:]+)\n" r"Date:   ([0-9\-:. ]+)\n\n",
             result.stdout,
         )
 
@@ -187,8 +178,7 @@ class TestKishuApp:
         result = runner.invoke(kishu_app, ["log", "--graph", kishu_jupyter._notebook_id.key()])
         assert result.exit_code == 0
         assert re.search(
-            r"\* commit ([0-9a-fA-F:]+) \((.*?)\)\n"
-            r"| Date:   ([0-9\-:. ]+)\n\n",
+            r"\* commit ([0-9a-fA-F:]+) \((.*?)\)\n" r"| Date:   ([0-9\-:. ]+)\n\n",
             result.stdout,
         )
 
@@ -197,9 +187,7 @@ class TestKishuApp:
         assert result.exit_code == 0
         assert "Warning: feature not supported." in result.stdout
         assert re.search(
-            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n"
-            r"Parent: ([0-9a-fA-F:]+)\n"
-            r"Date:   ([0-9\-:. ]+)\n\n",
+            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n" r"Parent: ([0-9a-fA-F:]+)\n" r"Date:   ([0-9\-:. ]+)\n\n",
             result.stdout,
         )
 
@@ -217,8 +205,7 @@ class TestKishuApp:
         result = runner.invoke(kishu_app, ["log", kishu_jupyter._notebook_id.key()])
         assert result.exit_code == 0
         assert re.search(
-            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n"
-            r"Date:   ([0-9\-:. ]+)\n\n",
+            r"commit ([0-9a-fA-F:]+) \((.*?)\)\n" r"Date:   ([0-9\-:. ]+)\n\n",
             result.stdout,
         )
         assert tag in result.stdout
@@ -281,7 +268,8 @@ class TestKishuApp:
 
     def test_rename_non_existing_branch(self, runner, kishu_jupyter):
         result = runner.invoke(
-            kishu_app, ["branch", kishu_jupyter._notebook_id.key(), "-m", "NON_EXISTENT_BRANCH", "new_name"])
+            kishu_app, ["branch", kishu_jupyter._notebook_id.key(), "-m", "NON_EXISTENT_BRANCH", "new_name"]
+        )
         assert result.exit_code == 0
         rename_branch_result = RenameBranchResult.from_json(result.stdout)
         assert rename_branch_result == RenameBranchResult(
@@ -374,10 +362,7 @@ class TestKishuApp:
             message="The provided tag 'NON_EXISTENT_TAG' does not exist.",
         )
 
-    @pytest.mark.parametrize("notebook_names",
-                             [[],
-                              ["simple.ipynb"],
-                              ["simple.ipynb", "numpy.ipynb"]])
+    @pytest.mark.parametrize("notebook_names", [[], ["simple.ipynb"], ["simple.ipynb", "numpy.ipynb"]])
     def test_list_with_server(
         self,
         runner,

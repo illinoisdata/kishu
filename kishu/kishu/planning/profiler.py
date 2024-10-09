@@ -1,10 +1,10 @@
-import dill
 import inspect
 import pickle
 import sys
 import types
-
 from typing import Any, Optional
+
+import dill
 
 from kishu.storage.config import Config
 
@@ -16,14 +16,14 @@ def _get_object_class(obj: Any) -> Optional[str]:
 
 def _add_to_unserializable_list(obj: Any) -> None:
     if _get_object_class(obj):
-        unserializable_class_list = Config.get('PROFILER', 'excluded_classes', [])
+        unserializable_class_list = Config.get("PROFILER", "excluded_classes", [])
         unserializable_class_list.append(_get_object_class(obj))
-        Config.set('PROFILER', 'excluded_classes', unserializable_class_list)
+        Config.set("PROFILER", "excluded_classes", unserializable_class_list)
 
 
 def _is_picklable(obj: Any) -> bool:
     """
-        Checks whether an object is pickleable.
+    Checks whether an object is pickleable.
     """
     if _in_exclude_list(obj):
         return False
@@ -34,7 +34,7 @@ def _is_picklable(obj: Any) -> bool:
         is_picklable = dill.pickles(obj)
 
         # Add the unpicklable object to the config file.
-        if not is_picklable and Config.get('PROFILER', 'auto_add_unpicklable_object', True):
+        if not is_picklable and Config.get("PROFILER", "auto_add_unpicklable_object", True):
             _add_to_unserializable_list(obj)
         return is_picklable
     except Exception:
@@ -46,7 +46,7 @@ def _is_picklable(obj: Any) -> bool:
         pickle.dumps(obj)
     except Exception:
         # Add the unpicklable object to the config file.
-        if Config.get('PROFILER', 'auto_add_unpicklable_object', True):
+        if Config.get("PROFILER", "auto_add_unpicklable_object", True):
             _add_to_unserializable_list(obj)
         return False
     return True
@@ -54,9 +54,9 @@ def _is_picklable(obj: Any) -> bool:
 
 def _in_exclude_list(obj: Any) -> bool:
     """
-        Checks whether object is from a class which Dill reports is pickleable but is actually not.
+    Checks whether object is from a class which Dill reports is pickleable but is actually not.
     """
-    return _get_object_class(obj) in Config.get('PROFILER', 'excluded_classes', [])
+    return _get_object_class(obj) in Config.get("PROFILER", "excluded_classes", [])
 
 
 def _get_memory_size(obj: Any, is_initialize: bool, visited: set) -> int:
@@ -80,15 +80,16 @@ def _get_memory_size(obj: Any, is_initialize: bool, visited: set) -> int:
                 total_size = total_size + _get_memory_size(k, False, visited)
                 total_size = total_size + _get_memory_size(v, False, visited)
         # function, method, class
-        elif obj_type in [types.FunctionType, types.MethodType, types.BuiltinFunctionType, types.ModuleType] \
-                or isinstance(obj, type):  # True if obj is a class
+        elif obj_type in [types.FunctionType, types.MethodType, types.BuiltinFunctionType, types.ModuleType] or isinstance(
+            obj, type
+        ):  # True if obj is a class
             pass
         # custom class instance
         elif isinstance(type(obj), type):
             # if obj has no builtin size and has additional pointers
             # if obj has builtin size, all the additional memory space is already added
             if not hasattr(obj, "__sizeof__") and hasattr(obj, "__dict__"):
-                for (k, v) in getattr(obj, "__dict__").items():
+                for k, v in getattr(obj, "__dict__").items():
                     total_size = total_size + _get_memory_size(k, False, visited)
                     total_size = total_size + _get_memory_size(v, False, visited)
         else:
@@ -98,9 +99,9 @@ def _get_memory_size(obj: Any, is_initialize: bool, visited: set) -> int:
 
 def profile_variable_size(data: Any) -> float:
     """
-        Compute the estimated total size of a variable.
+    Compute the estimated total size of a variable.
     """
     if not _is_picklable(data):
-        return float('inf')
+        return float("inf")
 
     return float(_get_memory_size(data, True, set()))

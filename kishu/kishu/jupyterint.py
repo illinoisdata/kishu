@@ -38,28 +38,29 @@ IPython's database including execution count and cell code.
 Reference
 - https://ipython.readthedocs.io/en/stable/config/callbacks.html
 """
+
 from __future__ import annotations
 
 import asyncio
 import contextlib
-import dill as pickle
-import IPython
 import io
-import ipylab
 import json
-import jupyter_client
-import nbformat
 import os
 import threading
 import time
 import uuid
-
 from asyncio.events import AbstractEventLoop
 from dataclasses import dataclass
-from IPython.core.interactiveshell import InteractiveShell
-from jupyter_ui_poll import run_ui_poll_loop
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+import dill as pickle
+import ipylab
+import IPython
+import jupyter_client
+import nbformat
+from IPython.core.interactiveshell import InteractiveShell
+from jupyter_ui_poll import run_ui_poll_loop
 
 from kishu.exceptions import (
     JupyterConnectionError,
@@ -74,7 +75,7 @@ from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.notebook_id import NotebookId
 from kishu.planning.plan import RestorePlan
-from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
+from kishu.planning.planner import ChangedVariables, CheckpointRestorePlanner
 from kishu.planning.variable_version_tracker import VariableVersionTracker
 from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint import KishuCheckpoint
@@ -177,8 +178,7 @@ class JupyterConnection:
     def execute(self, command: str, pre_command: str = "") -> Tuple[Dict[str, Any], str, str]:
         if self.km is None:
             raise NoChannelError()
-        with contextlib.redirect_stdout(io.StringIO()) as stdout_f, \
-             contextlib.redirect_stderr(io.StringIO()) as stderr_f:
+        with contextlib.redirect_stdout(io.StringIO()) as stdout_f, contextlib.redirect_stderr(io.StringIO()) as stderr_f:
             reply = self.km.execute_interactive(
                 pre_command,  # Not capture output.
                 user_expressions={"command_result": command},  # To get output from command.
@@ -226,14 +226,14 @@ class JupyterConnection:
         # Reply status is ok.
         command_result = reply["content"].get("user_expressions", {}).get("command_result", {})
         command_result_status = command_result.get("status", "")
-        if command_result_status == 'error':
+        if command_result_status == "error":
             ename = command_result["ename"]
             evalue = command_result["evalue"]
             return JupyterCommandResult(
                 status="error",
                 message=f"{ename}: {evalue}",
             )
-        elif command_result_status == 'ok':
+        elif command_result_status == "ok":
             command_result_data = command_result.get("data", {}).get("text/plain", "")
             return JupyterCommandResult(
                 status="ok",
@@ -247,7 +247,7 @@ class JupyterConnection:
 
 
 class KishuForJupyter:
-    CURRENT_CELL_ID = 'current'
+    CURRENT_CELL_ID = "current"
     SAVE_CMD = "try { IPython.notebook.save_checkpoint(); } catch { }"
     # RELOAD_CMD = "try { IPython.notebook.load_notebook(IPython.notebook.notebook_path); } catch { }"
     RELOAD_CMD = "try { location.reload(true); } catch { }"  # will ask confirmation
@@ -291,12 +291,12 @@ class KishuForJupyter:
         self._commit_thread: Optional[threading.Thread] = None
 
         # Configurations.
-        self._test_mode = Config.get('JUPYTERINT', 'test_mode', False)
-        self._commit_id_mode = Config.get('JUPYTERINT', 'commit_id_mode', 'uuid4')
-        self._enable_auto_branch = Config.get('JUPYTERINT', 'enable_auto_branch', True)
+        self._test_mode = Config.get("JUPYTERINT", "test_mode", False)
+        self._commit_id_mode = Config.get("JUPYTERINT", "commit_id_mode", "uuid4")
+        self._enable_auto_branch = Config.get("JUPYTERINT", "enable_auto_branch", True)
         self._enable_auto_commit_when_skip_notebook = Config.get(
-            'JUPYTERINT',
-            'enable_auto_commit_when_skip_notebook',
+            "JUPYTERINT",
+            "enable_auto_commit_when_skip_notebook",
             False,
         )
 
@@ -314,11 +314,7 @@ class KishuForJupyter:
             self._commit_id_mode = "counter"
 
     def __str__(self):
-        return (
-            "KishuForJupyter("
-            f"id: {self._notebook_id.key()}, "
-            f"path: {self._notebook_id.path()})"
-        )
+        return "KishuForJupyter(" f"id: {self._notebook_id.key()}, " f"path: {self._notebook_id.path()})"
 
     def __repr__(self):
         return (
@@ -341,19 +337,19 @@ class KishuForJupyter:
 
     def install_kishu_hooks(self) -> None:
         self._ip.user_ns[KISHU_INSTRUMENT] = self
-        self._ip.events.register('pre_run_cell', self.pre_run_cell)
-        self._ip.events.register('post_run_cell', self.post_run_cell)
+        self._ip.events.register("pre_run_cell", self.pre_run_cell)
+        self._ip.events.register("post_run_cell", self.post_run_cell)
 
     def uninstall_kishu_hooks(self) -> None:
         """
         Removes event handlers added by load_kishu
         """
         try:
-            self._ip.events.unregister('post_run_cell', self.post_run_cell)
+            self._ip.events.unregister("post_run_cell", self.post_run_cell)
         except ValueError:
             pass
         try:
-            self._ip.events.unregister('pre_run_cell', self.pre_run_cell)
+            self._ip.events.unregister("pre_run_cell", self.pre_run_cell)
         except ValueError:
             pass
         del self._ip.user_ns[KISHU_INSTRUMENT]
@@ -470,8 +466,7 @@ class KishuForJupyter:
         if commit_entry.ahg_string is None:
             raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
         self._cr_planner.replace_state(commit_entry.ahg_string, self._user_ns)
-        self._variable_version_tracker.set_current(self._kishu_variable_version.
-                                                   get_variable_version_by_commit_id(commit_id))
+        self._variable_version_tracker.set_current(self._kishu_variable_version.get_variable_version_by_commit_id(commit_id))
 
         # Update Kishu heads.
         self._kishu_graph.jump(commit_id)
@@ -577,22 +572,26 @@ class KishuForJupyter:
 
             # Connection file not found.
             if cf is None:
-                sessions.append(KishuSession(
-                    notebook_key=notebook_key,
-                    kernel_id=None,
-                    notebook_path=None,
-                    is_alive=False,
-                ))
+                sessions.append(
+                    KishuSession(
+                        notebook_key=notebook_key,
+                        kernel_id=None,
+                        notebook_path=None,
+                        is_alive=False,
+                    )
+                )
                 continue
 
             # No matching alive kernel ID.
             if cf.kernel_id not in alive_kernels:
-                sessions.append(KishuSession(
-                    notebook_key=notebook_key,
-                    kernel_id=cf.kernel_id,
-                    notebook_path=cf.notebook_path,
-                    is_alive=False,
-                ))
+                sessions.append(
+                    KishuSession(
+                        notebook_key=notebook_key,
+                        kernel_id=cf.kernel_id,
+                        notebook_path=cf.notebook_path,
+                        is_alive=False,
+                    )
+                )
                 continue
 
             # No matching notebook with notebook key in its metadata.
@@ -603,21 +602,25 @@ class KishuForJupyter:
             except (FileNotFoundError, MissingNotebookMetadataError):
                 pass
             if notebook_key != written_notebook_key:
-                sessions.append(KishuSession(
-                    notebook_key=notebook_key,
-                    kernel_id=cf.kernel_id,
-                    notebook_path=cf.notebook_path,
-                    is_alive=False,
-                ))
+                sessions.append(
+                    KishuSession(
+                        notebook_key=notebook_key,
+                        kernel_id=cf.kernel_id,
+                        notebook_path=cf.notebook_path,
+                        is_alive=False,
+                    )
+                )
                 continue
 
             # Kernel ID is alive. Replace notebook path with the newest one.
-            sessions.append(KishuSession(
-                notebook_key=notebook_key,
-                kernel_id=cf.kernel_id,
-                notebook_path=str(notebook_path),
-                is_alive=True,
-            ))
+            sessions.append(
+                KishuSession(
+                    notebook_key=notebook_key,
+                    kernel_id=cf.kernel_id,
+                    notebook_path=str(notebook_path),
+                    is_alive=True,
+                )
+            )
         return sessions
 
     @staticmethod
@@ -670,15 +673,19 @@ class KishuForJupyter:
         self._step_branch(entry.commit_id)
 
         # Update variable version tracker.
-        self._variable_version_tracker.update_variable_version(entry.commit_id,
-                                                               set() if changed_vars is None else changed_vars.added(),
-                                                               set() if changed_vars is None else changed_vars.deleted())
+        self._variable_version_tracker.update_variable_version(
+            entry.commit_id,
+            set() if changed_vars is None else changed_vars.added(),
+            set() if changed_vars is None else changed_vars.deleted(),
+        )
         # store variable version and commit-variable-version into database
         self._kishu_variable_version.store_commit_variable_version_table(
-            entry.commit_id, self._variable_version_tracker.get_variable_versions())
+            entry.commit_id, self._variable_version_tracker.get_variable_versions()
+        )
         if changed_vars is not None:
-            self._kishu_variable_version.store_variable_version_table(changed_vars.added()
-                                                                      | changed_vars.deleted(), entry.commit_id)
+            self._kishu_variable_version.store_variable_version_table(
+                changed_vars.added() | changed_vars.deleted(), entry.commit_id
+            )
 
     def _commit_id(self) -> str:
         if self._commit_id_mode == "counter":
@@ -693,7 +700,8 @@ class KishuForJupyter:
         """
         # Step 1: prepare a restoration plan using results from the optimizer.
         checkpoint_plan, restore_plan = self._cr_planner.generate_checkpoint_restore_plans(
-            self.database_path(), cell_info.commit_id)
+            self.database_path(), cell_info.commit_id
+        )
 
         # Step 2: checkpoint
         checkpoint_plan.run(self._user_ns)
@@ -705,10 +713,11 @@ class KishuForJupyter:
     @staticmethod
     def _ipylab_frontend_app() -> ipylab.JupyterFrontEnd:
         app = ipylab.JupyterFrontEnd()
-        run_ui_poll_loop(lambda: (  # This unblocks web UI to connect with app.
-            None if app.commands.list_commands() == []
-            else app.commands.list_commands()
-        ))
+        run_ui_poll_loop(
+            lambda: (  # This unblocks web UI to connect with app.
+                None if app.commands.list_commands() == [] else app.commands.list_commands()
+            )
+        )
         return app
 
     def _all_notebook_cells(self) -> Tuple[Optional[str], List[FormattedCell]]:
@@ -716,19 +725,23 @@ class KishuForJupyter:
         nb_cells = []
         for cell in nb.cells:
             if cell.cell_type == "code":
-                nb_cells.append(FormattedCell(
-                    cell_type=cell.cell_type,
-                    source=cell.source,
-                    output=self._parse_cell_output(cell.outputs),
-                    execution_count=cell.execution_count,
-                ))
+                nb_cells.append(
+                    FormattedCell(
+                        cell_type=cell.cell_type,
+                        source=cell.source,
+                        output=self._parse_cell_output(cell.outputs),
+                        execution_count=cell.execution_count,
+                    )
+                )
             elif cell.cell_type == "markdown":
-                nb_cells.append(FormattedCell(
-                    cell_type=cell.cell_type,
-                    source=cell.source,
-                    output=None,
-                    execution_count=None,
-                ))
+                nb_cells.append(
+                    FormattedCell(
+                        cell_type=cell.cell_type,
+                        source=cell.source,
+                        output=None,
+                        execution_count=None,
+                    )
+                )
             # else:
             #     # TODO: Logs this as a warning.
             #     print(f"Unknown cell type: {cell.cell_type}")
@@ -740,8 +753,8 @@ class KishuForJupyter:
         for cell_output in cell_outputs:
             # Filter auto-saving output.
             if (
-                cell_output["output_type"] == "display_data" and
-                cell_output["data"].get("application/javascript", "") == KishuForJupyter.SAVE_CMD
+                cell_output["output_type"] == "display_data"
+                and cell_output["data"].get("application/javascript", "") == KishuForJupyter.SAVE_CMD
             ):
                 continue
 
@@ -756,10 +769,12 @@ class KishuForJupyter:
             elif cell_output["output_type"] == "display_data":
                 return cell_output["data"].get("text/plain", "<display_data>")
             elif cell_output["output_type"] == "error":
-                return "\n".join([
-                    *cell_output["traceback"],
-                    f'{cell_output["ename"]}: {cell_output["evalue"]}',
-                ])
+                return "\n".join(
+                    [
+                        *cell_output["traceback"],
+                        f'{cell_output["ename"]}: {cell_output["evalue"]}',
+                    ]
+                )
             else:
                 raise ValueError(f"Unknown output type: {cell_output}")
         return None
@@ -822,8 +837,8 @@ def repr_if_not_none(obj: Any) -> Optional[str]:
     return repr(obj)
 
 
-KISHU_INSTRUMENT = '_kishu'
-KISHU_VARS = set(['kishu', 'init_kishu', KISHU_INSTRUMENT])
+KISHU_INSTRUMENT = "_kishu"
+KISHU_VARS = set(["kishu", "init_kishu", KISHU_INSTRUMENT])
 Namespace.register_kishu_vars(KISHU_VARS)
 
 
@@ -832,7 +847,7 @@ def init_kishu(notebook_path: Optional[str] = None) -> None:
     notebook_id = NotebookId.from_enclosing(None if notebook_path is None else Path(notebook_path))
 
     # Construct a kishu instrument.
-    ip = eval('get_ipython()')
+    ip = eval("get_ipython()")
     kishu = KishuForJupyter(notebook_id, ip=ip)
     kishu.save_notebook()
     kishu.enable_autosave_notebook()
@@ -856,7 +871,7 @@ def detach_kishu(notebook_path: Optional[str] = None) -> None:
     notebook_id = NotebookId.from_enclosing(None if notebook_path is None else Path(notebook_path))
 
     # Remove all hooks.
-    ip = eval('get_ipython()')
+    ip = eval("get_ipython()")
     if ip is not None and KISHU_INSTRUMENT in ip.user_ns:
         ip.user_ns[KISHU_INSTRUMENT].uninstall_kishu_hooks()
 

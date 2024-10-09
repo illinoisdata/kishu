@@ -16,6 +16,7 @@ Dependencies:
 - nbconvert: Library for executing Jupyter notebook cells.
 - nbformat: Library for working with Jupyter notebook file format.
 """
+
 import dill
 import os
 
@@ -40,7 +41,7 @@ def get_dump_namespace_str(pickle_file_name: str, var_names: Optional[List[str]]
             "import dill",
             "dill.dump({k: v for k, v in locals().items() if not k.startswith('_')",
             f"and k not in {Namespace.IPYTHON_VARS.union(KISHU_VARS)}",
-            f"and (not {var_names} or k in {var_names})""},",
+            f"and (not {var_names} or k in {var_names})" "},",
             f"open({repr(pickle_file_name)}, 'wb'))",
         ]
     )
@@ -96,11 +97,11 @@ class NotebookRunner:
 
     def execute_full_checkout_test(self, cell_num_to_restore: int) -> Tuple[Dict, Dict]:
         """
-            Executes the full checkout test by storing the namespace at cell_num_to_restore,
-            and namespace after checking out cell_num_to_restore after completely executing the notebook.
-            Returns a tuple containing the namespace dict before/after checking out, respectively.
+        Executes the full checkout test by storing the namespace at cell_num_to_restore,
+        and namespace after checking out cell_num_to_restore after completely executing the notebook.
+        Returns a tuple containing the namespace dict before/after checking out, respectively.
 
-            @param cell_num_to_restore: the cell execution number to restore to.
+        @param cell_num_to_restore: the cell execution number to restore to.
         """
         # Open the notebook.
         with open(self.test_notebook) as nb_file:
@@ -136,7 +137,7 @@ class NotebookRunner:
         exec_prep.preprocess(notebook, {"metadata": {"path": self.path_to_notebook}})
 
         # get the output dumped namespace dictionaries.
-        data_middle = dill.load(open(self.pickle_file + '.middle', "rb"))
-        data_end = dill.load(open(self.pickle_file + '.end', "rb"))
+        data_middle = dill.load(open(self.pickle_file + ".middle", "rb"))
+        data_end = dill.load(open(self.pickle_file + ".end", "rb"))
 
         return data_middle, data_end

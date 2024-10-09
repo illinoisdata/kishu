@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import atexit
-import dill
 import functools
 from dataclasses import dataclass, field
-from IPython.core.interactiveshell import InteractiveShell
 from queue import LifoQueue
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+
+import dill
+from IPython.core.interactiveshell import InteractiveShell
 
 from kishu.exceptions import CommitIdNotExistError, DuplicateRestoreActionError
 from kishu.jupyter.namespace import Namespace
@@ -45,6 +46,7 @@ class VarNamesToObjects:
     """
     Convenient wrapper for serializing variables.
     """
+
     object_dict: Dict[str, Any] = field(default_factory=lambda: {})
 
     def dumps(self) -> bytes:
@@ -80,6 +82,7 @@ class SaveVariablesCheckpointAction(CheckpointAction):
     """
     Stores VarNamesToObjects into database.
     """
+
     def __init__(self) -> None:
         self.variable_names: List[str] = []
         self.filename: Optional[str] = None
@@ -100,6 +103,7 @@ class IncrementalWriteCheckpointAction(CheckpointAction):
     """
     Stores VarNamesToObjects into database incrementally.
     """
+
     def __init__(self, vs_connected_components: VsConnectedComponents, filename: str, exec_id: str) -> None:
         self.vs_connected_components = vs_connected_components
         self.filename = filename
@@ -113,6 +117,7 @@ class CheckpointPlan:
     """
     Checkpoint select variables to the database.
     """
+
     def __init__(self) -> None:
         """
         @param checkpoint_file  The file to which data will be saved.
@@ -122,8 +127,7 @@ class CheckpointPlan:
         self.actions: List[CheckpointAction] = []
 
     @classmethod
-    def create(cls, user_ns: Namespace, checkpoint_file: str, exec_id: str,
-               var_names: Optional[List[str]] = None):
+    def create(cls, user_ns: Namespace, checkpoint_file: str, exec_id: str, var_names: Optional[List[str]] = None):
         """
         @param user_ns  A dictionary representing a target variable namespace. In Jupyter, this
                 can be optained by `get_ipython().user_ns`.
@@ -136,8 +140,9 @@ class CheckpointPlan:
         return plan
 
     @classmethod
-    def set_up_actions(cls, user_ns: Namespace, checkpoint_file: str,
-                       exec_id: str, var_names: Optional[List[str]]) -> List[CheckpointAction]:
+    def set_up_actions(
+        cls, user_ns: Namespace, checkpoint_file: str, exec_id: str, var_names: Optional[List[str]]
+    ) -> List[CheckpointAction]:
         if user_ns is None or checkpoint_file is None:
             raise ValueError("Fields are not properly initialized.")
         actions: List[CheckpointAction] = []
@@ -170,6 +175,7 @@ class IncrementalCheckpointPlan:
     """
     Checkpoint select variables to the database.
     """
+
     def __init__(self, checkpoint_file: str, actions: List[CheckpointAction]) -> None:
         """
         @param checkpoint_file  The file to which data will be saved.
@@ -179,12 +185,7 @@ class IncrementalCheckpointPlan:
         self.actions = actions
 
     @staticmethod
-    def create(
-        user_ns: Namespace,
-        checkpoint_file: str,
-        exec_id: str,
-        vs_connected_components: VsConnectedComponents
-    ):
+    def create(user_ns: Namespace, checkpoint_file: str, exec_id: str, vs_connected_components: VsConnectedComponents):
         """
         @param user_ns  A dictionary representing a target variable namespace. In Jupyter, this
                 can be optained by `get_ipython().user_ns`.
@@ -195,11 +196,7 @@ class IncrementalCheckpointPlan:
 
     @classmethod
     def set_up_actions(
-        cls,
-        user_ns: Namespace,
-        checkpoint_file: str,
-        exec_id: str,
-        vs_connected_components: VsConnectedComponents
+        cls, user_ns: Namespace, checkpoint_file: str, exec_id: str, vs_connected_components: VsConnectedComponents
     ) -> List[CheckpointAction]:
         if user_ns is None or checkpoint_file is None:
             raise ValueError("Fields are not properly initialized.")
@@ -227,6 +224,7 @@ class RestoreAction:
     """
     A base class for any action.
     """
+
     def run(self, ctx: RestoreActionContext):
         """
         @param shell  A target space where restored variables will be set.
@@ -238,11 +236,9 @@ class LoadVariableRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).
     """
+
     def __init__(
-        self,
-        step_order: StepOrder,
-        var_names: List[str] = [],
-        fallback_recomputation: List[RerunCellRestoreAction] = []
+        self, step_order: StepOrder, var_names: List[str] = [], fallback_recomputation: List[RerunCellRestoreAction] = []
     ):
         """
         @param step_order: the order (i.e., when to run) of this restore action.
@@ -279,6 +275,7 @@ class RerunCellRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).
     """
+
     def __init__(self, step_order: StepOrder, cell_code: str = ""):
         """
         cell_num: cell number of the executed cell code.
@@ -347,6 +344,7 @@ class RestorePlan:
 
     @param actions  A series of actions for restoring a state.
     """
+
     actions: Dict[StepOrder, RestoreAction] = field(default_factory=lambda: {})
 
     # TODO: add the undeserializable variables which caused fallback computation to config list.
@@ -359,19 +357,15 @@ class RestorePlan:
         self.actions[step_order] = RerunCellRestoreAction(step_order, cell_code)
 
     def add_load_variable_restore_action(
-        self,
-        cell_num: int,
-        variable_names: List[str],
-        fallback_recomputation: List[Tuple[int, str]]
+        self, cell_num: int, variable_names: List[str], fallback_recomputation: List[Tuple[int, str]]
     ):
         step_order = StepOrder(cell_num, True)
         if step_order in self.actions:
             raise DuplicateRestoreActionError(step_order.cell_num, step_order.is_load_var)
 
         self.actions[step_order] = LoadVariableRestoreAction(
-            step_order,
-            variable_names,
-            [RerunCellRestoreAction(StepOrder(i[0], False), i[1]) for i in fallback_recomputation])
+            step_order, variable_names, [RerunCellRestoreAction(StepOrder(i[0], False), i[1]) for i in fallback_recomputation]
+        )
 
     def run(self, checkpoint_file: str, exec_id: str) -> Namespace:
         """

@@ -32,21 +32,16 @@ def test_checkout_wrong_id_error():
     filename = KishuPath.database_path("test")
     KishuCheckpoint(filename).init_database()
 
-    exec_id = 'abc'
+    exec_id = "abc"
     restore_plan = RestorePlan()
-    restore_plan.add_load_variable_restore_action(1,
-                                                  ["a"],
-                                                  [(1, "a=1")])
+    restore_plan.add_load_variable_restore_action(1, ["a"], [(1, "a=1")])
 
     with pytest.raises(CommitIdNotExistError):
         restore_plan.run(filename, exec_id)
 
 
 def test_store_everything_restore_plan():
-    user_ns = Namespace({
-        'a': 1,
-        'b': 2
-    })
+    user_ns = Namespace({"a": 1, "b": 2})
     filename = KishuPath.database_path("test")
     KishuCheckpoint(filename).init_database()
 
@@ -61,19 +56,14 @@ def test_store_everything_restore_plan():
 
     # load
     restore_plan = RestorePlan()
-    restore_plan.add_load_variable_restore_action(1,
-                                                  list(user_ns.keyset()),
-                                                  [(1, "a=1\nb=2")])
+    restore_plan.add_load_variable_restore_action(1, list(user_ns.keyset()), [(1, "a=1\nb=2")])
     result_ns = restore_plan.run(filename, exec_id)
 
     assert result_ns.to_dict() == user_ns.to_dict()
 
 
 def test_recompute_everything_restore_plan():
-    user_ns = Namespace({
-        'a': 1,
-        'b': 2
-    })
+    user_ns = Namespace({"a": 1, "b": 2})
     filename = KishuPath.database_path("test")
     KishuCheckpoint(filename).init_database()
 
@@ -91,10 +81,7 @@ def test_recompute_everything_restore_plan():
 
 
 def test_mix_reload_recompute_restore_plan():
-    user_ns = Namespace({
-        'a': 1,
-        'b': 2
-    })
+    user_ns = Namespace({"a": 1, "b": 2})
     filename = KishuPath.database_path("test")
     KishuCheckpoint(filename).init_database()
 
@@ -105,9 +92,7 @@ def test_mix_reload_recompute_restore_plan():
 
     # restore
     restore_plan = RestorePlan()
-    restore_plan.add_load_variable_restore_action(1,
-                                                  ["a"],
-                                                  [(1, "a=1")])
+    restore_plan.add_load_variable_restore_action(1, ["a"], [(1, "a=1")])
     restore_plan.add_rerun_cell_restore_action(2, "b=2")
     result_ns = restore_plan.run(filename, exec_id)
 
@@ -130,12 +115,8 @@ def test_fallback_recomputation():
 
     # restore
     restore_plan = RestorePlan()
-    restore_plan.add_load_variable_restore_action(1,
-                                                  ["UndeserializableClass"],
-                                                  [(1, UNDESERIALIZABLE_CLASS)])
-    restore_plan.add_load_variable_restore_action(2,
-                                                  ["foo"],
-                                                  [(2, "foo = UndeserializableClass()")])
+    restore_plan.add_load_variable_restore_action(1, ["UndeserializableClass"], [(1, UNDESERIALIZABLE_CLASS)])
+    restore_plan.add_load_variable_restore_action(2, ["foo"], [(2, "foo = UndeserializableClass()")])
     result_ns = restore_plan.run(filename, exec_id)
 
     # Both load variable restored actions should have failed.
@@ -148,8 +129,8 @@ def test_fallback_recomputation():
 
 def test_store_connected_components(enable_incremental_store):
     """
-        Tests that the VARIABLE_KV and NAMESPACE tables are populated correctly.
-        TODO: add test for loading incrementally once that is implemented.
+    Tests that the VARIABLE_KV and NAMESPACE tables are populated correctly.
+    TODO: add test for loading incrementally once that is implemented.
     """
     shell = InteractiveShell()
     shell.run_cell("a = 1")
@@ -163,12 +144,14 @@ def test_store_connected_components(enable_incremental_store):
     # save
     exec_id = 1
     vs_connected_components = VsConnectedComponents.create_from_component_list(
-        [[VersionedName('a', 1), VersionedName('b', 1)], [VersionedName('c', 1)]])
+        [[VersionedName("a", 1), VersionedName("b", 1)], [VersionedName("c", 1)]]
+    )
     checkpoint = IncrementalCheckpointPlan.create(user_ns, filename, exec_id, vs_connected_components)
     checkpoint.run(user_ns)
 
     # Read stored connected components
     stored_vs_connected_components = KishuCheckpoint(filename).get_stored_connected_components()
 
-    assert {VersionedName("a", 1), VersionedName("b", 1)}, \
-        {VersionedName("c", 1)} in stored_vs_connected_components.get_connected_components()
+    assert {VersionedName("a", 1), VersionedName("b", 1)}, {
+        VersionedName("c", 1)
+    } in stored_vs_connected_components.get_connected_components()

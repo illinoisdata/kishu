@@ -1,7 +1,8 @@
-import pandas
 import pickle
-import xxhash
 from typing import Optional
+
+import pandas
+import xxhash
 
 import kishu.planning.object_state as object_state
 from kishu.planning.visitor import Visitor
@@ -19,8 +20,9 @@ def is_pickable(obj) -> bool:
 
 
 class hash_vis(Visitor):
-    def check_visited(self, visited: set, obj_id: int, obj_type: type, include_id: bool,
-                      hash_state: xxhash.xxh32) -> Optional[xxhash.xxh32]:
+    def check_visited(
+        self, visited: set, obj_id: int, obj_type: type, include_id: bool, hash_state: xxhash.xxh32
+    ) -> Optional[xxhash.xxh32]:
         if obj_id in visited:
             hash_state.update(str(obj_type))
             if include_id:
@@ -38,8 +40,7 @@ class hash_vis(Visitor):
     def visit_tuple(self, obj, visited: set, include_id: bool, hash_state: xxhash.xxh32) -> xxhash.xxh32:
         hash_state.update(str(type(obj)))
         for item in obj:
-            object_state.get_object_state(
-                item, visited, visitor=self, include_id=include_id, hash_state=hash_state)
+            object_state.get_object_state(item, visited, visitor=self, include_id=include_id, hash_state=hash_state)
 
         hash_state.update("/EOC")
         return hash_state
@@ -51,8 +52,7 @@ class hash_vis(Visitor):
             hash_state.update(str(id(obj)))
 
         for item in obj:
-            object_state.get_object_state(
-                item, visited, visitor=self, include_id=include_id, hash_state=hash_state)
+            object_state.get_object_state(item, visited, visitor=self, include_id=include_id, hash_state=hash_state)
 
         hash_state.update("/EOC")
         return hash_state
@@ -64,8 +64,7 @@ class hash_vis(Visitor):
             hash_state.update(str(id(obj)))
 
         for item in sorted(obj):
-            object_state.get_object_state(
-                item, visited, visitor=self, include_id=include_id, hash_state=hash_state)
+            object_state.get_object_state(item, visited, visitor=self, include_id=include_id, hash_state=hash_state)
 
         hash_state.update("/EOC")
         return hash_state
@@ -77,10 +76,8 @@ class hash_vis(Visitor):
             hash_state.update(str(id(obj)))
 
         for key, value in sorted(obj.items()):
-            object_state.get_object_state(
-                key, visited, visitor=self, include_id=include_id, hash_state=hash_state)
-            object_state.get_object_state(
-                value, visited, visitor=self, include_id=include_id, hash_state=hash_state)
+            object_state.get_object_state(key, visited, visitor=self, include_id=include_id, hash_state=hash_state)
+            object_state.get_object_state(value, visited, visitor=self, include_id=include_id, hash_state=hash_state)
 
         hash_state.update("/EOC")
         return hash_state
@@ -119,8 +116,7 @@ class hash_vis(Visitor):
                 return hash_state
 
             for item in reduced[1:]:
-                object_state.get_object_state(
-                    item, visited, visitor=self, include_id=False, hash_state=hash_state)
+                object_state.get_object_state(item, visited, visitor=self, include_id=False, hash_state=hash_state)
 
             hash_state.update("/EOC")
         return hash_state
