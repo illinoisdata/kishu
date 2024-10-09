@@ -39,10 +39,6 @@ class KishuPath:
         return os.path.join(KishuPath.notebook_directory(notebook_key), "connection.json")
 
     @staticmethod
-    def head_path(notebook_key: str) -> str:
-        return os.path.join(KishuPath.notebook_directory(notebook_key), "head.json")
-
-    @staticmethod
     def exists(notebook_key: str) -> bool:
         return os.path.exists(os.path.join(KishuPath.kishu_directory(), notebook_key))
 
