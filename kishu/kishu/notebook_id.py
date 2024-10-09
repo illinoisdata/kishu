@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import nbformat
-from dataclasses_json import dataclass_json
 
 from kishu.exceptions import MissingNotebookMetadataError, NotNotebookPathOrKey
 from kishu.jupyter.runtime import JupyterRuntimeEnv
+from kishu.storage.connection import KishuConnection
 from kishu.storage.path import KishuPath
 
 
@@ -18,13 +17,6 @@ from kishu.storage.path import KishuPath
 class KishuNotebookMetadata:
     notebook_id: str
     session_count: int = 1
-
-
-@dataclass_json
-@dataclass
-class JupyterConnectionInfo:
-    kernel_id: str
-    notebook_path: str
 
 
 class NotebookId:
@@ -106,7 +98,7 @@ class NotebookId:
         # Not a path, try parsing as key.
         key = path_or_key
         if KishuPath.exists(key):
-            conn_info = NotebookId.try_retrieve_connection(key)
+            conn_info = KishuConnection.try_retrieve_connection(key)
             if conn_info:
                 return Path(conn_info.notebook_path)
         raise NotNotebookPathOrKey(path_or_key)
@@ -146,25 +138,3 @@ class NotebookId:
         if "kishu" not in nb.metadata:
             raise MissingNotebookMetadataError()
         del nb.metadata["kishu"]
-
-    """
-    Kishu Jupyter connection information.
-    """
-
-    def record_connection(self) -> None:
-        with open(KishuPath.connection_path(self._key), "w") as f:
-            f.write(
-                JupyterConnectionInfo(  # type: ignore
-                    kernel_id=self._kernel_id,
-                    notebook_path=str(self._path),
-                ).to_json()
-            )
-
-    @staticmethod
-    def try_retrieve_connection(key: str) -> Optional[JupyterConnectionInfo]:
-        try:
-            with open(KishuPath.connection_path(key), "r") as f:
-                json_str = f.read()
-                return JupyterConnectionInfo.from_json(json_str)  # type: ignore
-        except (FileNotFoundError, json.decoder.JSONDecodeError):
-            return None
