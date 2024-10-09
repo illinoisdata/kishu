@@ -129,6 +129,22 @@ class CheckoutResult:
 
 @dataclass_json
 @dataclass
+class UndoResult:
+    status: str
+    message: str
+    reattachment: InstrumentResult
+
+    @staticmethod
+    def wrap(result: JupyterCommandResult, instrument_result: InstrumentResult) -> UndoResult:
+        return UndoResult(
+            status=result.status,
+            message=result.message,
+            reattachment=instrument_result,
+        )
+
+
+@dataclass_json
+@dataclass
 class CommitResult:
     status: str
     message: str
@@ -488,14 +504,14 @@ class KishuCommand:
         )
 
     @staticmethod
-    def revert(
+    def undo(
         notebook_path_or_key: str,
-    ) -> CheckoutResult:
+    ) -> UndoResult:
         notebook_path = NotebookId.parse_path_from_path_or_key(notebook_path_or_key)
         try:
             kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
-            return CheckoutResult(
+            return UndoResult(
                 status="error",
                 message=f"{type(e).__name__}: {str(e)}",
                 reattachment=InstrumentResult(
@@ -504,21 +520,21 @@ class KishuCommand:
                 )
             )
 
-        #get the commit to revert to
-        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_path_or_key))
-        head_info = next(store.iter_history())
+        head_info = KishuCommitGraph.new_var_graph(notebook_path_or_key).get_commit()
         instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
         if (instrument_result.is_success()):
             if head_info.parent_id == '':
-                return CheckoutResult(
-                    status="error",
-                    message="Current var head is already the root, cannot revert further.",
+                return UndoResult(
+                    status="ok",
+                    message="No more commits to undo from root.",
                     reattachment=instrument_result,
                 )
-            return CheckoutResult.wrap(JupyterConnection(kernel_id).execute_one_command(
-                f"_kishu.checkout('{head_info.parent_id}', skip_notebook={True})",
+
+            return UndoResult.wrap(JupyterConnection(kernel_id).execute_one_command(
+                f"_kishu.checkout('{head_info.parent_id}', skip_notebook=True)",
+                "_kishu.save_notebook()"
             ), instrument_result)
-        return CheckoutResult(
+        return UndoResult(
             status="error",
             message="Error re-attaching kishu instrumentation to notebook",
             reattachment=instrument_result,

@@ -33,7 +33,7 @@ namespace CommandIDs {
    */
   export const commit = 'kishu:commit';
 
-  export const revert = 'kishu:revert';
+  export const undo = 'kishu:undo';
 }
 
 namespace KishuSetting {
@@ -69,7 +69,7 @@ interface CheckoutResult {
   message: string;
 }
 
-interface RevertResult {
+interface UndoResult {
     status: string;
     message: string;
 }
@@ -355,22 +355,22 @@ function installCommands(
     category: 'Kishu',
   });
 
-  commands.addCommand(CommandIDs.revert, {
+  commands.addCommand(CommandIDs.undo, {
     label: (args) => (
       args.label && args.label == 'short'
-          ? trans.__('Revert Execution')
-          : trans.__('Kishu: Revert Execution...')
+          ? trans.__('Undo Execution')
+          : trans.__('Kishu: Undo Execution...')
     ),
     execute: async (_args) => {
       // Detect currently viewed notebook.
       const notebook_path = currentNotebookPath(tracker);
       if (!notebook_path) {
-        notifyError(trans.__(`No currently viewed notebook detected to revert execution.`));
+        notifyError(trans.__(`No currently viewed notebook detected to undo execution.`));
         return;
       }
 
       // Make init request
-      const init_promise = requestAPI<RevertResult>('revert', {
+      const undo_promise = requestAPI<UndoResult>('undo', {
         method: 'POST',
         body: JSON.stringify({notebook_path: notebook_path}),
       });
@@ -378,22 +378,22 @@ function installCommands(
       // Report.
       const notify_manager = Notification.manager;
       const notify_id = notify_manager.notify(
-          trans.__(`Reverting execution for ${notebook_path}...`),
+          trans.__(`Undoing execution for ${notebook_path}...`),
           'in-progress',
           { autoClose: false },
       );
-      init_promise.then((init_result,) => {
+      undo_promise.then((init_result,) => {
         if (init_result.status != "ok") {
           notify_manager.update({
             id: notify_id,
-            message: trans.__(`Revert execution failed.\n"${init_result.message}"`),
+            message: trans.__(`Undo execution failed.\n"${init_result.message}"`),
             type: 'error',
             autoClose: 3000,
           });
         } else {
           notify_manager.update({
             id: notify_id,
-            message: trans.__(`Revert execution succeeded!\n"${init_result.message}"`),
+            message: trans.__(`Undo execution succeeded!\n"${init_result.message}"`),
             type: 'success',
             autoClose: 3000,
           });
@@ -403,7 +403,7 @@ function installCommands(
     }
     });
   palette.addItem({
-    command: CommandIDs.revert,
+    command: CommandIDs.undo,
     category: 'Kishu',
   });
 }

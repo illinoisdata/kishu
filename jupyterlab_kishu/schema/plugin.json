@@ -38,7 +38,7 @@
           },
           {
             "type": "command",
-            "command": "kishu:revert",
+            "command": "kishu:undo",
             "args": {"label": "short"},
             "rank": 4
           }

@@ -23,10 +23,9 @@ def subp_kishu_checkout(notebook_key, commit_id, cookies, queue):
     queue.put(into_json(checkout_result))
 
 
-def subp_kishu_revert(notebook_key, cookies, queue):
-    print(f"try revert {notebook_key}")
+def subp_kishu_undo(notebook_key, cookies, queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
-        rollback_result = KishuCommand.revert(notebook_key)
+        rollback_result = KishuCommand.undo(notebook_key)
     queue.put(into_json(rollback_result))
 
 
@@ -114,7 +113,7 @@ class CommitHandler(APIHandler):
         self.finish(commit_result)
 
 
-class RevertHandler(APIHandler):
+class UndoHandler(APIHandler):
     @tornado.gen.coroutine
     @tornado.web.authenticated
     def post(self):
@@ -124,18 +123,18 @@ class RevertHandler(APIHandler):
 
         # We need to run KishuCommand.checkout in a separate process to unblock Jupyter Server backend
         # so that the frontend reload does not cause a deadlock.
-        checkout_queue = multiprocessing.Queue()
-        checkout_process = multiprocessing.Process(
-            target=subp_kishu_revert,
-            args=(notebook_key, cookies, checkout_queue)
+        undo_queue = multiprocessing.Queue()
+        undo_process = multiprocessing.Process(
+            target=subp_kishu_undo,
+            args=(notebook_key, cookies, undo_queue)
         )
-        checkout_process.start()
-        while checkout_queue.empty():
+        undo_process.start()
+        while undo_queue.empty():
             # Awaiting to unblock.
             yield asyncio.sleep(0.5)
-        checkout_result = checkout_queue.get()
-        checkout_process.join()
-        self.finish(checkout_result)
+        undo_result = undo_queue.get()
+        undo_process.join()
+        self.finish(undo_result)
 
 
 def setup_handlers(web_app):
@@ -147,6 +146,6 @@ def setup_handlers(web_app):
         (url_path_join(kishu_url, "log_all"), LogAllHandler),
         (url_path_join(kishu_url, "checkout"), CheckoutHandler),
         (url_path_join(kishu_url, "commit"), CommitHandler),
-        (url_path_join(kishu_url, "revert"), RevertHandler)
+        (url_path_join(kishu_url, "undo"), UndoHandler)
     ]
     web_app.add_handlers(host_pattern, handlers)
