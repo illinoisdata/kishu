@@ -5,6 +5,7 @@ except ImportError:
     # in editable mode with pip. It is highly recommended to install
     # the package from a stable release or in editable mode.
     import warnings
+
     warnings.warn("Importing 'jupyterlab_kishu' outside a proper installation.")
     __version__ = "dev"
 
@@ -12,16 +13,11 @@ from .handlers import setup_handlers
 
 
 def _jupyter_labextension_paths():
-    return [{
-        "src": "labextension",
-        "dest": "jupyterlab_kishu"
-    }]
+    return [{"src": "labextension", "dest": "jupyterlab_kishu"}]
 
 
 def _jupyter_server_extension_points():
-    return [{
-        "module": "jupyterlab_kishu"
-    }]
+    return [{"module": "jupyterlab_kishu"}]
 
 
 def _load_jupyter_server_extension(server_app):
