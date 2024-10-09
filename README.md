@@ -65,8 +65,9 @@ Kishu's efficiency is enabled by its low-overhead session state monitoring, dedu
 Installing Kishu in the editable mode.
 
 ```bash
+python3 -m venv .venv # create a virtual environment with name .venv
 (cd kishu && make install)
-(cd kishuboard && pip install -e .)
+(cd kishuboard && make install)
 (cd jupyterlab_kishu && make install)
 ```
 

@@ -60,6 +60,6 @@ npm init # If you are building it from the source code for the first time
 npm install # If you are building it from the source code for the first time
 npm start
 ```
-And you should be able to visit the kishuboard at **localhost://3000**.
+And you should be able to visit the kishuboard at **localhost://3000**. And when you make change to frontend code, the frontend will automatically update when you refresh the page in your browser.
 ### Release
 To build a new release of kishuboard, please refer to [RELEASE.md](./RELEASE.md)
