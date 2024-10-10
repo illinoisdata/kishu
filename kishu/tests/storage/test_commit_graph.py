@@ -1,115 +1,123 @@
 import pytest
 
 from kishu.storage.commit_graph import (
-    NODE_SIZE,
-    UNSET_POSITION,
     CommitNodeInfo,
-    CommitNode,
     KishuCommitGraph,
 )
 
 
-class TestCommitNode:
+class TestCommitNodeInfo:
 
-    @pytest.mark.parametrize(
-        "commit_id,parent_id,position,parent_position",
-        [
-            ["1", "0", (0, 1), (0, 0)],
-            ["1030", "1001", (0, 1), (1, 20)],
-            ["40000", "1001", (0, 1), (200, 2000)],
-            ["123456789", "123456789", (100, 1000), (200, 2000)],
-        ],
-    )
-    def test_common(self, commit_id, parent_id, position, parent_position):
-        """
-        Tests all methods in CommitNode.
-        """
-        info = CommitNodeInfo(commit_id, parent_id)
-        node = CommitNode(info)
-        assert node.commit_id() == commit_id
-        assert node.parent_id() == parent_id
-        assert node.info() == info
-        assert node.position() == UNSET_POSITION
-        assert node.parent_position() == UNSET_POSITION
+    def test_equality(self):
+        """Test equality between two CommitNodeInfo objects."""
+        commit1 = CommitNodeInfo(commit_id="c1", parent_id="p1")
+        commit2 = CommitNodeInfo(commit_id="c1", parent_id="p1")
 
-        # Tests before-after position assignments
-        node.set_position(position)
-        assert node.position() == position
-        assert node.parent_position() == UNSET_POSITION
+        assert commit1 == commit2, "CommitNodeInfo objects with the same commit_id and parent_id should be equal"
 
-        node.set_parent_position(parent_position)
-        assert node.position() == position
-        assert node.parent_position() == parent_position
+    def test_inequality_different_commit_id(self):
+        """Test inequality when commit_ids are different."""
+        commit1 = CommitNodeInfo(commit_id="c1", parent_id="p1")
+        commit2 = CommitNodeInfo(commit_id="c2", parent_id="p1")
 
-        # Tests serialization and deserialization.
-        node_bytes = node.serialize()
-        assert len(node_bytes) == NODE_SIZE
+        assert commit1 != commit2, "CommitNodeInfo objects with different commit_ids should not be equal"
 
-        new_node = CommitNode.deserialize(node_bytes)
-        assert new_node.commit_id() == commit_id
-        assert new_node.parent_id() == parent_id
-        assert new_node.info() == info
-        assert new_node.position() == position
-        assert new_node.parent_position() == parent_position
+    def test_inequality_different_parent_id(self):
+        """Test inequality when parent_ids are different."""
+        commit1 = CommitNodeInfo(commit_id="c1", parent_id="p1")
+        commit2 = CommitNodeInfo(commit_id="c1", parent_id="p2")
 
-    def test_too_large(self):
-        large_id = "large_commit_" * NODE_SIZE
-        node = CommitNode(CommitNodeInfo(large_id, ""))
-        with pytest.raises(ValueError, match=r"CommitNode .* is too large (.* > .*)"):
-            node.serialize()  # Expect fail
+        assert commit1 != commit2, "CommitNodeInfo objects with different parent_ids should not be equal"
+
+    def test_inequality_different_type(self):
+        """Test inequality when compared to a different type."""
+        commit1 = CommitNodeInfo(commit_id="c1", parent_id="p1")
+        not_commit = "Not a CommitNodeInfo object"
+
+        assert commit1 != not_commit, "CommitNodeInfo should not be equal to an object of a different type"
+
+    def test_repr(self):
+        """Test the __repr__ method of CommitNodeInfo."""
+        commit = CommitNodeInfo(commit_id="c1", parent_id="p1")
+
+        expected_repr = 'CommitNodeInfo("c1", "p1")'
+        assert repr(commit) == expected_repr, f"Expected __repr__ to be {expected_repr}, but got {repr(commit)}"
+
+    def test_str(self):
+        """Test the __str__ method of CommitNodeInfo."""
+        commit = CommitNodeInfo(commit_id="c1", parent_id="p1")
+
+        expected_str = "Commit(c1)"
+        assert str(commit) == expected_str, f"Expected __str__ to be {expected_str}, but got {str(commit)}"
 
 
 class TestKishuCommitGraph:
 
-    @pytest.mark.parametrize(
-        "mode",
-        [
-            "in_memory",
-            "on_file",
-        ],
-    )
-    def test_common(self, tmp_path, mode):
-        if mode == "in_memory":
-            graph = KishuCommitGraph.new_in_memory()
-        elif mode == "on_file":
-            graph = KishuCommitGraph.new_on_file(str(tmp_path))
-        else:
-            raise ValueError(f"Invalid mode= {mode}")
-        assert graph.list_history() == []
+    @pytest.fixture
+    def notebook_id(self):
+        return "test_notebook_id"
 
-        graph.step("1")
-        graph.step("2")
-        graph.step("3")
-        assert graph.list_history() == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
-        assert graph.head() == "3"
+    @pytest.fixture
+    def graph_name(self):
+        return "test_graph"
 
-        graph.step("4")
-        graph.step("5")
-        assert graph.list_history() == [
+    @pytest.fixture
+    def kishu_graph(self, notebook_id, graph_name):
+        """Fixture for initializing a KishuBranch instance."""
+        kishu_graph = KishuCommitGraph(notebook_id, graph_name)
+        kishu_graph.init_database()
+        yield kishu_graph
+        kishu_graph.drop_database()
+
+    def test_common(self, kishu_graph):
+        """Test stepping and jumpping through commit graph.
+
+        The commit graph looks like:
+
+             |-- 1 -- 2 -- 3 -- 4 -- 5
+             |             |
+        ~ -- +             | -- 3_1 -- 3_2 -- 3_3 -- 3_4
+             |
+             |-- A -- A_A -- A_B
+        """
+        assert kishu_graph.list_history() == []
+
+        kishu_graph.step("1")
+        kishu_graph.step("2")
+        kishu_graph.step("3")
+        assert kishu_graph.get_commit() == CommitNodeInfo("3", "2")
+        assert kishu_graph.get_commit("3") == CommitNodeInfo("3", "2")
+        assert kishu_graph.get_commit("non_existent_commit_id") is None
+        assert kishu_graph.list_history() == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
+        assert kishu_graph.head() == "3"
+
+        kishu_graph.step("4")
+        kishu_graph.step("5")
+        assert kishu_graph.list_history() == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
             CommitNodeInfo("1", ""),
         ]
-        assert graph.head() == "5"
+        assert kishu_graph.head() == "5"
 
-        graph.jump("3")
-        assert graph.list_history() == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
-        assert graph.list_history("5") == [
+        kishu_graph.jump("3")
+        assert kishu_graph.list_history() == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
+        assert kishu_graph.list_history("5") == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
             CommitNodeInfo("1", ""),
         ]
-        assert graph.head() == "3"
+        assert kishu_graph.head() == "3"
 
-        graph.step("3_1")
-        graph.step("3_2")
-        graph.step("3_3")
-        graph.step("3_4")
-        assert graph.list_history() == [
+        kishu_graph.step("3_1")
+        kishu_graph.step("3_2")
+        kishu_graph.step("3_3")
+        kishu_graph.step("3_4")
+        assert kishu_graph.list_history() == [
             CommitNodeInfo("3_4", "3_3"),
             CommitNodeInfo("3_3", "3_2"),
             CommitNodeInfo("3_2", "3_1"),
@@ -118,65 +126,96 @@ class TestKishuCommitGraph:
             CommitNodeInfo("2", "1"),
             CommitNodeInfo("1", ""),
         ]
-        assert graph.head() == "3_4"
+        assert kishu_graph.head() == "3_4"
 
         # Jumps to non-existent commit, creating a new commit from empty state.
-        graph.jump("A")
-        assert graph.list_history() == [CommitNodeInfo("A", "")]
-        assert graph.head() == "A"
+        kishu_graph.jump("A")
+        assert kishu_graph.list_history() == [CommitNodeInfo("A", "")]
+        assert kishu_graph.head() == "A"
 
-        graph.step("A_A")
-        graph.step("A_B")
-        assert graph.list_history() == [CommitNodeInfo("A_B", "A_A"), CommitNodeInfo("A_A", "A"), CommitNodeInfo("A", "")]
-        assert graph.list_history("5") == [
+        kishu_graph.step("A_A")
+        kishu_graph.step("A_B")
+        assert kishu_graph.list_history() == [
+            CommitNodeInfo("A_B", "A_A"),
+            CommitNodeInfo("A_A", "A"),
+            CommitNodeInfo("A", ""),
+        ]
+        assert kishu_graph.list_history("5") == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
             CommitNodeInfo("1", ""),
         ]
-        assert graph.head() == "A_B"
+        assert kishu_graph.head() == "A_B"
 
-    def test_persist_on_file_after_reload(self, tmp_path):
-        graph = KishuCommitGraph.new_on_file(str(tmp_path))
-        assert graph.list_history() == []
+        # Test listing all history.
+        assert set(kishu_graph.list_all_history()) == {
+            CommitNodeInfo("1", ""),
+            CommitNodeInfo("2", "1"),
+            CommitNodeInfo("3", "2"),
+            CommitNodeInfo("4", "3"),
+            CommitNodeInfo("5", "4"),
+            CommitNodeInfo("3_1", "3"),
+            CommitNodeInfo("3_2", "3_1"),
+            CommitNodeInfo("3_3", "3_2"),
+            CommitNodeInfo("3_4", "3_3"),
+            CommitNodeInfo("A", ""),
+            CommitNodeInfo("A_A", "A"),
+            CommitNodeInfo("A_B", "A_A"),
+        }
 
-        graph.step("1")
-        graph.step("2")
-        graph.step("3")
-        graph.step("4")
-        graph.step("5")
-        graph.jump("3")
-        graph.step("3_1")
-        graph.step("3_2")
-        graph.step("3_3")
-        graph.step("3_4")
-        graph.jump("A")
-        graph.step("A_A")
-        graph.step("A_B")
+    def test_persist_on_file_after_reload(self, kishu_graph, notebook_id, graph_name):
+        """Test persistence by creating a graph, deleting the graph store and reconstructing the store.
 
-        del graph
+        The commit graph looks like:
+
+             |-- 1 -- 2 -- 3 -- 4 -- 5
+             |             |
+        ~ -- +             | -- 3_1 -- 3_2 -- 3_3 -- 3_4
+             |
+             |-- A -- A_A -- A_B
+        """
+        assert kishu_graph.list_history() == []
+
+        kishu_graph.step("1")
+        kishu_graph.step("2")
+        kishu_graph.step("3")
+        kishu_graph.step("4")
+        kishu_graph.step("5")
+        kishu_graph.jump("3")
+        kishu_graph.step("3_1")
+        kishu_graph.step("3_2")
+        kishu_graph.step("3_3")
+        kishu_graph.step("3_4")
+        kishu_graph.jump("A")
+        kishu_graph.step("A_A")
+        kishu_graph.step("A_B")
 
         # Create new graph. This should load existing commit graph.
 
-        graph = KishuCommitGraph.new_on_file(str(tmp_path))
-        assert graph.list_history("3") == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
-        assert graph.list_history("5") == [
+        del kishu_graph
+        kishu_graph = KishuCommitGraph(notebook_id, graph_name)
+        assert kishu_graph.get_commit() == CommitNodeInfo("A_B", "A_A")
+        assert kishu_graph.get_commit("3") == CommitNodeInfo("3", "2")
+        assert kishu_graph.get_commit("non_existent_commit_id") is None
+        assert kishu_graph.list_history("3") == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
+        assert kishu_graph.list_history("5") == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
             CommitNodeInfo("1", ""),
         ]
-        assert graph.list_history("3") == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
-        assert graph.list_history("5") == [
+        assert kishu_graph.list_history("3") == [CommitNodeInfo("3", "2"), CommitNodeInfo("2", "1"), CommitNodeInfo("1", "")]
+        assert kishu_graph.list_history("5") == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
             CommitNodeInfo("1", ""),
         ]
-        assert graph.list_history("3_4") == [
+        assert kishu_graph.list_history("3_4") == [
             CommitNodeInfo("3_4", "3_3"),
             CommitNodeInfo("3_3", "3_2"),
             CommitNodeInfo("3_2", "3_1"),
@@ -185,41 +224,31 @@ class TestKishuCommitGraph:
             CommitNodeInfo("2", "1"),
             CommitNodeInfo("1", ""),
         ]
-        assert graph.list_history("A") == [CommitNodeInfo("A", "")]
+        assert kishu_graph.list_history("A") == [CommitNodeInfo("A", "")]
 
-        assert graph.list_history("A_B") == [CommitNodeInfo("A_B", "A_A"), CommitNodeInfo("A_A", "A"), CommitNodeInfo("A", "")]
-        assert graph.list_history("5") == [
+        assert kishu_graph.list_history("A_B") == [
+            CommitNodeInfo("A_B", "A_A"),
+            CommitNodeInfo("A_A", "A"),
+            CommitNodeInfo("A", ""),
+        ]
+        assert kishu_graph.list_history("5") == [
             CommitNodeInfo("5", "4"),
             CommitNodeInfo("4", "3"),
             CommitNodeInfo("3", "2"),
             CommitNodeInfo("2", "1"),
             CommitNodeInfo("1", ""),
         ]
-        assert graph.head() == "A_B"
+        assert kishu_graph.head() == "A_B"
 
-    @pytest.mark.parametrize(
-        "mode",
-        [
-            "in_memory",
-            "on_file",
-        ],
-    )
-    def test_many_steps(self, tmp_path, mode):
-        if mode == "in_memory":
-            graph = KishuCommitGraph.new_in_memory()
-        elif mode == "on_file":
-            graph = KishuCommitGraph.new_on_file(str(tmp_path))
-        else:
-            raise ValueError(f"Invalid mode= {mode}")
-
+    def test_many_steps(self, kishu_graph, notebook_id, graph_name):
+        """Test persistence after many steps."""
         NUM_STEP = 1000
         for idx in range(NUM_STEP):
-            graph.step(str(idx))
+            kishu_graph.step(str(idx))
 
-        assert len(graph.list_history(str(NUM_STEP - 1))) == NUM_STEP
+        assert len(kishu_graph.list_history(str(NUM_STEP - 1))) == NUM_STEP
 
-        # Test persistence for file-based store.
-        if mode == "on_file":
-            del graph
-            graph = KishuCommitGraph.new_on_file(str(tmp_path))
-            assert len(graph.list_history(str(NUM_STEP - 1))) == NUM_STEP
+        # Test persistence.
+        del kishu_graph
+        kishu_graph = KishuCommitGraph(notebook_id, graph_name)
+        assert len(kishu_graph.list_history(str(NUM_STEP - 1))) == NUM_STEP
