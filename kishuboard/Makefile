@@ -1,6 +1,5 @@
 .ONESHELL:
 
-# Check if NodeJS is installed, otherwise give installation instructions.
 NODE_INSTALLED=$(shell node -v > /dev/null 2>&1 && echo "yes")
 KISHU_INSTALLED=$(shell pip list | grep -w "^kishu" && echo "yes")
 ENV_PREFIX=$(shell python -c "if __import__('pathlib').Path('.venv/bin/pip').exists(): print('.venv/bin/')")
@@ -29,7 +28,7 @@ install_frontend: check_node ## Install the NodeJS frontend
 	@npm run build
 
 .PHONY: install_backend
-install_backend: ## Install the Kishu board
+install_backend: install_kishu ## Install the Kishu board
 	@$(ENV_PREFIX)pip install -e .
 
 .PHONY: install
