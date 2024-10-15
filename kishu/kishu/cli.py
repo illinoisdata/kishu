@@ -1,217 +1,23 @@
 from __future__ import annotations
 
-import shutil
-import subprocess
-from abc import ABC, abstractmethod
-from functools import wraps
 from pathlib import Path
-from typing import List, Tuple
+from typing import Tuple
 
 import typer
+from rich.console import Console
 
 from kishu import __app_name__, __version__
-from kishu.commands import (
-    CheckoutResult,
-    CommitResult,
-    CommitSummary,
-    DetachResult,
-    InitResult,
-    InstrumentResult,
-    InstrumentStatus,
-    KishuCommand,
-    LogAllResult,
-    LogResult,
-    into_json,
-)
+from kishu.commands import KishuCommand
 from kishu.storage.config import Config
 
-
-class CommitPrinter(ABC):
-    def __init__(self, indentation: str = "    "):
-        self.indentation = indentation
-        self.output: List[str] = []
-
-    def add_line(self, text: str, is_indented: bool = False, prefix: str = ""):
-        indent = self.indentation if is_indented else ""
-        self.output.append(f"{prefix}{indent}{text}")
-
-    @abstractmethod
-    def add_commit_line(
-        self,
-        text: str,
-        is_indented: bool = False,
-        is_first_line: bool = False,
-    ):
-        pass
-
-
-class BasicCommitPrinter(CommitPrinter):
-    def add_commit_line(
-        self,
-        text: str,
-        is_indented: bool = False,
-        is_first_line: bool = False,
-    ):
-        super().add_line(text, is_indented)
-
-
-class GraphCommitPrinter(CommitPrinter):
-    def add_commit_line(
-        self,
-        text: str,
-        is_indented: bool = False,
-        is_first_line: bool = False,
-    ):
-        prefix = "* " if is_first_line else "| "
-        super().add_line(text, is_indented, prefix)
-
-
-class KishuPrint:
-    @staticmethod
-    def _get_terminal_height():
-        return shutil.get_terminal_size().lines  # fallback (80, 24)
-
-    @staticmethod
-    def _print_or_page(output):
-        lines = len(output.splitlines())
-        if lines > min(80, KishuPrint._get_terminal_height()):
-            p = subprocess.Popen(["less", "-R"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-            p.communicate(input=output.encode("utf-8"))
-        else:
-            print(output)
-
-    @staticmethod
-    def log(log_result: LogResult, graph: bool = False):
-        # Sort by timestamp in descending order
-        sorted_commits = sorted(
-            log_result.commit_graph,
-            key=lambda commit: commit.timestamp,
-            reverse=True,
-        )
-
-        output = [KishuPrint._format_commit(commit, graph=graph) for commit in sorted_commits]
-        KishuPrint._print_or_page("\n".join(output))
-
-    @staticmethod
-    def log_all(log_all_result: LogAllResult):
-        # Sort by timestamp in descending order
-        sorted_commits = sorted(
-            log_all_result.commit_graph,
-            key=lambda commit: commit.timestamp,
-            reverse=True,
-        )
-
-        output = [KishuPrint._format_commit(commit, include_parent_id=True) for commit in sorted_commits]
-        KishuPrint._print_or_page("\n".join(output))
-
-    @staticmethod
-    def log_all_with_graph(log_all_result: LogAllResult):
-        KishuPrint._print_or_page("Warning: feature not supported. Non-graph option will be displayed instead.")
-        KishuPrint.log_all(log_all_result)
-
-    @staticmethod
-    def _format_commit(commit: CommitSummary, include_parent_id: bool = False, graph: bool = False):
-        printer = BasicCommitPrinter() if not graph else GraphCommitPrinter()
-        ref_names = ", ".join(commit.branches + commit.tags)
-        ref_str = f" ({ref_names})" if ref_names else ""
-        printer.add_commit_line(f"commit {commit.commit_id}{ref_str}", is_first_line=True)
-
-        if include_parent_id and commit.parent_id:
-            printer.add_commit_line(f"Parent: {commit.parent_id}")
-
-        # TODO: Print author with details
-
-        printer.add_commit_line(f"Date:   {commit.timestamp}")
-        printer.add_commit_line("")
-        printer.add_commit_line(commit.message, is_indented=True)
-        printer.add_commit_line("")
-
-        return "\n".join(printer.output)
-
-
 kishu_app = typer.Typer(add_completion=False)
+console = Console(soft_wrap=True)
 
 
 def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"{__app_name__} v{__version__}")
         raise typer.Exit()
-
-
-def print_clean_errors(fn):
-    @wraps(fn)
-    def fn_with_clean_errors(*args, **kwargs):
-        if Config.get("CLI", "KISHU_VERBOSE", True):
-            return fn(*args, **kwargs)
-        try:
-            return fn(*args, **kwargs)
-        except Exception as e:
-            print(f"Kishu internal error ({type(e).__name__}).")
-
-    return fn_with_clean_errors
-
-
-def print_reattachment_message(response: InstrumentResult):
-    """
-    Prints reattachment message, returns whether or not to print the actual response message
-    """
-    if response.status == InstrumentStatus.already_attached:
-        return True
-    if response.status in [InstrumentStatus.reattach_succeeded, InstrumentStatus.reattach_init_fail]:
-        print("Notebook instrumentation was present but not initialized, so attempting to re-initialize it")
-        print(response.message)
-        return True
-    if response.status == InstrumentStatus.no_kernel:
-        print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
-        return False
-    if response.status == InstrumentStatus.no_metadata:
-        print(response.message)
-        return False
-
-
-def print_init_message(response: InitResult) -> None:
-    nb_id = response.notebook_id
-    if response.status != "ok":
-        error = response.message.split(": ")[0]
-        if error == "FileNotFoundError":
-            print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
-        else:
-            print(response.message)
-    else:
-        assert nb_id is not None
-        output_str = (
-            f"Successfully initialized notebook {nb_id.path()}."
-            f" Notebook key: {nb_id.key()}."
-            f" Kernel Id: {nb_id.kernel_id()}"
-        )
-        print(output_str)
-
-
-def print_detach_message(response: DetachResult, notebook_path: str) -> None:
-    if response.status != "ok":
-        error = response.message.split(": ")[0]
-        if error == "FileNotFoundError":
-            print("Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook")
-        else:
-            print(response.message)
-    else:
-        print(f"Successfully detached notebook {notebook_path}")
-
-
-def print_checkout_message(response: CheckoutResult) -> None:
-    if not print_reattachment_message(response.reattachment):
-        return
-    if response.message:
-        print(response.message)
-
-
-def print_commit_message(response: CommitResult) -> None:
-    if not print_reattachment_message(response.reattachment):
-        return
-    if response.status == "ok":
-        print(f"Successfully committed, id: {response.message}")
-    else:
-        print(response.message)
 
 
 @kishu_app.callback()
@@ -245,29 +51,27 @@ def list(
     """
     List existing Kishu sessions.
     """
-    print(into_json(KishuCommand.list(list_all=list_all)))
+    console.print(KishuCommand.list(list_all=list_all))
 
 
 @kishu_app.command()
-@print_clean_errors
 def init(
     notebook_path: Path = typer.Argument(..., help="Path to the notebook to initialize Kishu on.", show_default=False),
 ) -> None:
     """
     Initialize Kishu instrumentation in a notebook.
     """
-    print_init_message(KishuCommand.init(notebook_path))
+    console.print(KishuCommand.init(notebook_path))
 
 
 @kishu_app.command()
-@print_clean_errors
 def detach(
     notebook_path: Path = typer.Argument(..., help="Path to the notebook to detach Kishu from.", show_default=False),
 ) -> None:
     """
     Detach Kishu instrumentation from notebook
     """
-    print_detach_message(KishuCommand.detach(notebook_path), str(notebook_path))
+    console.print(KishuCommand.detach(notebook_path))
 
 
 @kishu_app.command()
@@ -294,14 +98,9 @@ def log(
     Show a history view of commit graph.
     """
     if log_all:
-        log_all_result = KishuCommand.log_all(notebook_path)
-        if graph:
-            KishuPrint.log_all_with_graph(log_all_result)
-        else:
-            KishuPrint.log_all(log_all_result)
+        console.print(KishuCommand.log_all(notebook_path))
     else:
-        log_result = KishuCommand.log(notebook_path, commit_id)
-        KishuPrint.log(log_result, graph=graph)
+        console.print(KishuCommand.log(notebook_path, commit_id))
 
 
 @kishu_app.command()
@@ -312,11 +111,10 @@ def status(
     """
     Show a commit in detail.
     """
-    print(into_json(KishuCommand.status(notebook_path, commit_id)))
+    console.print(KishuCommand.status(notebook_path, commit_id))
 
 
 @kishu_app.command()
-@print_clean_errors
 def commit(
     notebook_path: Path = typer.Argument(..., help="Path to the target notebook.", show_default=False),
     message: str = typer.Option(
@@ -341,21 +139,18 @@ def commit(
     Create or edit a Kishu commit.
     """
     if edit_branch_or_commit_id:
-        print(
-            into_json(
-                KishuCommand.edit_commit(
-                    notebook_path,
-                    edit_branch_or_commit_id,
-                    message=message,
-                )
+        console.print(
+            KishuCommand.edit_commit(
+                notebook_path,
+                edit_branch_or_commit_id,
+                message=message,
             )
         )
     else:
-        print_commit_message(KishuCommand.commit(notebook_path, message=message))
+        console.print(KishuCommand.commit(notebook_path, message=message))
 
 
 @kishu_app.command()
-@print_clean_errors
 def checkout(
     notebook_path: Path = typer.Argument(..., help="Path to the target notebook.", show_default=False),
     branch_or_commit_id: str = typer.Argument(
@@ -373,7 +168,7 @@ def checkout(
     """
     Checkout a notebook to a commit.
     """
-    print_checkout_message(
+    console.print(
         KishuCommand.checkout(
             notebook_path,
             branch_or_commit_id,
@@ -419,12 +214,12 @@ def branch(
     Create, rename, or delete branches.
     """
     if create_branch_name is not None:
-        print(into_json(KishuCommand.branch(notebook_path, create_branch_name, commit_id)))
+        console.print(KishuCommand.branch(notebook_path, create_branch_name, commit_id))
     if delete_branch_name is not None:
-        print(into_json(KishuCommand.delete_branch(notebook_path, delete_branch_name)))
+        console.print(KishuCommand.delete_branch(notebook_path, delete_branch_name))
     if rename_branch != (None, None):
         old_name, new_name = rename_branch
-        print(into_json(KishuCommand.rename_branch(notebook_path, old_name, new_name)))
+        console.print(KishuCommand.rename_branch(notebook_path, old_name, new_name))
 
 
 @kishu_app.command()
@@ -465,11 +260,11 @@ def tag(
     Create or edit tags.
     """
     if list_tag:
-        print(into_json(KishuCommand.list_tag(notebook_path)))
+        console.print(KishuCommand.list_tag(notebook_path))
     if tag_name is not None:
-        print(into_json(KishuCommand.tag(notebook_path, tag_name, commit_id, message)))
+        console.print(KishuCommand.tag(notebook_path, tag_name, commit_id, message))
     if delete_tag_name is not None:
-        print(into_json(KishuCommand.delete_tag(notebook_path, delete_tag_name)))
+        console.print(KishuCommand.delete_tag(notebook_path, delete_tag_name))
 
 
 """
@@ -487,7 +282,7 @@ def fegraph(
     """
     Show the frontend commit graph.
     """
-    print(into_json(KishuCommand.fe_commit_graph(notebook_path)))
+    console.print(KishuCommand.fe_commit_graph(notebook_path))
 
 
 @kishu_experimental_app.command()
@@ -503,7 +298,7 @@ def fecommit(
     """
     Show the commit in frontend detail.
     """
-    print(into_json(KishuCommand.fe_commit(notebook_path, commit_id, vardepth)))
+    console.print(KishuCommand.fe_commit(notebook_path, commit_id, vardepth))
 
 
 if Config.get("CLI", "KISHU_ENABLE_EXPERIMENTAL", False):
