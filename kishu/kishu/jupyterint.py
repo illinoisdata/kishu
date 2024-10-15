@@ -264,12 +264,8 @@ class KishuForJupyter:
         self._kishu_checkpoint = KishuCheckpoint(self.database_path())
         self._kishu_branch = KishuBranch(self._notebook_id.key())
         self._kishu_tag = KishuTag(self._notebook_id.key())
-        self._kishu_graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
-            KishuPath.commit_graph_directory(self._notebook_id.key())
-        )
-        self._kishu_nb_graph: KishuCommitGraph = KishuCommitGraph.new_on_file(
-            KishuPath.nb_commit_graph_directory(self._notebook_id.key())
-        )
+        self._kishu_graph = KishuCommitGraph.new_var_graph(self._notebook_id.key())
+        self._kishu_nb_graph = KishuCommitGraph.new_nb_graph(self._notebook_id.key())
         self._kishu_variable_version = VariableVersion(self._notebook_id.key())
 
         # Enclosing environment.
@@ -305,6 +301,8 @@ class KishuForJupyter:
         self._kishu_checkpoint.init_database()
         self._kishu_branch.init_database()
         self._kishu_tag.init_database()
+        self._kishu_graph.init_database()
+        self._kishu_nb_graph.init_database()
         self._kishu_variable_version.init_database()
         self._notebook_id.record_connection()
 

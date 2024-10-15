@@ -362,7 +362,7 @@ class KishuCommand:
             return LogResult(commit_graph=[], head=kishu_branch.get_head())
 
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
-        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
+        store = KishuCommitGraph.new_var_graph(notebook_id)
         graph = store.list_history(commit_id)
         return LogResult(
             commit_graph=KishuCommand._decorate_graph(notebook_id, graph),
@@ -371,7 +371,7 @@ class KishuCommand:
 
     @staticmethod
     def log_all(notebook_id: str) -> LogAllResult:
-        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
+        store = KishuCommitGraph.new_var_graph(notebook_id)
         graph = store.list_all_history()
         return LogAllResult(
             commit_graph=KishuCommand._decorate_graph(notebook_id, graph),
@@ -381,9 +381,7 @@ class KishuCommand:
     @staticmethod
     def status(notebook_id: str, commit_id: str) -> StatusResult:
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
-        commit_node_info = next(
-            KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id)).iter_history(commit_id)
-        )
+        commit_node_info = KishuCommitGraph.new_var_graph(notebook_id).get_commit(commit_id)
         commit_entry = KishuCommit(notebook_id).get_commit(commit_id)
         return StatusResult(commit_node_info=commit_node_info, commit_entry=commit_entry)
 
@@ -615,13 +613,13 @@ class KishuCommand:
 
     @staticmethod
     def fe_commit_graph(notebook_id: str) -> FEInitializeResult:
-        store = KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id))
+        store = KishuCommitGraph.new_var_graph(notebook_id)
         graph = store.list_all_history()
         graph_commit_ids = [node.commit_id for node in graph]
         commit_entries = KishuCommit(notebook_id).get_commits(graph_commit_ids)
 
         # Collect mapping of notebook parents.
-        nb_store = KishuCommitGraph.new_on_file(KishuPath.nb_commit_graph_directory(notebook_id))
+        nb_store = KishuCommitGraph.new_nb_graph(notebook_id)
         nb_graph = nb_store.list_all_history()
         nb_parents = {node.commit_id: node.parent_id for node in nb_graph}
         nb_head = nb_store.head()
@@ -667,12 +665,8 @@ class KishuCommand:
     @staticmethod
     def fe_commit(notebook_id: str, commit_id: str, vardepth: int) -> FESelectedCommit:
         commit_id = KishuForJupyter.disambiguate_commit(notebook_id, commit_id)
-        commit_node_info = next(
-            KishuCommitGraph.new_on_file(KishuPath.commit_graph_directory(notebook_id)).iter_history(commit_id)
-        )
-        nb_commit_node_info = KishuCommitGraph.new_on_file(KishuPath.nb_commit_graph_directory(notebook_id)).get_commit(
-            commit_id
-        )
+        commit_node_info = KishuCommitGraph.new_var_graph(notebook_id).get_commit(commit_id)
+        nb_commit_node_info = KishuCommitGraph.new_nb_graph(notebook_id).get_commit(commit_id)
         current_commit_entry = KishuCommit(notebook_id).get_commit(commit_id)
         branches = KishuBranch(notebook_id).branches_for_commit(commit_id)
         tags = KishuTag(notebook_id).tags_for_commit(commit_id)
