@@ -73,7 +73,7 @@ from kishu.exceptions import (
 )
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
-from kishu.notebook_id import NotebookId
+from kishu.notebook_id import KishuConnection, NotebookId
 from kishu.planning.plan import RestorePlan
 from kishu.planning.planner import ChangedVariables, CheckpointRestorePlanner
 from kishu.planning.variable_version_tracker import VariableVersionTracker
@@ -152,7 +152,7 @@ class JupyterConnection:
     @staticmethod
     def from_notebook_key(notebook_key: str) -> JupyterConnection:
         # Find connection information
-        conn_info = NotebookId.try_retrieve_connection(notebook_key)
+        conn_info = KishuConnection.try_retrieve_connection(notebook_key)
         if conn_info is None:
             raise MissingConnectionInfoError()
         return JupyterConnection(conn_info.kernel_id)
@@ -260,6 +260,11 @@ class KishuForJupyter:
     ) -> None:
         # Kishu info and storages.
         self._notebook_id = notebook_id
+        self._kishu_connection = KishuConnection(
+            key=self._notebook_id.key(),
+            path=self._notebook_id.path(),
+            kernel_id=self._notebook_id.kernel_id(),
+        )
         self._kishu_commit = KishuCommit(self._notebook_id.key())
         self._kishu_checkpoint = KishuCheckpoint(self.database_path())
         self._kishu_branch = KishuBranch(self._notebook_id.key())
@@ -297,6 +302,8 @@ class KishuForJupyter:
         )
 
         # Initialize databases.
+        self._kishu_connection.init_database()
+        self._kishu_connection.record_connection()
         self._kishu_commit.init_database()
         self._kishu_checkpoint.init_database()
         self._kishu_branch.init_database()
@@ -304,7 +311,6 @@ class KishuForJupyter:
         self._kishu_graph.init_database()
         self._kishu_nb_graph.init_database()
         self._kishu_variable_version.init_database()
-        self._notebook_id.record_connection()
 
         # For unit tests.
         if os.environ.get(KishuForJupyter.ENV_KISHU_TEST_MODE, False):
@@ -566,7 +572,7 @@ class KishuForJupyter:
         # List all Kishu sessions.
         sessions = []
         for notebook_key in KishuPath.iter_notebook_keys():
-            cf = NotebookId.try_retrieve_connection(notebook_key)
+            cf = KishuConnection.try_retrieve_connection(notebook_key)
 
             # Connection file not found.
             if cf is None:

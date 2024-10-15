@@ -27,10 +27,6 @@ class KishuPath:
         return os.path.join(KishuPath.notebook_directory(notebook_key), "ckpt.sqlite")
 
     @staticmethod
-    def connection_path(notebook_key: str) -> str:
-        return os.path.join(KishuPath.notebook_directory(notebook_key), "connection.json")
-
-    @staticmethod
     def exists(notebook_key: str) -> bool:
         return os.path.exists(os.path.join(KishuPath.kishu_directory(), notebook_key))
 
