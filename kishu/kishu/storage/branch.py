@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import random
 import sqlite3
 from dataclasses import dataclass
@@ -12,6 +11,8 @@ from kishu.exceptions import BranchConflictError, BranchNotFoundError
 from kishu.storage.path import KishuPath
 
 BRANCH_TABLE = "branch"
+HEAD_BRANCH_TABLE = "head_branch"
+HEAD_KEY = "HEAD"
 
 
 BRANCH_NAME_ADJECTIVES = [
@@ -159,29 +160,40 @@ class KishuBranch:
 
     def __init__(self, notebook_id: str):
         self.database_path = KishuPath.database_path(notebook_id)
-        self.head_path = KishuPath.head_path(notebook_id)
 
     def init_database(self):
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(f"create table if not exists {BRANCH_TABLE} (branch_name text primary key, commit_id text)")
+        cur.execute(f"create table if not exists {HEAD_BRANCH_TABLE} (head primary key, branch_name text, commit_id text)")
+        con.commit()
+
+    def drop_database(self):
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        cur.execute(f"drop table if exists {BRANCH_TABLE}")
+        cur.execute(f"drop table if exists {HEAD_BRANCH_TABLE}")
         con.commit()
 
     def get_head(self) -> HeadBranch:
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        query = f"select branch_name, commit_id from {HEAD_BRANCH_TABLE} where head = '{HEAD_KEY}'"
         try:
-            with open(self.head_path, "r") as f:
-                json_str = f.read()
-                return HeadBranch.from_json(json_str)  # type: ignore
-        except (FileNotFoundError, json.decoder.JSONDecodeError):
-            return HeadBranch(branch_name=None, commit_id=None)
+            cur.execute(query)
+            res: Optional[tuple] = cur.fetchone()
+            if not res:
+                return HeadBranch(branch_name=None, commit_id=None)
+            branch_name, commit_id = res
+            return HeadBranch(branch_name=branch_name, commit_id=commit_id)
+        finally:
+            con.close()
 
     def update_head(
         self, branch_name: Optional[str] = None, commit_id: Optional[str] = None, is_detach: bool = False
     ) -> HeadBranch:
         # Get current head.
         head = self.get_head()
-        if head is None:
-            head = HeadBranch(branch_name=None, commit_id=None)
 
         # Assign head branch.
         if is_detach:
@@ -194,8 +206,12 @@ class KishuBranch:
             head.commit_id = commit_id
 
         # Write head.
-        with open(self.head_path, "w") as f:
-            f.write(head.to_json())  # type: ignore
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        query = f"insert or replace into {HEAD_BRANCH_TABLE} values ('{HEAD_KEY}', ?, ?)"
+        cur.execute(query, (head.branch_name, head.commit_id))
+        con.commit()
+
         return head
 
     def upsert_branch(self, branch: str, commit_id: str) -> None:
