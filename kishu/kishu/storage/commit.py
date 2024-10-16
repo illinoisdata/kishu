@@ -12,13 +12,13 @@ from __future__ import annotations
 import enum
 import sqlite3
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import dill
 
 import kishu.planning.plan
 from kishu.exceptions import MissingCommitEntryError
-from kishu.storage.path import KishuPath
 
 COMMIT_ENTRY_TABLE = "commit_entry"
 
@@ -89,8 +89,8 @@ class CommitEntry:
 
 
 class KishuCommit:
-    def __init__(self, notebook_id: str):
-        self.database_path = KishuPath.database_path(notebook_id)
+    def __init__(self, database_path: Path):
+        self.database_path = database_path
 
     def init_database(self):
         con = sqlite3.connect(self.database_path)

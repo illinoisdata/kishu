@@ -11,9 +11,13 @@ from kishu.storage.path import KishuPath
 class TestKishuConnection:
 
     @pytest.fixture
-    def notebook_id(self):
+    def notebook_id(self, nb_simple_path):
         """Fixture for a mock notebook_id object."""
-        return NotebookId("test_key", "test_kernel_1", "/path/to/test_notebook")
+        return NotebookId(
+            key="test_key",
+            path=nb_simple_path,
+            kernel_id="test_kernel_1",
+        )
 
     @pytest.fixture
     def connection(self, notebook_id):
@@ -30,7 +34,7 @@ class TestKishuConnection:
     def test_init_database(self, connection, notebook_id):
         """Test initializing the database."""
         # Check if the table is correctly created
-        con = sqlite3.connect(KishuPath.database_path(notebook_id.key()))
+        con = sqlite3.connect(KishuPath.database_path(notebook_id.path()))
         cur = con.cursor()
         cur.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{CONNECTION_TABLE}'")
         table_exists = cur.fetchone()
@@ -43,7 +47,7 @@ class TestKishuConnection:
         connection.drop_database()
 
         # Verify that the table no longer exists
-        con = sqlite3.connect(KishuPath.database_path(notebook_id.key()))
+        con = sqlite3.connect(KishuPath.database_path(notebook_id.path()))
         cur = con.cursor()
         cur.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{CONNECTION_TABLE}'")
         table_exists = cur.fetchone()
@@ -56,20 +60,20 @@ class TestKishuConnection:
         connection.record_connection()
 
         # Verify the connection record
-        conn_info = KishuConnection.try_retrieve_connection(notebook_id.key())
+        conn_info = KishuConnection.try_retrieve_connection(notebook_id.path())
 
         assert conn_info is not None
         assert conn_info.kernel_id == notebook_id.kernel_id()
-        assert conn_info.notebook_path == str(notebook_id.path())
+        assert conn_info.notebook_path == notebook_id.path()
 
     def test_try_retrieve_connection_none(self, notebook_id):
         """Test retrieving a connection when none exists in the database."""
-        conn_info = KishuConnection.try_retrieve_connection(notebook_id.key())
+        conn_info = KishuConnection.try_retrieve_connection(notebook_id.path())
         assert conn_info is None
 
     def test_try_retrieve_connection_no_record(self, connection, notebook_id):
         """Test retrieving a connection when none exists in the database."""
-        conn_info = KishuConnection.try_retrieve_connection(notebook_id.key())
+        conn_info = KishuConnection.try_retrieve_connection(notebook_id.path())
         assert conn_info is None
 
     def test_sqlite3_operational_error_init_database(self, connection, notebook_id):
@@ -94,4 +98,4 @@ class TestKishuConnection:
         """Test sqlite3.OperationalError during try_retrieve_connection."""
         with patch("sqlite3.connect", side_effect=sqlite3.OperationalError):
             with pytest.raises(sqlite3.OperationalError):
-                KishuConnection.try_retrieve_connection(notebook_id.key())
+                KishuConnection.try_retrieve_connection(notebook_id.path())

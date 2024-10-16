@@ -144,12 +144,12 @@ def test_post_run_cell_update_return(enable_always_migrate):
     )
 
 
-def test_checkpoint_restore_planner_incremental_store_simple(enable_incremental_store, enable_always_migrate):
+def test_checkpoint_restore_planner_incremental_store_simple(enable_incremental_store, enable_always_migrate, nb_simple_path):
     """
     Test incremental store.
     """
-    filename = KishuPath.database_path("test")
-    KishuCheckpoint(filename).init_database()
+    database_path = KishuPath.database_path(nb_simple_path)
+    KishuCheckpoint(database_path).init_database()
 
     planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
 
@@ -157,25 +157,27 @@ def test_checkpoint_restore_planner_incremental_store_simple(enable_incremental_
     planner_manager.run_cell({"x": 1}, "x = 1")
 
     # Create and run checkpoint plan for cell 1.
-    planner_manager.checkpoint_session(filename, "1:1")
+    planner_manager.checkpoint_session(str(database_path), "1:1")
 
     # Run cell 2.
     planner_manager.run_cell({"y": 2}, "y = x + 1")
 
     # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2")
+    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(str(database_path), "1:2")
 
     # Assert that only 'y' is stored in the checkpoint plan - 'x' was stored in cell 1.
     assert len(checkpoint_plan_cell2.actions) == 1
     assert checkpoint_plan_cell2.actions[0].vs_connected_components.get_variable_names() == {"y"}
 
 
-def test_checkpoint_restore_planner_incremental_store_not_subset(enable_incremental_store, enable_always_migrate):
+def test_checkpoint_restore_planner_incremental_store_not_subset(
+    enable_incremental_store, enable_always_migrate, nb_simple_path
+):
     """
     Test incremental store.
     """
-    filename = KishuPath.database_path("test")
-    KishuCheckpoint(filename).init_database()
+    database_path = KishuPath.database_path(nb_simple_path)
+    KishuCheckpoint(database_path).init_database()
 
     planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
 
@@ -184,13 +186,13 @@ def test_checkpoint_restore_planner_incremental_store_not_subset(enable_incremen
     planner_manager.run_cell({"x": x, "y": [x]}, "x = 1\ny = [x]")
 
     # Create and run checkpoint plan for cell 1.
-    planner_manager.checkpoint_session(filename, "1:1")
+    planner_manager.checkpoint_session(str(database_path), "1:1")
 
     # Run cell 2.
     planner_manager.run_cell({"z": [x]}, "z = [x]")
 
     # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2")
+    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(str(database_path), "1:2")
 
     # Assert that everything is stored again.
     # x and y are linked; since {x, y, z} is not a subset of the stored {x, y}, we need to store everything again.
@@ -198,12 +200,14 @@ def test_checkpoint_restore_planner_incremental_store_not_subset(enable_incremen
     assert checkpoint_plan_cell2.actions[0].vs_connected_components.get_variable_names() == {"x", "y", "z"}
 
 
-def test_checkpoint_restore_planner_incremental_store_is_subset(enable_incremental_store, enable_always_migrate):
+def test_checkpoint_restore_planner_incremental_store_is_subset(
+    enable_incremental_store, enable_always_migrate, nb_simple_path
+):
     """
     Test incremental store.
     """
-    filename = KishuPath.database_path("test")
-    KishuCheckpoint(filename).init_database()
+    database_path = KishuPath.database_path(nb_simple_path)
+    KishuCheckpoint(database_path).init_database()
 
     planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
 
@@ -212,13 +216,13 @@ def test_checkpoint_restore_planner_incremental_store_is_subset(enable_increment
     planner_manager.run_cell({"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
     # Create and run checkpoint plan for cell 1.
-    planner_manager.checkpoint_session(filename, "1:1")
+    planner_manager.checkpoint_session(str(database_path), "1:1")
 
     # Run cell 2.
     planner_manager.run_cell({}, "del z", {"z"})
 
     # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2")
+    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(str(database_path), "1:2")
 
     # Assert that everything is stored again.
     # The connected component of 'x, y, z' is already stored, since 'x, y' is a subset, its storage is skipped.

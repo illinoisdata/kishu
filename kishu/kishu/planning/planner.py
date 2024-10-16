@@ -4,6 +4,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import combinations
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
@@ -143,7 +144,7 @@ class CheckpointRestorePlanner:
         computation is enabled.
         """
         # Currently stored VSes
-        stored_vs_connected_components = KishuCheckpoint(database_path).get_stored_connected_components()
+        stored_vs_connected_components = KishuCheckpoint(Path(database_path)).get_stored_connected_components()
         stored_vses = stored_vs_connected_components.get_versioned_names()
 
         # VSes in session state

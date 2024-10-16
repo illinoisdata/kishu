@@ -5,11 +5,11 @@ from kishu.storage.config import Config
 from kishu.storage.path import KishuPath
 
 
-def test_create_table_no_incremental_checkpointing():
-    filename = KishuPath.database_path("test")
-    KishuCheckpoint(filename).init_database()
+def test_create_table_no_incremental_checkpointing(nb_simple_path):
+    database_path = KishuPath.database_path(nb_simple_path)
+    KishuCheckpoint(database_path).init_database()
 
-    con = sqlite3.connect(filename)
+    con = sqlite3.connect(database_path)
     cur = con.cursor()
 
     # The checkpoint table should exist.
@@ -25,13 +25,13 @@ def test_create_table_no_incremental_checkpointing():
     assert cur.fetchone()[0] == 0
 
 
-def test_create_table_with_incremental_checkpointing():
+def test_create_table_with_incremental_checkpointing(nb_simple_path):
     Config.set("PLANNER", "incremental_store", True)
 
-    filename = KishuPath.database_path("test")
-    KishuCheckpoint(filename).init_database()
+    database_path = KishuPath.database_path(nb_simple_path)
+    KishuCheckpoint(database_path).init_database()
 
-    con = sqlite3.connect(filename)
+    con = sqlite3.connect(database_path)
     cur = con.cursor()
 
     # The checkpoint table should exist.
