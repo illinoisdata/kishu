@@ -1,53 +1,63 @@
 import os
-import pathlib
-from typing import Generator
+from pathlib import Path
+
+from kishu.exceptions import KishuNotInitializedError, NotebookNotFoundError, NotPathError, PathIsNotNotebookError
 
 ENV_KISHU_PATH_ROOT = "KISHU_PATH_ROOT"
 
 
 class KishuPath:
-    ROOT = os.environ.get(ENV_KISHU_PATH_ROOT, None) or str(pathlib.Path.home())
+    ROOT = Path(os.environ.get(ENV_KISHU_PATH_ROOT, str(Path.home())))
 
     @staticmethod
-    def kishu_directory() -> str:
+    def kishu_directory() -> Path:
         """
         Gets a directory for storing kishu states. Creates if none exists.
         """
-        return KishuPath._create_dir(os.path.join(KishuPath.ROOT, ".kishu"))
+        return KishuPath._create_dir(KishuPath.ROOT / ".kishu")
 
     @staticmethod
-    def notebook_directory(notebook_key: str) -> str:
+    def database_path(notebook_path: Path) -> Path:
         """
-        Creates a directory kishu will use for checkpointing a notebook. Creates if none exists.
+        Gets database path for the notebook.
         """
-        return KishuPath._create_dir(os.path.join(KishuPath.kishu_directory(), notebook_key))
+        notebook_name = notebook_path.resolve().name
+        return notebook_path.resolve().parent / f"{notebook_name}.kishudb"
 
     @staticmethod
-    def database_path(notebook_key: str) -> str:
-        return os.path.join(KishuPath.notebook_directory(notebook_key), "ckpt.sqlite")
+    def exists(notebook_path: Path) -> bool:
+        """
+        Checks whether Kishu database for the given notebook exists.
+        """
+        return KishuPath.database_path(notebook_path).exists()
 
     @staticmethod
-    def exists(notebook_key: str) -> bool:
-        return os.path.exists(os.path.join(KishuPath.kishu_directory(), notebook_key))
-
-    @staticmethod
-    def iter_notebook_keys() -> Generator[str, None, None]:
-        kishu_dir = KishuPath.kishu_directory()
-        for notebook_key in os.listdir(KishuPath.kishu_directory()):
-            if not os.path.isdir(os.path.join(kishu_dir, notebook_key)):
-                continue
-            yield notebook_key
-
-    @staticmethod
-    def _create_dir(dir: str) -> str:
+    def _create_dir(dir_path: Path) -> Path:
         """
         Creates a new directory if not exists.
 
-        @param dir  A directory to create.
+        @param   dir_path  A directory to create.
         @return  Echos the newly created directory.
         """
-        if os.path.isfile(dir):
+        if dir_path.is_file():
             raise ValueError("The passed directory name exists as s file.")
-        if not os.path.exists(dir):
-            os.mkdir(dir)
-        return dir
+        dir_path.mkdir(parents=True, exist_ok=True)
+        return dir_path
+
+
+class NotebookPath(Path):
+
+    @staticmethod
+    def verify_valid(notebook_path: Path):
+        if not isinstance(notebook_path, Path):
+            raise NotPathError(notebook_path)
+        if not notebook_path.exists():
+            raise NotebookNotFoundError(str(notebook_path))
+        if notebook_path.suffix != ".ipynb":
+            raise PathIsNotNotebookError(str(notebook_path))
+
+    @staticmethod
+    def verify_valid_and_initialized(notebook_path: Path):
+        NotebookPath.verify_valid(notebook_path)
+        if not KishuPath.exists(notebook_path):
+            raise KishuNotInitializedError(str(notebook_path))

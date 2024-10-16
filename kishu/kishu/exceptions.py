@@ -8,9 +8,29 @@ class MissingNotebookMetadataError(Exception):
         super().__init__("Missing Kishu metadata in the notebook.")
 
 
-class NotNotebookPathOrKey(Exception):
+"""
+Raised by path
+"""
+
+
+class NotPathError(Exception):
+    def __init__(self, obj):
+        super().__init__(f'"{obj}" is not a Path object.')
+
+
+class NotebookNotFoundError(Exception):
     def __init__(self, s: str):
-        super().__init__(f'"{s}" is neither a notebook path nor a Kishu notebook key.')
+        super().__init__(f'"{s}" does not exist.')
+
+
+class PathIsNotNotebookError(Exception):
+    def __init__(self, s: str):
+        super().__init__(f'"{s}" is not a notebook.')
+
+
+class KishuNotInitializedError(Exception):
+    def __init__(self, s: str):
+        super().__init__(f'Kishu for "{s}" has not been initialized.')
 
 
 """

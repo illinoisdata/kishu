@@ -3,6 +3,7 @@ from __future__ import annotations
 import atexit
 import functools
 from dataclasses import dataclass, field
+from pathlib import Path
 from queue import LifoQueue
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
@@ -96,7 +97,7 @@ class SaveVariablesCheckpointAction(CheckpointAction):
         namespace: VarNamesToObjects = VarNamesToObjects()
         for name in self.variable_names:
             namespace[name] = user_ns[name]
-        KishuCheckpoint(self.filename).store_checkpoint(self.exec_id, namespace.dumps())
+        KishuCheckpoint(Path(self.filename)).store_checkpoint(self.exec_id, namespace.dumps())
 
 
 class IncrementalWriteCheckpointAction(CheckpointAction):
@@ -110,7 +111,7 @@ class IncrementalWriteCheckpointAction(CheckpointAction):
         self.exec_id = exec_id
 
     def run(self, user_ns: Namespace):
-        KishuCheckpoint(self.filename).store_variable_kv(self.exec_id, self.vs_connected_components, user_ns)
+        KishuCheckpoint(Path(self.filename)).store_variable_kv(self.exec_id, self.vs_connected_components, user_ns)
 
 
 class CheckpointPlan:
@@ -255,7 +256,7 @@ class LoadVariableRestoreAction(RestoreAction):
         """
         @param user_ns  A target space where restored variables will be set.
         """
-        data: bytes = KishuCheckpoint(ctx.checkpoint_file).get_checkpoint(ctx.exec_id)
+        data: bytes = KishuCheckpoint(Path(ctx.checkpoint_file)).get_checkpoint(ctx.exec_id)
         namespace: VarNamesToObjects = VarNamesToObjects.loads(data)
         for key, obj in namespace.items():
             # if self.variable_names is set, limit the restoration only to those variables.

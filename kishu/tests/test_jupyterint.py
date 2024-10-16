@@ -2,6 +2,7 @@ import dill
 import nbformat
 import pytest
 
+from pathlib import Path
 from typing import List
 
 from kishu.jupyterint import KishuForJupyter
@@ -13,34 +14,34 @@ class TestOnMockEnclosing:
     def test_disambiguate_commit_pass(
         self,
         kishu_jupyter: KishuForJupyter,
-        notebook_key: str,
+        basic_notebook_path: Path,
         basic_execution_ids: List[str],
     ) -> None:
         commit_ids = basic_execution_ids
-        assert KishuForJupyter.disambiguate_commit(notebook_key, commit_ids[0]) == commit_ids[0]
-        assert KishuForJupyter.disambiguate_commit(notebook_key, commit_ids[1]) == commit_ids[1]
-        assert KishuForJupyter.disambiguate_commit(notebook_key, commit_ids[2]) == commit_ids[2]
+        assert KishuForJupyter.disambiguate_commit(basic_notebook_path, commit_ids[0]) == commit_ids[0]
+        assert KishuForJupyter.disambiguate_commit(basic_notebook_path, commit_ids[1]) == commit_ids[1]
+        assert KishuForJupyter.disambiguate_commit(basic_notebook_path, commit_ids[2]) == commit_ids[2]
 
     def test_disambiguate_commit_not_exist(
         self,
         kishu_jupyter: KishuForJupyter,
-        notebook_key: str,
+        basic_notebook_path: Path,
         basic_execution_ids: List[str],
     ) -> None:
         with pytest.raises(ValueError):
-            _ = KishuForJupyter.disambiguate_commit(notebook_key, "NON_EXISTENT_COMMIT_ID")
+            _ = KishuForJupyter.disambiguate_commit(basic_notebook_path, "NON_EXISTENT_COMMIT_ID")
 
     def test_disambiguate_commit_ambiguous(
         self,
         kishu_jupyter: KishuForJupyter,
-        notebook_key: str,
+        basic_notebook_path: Path,
         basic_execution_ids: List[str],
     ) -> None:
         commit_ids = basic_execution_ids
         common_prefix = commit_ids[0][:1]
         assert sum(common_prefix in commit_id for commit_id in commit_ids) > 1, f"No common prefix {commit_ids}"
         with pytest.raises(ValueError):
-            _ = KishuForJupyter.disambiguate_commit(notebook_key, common_prefix)
+            _ = KishuForJupyter.disambiguate_commit(basic_notebook_path, common_prefix)
 
 
 class TestOnNotebookRunner:

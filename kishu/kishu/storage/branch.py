@@ -3,12 +3,12 @@ from __future__ import annotations
 import random
 import sqlite3
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from dataclasses_json import dataclass_json
 
 from kishu.exceptions import BranchConflictError, BranchNotFoundError
-from kishu.storage.path import KishuPath
 
 BRANCH_TABLE = "branch"
 HEAD_BRANCH_TABLE = "head_branch"
@@ -158,8 +158,8 @@ class BranchRow:
 
 class KishuBranch:
 
-    def __init__(self, notebook_id: str):
-        self.database_path = KishuPath.database_path(notebook_id)
+    def __init__(self, database_path: Path):
+        self.database_path = database_path
 
     def init_database(self):
         con = sqlite3.connect(self.database_path)

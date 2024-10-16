@@ -7,10 +7,8 @@ from typing import Optional
 
 import nbformat
 
-from kishu.exceptions import MissingNotebookMetadataError, NotNotebookPathOrKey
+from kishu.exceptions import MissingNotebookMetadataError
 from kishu.jupyter.runtime import JupyterRuntimeEnv
-from kishu.storage.connection import KishuConnection
-from kishu.storage.path import KishuPath
 
 
 @dataclass
@@ -64,44 +62,6 @@ class NotebookId:
             return True
         except MissingNotebookMetadataError:
             return False
-
-    @staticmethod
-    def parse_key_from_path_or_key(path_or_key: str) -> str:
-        # Try parsing as path, if exists.
-        path = Path(path_or_key)
-        if path.exists():
-            try:
-                return NotebookId.parse_key_from_path(path)
-            except (nbformat.reader.NotJSONError, UnicodeDecodeError):
-                # Ignore non-notebook file.
-                pass
-
-        # Notebook path does not exist, try parsing as key.
-        key = path_or_key
-        if KishuPath.exists(key):
-            return key
-
-        raise NotNotebookPathOrKey(path_or_key)
-
-    @staticmethod
-    def parse_path_from_path_or_key(path_or_key: str) -> Path:
-        # Try parsing as path
-        path = Path(path_or_key)
-        if path.exists():
-            try:
-                JupyterRuntimeEnv.read_notebook(path)
-                return path
-            except (nbformat.reader.NotJSONError, UnicodeDecodeError):
-                # Ignore non-notebook file.
-                pass
-
-        # Not a path, try parsing as key.
-        key = path_or_key
-        if KishuPath.exists(key):
-            conn_info = KishuConnection.try_retrieve_connection(key)
-            if conn_info:
-                return Path(conn_info.notebook_path)
-        raise NotNotebookPathOrKey(path_or_key)
 
     def key(self) -> str:
         return self._key

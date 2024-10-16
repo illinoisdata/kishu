@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List
 
 from kishu.exceptions import TagNotFoundError
-from kishu.storage.path import KishuPath
 
 TAG_TABLE = "tag"
 
@@ -19,8 +19,8 @@ class TagRow:
 
 class KishuTag:
 
-    def __init__(self, notebook_id: str):
-        self.database_path = KishuPath.database_path(notebook_id)
+    def __init__(self, database_path: Path):
+        self.database_path = database_path
 
     def init_database(self):
         con = sqlite3.connect(self.database_path)

@@ -4,6 +4,7 @@ Sqlite interface for storing checkpoints.
 
 import sqlite3
 import uuid
+from pathlib import Path
 from typing import List
 
 import dill as pickle
@@ -19,7 +20,7 @@ NAMESPACE_TABLE = "namespace"
 
 
 class KishuCheckpoint:
-    def __init__(self, database_path: str):
+    def __init__(self, database_path: Path):
         self.database_path = database_path
 
     def init_database(self):
