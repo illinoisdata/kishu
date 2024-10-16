@@ -73,7 +73,7 @@ from kishu.exceptions import (
 )
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
-from kishu.notebook_id import KishuConnection, NotebookId
+from kishu.notebook_id import NotebookId
 from kishu.planning.plan import RestorePlan
 from kishu.planning.planner import ChangedVariables, CheckpointRestorePlanner
 from kishu.planning.variable_version_tracker import VariableVersionTracker
@@ -82,6 +82,7 @@ from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import KishuCommitGraph
 from kishu.storage.config import Config
+from kishu.storage.connection import KishuConnection
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag
 from kishu.storage.variable_version import VariableVersion
@@ -150,9 +151,9 @@ class JupyterConnection:
         self.km: Optional[jupyter_client.BlockingKernelClient] = None
 
     @staticmethod
-    def from_notebook_key(notebook_key: str) -> JupyterConnection:
+    def from_notebook_key(notebook_path: Path) -> JupyterConnection:
         # Find connection information
-        conn_info = KishuConnection.try_retrieve_connection(notebook_key)
+        conn_info = KishuConnection.try_retrieve_connection(notebook_path)
         if conn_info is None:
             raise MissingConnectionInfoError()
         return JupyterConnection(conn_info.kernel_id)
@@ -265,13 +266,13 @@ class KishuForJupyter:
             path=self._notebook_id.path(),
             kernel_id=self._notebook_id.kernel_id(),
         )
-        self._kishu_commit = KishuCommit(self._notebook_id.key())
+        self._kishu_commit = KishuCommit(self.database_path())
         self._kishu_checkpoint = KishuCheckpoint(self.database_path())
-        self._kishu_branch = KishuBranch(self._notebook_id.key())
-        self._kishu_tag = KishuTag(self._notebook_id.key())
-        self._kishu_graph = KishuCommitGraph.new_var_graph(self._notebook_id.key())
-        self._kishu_nb_graph = KishuCommitGraph.new_nb_graph(self._notebook_id.key())
-        self._kishu_variable_version = VariableVersion(self._notebook_id.key())
+        self._kishu_branch = KishuBranch(self.database_path())
+        self._kishu_tag = KishuTag(self.database_path())
+        self._kishu_graph = KishuCommitGraph.new_var_graph(self.database_path())
+        self._kishu_nb_graph = KishuCommitGraph.new_nb_graph(self.database_path())
+        self._kishu_variable_version = VariableVersion(self.database_path())
 
         # Enclosing environment.
         self._ip = ip
@@ -336,8 +337,8 @@ class KishuForJupyter:
         self._session_id = session_id
         self._checkout_id = 0
 
-    def database_path(self) -> str:
-        return KishuPath.database_path(self._notebook_id.key())
+    def database_path(self) -> Path:
+        return KishuPath.database_path(self._notebook_id.path())
 
     def install_kishu_hooks(self) -> None:
         self._ip.user_ns[KISHU_INSTRUMENT] = self
@@ -424,7 +425,7 @@ class KishuForJupyter:
 
         # Retrieve checkout plan.
         database_path = self.database_path()
-        commit_id = KishuForJupyter.disambiguate_commit(self._notebook_id.key(), commit_id)
+        commit_id = KishuForJupyter.disambiguate_commit(self._notebook_id.path(), commit_id)
         commit_entry = self._kishu_commit.get_commit(commit_id)
         if commit_entry.restore_plan is None:
             raise ValueError("No restore plan found for commit_id = {}".format(commit_id))
@@ -463,7 +464,7 @@ class KishuForJupyter:
             self._ip.execution_count = commit_entry.execution_count + 1  # _ip.execution_count is the next count.
 
         # Restore user-namespace variables.
-        commit_ns = commit_entry.restore_plan.run(database_path, commit_id)
+        commit_ns = commit_entry.restore_plan.run(str(database_path), commit_id)
         self._checkout_namespace(self._user_ns, commit_ns)
 
         # Update C/R planner with AHG from checkpoint file and new namespace.
@@ -571,65 +572,29 @@ class KishuForJupyter:
 
         # List all Kishu sessions.
         sessions = []
-        for notebook_key in KishuPath.iter_notebook_keys():
-            cf = KishuConnection.try_retrieve_connection(notebook_key)
-
-            # Connection file not found.
-            if cf is None:
-                sessions.append(
-                    KishuSession(
-                        notebook_key=notebook_key,
-                        kernel_id=None,
-                        notebook_path=None,
-                        is_alive=False,
-                    )
-                )
-                continue
-
-            # No matching alive kernel ID.
-            if cf.kernel_id not in alive_kernels:
-                sessions.append(
-                    KishuSession(
-                        notebook_key=notebook_key,
-                        kernel_id=cf.kernel_id,
-                        notebook_path=cf.notebook_path,
-                        is_alive=False,
-                    )
-                )
-                continue
-
-            # No matching notebook with notebook key in its metadata.
-            notebook_path = alive_kernels[cf.kernel_id].notebook_path
-            written_notebook_key: Optional[str] = None
+        for kernel_id, session in alive_kernels.items():
+            # Retrieve notebook key.
+            notebook_key: Optional[str] = None
             try:
-                written_notebook_key = NotebookId.parse_key_from_path(notebook_path)
+                notebook_key = NotebookId.parse_key_from_path(session.notebook_path)
             except (FileNotFoundError, MissingNotebookMetadataError):
                 pass
-            if notebook_key != written_notebook_key:
+
+            # Collect this session if Kishu data exists.
+            if notebook_key is not None:
                 sessions.append(
                     KishuSession(
                         notebook_key=notebook_key,
-                        kernel_id=cf.kernel_id,
-                        notebook_path=cf.notebook_path,
-                        is_alive=False,
+                        kernel_id=kernel_id,
+                        notebook_path=str(session.notebook_path),
+                        is_alive=True,
                     )
                 )
-                continue
-
-            # Kernel ID is alive. Replace notebook path with the newest one.
-            sessions.append(
-                KishuSession(
-                    notebook_key=notebook_key,
-                    kernel_id=cf.kernel_id,
-                    notebook_path=str(notebook_path),
-                    is_alive=True,
-                )
-            )
         return sessions
 
     @staticmethod
-    def disambiguate_commit(notebook_key: str, commit_id: str) -> str:
-        kishu_commit = KishuCommit(notebook_key)
+    def disambiguate_commit(notebook_path: Path, commit_id: str) -> str:
+        kishu_commit = KishuCommit(KishuPath.database_path(notebook_path))
         possible_commit_ids = kishu_commit.keys_like(commit_id)
         if len(possible_commit_ids) == 0:
             raise ValueError(f"No commit with ID {repr(commit_id)}")
@@ -704,7 +669,7 @@ class KishuForJupyter:
         """
         # Step 1: prepare a restoration plan using results from the optimizer.
         checkpoint_plan, restore_plan = self._cr_planner.generate_checkpoint_restore_plans(
-            self.database_path(), cell_info.commit_id
+            str(self.database_path()), cell_info.commit_id
         )
 
         # Step 2: checkpoint

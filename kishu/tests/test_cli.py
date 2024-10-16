@@ -8,7 +8,9 @@ from typing import Generator, List
 
 from kishu import __app_name__, __version__
 from kishu.exceptions import (
-    NotNotebookPathOrKey,
+    KishuNotInitializedError,
+    NotebookNotFoundError,
+    PathIsNotNotebookError,
 )
 from kishu.cli import kishu_app
 from kishu.commands import (
@@ -57,15 +59,13 @@ class TestKishuApp:
 
     def test_init_empty(self, runner):
         result = runner.invoke(kishu_app, ["init", "non_existent_notebook.ipynb"])
-        assert result.exit_code == 0
-        init_result = result.stdout
-        assert init_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
+        assert result.exit_code == 1
+        assert isinstance(result.exception, NotebookNotFoundError)
 
     def test_detach_empty(self, runner):
         result = runner.invoke(kishu_app, ["detach", "non_existent_notebook.ipynb"])
-        assert result.exit_code == 0
-        detach_result = result.stdout
-        assert detach_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
+        assert result.exit_code == 1
+        assert isinstance(result.exception, NotebookNotFoundError)
 
     def test_detach_simple(self, runner, nb_simple_path, jupyter_server):
         with jupyter_server.start_session(nb_simple_path):
@@ -75,12 +75,6 @@ class TestKishuApp:
             assert detach_result_raw.exit_code == 0
             detach_result = detach_result_raw.stdout
             assert detach_result == f"Successfully detached notebook {nb_simple_path}\n"
-
-    def test_init_no_jupyter_server(self, runner):
-        result = runner.invoke(kishu_app, ["init", "non_existent_notebook.ipynb"])
-        assert result.exit_code == 0
-        detach_result = result.stdout
-        assert detach_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
 
     def test_init_simple(self, runner, nb_simple_path, jupyter_server):
         with jupyter_server.start_session(nb_simple_path):
@@ -93,11 +87,10 @@ class TestKishuApp:
             )
             assert re.search(pattern, init_result) is not None, f"init_result: {init_result}"
 
-    def test_checkout_no_jupyter_server(self, runner, nb_simple_path):
+    def test_checkout_not_initialized(self, runner, nb_simple_path):
         result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "abc123"])
-        assert result.exit_code == 0
-        checkout_result = result.stdout
-        assert checkout_result == "Notebook kernel not found. Make sure Jupyter kernel is running for requested notebook\n"
+        assert result.exit_code == 1
+        assert isinstance(result.exception, KishuNotInitializedError)
 
     def test_checkout_simple(self, runner, nb_simple_path, jupyter_server):
         # Start the notebook session.
@@ -144,46 +137,51 @@ class TestKishuApp:
     def test_checkout_no_metadata(self, runner, nb_simple_path, jupyter_server):
         with jupyter_server.start_session(nb_simple_path):
             result = runner.invoke(kishu_app, ["checkout", str(nb_simple_path), "abcd123"])
-            assert result.exit_code == 0
-            checkout_result = result.stdout
-            no_metadata_output = (
-                "Kishu instrumentaton not found, please double check notebook path and run kishu init NOTEBOOK_PATH"
-                " to attatch Kishu instrumentation\n"
-            )
-            assert checkout_result == no_metadata_output
+            assert result.exit_code == 1
+            assert isinstance(result.exception, KishuNotInitializedError)
 
-    def test_log_empty(self, runner):
+    def test_log_non_existent(self, runner):
         result = runner.invoke(kishu_app, ["log", "NON_EXISTENT_NOTEBOOK_ID"])
         assert result.exit_code == 1
-        assert isinstance(result.exception, NotNotebookPathOrKey)
+        assert isinstance(result.exception, NotebookNotFoundError)
         assert "NON_EXISTENT_NOTEBOOK_ID" in str(result.exception)
 
-    def test_log_basic(self, runner, kishu_jupyter, basic_execution_ids):
-        result = runner.invoke(kishu_app, ["log", kishu_jupyter._notebook_id.key()])
+    def test_log_not_notebook(self, runner, tmp_path):
+        # Create a non-notebook file
+        not_notebook_path = tmp_path / "not_notebook.txt"
+        not_notebook_path.touch()
+
+        result = runner.invoke(kishu_app, ["log", str(not_notebook_path)])
+        assert result.exit_code == 1
+        assert isinstance(result.exception, PathIsNotNotebookError)
+        assert str(not_notebook_path) in str(result.exception)
+
+    def test_log_basic(self, runner, basic_notebook, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["log", basic_notebook])
         assert result.exit_code == 0
         assert re.search(
             r"commit ([0-9a-fA-F:]+) \((.*?)\)\n" r"Date:   ([0-9\-:. ]+)\n\n",
             result.stdout,
         )
 
-    def test_log_all_basic(self, runner, kishu_jupyter, basic_execution_ids):
-        result = runner.invoke(kishu_app, ["log", "--all", kishu_jupyter._notebook_id.key()])
+    def test_log_all_basic(self, runner, basic_notebook, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["log", "--all", basic_notebook])
         assert result.exit_code == 0
         assert re.search(
             r"commit ([0-9a-fA-F:]+) \((.*?)\)\n" r"Parent: ([0-9a-fA-F:]+)\n" r"Date:   ([0-9\-:. ]+)\n\n",
             result.stdout,
         )
 
-    def test_log_graph_basic(self, runner, kishu_jupyter, basic_execution_ids):
-        result = runner.invoke(kishu_app, ["log", "--graph", kishu_jupyter._notebook_id.key()])
+    def test_log_graph_basic(self, runner, basic_notebook, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["log", "--graph", basic_notebook])
         assert result.exit_code == 0
         assert re.search(
             r"\* commit ([0-9a-fA-F:]+) \((.*?)\)\n" r"| Date:   ([0-9\-:. ]+)\n\n",
             result.stdout,
         )
 
-    def test_log_all_graph_basic(self, runner, kishu_jupyter, basic_execution_ids):
-        result = runner.invoke(kishu_app, ["log", "--all", "--graph", kishu_jupyter._notebook_id.key()])
+    def test_log_all_graph_basic(self, runner, basic_notebook, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["log", "--all", "--graph", basic_notebook])
         assert result.exit_code == 0
         assert "Warning: feature not supported." in result.stdout
         assert re.search(
@@ -191,9 +189,9 @@ class TestKishuApp:
             result.stdout,
         )
 
-    def test_log_with_tag(self, runner, kishu_jupyter, basic_execution_ids):
+    def test_log_with_tag(self, runner, basic_notebook, basic_execution_ids):
         tag = "tag_1"
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), tag])
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, tag])
         assert result.exit_code == 0
         tag_result = TagResult.from_json(result.stdout)
         assert tag_result == TagResult(
@@ -202,7 +200,7 @@ class TestKishuApp:
             commit_id=basic_execution_ids[-1],
             message="",
         )
-        result = runner.invoke(kishu_app, ["log", kishu_jupyter._notebook_id.key()])
+        result = runner.invoke(kishu_app, ["log", basic_notebook])
         assert result.exit_code == 0
         assert re.search(
             r"commit ([0-9a-fA-F:]+) \((.*?)\)\n" r"Date:   ([0-9\-:. ]+)\n\n",
@@ -210,8 +208,8 @@ class TestKishuApp:
         )
         assert tag in result.stdout
 
-    def test_create_branch(self, runner, notebook_key, basic_execution_ids):
-        result = runner.invoke(kishu_app, ["branch", notebook_key, "-c", "new_branch"])
+    def test_create_branch(self, runner, basic_notebook, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["branch", basic_notebook, "-c", "new_branch"])
         assert result.exit_code == 0
         branch_result = BranchResult.from_json(result.stdout)
         assert branch_result == BranchResult(
@@ -221,13 +219,13 @@ class TestKishuApp:
             head=branch_result.head,  # Not tested
         )
 
-    def test_delete_non_checked_out_branch(self, runner, notebook_key, basic_execution_ids):
-        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "branch_to_keep", basic_execution_ids[-2]])
-        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "branch_to_delete", basic_execution_ids[-1]])
-        result = runner.invoke(kishu_app, ["checkout", notebook_key, "branch_to_keep"])
+    def test_delete_non_checked_out_branch(self, runner, basic_notebook, basic_execution_ids):
+        runner.invoke(kishu_app, ["branch", basic_notebook, "-c", "branch_to_keep", basic_execution_ids[-2]])
+        runner.invoke(kishu_app, ["branch", basic_notebook, "-c", "branch_to_delete", basic_execution_ids[-1]])
+        result = runner.invoke(kishu_app, ["checkout", basic_notebook, "branch_to_keep"])
         assert result.exit_code == 0
 
-        result = runner.invoke(kishu_app, ["branch", notebook_key, "-d", "branch_to_delete"])
+        result = runner.invoke(kishu_app, ["branch", basic_notebook, "-d", "branch_to_delete"])
         assert result.exit_code == 0
         delete_branch_result = DeleteBranchResult.from_json(result.stdout)
         assert delete_branch_result == DeleteBranchResult(
@@ -235,10 +233,10 @@ class TestKishuApp:
             message="Branch branch_to_delete deleted.",
         )
 
-    def test_delete_checked_out_branch(self, runner, notebook_key, basic_execution_ids):
-        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "branch_to_delete"])  # Checked out branch
+    def test_delete_checked_out_branch(self, runner, basic_notebook, basic_execution_ids):
+        runner.invoke(kishu_app, ["branch", basic_notebook, "-c", "branch_to_delete"])  # Checked out branch
 
-        result = runner.invoke(kishu_app, ["branch", notebook_key, "-d", "branch_to_delete"])
+        result = runner.invoke(kishu_app, ["branch", basic_notebook, "-d", "branch_to_delete"])
         assert result.exit_code == 0
         delete_branch_result = DeleteBranchResult.from_json(result.stdout)
         assert delete_branch_result == DeleteBranchResult(
@@ -246,8 +244,8 @@ class TestKishuApp:
             message="Cannot delete the currently checked-out branch.",
         )
 
-    def test_delete_nonexisting_branch(self, runner, kishu_jupyter):
-        result = runner.invoke(kishu_app, ["branch", kishu_jupyter._notebook_id.key(), "-d", "NON_EXISTENT_BRANCH"])
+    def test_delete_nonexisting_branch(self, runner, basic_notebook):
+        result = runner.invoke(kishu_app, ["branch", basic_notebook, "-d", "NON_EXISTENT_BRANCH"])
         assert result.exit_code == 0
         delete_branch_result = DeleteBranchResult.from_json(result.stdout)
         assert delete_branch_result == DeleteBranchResult(
@@ -255,9 +253,9 @@ class TestKishuApp:
             message="The provided branch 'NON_EXISTENT_BRANCH' does not exist.",
         )
 
-    def test_rename_branch(self, runner, notebook_key, basic_execution_ids):
-        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "old_name"])
-        result = runner.invoke(kishu_app, ["branch", notebook_key, "-m", "old_name", "new_name"])
+    def test_rename_branch(self, runner, basic_notebook, basic_execution_ids):
+        runner.invoke(kishu_app, ["branch", basic_notebook, "-c", "old_name"])
+        result = runner.invoke(kishu_app, ["branch", basic_notebook, "-m", "old_name", "new_name"])
         assert result.exit_code == 0
         rename_branch_result = RenameBranchResult.from_json(result.stdout)
         assert rename_branch_result == RenameBranchResult(
@@ -266,10 +264,8 @@ class TestKishuApp:
             message="Branch renamed from old_name to new_name.",
         )
 
-    def test_rename_non_existing_branch(self, runner, kishu_jupyter):
-        result = runner.invoke(
-            kishu_app, ["branch", kishu_jupyter._notebook_id.key(), "-m", "NON_EXISTENT_BRANCH", "new_name"]
-        )
+    def test_rename_non_existing_branch(self, runner, basic_notebook):
+        result = runner.invoke(kishu_app, ["branch", basic_notebook, "-m", "NON_EXISTENT_BRANCH", "new_name"])
         assert result.exit_code == 0
         rename_branch_result = RenameBranchResult.from_json(result.stdout)
         assert rename_branch_result == RenameBranchResult(
@@ -278,10 +274,10 @@ class TestKishuApp:
             message="The provided branch 'NON_EXISTENT_BRANCH' does not exist.",
         )
 
-    def test_rename_to_existing_branch(self, runner, notebook_key, basic_execution_ids):
-        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "old_name"])
-        runner.invoke(kishu_app, ["branch", notebook_key, "-c", "existing_name"])
-        result = runner.invoke(kishu_app, ["branch", notebook_key, "-m", "old_name", "existing_name"])
+    def test_rename_to_existing_branch(self, runner, basic_notebook, basic_execution_ids):
+        runner.invoke(kishu_app, ["branch", basic_notebook, "-c", "old_name"])
+        runner.invoke(kishu_app, ["branch", basic_notebook, "-c", "existing_name"])
+        result = runner.invoke(kishu_app, ["branch", basic_notebook, "-m", "old_name", "existing_name"])
         assert result.exit_code == 0
         rename_branch_result = RenameBranchResult.from_json(result.stdout)
         assert rename_branch_result == RenameBranchResult(
@@ -290,8 +286,8 @@ class TestKishuApp:
             message="The provided new branch name already exists.",
         )
 
-    def test_create_tag_head(self, runner, kishu_jupyter, basic_execution_ids):
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1"])
+    def test_create_tag_head(self, runner, basic_notebook, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "tag_1"])
         assert result.exit_code == 0
         tag_result = TagResult.from_json(result.stdout)
         assert tag_result == TagResult(
@@ -301,8 +297,8 @@ class TestKishuApp:
             message="",
         )
 
-    def test_create_tag_specific(self, runner, kishu_jupyter, basic_execution_ids):
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1", basic_execution_ids[1]])
+    def test_create_tag_specific(self, runner, basic_notebook, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "tag_1", basic_execution_ids[1]])
         assert result.exit_code == 0
         tag_result = TagResult.from_json(result.stdout)
         assert tag_result == TagResult(
@@ -312,9 +308,9 @@ class TestKishuApp:
             message="",
         )
 
-    def test_create_tag_message(self, runner, kishu_jupyter, basic_execution_ids):
+    def test_create_tag_message(self, runner, basic_notebook, basic_execution_ids):
         tag_message = "Tagging for test_create_tag_message"
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1", "-m", tag_message])
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "tag_1", "-m", tag_message])
         assert result.exit_code == 0
         tag_result = TagResult.from_json(result.stdout)
         assert tag_result == TagResult(
@@ -324,25 +320,25 @@ class TestKishuApp:
             message=tag_message,
         )
 
-    def test_tag_list(self, runner, kishu_jupyter, basic_execution_ids):
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1"])
+    def test_tag_list(self, runner, basic_notebook, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "tag_1"])
         assert result.exit_code == 0
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_2"])
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "tag_2"])
         assert result.exit_code == 0
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_3"])
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "tag_3"])
         assert result.exit_code == 0
 
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "-l"])
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "-l"])
         assert result.exit_code == 0
         list_tag_result = ListTagResult.from_json(result.stdout)
         assert len(list_tag_result.tags) == 3
         assert set(tag.tag_name for tag in list_tag_result.tags) == {"tag_1", "tag_2", "tag_3"}
 
-    def test_delete_tag(self, runner, kishu_jupyter, basic_execution_ids):
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1"])
+    def test_delete_tag(self, runner, basic_notebook, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "tag_1"])
         assert result.exit_code == 0
 
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "-d", "tag_1"])
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "-d", "tag_1"])
         assert result.exit_code == 0
         delete_tag_result = DeleteTagResult.from_json(result.stdout)
         assert delete_tag_result == DeleteTagResult(
@@ -350,11 +346,11 @@ class TestKishuApp:
             message="Tag tag_1 deleted.",
         )
 
-    def test_delete_tag_nonexisting(self, runner, kishu_jupyter, basic_execution_ids):
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "tag_1"])
+    def test_delete_tag_nonexisting(self, runner, basic_notebook, basic_execution_ids):
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "tag_1"])
         assert result.exit_code == 0
 
-        result = runner.invoke(kishu_app, ["tag", kishu_jupyter._notebook_id.key(), "-d", "NON_EXISTENT_TAG"])
+        result = runner.invoke(kishu_app, ["tag", basic_notebook, "-d", "NON_EXISTENT_TAG"])
         assert result.exit_code == 0
         delete_tag_result = DeleteTagResult.from_json(result.stdout)
         assert delete_tag_result == DeleteTagResult(

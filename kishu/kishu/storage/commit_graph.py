@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional
-
-from kishu.storage.path import KishuPath
 
 CommitId = str
 ABSOLUTE_PAST: CommitId = ""  # Logically first commit (e.g., commit graph's root).
@@ -57,8 +56,8 @@ class CommitNodeInfo:
 
 class CommitGraphStore:
 
-    def __init__(self, notebook_id: str, graph_name: str) -> None:
-        self._database_path = KishuPath.database_path(notebook_id)
+    def __init__(self, database_path: Path, graph_name: str) -> None:
+        self._database_path = database_path
         self._commit_parent_table = f"{graph_name}_{COMMIT_PARENT_TABLE_SUFFIX}"
         self._head_commit_table = f"{graph_name}_{HEAD_COMMIT_TABLE_SUFFIX}"
 
@@ -140,16 +139,16 @@ class CommitGraphStore:
 
 class KishuCommitGraph:
 
-    def __init__(self, notebook_id: str, graph_name: str):
-        self._store = CommitGraphStore(notebook_id, graph_name)
+    def __init__(self, database_path: Path, graph_name: str):
+        self._store = CommitGraphStore(database_path, graph_name)
 
     @staticmethod
-    def new_var_graph(notebook_id: str):
-        return KishuCommitGraph(notebook_id, VARIABLE_GRAPH_NAME)
+    def new_var_graph(database_path: Path):
+        return KishuCommitGraph(database_path, VARIABLE_GRAPH_NAME)
 
     @staticmethod
-    def new_nb_graph(notebook_id: str):
-        return KishuCommitGraph(notebook_id, NOTEBOOK_GRAPH_NAME)
+    def new_nb_graph(database_path: Path):
+        return KishuCommitGraph(database_path, NOTEBOOK_GRAPH_NAME)
 
     def init_database(self):
         self._store.init_database()

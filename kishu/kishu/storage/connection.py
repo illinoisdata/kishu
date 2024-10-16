@@ -14,7 +14,7 @@ CONNECTION_KEY = "CONN"
 @dataclass
 class JupyterConnectionInfo:
     kernel_id: str
-    notebook_path: str
+    notebook_path: Path
 
 
 """
@@ -28,7 +28,7 @@ class KishuConnection:
         self._key = key
         self._path = path
         self._kernel_id = kernel_id
-        self.database_path = KishuPath.database_path(self._key)
+        self.database_path = KishuPath.database_path(self._path)
 
     def init_database(self) -> None:
         con = sqlite3.connect(self.database_path)
@@ -50,16 +50,16 @@ class KishuConnection:
         con.commit()
 
     @staticmethod
-    def try_retrieve_connection(key: str) -> Optional[JupyterConnectionInfo]:
-        con = sqlite3.connect(KishuPath.database_path(key))
+    def try_retrieve_connection(notebook_path: Path) -> Optional[JupyterConnectionInfo]:
+        con = sqlite3.connect(KishuPath.database_path(notebook_path))
         cur = con.cursor()
+        query = f"select kernel_id from {CONNECTION_TABLE} where notebook_path = ?"
         try:
-            cur.execute(f"select kernel_id, notebook_path from {CONNECTION_TABLE} where conn = '{CONNECTION_KEY}'")
+            cur.execute(query, (str(notebook_path),))
             res: Optional[tuple] = cur.fetchone()
             if not res:
                 return None
-            kernel_id, notebook_path = res
-            return JupyterConnectionInfo(kernel_id=kernel_id, notebook_path=notebook_path)
+            return JupyterConnectionInfo(kernel_id=res[0], notebook_path=notebook_path)
         except sqlite3.OperationalError:
             return None
         finally:

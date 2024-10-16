@@ -2,16 +2,16 @@ import pytest
 import sqlite3
 from unittest.mock import patch, MagicMock
 from kishu.storage.branch import KishuBranch
+from kishu.storage.path import KishuPath
 from kishu.exceptions import BranchConflictError, BranchNotFoundError
 
 
 class TestBranch:
 
     @pytest.fixture
-    def branch(self, tmp_path):
+    def branch(self, nb_simple_path, tmp_path):
         """Fixture for initializing a KishuBranch instance."""
-        notebook_id = "test_notebook"
-        branch = KishuBranch(notebook_id)
+        branch = KishuBranch(KishuPath.database_path(nb_simple_path))
         branch.init_database()
         yield branch
         branch.drop_database()
