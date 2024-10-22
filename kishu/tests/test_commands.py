@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 from typing import List
 
-from kishu.diff import VariableVersionCompare
+from kishu.diff import VariableVersionCompare, CodeDiffHunk
 from tests.helpers.nbexec import KISHU_INIT_STR
 
 from kishu.commands import (
@@ -820,6 +820,43 @@ class TestKishuCommand:
                 VariableVersionCompare("y", "destination_only"),
                 VariableVersionCompare("x", "both_different_version"),
             }
+
+    def test_fe_code_diff(self, jupyter_server, tmp_nb_path):
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+            for content in contents[0:2]:
+                notebook_session.run_code(content)
+
+            # get the commit ids
+            commits = KishuCommand.log_all(notebook_path).commit_graph
+            source_commit_id = commits[0].commit_id
+            dest_commit_id = commits[-1].commit_id
+
+            diff_result = KishuCommand.fe_code_diff(notebook_path, source_commit_id, dest_commit_id)
+
+            assert diff_result.executed_cells_diff == [
+                CodeDiffHunk(option="Both", content="", sub_diff_hunks=None),
+                CodeDiffHunk(option="Both", content="x = 1", sub_diff_hunks=None),
+                CodeDiffHunk(
+                    option="Destination_only", content="y = x\nx = x + 1\nz = 1\na = 1\ndel a\na = 2", sub_diff_hunks=None
+                ),
+            ]
+
+            assert diff_result.notebook_cells_diff == [
+                CodeDiffHunk(option="Both", content="x = 1", sub_diff_hunks=None),
+                CodeDiffHunk(option="Both", content="y = x\nx = x + 1\nz = 1\na = 1\ndel a\na = 2", sub_diff_hunks=None),
+                CodeDiffHunk(
+                    option="Both",
+                    content="# Record imported libraries\nimport numpy as np\nfrom numpy import random",
+                    sub_diff_hunks=None,
+                ),
+                CodeDiffHunk(option="Both", content="b = 1", sub_diff_hunks=None),
+                CodeDiffHunk(option="Both", content="def func():\n    global b\n    b += 1\nfunc()", sub_diff_hunks=None),
+                CodeDiffHunk(option="Both", content="del a", sub_diff_hunks=None),
+            ]
 
     def test_variable_filter(self, jupyter_server, tmp_nb_path):
         notebook_path = tmp_nb_path("simple.ipynb")
