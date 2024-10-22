@@ -1,33 +1,34 @@
 import json
 import os
+from typing import Optional
 
 from flask import Flask, request, send_from_directory
 from flask_cors import CORS
-from typing import Optional
-
 from kishu.commands import KishuCommand, into_json
 
 
 def is_true(s: str) -> bool:
     return s.lower() == "true"
 
+
 # Determine the directory of the current file (app.py)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Build the path to the static directory
-static_dir = os.path.join(current_dir, 'build')
+static_dir = os.path.join(current_dir, "build")
 
 app = Flask("kishu_server", static_folder=static_dir)
 CORS(app)
 
+
 # Serve React App (frontend endpoints)
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
 def serve(path):
-    if path != "" and os.path.exists(app.static_folder + '/' + path):
+    if path != "" and os.path.exists(app.static_folder + "/" + path):
         return send_from_directory(app.static_folder, path)
     else:
-        return send_from_directory(app.static_folder, 'index.html')
+        return send_from_directory(app.static_folder, "index.html")
 
 
 # Backend endpoints
@@ -93,7 +94,6 @@ def rename_branch(notebook_id: str, old_branch_name: str, new_branch_name: str) 
     return into_json(rename_branch_result)
 
 
-
 @app.get("/api/tag/<notebook_id>/<tag_name>")
 def tag(notebook_id: str, tag_name: str) -> str:
     commit_id: Optional[str] = request.args.get("commit_id", default=None, type=str)
@@ -101,7 +101,8 @@ def tag(notebook_id: str, tag_name: str) -> str:
     tag_result = KishuCommand.tag(notebook_id, tag_name, commit_id, message)
     return into_json(tag_result)
 
-#APIs that can only be used by the frontend to get information
+
+# APIs that can only be used by the frontend to get information
 @app.get("/api/delete_tag/<notebook_id>/<tag_name>")
 def delete_tag(notebook_id: str, tag_name: str) -> str:
     delete_tag_result = KishuCommand.delete_tag(notebook_id, tag_name)
@@ -148,6 +149,6 @@ def fe_edit_message(notebook_id: str, commit_id: str, new_message: str):
 def main() -> None:
     app.run(port=4999)
 
+
 if __name__ == "__main__":
     main()
-
