@@ -967,7 +967,7 @@ class KishuCommand:
 
     @staticmethod
     def _retrieve_all_cells(notebook_path: Path, commit_id: str):
-        commit_entry = KishuCommit(notebook_path).get_commit(commit_id)
+        commit_entry = KishuCommit(KishuPath.database_path(notebook_path)).get_commit(commit_id)
         formatted_cells = commit_entry.formatted_cells
         if formatted_cells is None:
             raise NoFormattedCellsError(commit_id)
