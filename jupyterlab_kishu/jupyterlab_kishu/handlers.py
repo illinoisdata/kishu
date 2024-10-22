@@ -23,9 +23,9 @@ def subp_kishu_checkout(notebook_path: str, commit_id: str, cookies: dict, queue
     queue.put(into_json(checkout_result))
 
 
-def subp_kishu_undo(notebook_key: str, cookies: dict, queue: multiprocessing.Queue):
+def subp_kishu_undo(notebook_path: str, cookies: dict, queue: multiprocessing.Queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
-        rollback_result = KishuCommand.undo(notebook_key)
+        rollback_result = KishuCommand.undo(Path(notebook_path))
     queue.put(into_json(rollback_result))
 
 
@@ -116,14 +116,13 @@ class UndoHandler(APIHandler):
     def post(self):
         input_data = self.get_json_body()
         cookies = {morsel.key: morsel.value for _, morsel in self.cookies.items()}
-        notebook_key = NotebookId.parse_key_from_path_or_key(input_data["notebook_path"])
 
         # We need to run KishuCommand.undo in a separate process to unblock Jupyter Server backend
         # so that the frontend reload does not cause a deadlock.
         undo_queue = multiprocessing.Queue()
         undo_process = multiprocessing.Process(
             target=subp_kishu_undo,
-            args=(notebook_key, cookies, undo_queue)
+            args=(input_data["notebook_path"], cookies, undo_queue)
         )
         undo_process.start()
         while undo_queue.empty():

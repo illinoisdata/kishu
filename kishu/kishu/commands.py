@@ -510,9 +510,8 @@ class KishuCommand:
 
     @staticmethod
     def undo(
-        notebook_path_or_key: str,
+        notebook_path: Path,
     ) -> UndoResult:
-        notebook_path = NotebookId.parse_path_from_path_or_key(notebook_path_or_key)
         try:
             kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
@@ -525,7 +524,7 @@ class KishuCommand:
                 ),
             )
 
-        head_info = KishuCommitGraph.new_var_graph(notebook_path_or_key).get_commit()
+        head_info = KishuCommitGraph.new_var_graph(KishuPath.database_path(notebook_path)).get_commit()
         return UndoResult.wrap(
             KishuCommand._check_instrument_and_checkout(notebook_path, kernel_id, head_info.parent_id, True)
         )
@@ -1000,7 +999,7 @@ class KishuCommand:
 
     @staticmethod
     def _retrieve_all_cells(notebook_path: Path, commit_id: str):
-        commit_entry = KishuCommit(notebook_path).get_commit(commit_id)
+        commit_entry = KishuCommit(KishuPath.database_path(notebook_path)).get_commit(commit_id)
         formatted_cells = commit_entry.formatted_cells
         if formatted_cells is None:
             raise NoFormattedCellsError(commit_id)
