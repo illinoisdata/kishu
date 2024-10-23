@@ -32,6 +32,8 @@ namespace CommandIDs {
    * Create a commit on the currently viewed notebook.
    */
   export const commit = 'kishu:commit';
+
+  export const undo = 'kishu:undo';
 }
 
 namespace KishuSetting {
@@ -65,6 +67,11 @@ interface LogAllResult {
 interface CheckoutResult {
   status: string;
   message: string;
+}
+
+interface UndoResult {
+    status: string;
+    message: string;
 }
 
 interface InstrumentResult {
@@ -345,6 +352,58 @@ function installCommands(
   });
   palette.addItem({
     command: CommandIDs.commit,
+    category: 'Kishu',
+  });
+
+  commands.addCommand(CommandIDs.undo, {
+    label: (args) => (
+      args.label && args.label == 'short'
+          ? trans.__('Undo Execution')
+          : trans.__('Kishu: Undo Execution...')
+    ),
+    execute: async (_args) => {
+      // Detect currently viewed notebook.
+      const notebook_path = currentNotebookPath(tracker);
+      if (!notebook_path) {
+        notifyError(trans.__(`No currently viewed notebook detected to undo execution.`));
+        return;
+      }
+
+      // Make init request
+      const undo_promise = requestAPI<UndoResult>('undo', {
+        method: 'POST',
+        body: JSON.stringify({notebook_path: notebook_path}),
+      });
+
+      // Report.
+      const notify_manager = Notification.manager;
+      const notify_id = notify_manager.notify(
+          trans.__(`Undoing execution for ${notebook_path}...`),
+          'in-progress',
+          { autoClose: false },
+      );
+      undo_promise.then((undo_result,) => {
+        if (undo_result.status != "ok") {
+          notify_manager.update({
+            id: notify_id,
+            message: trans.__(`Undo execution failed.\n"${undo_result.message}"`),
+            type: 'error',
+            autoClose: 3000,
+          });
+        } else {
+          notify_manager.update({
+            id: notify_id,
+            message: trans.__(`Undo execution succeeded!\n"${undo_result.message}"`),
+            type: 'success',
+            autoClose: 3000,
+          });
+        }
+      });
+
+    }
+    });
+  palette.addItem({
+    command: CommandIDs.undo,
     category: 'Kishu',
   });
 }

@@ -35,6 +35,12 @@
             "command": "kishu:init",
             "args": {"label": "short"},
             "rank": 3
+          },
+          {
+            "type": "command",
+            "command": "kishu:undo",
+            "args": {"label": "short"},
+            "rank": 4
           }
         ]
       }

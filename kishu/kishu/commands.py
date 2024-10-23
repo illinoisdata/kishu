@@ -5,7 +5,7 @@ import enum
 import json
 from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 from dataclasses_json import dataclass_json
 
@@ -111,6 +111,12 @@ class DetachResult:
         )
 
 
+class _check_instrument_and_checkout_result(TypedDict):
+    status: str
+    message: str
+    reattachment: InstrumentResult  # You can replace `Any` with the specific type for `instrument_result`
+
+
 @dataclass_json
 @dataclass
 class CheckoutResult:
@@ -119,11 +125,27 @@ class CheckoutResult:
     reattachment: InstrumentResult
 
     @staticmethod
-    def wrap(result: JupyterCommandResult, instrument_result: InstrumentResult) -> CheckoutResult:
+    def wrap(result: _check_instrument_and_checkout_result) -> CheckoutResult:
         return CheckoutResult(
-            status=result.status,
-            message=result.message,
-            reattachment=instrument_result,
+            status=result["status"],
+            message=result["message"],
+            reattachment=result["reattachment"],
+        )
+
+
+@dataclass_json
+@dataclass
+class UndoResult:
+    status: str
+    message: str
+    reattachment: InstrumentResult
+
+    @staticmethod
+    def wrap(result: _check_instrument_and_checkout_result) -> UndoResult:
+        return UndoResult(
+            status=result["status"],
+            message=result["message"],
+            reattachment=result["reattachment"],
         )
 
 
@@ -472,19 +494,30 @@ class KishuCommand:
                     message=None,
                 ),
             )
+        return CheckoutResult.wrap(
+            KishuCommand._check_instrument_and_checkout(notebook_path, kernel_id, branch_or_commit_id, skip_notebook)
+        )
 
-        instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
-        if instrument_result.is_success():
-            return CheckoutResult.wrap(
-                JupyterConnection(kernel_id).execute_one_command(
-                    f"_kishu.checkout('{branch_or_commit_id}', skip_notebook={skip_notebook})",
+    @staticmethod
+    def undo(
+        notebook_path_or_key: str,
+    ) -> UndoResult:
+        notebook_path = NotebookId.parse_path_from_path_or_key(notebook_path_or_key)
+        try:
+            kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
+        except FileNotFoundError as e:
+            return UndoResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+                reattachment=InstrumentResult(
+                    status=InstrumentStatus.no_kernel,
+                    message=None,
                 ),
-                instrument_result,
             )
-        return CheckoutResult(
-            status="error",
-            message="Error re-attaching kishu instrumentation to notebook",
-            reattachment=instrument_result,
+
+        head_info = KishuCommitGraph.new_var_graph(notebook_path_or_key).get_commit()
+        return UndoResult.wrap(
+            KishuCommand._check_instrument_and_checkout(notebook_path, kernel_id, head_info.parent_id, True)
         )
 
     @staticmethod
@@ -951,6 +984,33 @@ class KishuCommand:
             raise NoExecutedCellsError(commit_id)
         cells = KishuCommand._get_cells_as_strings(formatted_cells)
         return cells, executed_cells
+
+    @staticmethod
+    def _check_instrument_and_checkout(
+        notebook_path: Path, kernel_id: str, dst_branch_or_commit_id: str, skip_notebook: bool
+    ) -> _check_instrument_and_checkout_result:
+        instrument_result = KishuCommand._try_reattach_if_not(notebook_path, kernel_id)
+        if instrument_result.is_success():
+            if dst_branch_or_commit_id == "":
+                return {
+                    "status": "ok",
+                    "message": "No more commits to undo/checkout from root.",
+                    "reattachment": instrument_result,
+                }
+            exec_result = JupyterConnection(kernel_id).execute_one_command(
+                f"_kishu.checkout('{dst_branch_or_commit_id}', skip_notebook={skip_notebook})"
+            )
+            return {
+                "status": exec_result.status,
+                "message": exec_result.message,
+                "reattachment": instrument_result,
+            }
+
+        return {
+            "status": "error",
+            "message": "Error re-attaching kishu instrumentation to notebook",
+            "reattachment": instrument_result,
+        }
 
     @staticmethod
     def find_var_change(notebook_id: str, variable_name: str) -> FEFindVarChangeResult:
