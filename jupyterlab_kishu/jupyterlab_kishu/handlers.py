@@ -121,7 +121,7 @@ class UndoHandler(APIHandler):
         cookies = {morsel.key: morsel.value for _, morsel in self.cookies.items()}
         notebook_key = NotebookId.parse_key_from_path_or_key(input_data["notebook_path"])
 
-        # We need to run KishuCommand.checkout in a separate process to unblock Jupyter Server backend
+        # We need to run KishuCommand.undo in a separate process to unblock Jupyter Server backend
         # so that the frontend reload does not cause a deadlock.
         undo_queue = multiprocessing.Queue()
         undo_process = multiprocessing.Process(

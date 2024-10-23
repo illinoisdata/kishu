@@ -382,18 +382,18 @@ function installCommands(
           'in-progress',
           { autoClose: false },
       );
-      undo_promise.then((init_result,) => {
-        if (init_result.status != "ok") {
+      undo_promise.then((undo_result,) => {
+        if (undo_result.status != "ok") {
           notify_manager.update({
             id: notify_id,
-            message: trans.__(`Undo execution failed.\n"${init_result.message}"`),
+            message: trans.__(`Undo execution failed.\n"${undo_result.message}"`),
             type: 'error',
             autoClose: 3000,
           });
         } else {
           notify_manager.update({
             id: notify_id,
-            message: trans.__(`Undo execution succeeded!\n"${init_result.message}"`),
+            message: trans.__(`Undo execution succeeded!\n"${undo_result.message}"`),
             type: 'success',
             autoClose: 3000,
           });

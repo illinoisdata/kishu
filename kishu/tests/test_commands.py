@@ -889,6 +889,8 @@ class TestKishuCommand:
         with jupyter_server.start_session(notebook_path) as notebook_session:
             # Run the kishu init cell.
             notebook_session.run_code(KISHU_INIT_STR, silent=True)
+
+            # This runs two cells. When undoing, they will be undone one by one.
             for content in contents[0:2]:
                 notebook_session.run_code(content)
 
@@ -910,4 +912,4 @@ class TestKishuCommand:
             # Undo when current node is root.
             undoResult = KishuCommand.undo(notebook_key)
             assert undoResult.status == "ok"
-            assert undoResult.message == "No more commits to undo from root."
+            assert undoResult.message == "No more commits to undo/checkout from root."
