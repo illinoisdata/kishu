@@ -112,7 +112,8 @@ def test_checkpoint_restore_planner_with_existing_items(enable_always_migrate):
     assert len(planner.get_id_graph_map().keys()) == 2
 
     # Post run cell 3; x is incremented by 1.
-    # x and y are currently linked due to integers 0-255 being stored in fixed memory addresses.
+    # If x and y are integers between 0-255, they will be detected as linked as they are stored in
+    # fixed memory addresses.
     # TODO in a later PR: hardcode these cases as exceptions in ID graph to not consider as linking.
     user_ns["x"] = 2001
     planner.post_run_cell_update("x += 1", 1.0)
