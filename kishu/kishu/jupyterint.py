@@ -464,7 +464,7 @@ class KishuForJupyter:
             self._ip.execution_count = commit_entry.execution_count + 1  # _ip.execution_count is the next count.
 
         # Restore user-namespace variables.
-        commit_ns = commit_entry.restore_plan.run(str(database_path), commit_id)
+        commit_ns = commit_entry.restore_plan.run(database_path, commit_id)
         self._checkout_namespace(self._user_ns, commit_ns)
 
         # Update C/R planner with AHG from checkpoint file and new namespace.
@@ -669,7 +669,7 @@ class KishuForJupyter:
         """
         # Step 1: prepare a restoration plan using results from the optimizer.
         checkpoint_plan, restore_plan = self._cr_planner.generate_checkpoint_restore_plans(
-            str(self.database_path()), cell_info.commit_id
+            self.database_path(), cell_info.commit_id
         )
 
         # Step 2: checkpoint

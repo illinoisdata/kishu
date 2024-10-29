@@ -120,10 +120,7 @@ class UndoHandler(APIHandler):
         # We need to run KishuCommand.undo in a separate process to unblock Jupyter Server backend
         # so that the frontend reload does not cause a deadlock.
         undo_queue = multiprocessing.Queue()
-        undo_process = multiprocessing.Process(
-            target=subp_kishu_undo,
-            args=(input_data["notebook_path"], cookies, undo_queue)
-        )
+        undo_process = multiprocessing.Process(target=subp_kishu_undo, args=(input_data["notebook_path"], cookies, undo_queue))
         undo_process.start()
         while undo_queue.empty():
             # Awaiting to unblock.
@@ -142,6 +139,6 @@ def setup_handlers(web_app):
         (url_path_join(kishu_url, "log_all"), LogAllHandler),
         (url_path_join(kishu_url, "checkout"), CheckoutHandler),
         (url_path_join(kishu_url, "commit"), CommitHandler),
-        (url_path_join(kishu_url, "undo"), UndoHandler)
+        (url_path_join(kishu_url, "undo"), UndoHandler),
     ]
     web_app.add_handlers(host_pattern, handlers)

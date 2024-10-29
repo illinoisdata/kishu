@@ -101,8 +101,6 @@ class TestPlan:
         shell.run_cell("foo = UndeserializableClass()")
 
         user_ns = Namespace(shell.user_ns)
-        filename = KishuPath.database_path("test")
-        KishuCheckpoint(filename).init_database()
 
         # save
         exec_id = 1

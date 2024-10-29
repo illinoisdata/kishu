@@ -17,11 +17,18 @@ class KishuPath:
         return KishuPath._create_dir(KishuPath.ROOT / ".kishu")
 
     @staticmethod
+    def config_path() -> Path:
+        """
+        Gets path to Kishu configuration file.
+        """
+        return KishuPath.kishu_directory() / "config.ini"
+
+    @staticmethod
     def database_path(notebook_path: Path) -> Path:
         """
         Gets database path for the notebook.
         """
-        notebook_name = notebook_path.resolve().name
+        notebook_name = notebook_path.resolve().stem
         return notebook_path.resolve().parent / f"{notebook_name}.kishudb"
 
     @staticmethod
@@ -40,7 +47,7 @@ class KishuPath:
         @return  Echos the newly created directory.
         """
         if dir_path.is_file():
-            raise ValueError("The passed directory name exists as s file.")
+            raise ValueError("Cannot create the directory. Target path is a file.")
         dir_path.mkdir(parents=True, exist_ok=True)
         return dir_path
 
@@ -52,12 +59,12 @@ class NotebookPath(Path):
         if not isinstance(notebook_path, Path):
             raise NotPathError(notebook_path)
         if not notebook_path.exists():
-            raise NotebookNotFoundError(str(notebook_path))
+            raise NotebookNotFoundError(notebook_path)
         if notebook_path.suffix != ".ipynb":
-            raise PathIsNotNotebookError(str(notebook_path))
+            raise PathIsNotNotebookError(notebook_path)
 
     @staticmethod
     def verify_valid_and_initialized(notebook_path: Path):
         NotebookPath.verify_valid(notebook_path)
         if not KishuPath.exists(notebook_path):
-            raise KishuNotInitializedError(str(notebook_path))
+            raise KishuNotInitializedError(notebook_path)

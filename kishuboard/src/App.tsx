@@ -155,9 +155,11 @@ const cells_diff: TabsProps['items'] = [
     },
 ];
 
-async function loadInitialData(setGlobalLoading: any, setError: any, setCommits: any, setBranchID2CommitMap: any, setSelectedCommitID: any, setSelectedBranchID: any, setCurrentHeadID: any, setNBHeadID:any, setCurrentHeadBranch: any) {
+async function loadInitialData(notebookID: string, setGlobalLoading: any, setError: any, setCommits: any, setBranchID2CommitMap: any, setSelectedCommitID: any, setSelectedBranchID: any, setCurrentHeadID: any, setNBHeadID:any, setCurrentHeadBranch: any) {
     setGlobalLoading(true);
     try {
+        globalThis.NotebookPath = await BackEndAPI.getNotebookPath(notebookID);
+        globalThis.NotebookName = globalThis.NotebookPath!.split("/").pop()!;
         const data = await BackEndAPI.getCommitGraph();
         logger.silly("git graph after parse:", data);
         setCommits(data.commits);
@@ -173,7 +175,6 @@ async function loadInitialData(setGlobalLoading: any, setError: any, setCommits:
         setCurrentHeadID(data.currentHead);
         setNBHeadID(data.currentNBHead);
         setCurrentHeadBranch(data.currentHeadBranch);
-        globalThis.NotebookName = await BackEndAPI.getNoteBookName(globalThis.NotebookID!);
     } catch (e) {
         if (e instanceof Error) {
             setError(e.message);
@@ -346,12 +347,10 @@ function App() {
     //whether or not to scroll history panel to searched result
     const [scrollToResult, setScrollToResult] = useState(false);
     const scrollableHisPanel = useRef<HTMLDivElement>(null);
-
-    globalThis.NotebookID = useParams().notebookName;
-
+    const notebookID = useParams().notebookID!
     useEffect(() => {
         //initialize the states
-        loadInitialData(setGlobalLoading, setError, setCommits, setBranchID2CommitMap, setSelectedCommitID, setSelectedBranchID, setCurrentHeadID, setNbHeadID, setCurrentHeadBranch);
+        loadInitialData(notebookID, setGlobalLoading, setError, setCommits, setBranchID2CommitMap, setSelectedCommitID, setSelectedBranchID, setCurrentHeadID, setNbHeadID, setCurrentHeadBranch);
     }, []);
 
     useInterval(() => {

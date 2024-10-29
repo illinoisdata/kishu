@@ -335,6 +335,7 @@ class KishuCommand:
         if not list_all:
             sessions = list(filter(lambda session: session.is_alive, sessions))
         else:
+            # TODO: Support list_all properly.
             print("WARNING: listing all returns only alive sessions.", file=sys.stderr)
 
         # Sort by notebook ID.
@@ -512,6 +513,8 @@ class KishuCommand:
     def undo(
         notebook_path: Path,
     ) -> UndoResult:
+        NotebookPath.verify_valid_and_initialized(notebook_path)
+        database_path = KishuPath.database_path(notebook_path)
         try:
             kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
@@ -524,7 +527,7 @@ class KishuCommand:
                 ),
             )
 
-        head_info = KishuCommitGraph.new_var_graph(KishuPath.database_path(notebook_path)).get_commit()
+        head_info = KishuCommitGraph.new_var_graph(database_path).get_commit()
         return UndoResult.wrap(
             KishuCommand._check_instrument_and_checkout(notebook_path, kernel_id, head_info.parent_id, True)
         )
@@ -537,7 +540,8 @@ class KishuCommand:
         do_commit: bool = False,
     ) -> BranchResult:
         NotebookPath.verify_valid_and_initialized(notebook_path)
-        kishu_branch = KishuBranch(KishuPath.database_path(notebook_path))
+        database_path = KishuPath.database_path(notebook_path)
+        kishu_branch = KishuBranch(database_path)
         head = kishu_branch.get_head()
 
         if commit_id is None:
@@ -574,8 +578,9 @@ class KishuCommand:
         branch_name: str,
     ) -> DeleteBranchResult:
         NotebookPath.verify_valid_and_initialized(notebook_path)
+        database_path = KishuPath.database_path(notebook_path)
         try:
-            KishuBranch(KishuPath.database_path(notebook_path)).delete_branch(branch_name)
+            KishuBranch(database_path).delete_branch(branch_name)
             return DeleteBranchResult(
                 status="ok",
                 message=f"Branch {branch_name} deleted.",
@@ -593,8 +598,9 @@ class KishuCommand:
         new_name: str,
     ) -> RenameBranchResult:
         NotebookPath.verify_valid_and_initialized(notebook_path)
+        database_path = KishuPath.database_path(notebook_path)
         try:
-            KishuBranch(KishuPath.database_path(notebook_path)).rename_branch(old_name, new_name)
+            KishuBranch(database_path).rename_branch(old_name, new_name)
             return RenameBranchResult(
                 status="ok",
                 branch_name=new_name,
@@ -644,8 +650,9 @@ class KishuCommand:
         tag_name: str,
     ) -> DeleteTagResult:
         NotebookPath.verify_valid_and_initialized(notebook_path)
+        database_path = KishuPath.database_path(notebook_path)
         try:
-            KishuTag(KishuPath.database_path(notebook_path)).delete_tag(tag_name)
+            KishuTag(database_path).delete_tag(tag_name)
             return DeleteTagResult(
                 status="ok",
                 message=f"Tag {tag_name} deleted.",
@@ -659,7 +666,8 @@ class KishuCommand:
     @staticmethod
     def list_tag(notebook_path: Path) -> ListTagResult:
         NotebookPath.verify_valid_and_initialized(notebook_path)
-        return ListTagResult(tags=KishuTag(KishuPath.database_path(notebook_path)).list_tag())
+        database_path = KishuPath.database_path(notebook_path)
+        return ListTagResult(tags=KishuTag(database_path).list_tag())
 
     @staticmethod
     def fe_commit_graph(notebook_path: Path) -> FEInitializeResult:
@@ -843,7 +851,8 @@ class KishuCommand:
         commit_ns = Namespace()
         restore_plan = commit_entry.restore_plan
         if restore_plan is not None:
-            commit_ns = restore_plan.run(str(KishuPath.database_path(notebook_path)), commit_id)
+            database_path = KishuPath.database_path(notebook_path)
+            commit_ns = restore_plan.run(database_path, commit_id)
         variables = [
             KishuCommand._make_selected_variable(key, value, vardepth=vardepth) for key, value in commit_ns.to_dict().items()
         ]
@@ -999,7 +1008,8 @@ class KishuCommand:
 
     @staticmethod
     def _retrieve_all_cells(notebook_path: Path, commit_id: str):
-        commit_entry = KishuCommit(KishuPath.database_path(notebook_path)).get_commit(commit_id)
+        database_path = KishuPath.database_path(notebook_path)
+        commit_entry = KishuCommit(database_path).get_commit(commit_id)
         formatted_cells = commit_entry.formatted_cells
         if formatted_cells is None:
             raise NoFormattedCellsError(commit_id)
@@ -1041,15 +1051,13 @@ class KishuCommand:
         """
         Returns a list of commits that have changed the variable.
         """
-        return FEFindVarChangeResult(
-            VariableVersion(KishuPath.database_path(notebook_path)).get_commit_ids_by_variable_name(variable_name)
-        )
+        database_path = KishuPath.database_path(notebook_path)
+        return FEFindVarChangeResult(VariableVersion(database_path).get_commit_ids_by_variable_name(variable_name))
 
     @staticmethod
     def variable_diff(notebook_path: Path, from_commit_id: str, to_commit_id: str) -> List[VariableVersionCompare]:
-        origin_variable_versions = VariableVersion(KishuPath.database_path(notebook_path)).get_variable_version_by_commit_id(
-            from_commit_id
-        )
+        database_path = KishuPath.database_path(notebook_path)
+        origin_variable_versions = VariableVersion(database_path).get_variable_version_by_commit_id(from_commit_id)
         destination_variable_versions = VariableVersion(
             KishuPath.database_path(notebook_path)
         ).get_variable_version_by_commit_id(to_commit_id)

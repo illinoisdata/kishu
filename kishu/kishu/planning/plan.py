@@ -38,7 +38,7 @@ class StepOrder:
 @dataclass
 class RestoreActionContext:
     shell: InteractiveShell
-    checkpoint_file: str
+    database_path: Path
     exec_id: str
 
 
@@ -86,18 +86,18 @@ class SaveVariablesCheckpointAction(CheckpointAction):
 
     def __init__(self) -> None:
         self.variable_names: List[str] = []
-        self.filename: Optional[str] = None
+        self.database_path: Optional[Path] = None
         self.exec_id: Optional[str] = None
 
     def run(self, user_ns: Namespace):
-        if self.filename is None:
-            raise ValueError("filename is not set.")
+        if self.database_path is None:
+            raise ValueError("database_path is not set.")
         if self.exec_id is None:
             raise ValueError("exec_id is not set.")
         namespace: VarNamesToObjects = VarNamesToObjects()
         for name in self.variable_names:
             namespace[name] = user_ns[name]
-        KishuCheckpoint(Path(self.filename)).store_checkpoint(self.exec_id, namespace.dumps())
+        KishuCheckpoint(self.database_path).store_checkpoint(self.exec_id, namespace.dumps())
 
 
 class IncrementalWriteCheckpointAction(CheckpointAction):
@@ -105,13 +105,13 @@ class IncrementalWriteCheckpointAction(CheckpointAction):
     Stores VarNamesToObjects into database incrementally.
     """
 
-    def __init__(self, vses_to_store: List[VariableSnapshot], filename: str, exec_id: str) -> None:
+    def __init__(self, vses_to_store: List[VariableSnapshot], database_path: Path, exec_id: str) -> None:
         self.vses_to_store = vses_to_store
-        self.filename = filename
+        self.database_path = database_path
         self.exec_id = exec_id
 
     def run(self, user_ns: Namespace):
-        KishuCheckpoint(Path(self.filename)).store_variable_snapshots(self.exec_id, self.vses_to_store, user_ns)
+        KishuCheckpoint(self.database_path).store_variable_snapshots(self.exec_id, self.vses_to_store, user_ns)
 
 
 class CheckpointPlan:
@@ -121,36 +121,36 @@ class CheckpointPlan:
 
     def __init__(self) -> None:
         """
-        @param checkpoint_file  The file to which data will be saved.
+        @param database_path  The file to which data will be saved.
         """
         super().__init__()
-        self.checkpoint_file: Optional[str] = None
+        self.database_path: Optional[Path] = None
         self.actions: List[CheckpointAction] = []
 
     @classmethod
-    def create(cls, user_ns: Namespace, checkpoint_file: str, exec_id: str, var_names: Optional[List[str]] = None):
+    def create(cls, user_ns: Namespace, database_path: Path, exec_id: str, var_names: Optional[List[str]] = None):
         """
         @param user_ns  A dictionary representing a target variable namespace. In Jupyter, this
                 can be optained by `get_ipython().user_ns`.
-        @param checkpoint_file  A file where checkpointed data will be stored to.
+        @param database_path  A file where checkpointed data will be stored to.
         """
-        actions = cls.set_up_actions(user_ns, checkpoint_file, exec_id, var_names)
+        actions = cls.set_up_actions(user_ns, database_path, exec_id, var_names)
         plan = cls()
         plan.actions = actions
-        plan.checkpoint_file = checkpoint_file
+        plan.database_path = database_path
         return plan
 
     @classmethod
     def set_up_actions(
-        cls, user_ns: Namespace, checkpoint_file: str, exec_id: str, var_names: Optional[List[str]]
+        cls, user_ns: Namespace, database_path: Path, exec_id: str, var_names: Optional[List[str]]
     ) -> List[CheckpointAction]:
-        if user_ns is None or checkpoint_file is None:
+        if user_ns is None or database_path is None:
             raise ValueError("Fields are not properly initialized.")
         actions: List[CheckpointAction] = []
         variable_names: List[str] = cls.namespace_to_checkpoint(user_ns, var_names)
         action = SaveVariablesCheckpointAction()
         action.variable_names = variable_names
-        action.filename = checkpoint_file
+        action.database_path = database_path
         action.exec_id = exec_id
         actions.append(action)
         return actions
@@ -177,29 +177,29 @@ class IncrementalCheckpointPlan:
     Checkpoint select variables to the database.
     """
 
-    def __init__(self, checkpoint_file: str, actions: List[CheckpointAction]) -> None:
+    def __init__(self, database_path: Path, actions: List[CheckpointAction]) -> None:
         """
-        @param checkpoint_file  The file to which data will be saved.
+        @param database_path  The file to which data will be saved.
         """
         super().__init__()
-        self.checkpoint_file = checkpoint_file
+        self.database_path = database_path
         self.actions = actions
 
     @staticmethod
-    def create(user_ns: Namespace, checkpoint_file: str, exec_id: str, vses_to_store: List[VariableSnapshot]):
+    def create(user_ns: Namespace, database_path: Path, exec_id: str, vses_to_store: List[VariableSnapshot]):
         """
         @param user_ns  A dictionary representing a target variable namespace. In Jupyter, this
                 can be optained by `get_ipython().user_ns`.
-        @param checkpoint_file  A file where checkpointed data will be stored to.
+        @param database_path  A file where checkpointed data will be stored to.
         """
-        actions = IncrementalCheckpointPlan.set_up_actions(user_ns, checkpoint_file, exec_id, vses_to_store)
-        return IncrementalCheckpointPlan(checkpoint_file, actions)
+        actions = IncrementalCheckpointPlan.set_up_actions(user_ns, database_path, exec_id, vses_to_store)
+        return IncrementalCheckpointPlan(database_path, actions)
 
     @classmethod
     def set_up_actions(
-        cls, user_ns: Namespace, checkpoint_file: str, exec_id: str, vses_to_store: List[VariableSnapshot]
+        cls, user_ns: Namespace, database_path: Path, exec_id: str, vses_to_store: List[VariableSnapshot]
     ) -> List[CheckpointAction]:
-        if user_ns is None or checkpoint_file is None:
+        if user_ns is None or database_path is None:
             raise ValueError("Fields are not properly initialized.")
 
         # Check all variables to checkpoint exist in the namespace.
@@ -212,7 +212,7 @@ class IncrementalCheckpointPlan:
         return [
             IncrementalWriteCheckpointAction(
                 vses_to_store,
-                checkpoint_file,
+                database_path,
                 exec_id,
             )
         ]
@@ -257,7 +257,7 @@ class LoadVariableRestoreAction(RestoreAction):
         """
         @param user_ns  A target space where restored variables will be set.
         """
-        data: bytes = KishuCheckpoint(Path(ctx.checkpoint_file)).get_checkpoint(ctx.exec_id)
+        data: bytes = KishuCheckpoint(Path(ctx.database_path)).get_checkpoint(ctx.exec_id)
         namespace: VarNamesToObjects = VarNamesToObjects.loads(data)
         for key, obj in namespace.items():
             # if self.variable_names is set, limit the restoration only to those variables.
@@ -369,16 +369,16 @@ class RestorePlan:
             step_order, variable_names, [RerunCellRestoreAction(StepOrder(i[0], False), i[1]) for i in fallback_recomputation]
         )
 
-    def run(self, checkpoint_file: str, exec_id: str) -> Namespace:
+    def run(self, database_path: Path, exec_id: str) -> Namespace:
         """
         Performs a series of actions as specified in self.actions.
 
         @param user_ns  A target space where restored variables will be set.
-        @param checkpoint_file  The file where information is stored.
+        @param database_path  The file where information is stored.
         """
         while True:
             with AtExitContext():  # Intercept and trigger all atexit functions.
-                ctx = RestoreActionContext(InteractiveShell(), checkpoint_file, exec_id)
+                ctx = RestoreActionContext(InteractiveShell(), database_path, exec_id)
 
                 # Run restore actions sorted by cell number, then rerun cells before loading variables.
                 for _, action in sorted(self.actions.items(), key=lambda k: k[0]):

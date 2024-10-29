@@ -3,7 +3,6 @@ Sqlite interface for storing checkpoints.
 """
 
 import sqlite3
-import uuid
 from pathlib import Path
 from typing import List, Set
 

@@ -7,7 +7,7 @@ from kishu.storage.path import KishuPath
 
 
 class Config:
-    CONFIG_PATH = os.path.join(KishuPath.kishu_directory(), "config.ini")
+    CONFIG_PATH = KishuPath.config_path()
     config = configparser.ConfigParser()
     last_read_time = -1.0
 

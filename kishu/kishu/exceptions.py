@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Any, Optional
+
 """
 Raised by notebook_id
 """
@@ -14,23 +17,23 @@ Raised by path
 
 
 class NotPathError(Exception):
-    def __init__(self, obj):
+    def __init__(self, obj: Any):
         super().__init__(f'"{obj}" is not a Path object.')
 
 
 class NotebookNotFoundError(Exception):
-    def __init__(self, s: str):
-        super().__init__(f'"{s}" does not exist.')
+    def __init__(self, path: Path):
+        super().__init__(f"{path} does not exist.")
 
 
 class PathIsNotNotebookError(Exception):
-    def __init__(self, s: str):
-        super().__init__(f'"{s}" is not a notebook.')
+    def __init__(self, path: Path):
+        super().__init__(f"{path} is not a notebook.")
 
 
 class KishuNotInitializedError(Exception):
-    def __init__(self, s: str):
-        super().__init__(f'Kishu for "{s}" has not been initialized.')
+    def __init__(self, path: Path):
+        super().__init__(f"Kishu for notebook {path} has not been initialized.")
 
 
 """
@@ -39,12 +42,12 @@ Raised by branch
 
 
 class BranchNotFoundError(Exception):
-    def __init__(self, branch_name):
+    def __init__(self, branch_name: str):
         super().__init__(f"The provided branch '{branch_name}' does not exist.")
 
 
 class BranchConflictError(Exception):
-    def __init__(self, message):
+    def __init__(self, message: str):
         super().__init__(message)
 
 
@@ -54,7 +57,7 @@ Raised by checkpoint
 
 
 class CommitIdNotExistError(Exception):
-    def __init__(self, commit_id):
+    def __init__(self, commit_id: str):
         super().__init__(f"Commit ID '{commit_id}' does not exist.")
 
 
@@ -64,7 +67,7 @@ Raised by tag
 
 
 class TagNotFoundError(Exception):
-    def __init__(self, tag_name):
+    def __init__(self, tag_name: str):
         super().__init__(f"The provided tag '{tag_name}' does not exist.")
 
 
@@ -74,7 +77,7 @@ Raised by jupyterint
 
 
 class JupyterConnectionError(Exception):
-    def __init__(self, message):
+    def __init__(self, message: str):
         super().__init__(message)
 
 
@@ -99,7 +102,7 @@ class NoChannelError(JupyterConnectionError):
 
 
 class NoFormattedCellsError(Exception):
-    def __init__(self, commit_id=None):
+    def __init__(self, commit_id: Optional[str] = None):
         message = "No formatted cells"
         if commit_id:
             message += f" for commitID: {commit_id}"
@@ -107,7 +110,7 @@ class NoFormattedCellsError(Exception):
 
 
 class NoExecutedCellsError(Exception):
-    def __init__(self, commit_id=None):
+    def __init__(self, commit_id: Optional[str] = None):
         message = "No executed cells"
         if commit_id:
             message += f" for commitID: {commit_id}"
@@ -125,7 +128,7 @@ Raised by plan
 
 
 class DuplicateRestoreActionError(Exception):
-    def __init__(self, cell_num, is_load_var):
+    def __init__(self, cell_num: int, is_load_var: bool):
         if is_load_var:
             super().__init__(f"A load variable restore action exists for cell number {cell_num}.")
         else:
@@ -148,5 +151,5 @@ Raised by commit
 
 
 class MissingCommitEntryError(Exception):
-    def __init__(self, commit_id):
+    def __init__(self, commit_id: str):
         super().__init__(f"Missing commit entry for commit ID: {commit_id}.")

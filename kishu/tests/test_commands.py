@@ -887,22 +887,15 @@ class TestKishuCommand:
             for content in contents[0:2]:
                 notebook_session.run_code(content)
 
-            # Get notebook key.
-            list_result = KishuCommand.list()
-            assert len(list_result.sessions) == 1
-            assert list_result.sessions[0].notebook_path is not None
-            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
-            notebook_key = list_result.sessions[0].notebook_key
-
-            commits = KishuCommand.log_all(notebook_key).commit_graph
+            commits = KishuCommand.log_all(notebook_path).commit_graph
 
             # Undo and assert the head id after undo is correct.
-            undoResult = KishuCommand.undo(notebook_key)
+            undoResult = KishuCommand.undo(notebook_path)
             assert undoResult.status == "ok"
-            head = KishuBranch(notebook_key).get_head()
+            head = KishuBranch(KishuPath.database_path(notebook_path)).get_head()
             assert head.commit_id == commits[0].commit_id
 
             # Undo when current node is root.
-            undoResult = KishuCommand.undo(notebook_key)
+            undoResult = KishuCommand.undo(notebook_path)
             assert undoResult.status == "ok"
             assert undoResult.message == "No more commits to undo/checkout from root."
