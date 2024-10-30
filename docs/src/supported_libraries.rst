@@ -32,11 +32,13 @@ This is the current list of libraries, their versions, and their classes support
     ✅ astropy==5.2.2, astropy.wcs.WCS
     ✅ catboost==1.2.3, catboost
     ✅ dask==2023.5.0, dask
+    ✅ dataprep==0.4.5, dataprep.datasets
     ✅ dill==0.3.8, dill
     ✅ gym==0.26.2, gym
     ✅ keras==2.13.1, keras.src.initializers.initializers.RandomNormal
     ✅ keras==2.13.1, keras.src.initializers.initializers.RandomUniform
     ✅ keras==2.13.1, keras.src.layers.core.dense.Dense
+    ✅ lightgbm==4.3.0, lightgbm.basic.Dataset
     ✅ keras==2.13.1, keras.src.optimizers.schedules.learning_rate_schedule.ExponentialDecay
     ✅ llm==0.13.1, llm.default_plugins.openai_models.Chat
     ✅ lmfit==1.3.1, lmfit.parameter.Parameters
@@ -66,6 +68,7 @@ This is the current list of libraries, their versions, and their classes support
     ✅ optuna==3.6.1, optuna.Study
     ✅ pandas==1.5.1, pandas.DataFrame
     ✅ pandas==1.5.1, pandas.Series
+    ✅ pathlib==1.0.1, pathlib.PosixPath
     ✅ photoutils==0.0.1, photutils.psf.matching.CosineBellWindow
     ✅ photoutils==0.0.1, photutils.psf.matching.HanningWindow
     ✅ photoutils==0.0.1, photutils.utils.CutoutImage
@@ -140,6 +143,7 @@ This is the current list of libraries, their versions, and their classes support
 
     ❌ astropy==5.2.2, astropy.coordinates.SkyCoord
     ❌ astropy==5.2.2, astropy.table.QTable
+    ❌ dataprep==0.4.5, dataprep.eda.intermediate.Intermediate
     ❌ gensim==4.3.2, gensim
     ❌ ipywidgets==8.1.2, ipywidgets
     ❌ matplotlib==3.6.2, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
