@@ -1,6 +1,6 @@
 import pytest
 
-from typing import Any, Dict, Generator, Set, Tuple
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
@@ -40,8 +40,10 @@ class PlannerManager:
         # Return changed variables from post run cell update.
         return self.planner.post_run_cell_update(cell_code, cell_runtime)
 
-    def checkpoint_session(self, filename: str, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
-        checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(filename, "1:1")
+    def checkpoint_session(
+        self, filename: str, commit_id: str, parent_commit_ids: Optional[List[str]] = None
+    ) -> Tuple[CheckpointPlan, RestorePlan]:
+        checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(filename, commit_id, parent_commit_ids)
         checkpoint_plan.run(self.planner._user_ns)
         return checkpoint_plan, restore_plan
 
@@ -58,15 +60,15 @@ def test_checkpoint_restore_planner(enable_always_migrate):
     planner_manager.run_cell({"y": 2}, "y = x + 1")
 
     variable_snapshots = planner.get_ahg().get_variable_snapshots()
+    active_variable_snapshots = planner.get_ahg().get_active_variable_snapshots()
     cell_executions = planner.get_ahg().get_cell_executions()
 
     # Assert correct contents of AHG.
-    assert variable_snapshots.keys() == {"x", "y"}
-    assert len(variable_snapshots["x"]) == 1
-    assert len(variable_snapshots["y"]) == 1
+    assert len(variable_snapshots) == 2
+    assert len(active_variable_snapshots) == 2
     assert len(cell_executions) == 2
 
-    # Assert ID graphs are creaated.
+    # Assert ID graphs are created.
     assert len(planner.get_id_graph_map().keys()) == 2
 
     # Create checkpoint and restore plans.
@@ -86,17 +88,18 @@ def test_checkpoint_restore_planner_with_existing_items(enable_always_migrate):
     """
     Test running a few cell updates.
     """
-    user_ns = Namespace({"x": 1, "y": 2, "In": ["x = 1", "y = 2"]})
+    user_ns = Namespace({"x": 1000, "y": 2000, "In": ["x = 1000", "y = 2000"]})
 
     planner = CheckpointRestorePlanner.from_existing(user_ns)
 
     variable_snapshots = planner.get_ahg().get_variable_snapshots()
+    active_variable_snapshots = planner.get_ahg().get_active_variable_snapshots()
     cell_executions = planner.get_ahg().get_cell_executions()
 
     # Assert correct contents of AHG. x and y are pessimistically assumed to be modified twice each.
-    assert variable_snapshots.keys() == {"x", "y"}
-    assert len(variable_snapshots["x"]) == 2
-    assert len(variable_snapshots["y"]) == 2
+    assert len(variable_snapshots) == 2
+    assert len(active_variable_snapshots) == 1
+    assert active_variable_snapshots[0].name == frozenset({"x", "y"})
     assert len(cell_executions) == 2
 
     # Pre run cell 3
@@ -106,13 +109,19 @@ def test_checkpoint_restore_planner_with_existing_items(enable_always_migrate):
     assert len(planner.get_id_graph_map().keys()) == 2
 
     # Post run cell 3; x is incremented by 1.
-    user_ns["x"] = 2
+    # If x and y are integers between 0-255, they will be detected as linked as they are stored in
+    # fixed memory addresses.
+    # TODO in a later PR: hardcode these cases as exceptions in ID graph to not consider as linking.
+    user_ns["x"] = 2001
     planner.post_run_cell_update("x += 1", 1.0)
 
+    variable_snapshots = planner.get_ahg().get_variable_snapshots()
+    active_variable_snapshots = planner.get_ahg().get_active_variable_snapshots()
+    cell_executions = planner.get_ahg().get_cell_executions()
+
     # Assert correct contents of AHG is maintained after initializing the planner in a non-empty namespace.
-    assert variable_snapshots.keys() == {"x", "y"}
-    assert len(variable_snapshots["x"]) == 3
-    assert len(variable_snapshots["y"]) == 2
+    assert len(variable_snapshots) == 4  # (x, y), (x, y), (x), (y)
+    assert set(vs.name for vs in active_variable_snapshots) == {frozenset("x"), frozenset("y")}
     assert len(cell_executions) == 3
 
 
@@ -163,14 +172,15 @@ def test_checkpoint_restore_planner_incremental_store_simple(enable_incremental_
     planner_manager.run_cell({"y": 2}, "y = x + 1")
 
     # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2")
+    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
 
     # Assert that only 'y' is stored in the checkpoint plan - 'x' was stored in cell 1.
     assert len(checkpoint_plan_cell2.actions) == 1
-    assert checkpoint_plan_cell2.actions[0].vs_connected_components.get_variable_names() == {"y"}
+    assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
+    assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset("y")
 
 
-def test_checkpoint_restore_planner_incremental_store_not_subset(enable_incremental_store, enable_always_migrate):
+def test_checkpoint_restore_planner_incremental_store_skip_store(enable_incremental_store, enable_always_migrate):
     """
     Test incremental store.
     """
@@ -181,24 +191,23 @@ def test_checkpoint_restore_planner_incremental_store_not_subset(enable_incremen
 
     # Run cell 1.
     x = 1
-    planner_manager.run_cell({"x": x, "y": [x]}, "x = 1\ny = [x]")
+    planner_manager.run_cell({"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
     # Create and run checkpoint plan for cell 1.
     planner_manager.checkpoint_session(filename, "1:1")
 
     # Run cell 2.
-    planner_manager.run_cell({"z": [x]}, "z = [x]")
+    planner_manager.run_cell({}, "print(x)")
 
     # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2")
+    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
 
-    # Assert that everything is stored again.
-    # x and y are linked; since {x, y, z} is not a subset of the stored {x, y}, we need to store everything again.
+    # Assert that nothing happens in the static cell 2.
     assert len(checkpoint_plan_cell2.actions) == 1
-    assert checkpoint_plan_cell2.actions[0].vs_connected_components.get_variable_names() == {"x", "y", "z"}
+    assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 0
 
 
-def test_checkpoint_restore_planner_incremental_store_is_subset(enable_incremental_store, enable_always_migrate):
+def test_checkpoint_restore_planner_incremental_store_no_skip_store(enable_incremental_store, enable_always_migrate):
     """
     Test incremental store.
     """
@@ -218,9 +227,9 @@ def test_checkpoint_restore_planner_incremental_store_is_subset(enable_increment
     planner_manager.run_cell({}, "del z", {"z"})
 
     # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2")
+    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
 
-    # Assert that everything is stored again.
-    # The connected component of 'x, y, z' is already stored, since 'x, y' is a subset, its storage is skipped.
+    # Assert that everything is stored again; {x, y} is a different VariableSnapshot vs. {x, y, z}.
     assert len(checkpoint_plan_cell2.actions) == 1
-    assert checkpoint_plan_cell2.actions[0].vs_connected_components.get_variable_names() == set()
+    assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
+    assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset({"x", "y"})

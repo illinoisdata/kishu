@@ -4,7 +4,7 @@ from IPython.core.interactiveshell import InteractiveShell
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import VersionedName, VsConnectedComponents
+from kishu.planning.ahg import VariableSnapshot, VersionedName
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.path import KishuPath
@@ -127,9 +127,9 @@ def test_fallback_recomputation():
     assert result_ns["foo"] == user_ns["foo"]
 
 
-def test_store_connected_components(enable_incremental_store):
+def test_store_versioned_names(enable_incremental_store):
     """
-    Tests that the VARIABLE_KV and NAMESPACE tables are populated correctly.
+    Tests that the VARIABLE_SNAPSHOT table are populated correctly for incremental storage.
     TODO: add test for loading incrementally once that is implemented.
     """
     shell = InteractiveShell()
@@ -143,15 +143,11 @@ def test_store_connected_components(enable_incremental_store):
 
     # save
     exec_id = 1
-    vs_connected_components = VsConnectedComponents.create_from_component_list(
-        [[VersionedName("a", 1), VersionedName("b", 1)], [VersionedName("c", 1)]]
-    )
-    checkpoint = IncrementalCheckpointPlan.create(user_ns, filename, exec_id, vs_connected_components)
+    vses_to_store = [VariableSnapshot(frozenset({"a", "b"}), 1), VariableSnapshot(frozenset("c"), 1)]
+    checkpoint = IncrementalCheckpointPlan.create(user_ns, filename, exec_id, vses_to_store)
     checkpoint.run(user_ns)
 
-    # Read stored connected components
-    stored_vs_connected_components = KishuCheckpoint(filename).get_stored_connected_components()
+    # Read stored versioned names
+    stored_versioned_names = KishuCheckpoint(filename).get_stored_versioned_names([exec_id])
 
-    assert {VersionedName("a", 1), VersionedName("b", 1)}, {
-        VersionedName("c", 1)
-    } in stored_vs_connected_components.get_connected_components()
+    assert VersionedName(frozenset({"a", "b"}), 1), VersionedName(frozenset("c"), 1) in stored_versioned_names
