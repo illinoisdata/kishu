@@ -6,6 +6,7 @@ import nbformat
 import pytest
 
 from kishu.jupyterint import KishuForJupyter
+from kishu.storage.commit import KishuCommit, NotebookCommitState
 from tests.helpers.nbexec import NotebookRunner
 
 
@@ -41,6 +42,21 @@ class TestOnMockEnclosing:
         assert sum(common_prefix in commit_id for commit_id in commit_ids) > 1, f"No common prefix {commit_ids}"
         with pytest.raises(ValueError):
             _ = KishuForJupyter.disambiguate_commit(basic_notebook_path, common_prefix)
+
+    def test_amend_notebook(
+        self, kishu_jupyter: KishuForJupyter, notebook_key: str, basic_execution_ids: List[str], set_notebook_path_env
+    ):
+        # Check notebook record type is "with_commit" before updating.
+        latest_commit_id = basic_execution_ids[-1]
+        kishu_commit = KishuCommit(kishu_jupyter.database_path())
+        pre_latest_entry = kishu_commit.get_commit(latest_commit_id)
+        assert pre_latest_entry.nb_record_type == NotebookCommitState.with_commit
+
+        kishu_jupyter.amend_notebook()
+
+        # Now the type should be "latest".
+        post_latest_entry = kishu_commit.get_commit(latest_commit_id)
+        assert post_latest_entry.nb_record_type == NotebookCommitState.amend_notebook
 
 
 class TestOnNotebookRunner:

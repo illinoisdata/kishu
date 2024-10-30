@@ -29,6 +29,22 @@ class CommitEntryKind(str, enum.Enum):
     manual = "manual"
 
 
+class NotebookCommitState(str, enum.Enum):
+    """State of notebook commit. The state machine diagram is as followed.
+
+    unspecified --> with_commit --> updated
+
+    unspecified: no notebook commit.
+    with_commit: the notebook is recorded at same time as commit creation.
+    amend_notebook: the notebook is separately amended to the commit.
+
+    """
+
+    unspecified = "unspecified"
+    with_commit = "with_commit"
+    amend_notebook = "amend_notebook"
+
+
 @dataclass
 class FormattedCell:
     cell_type: str
@@ -58,17 +74,25 @@ class CommitEntry:
     """
 
     commit_id: str = ""
-    kind: CommitEntryKind = CommitEntryKind.unspecified
-
-    checkpoint_runtime_s: Optional[float] = None
-    executed_cells: Optional[List[str]] = None
-    executed_outputs: Optional[Dict[int, str]] = None
-    raw_nb: Optional[str] = None
-    formatted_cells: Optional[List[FormattedCell]] = None
-    restore_plan: Optional[kishu.planning.plan.RestorePlan] = None
     message: str = ""
     timestamp: float = 0.0
+    kind: CommitEntryKind = CommitEntryKind.unspecified
+
+    # Execution state.
+    executed_cells: Optional[List[str]] = None
+    executed_outputs: Optional[Dict[int, str]] = None
+
+    # Notebook state.
+    raw_nb: Optional[str] = None
+    formatted_cells: Optional[List[FormattedCell]] = None
+    nb_record_type: NotebookCommitState = NotebookCommitState.unspecified
+
+    # Planner state.
+    restore_plan: Optional[kishu.planning.plan.RestorePlan] = None
     ahg_string: Optional[str] = None
+    checkpoint_runtime_s: Optional[float] = None
+
+    # Version hashes.
     code_version: int = 0
     varset_version: int = 0
 

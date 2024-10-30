@@ -16,7 +16,7 @@ from kishu.commands import (
 )
 from kishu.diff import CodeDiffHunk, VariableVersionCompare
 from kishu.jupyter.runtime import JupyterRuntimeEnv
-from kishu.jupyterint import CommitEntry, CommitEntryKind
+from kishu.jupyterint import CommitEntry, CommitEntryKind, NotebookCommitState
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
 from kishu.storage.path import KishuPath
@@ -138,6 +138,7 @@ class TestKishuCommand:
                 # "y = x + 1",
             ],
             executed_outputs={},
+            nb_record_type=NotebookCommitState.with_commit,
             message=status_result.commit_entry.message,  # Not tested,
             timestamp=status_result.commit_entry.timestamp,  # Not tested
             ahg_string=status_result.commit_entry.ahg_string,  # Not tested
