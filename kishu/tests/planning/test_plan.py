@@ -129,8 +129,8 @@ def test_fallback_recomputation():
 
 def test_store_versioned_names(enable_incremental_store):
     """
-        Tests that the VARIABLE_SNAPSHOT table are populated correctly for incremental storage.
-        TODO: add test for loading incrementally once that is implemented.
+    Tests that the VARIABLE_SNAPSHOT table are populated correctly for incremental storage.
+    TODO: add test for loading incrementally once that is implemented.
     """
     shell = InteractiveShell()
     shell.run_cell("a = 1")
@@ -143,7 +143,7 @@ def test_store_versioned_names(enable_incremental_store):
 
     # save
     exec_id = 1
-    vses_to_store = [VariableSnapshot(frozenset({'a', 'b'}), 1), VariableSnapshot(frozenset('c'), 1)]
+    vses_to_store = [VariableSnapshot(frozenset({"a", "b"}), 1), VariableSnapshot(frozenset("c"), 1)]
     checkpoint = IncrementalCheckpointPlan.create(user_ns, filename, exec_id, vses_to_store)
     checkpoint.run(user_ns)
 

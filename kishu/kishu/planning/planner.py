@@ -141,17 +141,14 @@ class CheckpointRestorePlanner:
                 self._user_ns.keyset(),
                 linked_var_pairs,
                 modified_vars_structure,
-                deleted_vars
+                deleted_vars,
             )
         )
 
         return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
 
     def generate_checkpoint_restore_plans(
-        self,
-        database_path: str,
-        commit_id: str,
-        parent_commit_ids: Optional[List[str]] = None
+        self, database_path: str, commit_id: str, parent_commit_ids: Optional[List[str]] = None
     ) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = self._ahg.get_active_variable_snapshots()
@@ -172,16 +169,13 @@ class CheckpointRestorePlanner:
             if parent_commit_ids is None:
                 parent_commit_ids = []
             stored_versioned_names = KishuCheckpoint(database_path).get_stored_versioned_names(parent_commit_ids)
-            active_vss = [vs for vs in active_vss if
-                          VersionedName(vs.name, vs.version) not in stored_versioned_names]
+            active_vss = [vs for vs in active_vss if VersionedName(vs.name, vs.version) not in stored_versioned_names]
 
         # Initialize optimizer.
         # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
         # Currently, a variable is recomputed only if it is unserialzable.
         optimizer = Optimizer(
-            self._ahg,
-            active_vss,
-            stored_versioned_names if self._planner_context.incremental_store else None
+            self._ahg, active_vss, stored_versioned_names if self._planner_context.incremental_store else None
         )
 
         # Use the optimizer to compute the checkpointing configuration.
@@ -198,16 +192,13 @@ class CheckpointRestorePlanner:
                 self._user_ns,
                 database_path,
                 commit_id,
-                list(self._ahg.get_active_variable_snapshots_dict()[vn.name] for vn in vss_to_migrate)
+                list(self._ahg.get_active_variable_snapshots_dict()[vn.name] for vn in vss_to_migrate),
             )
 
         else:
             # Create checkpoint plan using optimization results.
             checkpoint_plan = CheckpointPlan.create(
-                self._user_ns,
-                database_path,
-                commit_id,
-                list(chain.from_iterable([vs.name for vs in vss_to_migrate]))
+                self._user_ns, database_path, commit_id, list(chain.from_iterable([vs.name for vs in vss_to_migrate]))
             )
 
         # Create restore plan using optimization results.
@@ -216,10 +207,7 @@ class CheckpointRestorePlanner:
         return checkpoint_plan, restore_plan
 
     def _generate_restore_plan(
-        self,
-        ces_to_recompute: Set[int],
-        ce_to_vs_map: Dict[int, List[VariableName]],
-        req_func_mapping: Dict[int, Set[int]]
+        self, ces_to_recompute: Set[int], ce_to_vs_map: Dict[int, List[VariableName]], req_func_mapping: Dict[int, Set[int]]
     ) -> RestorePlan:
         """
         Generates a restore plan based on results from the optimizer.
@@ -242,7 +230,7 @@ class CheckpointRestorePlanner:
                 restore_plan.add_load_variable_restore_action(
                     ce.cell_num,
                     list(chain.from_iterable(ce_to_vs_map[ce.cell_num])),
-                    [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]]
+                    [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]],
                 )
         return restore_plan
 

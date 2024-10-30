@@ -40,6 +40,7 @@ class VersionedName:
     """
     Simplified name-version representation of a Variable Snapshot. Hashable and immutable.
     """
+
     name: VariableName
     version: int
 
@@ -56,6 +57,7 @@ class VariableSnapshot:
         @param input_ces: Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
         @param output_ce: The (unique) cell execution creating this variable snapshot.
     """
+
     name: VariableName
     version: int
     deleted: bool = False
@@ -67,19 +69,20 @@ class VariableSnapshot:
 @dataclass
 class AHGUpdateInfo:
     """
-        Dataclass containing all information for updating the AHG. Constructed and passed to the AHG after each cell
-        execution.
+    Dataclass containing all information for updating the AHG. Constructed and passed to the AHG after each cell
+    execution.
 
-        @param cell: Raw cell code.
-        @param version: Version number of newly created VSes.
-        @param cell_runtime_s: Cell runtime in seconds.
-        @param accessed_variables: Set of accessed variables of the cell.
-        @param current_variables: full list of variables in namespace post cell execution.
-            Used to determine creations.
-        @param linked_variable_pairs: pairs of linked variables.
-        @param created_and_modified_variables: set of modified variables.
-        @param deleted_variables: set of deleted variables.
+    @param cell: Raw cell code.
+    @param version: Version number of newly created VSes.
+    @param cell_runtime_s: Cell runtime in seconds.
+    @param accessed_variables: Set of accessed variables of the cell.
+    @param current_variables: full list of variables in namespace post cell execution.
+        Used to determine creations.
+    @param linked_variable_pairs: pairs of linked variables.
+    @param created_and_modified_variables: set of modified variables.
+    @param deleted_variables: set of deleted variables.
     """
+
     cell: Optional[str] = None
     version: int = -1
     cell_runtime_s: float = 1.0
@@ -186,34 +189,41 @@ class AHG:
 
     def update_graph(self, update_info: AHGUpdateInfo) -> None:
         """
-            Updates the graph according to the newly executed cell and its input and output variables.
+        Updates the graph according to the newly executed cell and its input and output variables.
         """
         cell = "" if not update_info.cell else update_info.cell
 
         # Retrieve accessed variable snapshots. A VS is accessed if any of the names in its connected component are accessed.
-        accessed_vss = [vs for vs in self._active_variable_snapshots.values()
-                        if vs.name.intersection(update_info.accessed_variables)]
+        accessed_vss = [
+            vs for vs in self._active_variable_snapshots.values() if vs.name.intersection(update_info.accessed_variables)
+        ]
 
         # Compute the set of current connected components of variables in the namespace.
         connected_components_set = AHG.union_find(update_info.current_variables, update_info.linked_variable_pairs)
 
         # If a new component does not exactly match an existing component, it is treated as a created VS.
-        output_vss_create = [VariableSnapshot(k, update_info.version, False) for k in connected_components_set
-                             if k not in self._active_variable_snapshots.keys()]
+        output_vss_create = [
+            VariableSnapshot(k, update_info.version, False)
+            for k in connected_components_set
+            if k not in self._active_variable_snapshots.keys()
+        ]
 
         # An active VS (from the previous cell exec) is still active only if it exactly matches a connected component and
         # wasn't modified.
         unmodified_still_active_vss = {
-            k: v for k, v in self._active_variable_snapshots.items()
-            if k in connected_components_set
-            and not k.intersection(update_info.modified_variables)
+            k: v
+            for k, v in self._active_variable_snapshots.items()
+            if k in connected_components_set and not k.intersection(update_info.modified_variables)
         }
 
-        # A variable is modified if any name in its connected component is modified.
-        output_vss_modify = [VariableSnapshot(frozenset(v.name), update_info.version, False)
-                             for k, v in self._active_variable_snapshots.items()
-                             if k in connected_components_set
-                             and v.name.intersection(update_info.modified_variables)]
+        # An (active) VS is modified if (1) its variable membership has not changed
+        # during the cell execution (i.e., in connected_components_set) and (2) at
+        # least 1 of its member variables were modified.
+        output_vss_modify = [
+            VariableSnapshot(frozenset(v.name), update_info.version, False)
+            for k, v in self._active_variable_snapshots.items()
+            if k in connected_components_set and v.name.intersection(update_info.modified_variables)
+        ]
 
         # Deleted VSes are always singletons of the deleted names.
         output_vss_delete = [VariableSnapshot(frozenset(k), update_info.version, False) for k in update_info.deleted_variables]
@@ -226,8 +236,10 @@ class AHG:
         self._variable_snapshots += output_vss
 
         # Update set of active VSes (those still active from previous cell exec + created VSes + modified VSes).
-        self._active_variable_snapshots = {**unmodified_still_active_vss,
-                                           **{vs.name: vs for vs in output_vss_create + output_vss_modify}}
+        self._active_variable_snapshots = {
+            **unmodified_still_active_vss,
+            **{vs.name: vs for vs in output_vss_create + output_vss_modify},
+        }
 
     def get_cell_executions(self) -> List[CellExecution]:
         return self._cell_executions
@@ -257,7 +269,7 @@ class AHG:
         """
         Returns the AHG object from serialized AHG in string format.
         """
-        return dill.loads(ahg_string.encode('latin1'))
+        return dill.loads(ahg_string.encode("latin1"))
 
     @staticmethod
     def union_find(variables: Set[str], linked_variables: List[Tuple[str, str]]) -> Set[VariableName]:

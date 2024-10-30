@@ -13,8 +13,8 @@ from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import VariableName, VariableSnapshot, VersionedName
 from kishu.storage.config import Config
 
-CHECKPOINT_TABLE = 'checkpoint'
-VARIABLE_SNAPSHOT_TABLE = 'variable_snapshot'
+CHECKPOINT_TABLE = "checkpoint"
+VARIABLE_SNAPSHOT_TABLE = "variable_snapshot"
 
 
 class KishuCheckpoint:
@@ -27,9 +27,17 @@ class KishuCheckpoint:
         cur.execute(f"create table if not exists {CHECKPOINT_TABLE} (commit_id text primary key, data blob)")
 
         # Create incremental checkpointing related tables only if the config flag is enabled.
-        if Config.get('PLANNER', 'incremental_store', False):
-            cur.execute(f'create table if not exists {VARIABLE_SNAPSHOT_TABLE} '
-                        f'(version int, name text, commit_id text, data blob)')
+        if Config.get("PLANNER", "incremental_store", False):
+            cur.execute(
+                f"create table if not exists {VARIABLE_SNAPSHOT_TABLE} " f"(version int, name text, commit_id text, data blob)"
+            )
+        con.commit()
+
+    def drop_database(self):
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        cur.execute(f"drop table if exists {CHECKPOINT_TABLE}")
+        cur.execute(f"drop table if exists {VARIABLE_SNAPSHOT_TABLE}")
         con.commit()
 
     def get_checkpoint(self, commit_id: str) -> bytes:
@@ -54,8 +62,10 @@ class KishuCheckpoint:
         cur = con.cursor()
 
         # Get all namespaces
-        cur.execute(f"select version, name from {VARIABLE_SNAPSHOT_TABLE} WHERE commit_id IN (%s)" %
-                    ','.join('?'*len(commit_ids)), commit_ids)
+        cur.execute(
+            f"select version, name from {VARIABLE_SNAPSHOT_TABLE} WHERE commit_id IN (%s)" % ",".join("?" * len(commit_ids)),
+            commit_ids,
+        )
         res: List = cur.fetchall()
         return {VersionedName(KishuCheckpoint.decode_name(name), version) for version, name in res}
 
@@ -71,14 +81,14 @@ class KishuCheckpoint:
             data_dump = pickle.dumps(ns_subset.to_dict())
             cur.execute(
                 f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?, ?)",
-                (vs.version, KishuCheckpoint.encode_name(vs.name), commit_id, memoryview(data_dump))
+                (vs.version, KishuCheckpoint.encode_name(vs.name), commit_id, memoryview(data_dump)),
             )
             con.commit()
 
     @staticmethod
-    def encode_name(variable_name: VariableName) -> bytes:
-        return pickle.dumps(sorted(variable_name))
+    def encode_name(variable_name: VariableName) -> str:
+        return repr(sorted(variable_name))
 
     @staticmethod
-    def decode_name(encoded_name: bytes) -> VariableName:
-        return frozenset(pickle.loads(encoded_name))
+    def decode_name(encoded_name: str) -> VariableName:
+        return frozenset([name.strip().replace("'", "") for name in encoded_name.replace("[", "").replace("]", "").split(",")])

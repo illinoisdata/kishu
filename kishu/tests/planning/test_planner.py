@@ -41,10 +41,7 @@ class PlannerManager:
         return self.planner.post_run_cell_update(cell_code, cell_runtime)
 
     def checkpoint_session(
-        self,
-        filename: str,
-        commit_id: str,
-        parent_commit_ids: Optional[List[str]] = None
+        self, filename: str, commit_id: str, parent_commit_ids: Optional[List[str]] = None
     ) -> Tuple[CheckpointPlan, RestorePlan]:
         checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(filename, commit_id, parent_commit_ids)
         checkpoint_plan.run(self.planner._user_ns)

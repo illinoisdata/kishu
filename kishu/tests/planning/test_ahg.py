@@ -22,13 +22,7 @@ def test_update_graph():
     ahg = AHG()
 
     # x and y are created
-    ahg.update_graph(
-        AHGUpdateInfo(
-            version=1,
-            cell_runtime_s=1.0,
-            current_variables={"x", "y"}
-        )
-    )
+    ahg.update_graph(AHGUpdateInfo(version=1, cell_runtime_s=1.0, current_variables={"x", "y"}))
 
     # x is read and modified, z is created, y is deleted
     ahg.update_graph(
@@ -38,7 +32,7 @@ def test_update_graph():
             accessed_variables={"x"},
             current_variables={"x", "z"},
             modified_variables={"x"},
-            deleted_variables={"y"}
+            deleted_variables={"y"},
         )
     )
 
@@ -70,10 +64,7 @@ def test_update_graph_with_connected_components():
     linked_variable_pairs = [("a", "b"), ("b", "c"), ("d", "e")]
     ahg.update_graph(
         AHGUpdateInfo(
-            version=1,
-            cell_runtime_s=1.0,
-            current_variables=current_variables,
-            linked_variable_pairs=linked_variable_pairs
+            version=1, cell_runtime_s=1.0, current_variables=current_variables, linked_variable_pairs=linked_variable_pairs
         )
     )
 
@@ -81,8 +72,11 @@ def test_update_graph_with_connected_components():
 
     # 3 variable snapshots
     assert len(active_variable_snapshots) == 3
-    assert set(vs.name for vs in active_variable_snapshots) == \
-        {frozenset({"a", "b", "c"}), frozenset({"d", "e"}), frozenset("f")}
+    assert set(vs.name for vs in active_variable_snapshots) == {
+        frozenset({"a", "b", "c"}),
+        frozenset({"d", "e"}),
+        frozenset("f"),
+    }
 
     # 6 variables in total
     assert ahg.get_variable_names() == {"a", "b", "c", "d", "e", "f"}
@@ -104,10 +98,7 @@ def test_create_vs_merge_connected_components():
     # components 'abc' and 'def' are merged.
     ahg.update_graph(
         AHGUpdateInfo(
-            version=1,
-            cell_runtime_s=1.0,
-            current_variables=current_variables,
-            linked_variable_pairs=linked_variable_pairs
+            version=1, cell_runtime_s=1.0, current_variables=current_variables, linked_variable_pairs=linked_variable_pairs
         )
     )
 
@@ -125,13 +116,13 @@ def test_create_vs_merge_connected_components():
 
 def test_create_vs_split_connected_component():
     """
-        Test modification detection for splitting comoponents:
+    Test modification detection for splitting comoponents:
 
-        a---b
+    a---b
 
-        split
+    split
 
-        a   b
+    a   b
     """
     ahg = AHG()
 
@@ -141,10 +132,7 @@ def test_create_vs_split_connected_component():
     # 'ab' is in 1 component.
     ahg.update_graph(
         AHGUpdateInfo(
-            version=1,
-            cell_runtime_s=1.0,
-            current_variables=current_variables,
-            linked_variable_pairs=linked_variable_pairs
+            version=1, cell_runtime_s=1.0, current_variables=current_variables, linked_variable_pairs=linked_variable_pairs
         )
     )
 
@@ -158,12 +146,7 @@ def test_create_vs_split_connected_component():
 
     # 'ab' is split into 2 components.
     ahg.update_graph(
-        AHGUpdateInfo(
-            version=2,
-            cell_runtime_s=1.0,
-            current_variables=current_variables,
-            modified_variables={"b"}
-        )
+        AHGUpdateInfo(version=2, cell_runtime_s=1.0, current_variables=current_variables, modified_variables={"b"})
     )
 
     active_variable_snapshots = ahg.get_active_variable_snapshots()
@@ -178,13 +161,13 @@ def test_create_vs_split_connected_component():
 
 def test_create_vs_modify_connected_component():
     """
-        Test modification detection for splitting comoponents:
+    Test modification detection for splitting comoponents:
 
-        a---b   c
+    a---b   c
 
-        split
+    split
 
-        a   b---c
+    a   b---c
     """
     ahg = AHG()
 
@@ -194,10 +177,7 @@ def test_create_vs_modify_connected_component():
     # 2 components: 'ab' and 'c'.
     ahg.update_graph(
         AHGUpdateInfo(
-            version=1,
-            cell_runtime_s=1.0,
-            current_variables=current_variables,
-            linked_variable_pairs=linked_variable_pairs
+            version=1, cell_runtime_s=1.0, current_variables=current_variables, linked_variable_pairs=linked_variable_pairs
         )
     )
 
@@ -216,7 +196,7 @@ def test_create_vs_modify_connected_component():
             cell_runtime_s=1.0,
             current_variables=current_variables,
             linked_variable_pairs=[("c", "b")],
-            modified_variables={"b"}
+            modified_variables={"b"},
         )
     )
 

@@ -259,7 +259,7 @@ class KishuDiff:
                     # get the corresponding matched hunks from edr_diff of the add_remove groups
                     refined_hunks = DiffAlgorithms.edr_diff(origin=remove_hunks, destination=add_hunks).diff_hunks
                     # replace the add_remove groups with edr_diff result
-                    diff_hunks[_get_new_index(from_idx): _get_new_index(to_idx) + 1] = refined_hunks
+                    diff_hunks[_get_new_index(from_idx) : _get_new_index(to_idx) + 1] = refined_hunks
                     offset_diff += len(refined_hunks) - (to_idx - from_idx + 1)
 
                 # try to find the next group of add-remove
@@ -277,7 +277,7 @@ class KishuDiff:
             # get the corresponding matched hunks from edr_diff of the add_remove groups
             refined_hunks = DiffAlgorithms.edr_diff(origin=remove_hunks, destination=add_hunks).diff_hunks
             # replace the add_remove groups with edr_diff result
-            diff_hunks[_get_new_index(from_idx): _get_new_index(to_idx) + 1] = refined_hunks
+            diff_hunks[_get_new_index(from_idx) : _get_new_index(to_idx) + 1] = refined_hunks
             offset_diff += len(refined_hunks) - (to_idx - from_idx + 1)
 
         return diff_hunks

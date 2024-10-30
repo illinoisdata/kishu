@@ -103,6 +103,7 @@ class IncrementalWriteCheckpointAction(CheckpointAction):
     """
     Stores VarNamesToObjects into database incrementally.
     """
+
     def __init__(self, vses_to_store: List[VariableSnapshot], filename: str, exec_id: str) -> None:
         self.vses_to_store = vses_to_store
         self.filename = filename
@@ -184,12 +185,7 @@ class IncrementalCheckpointPlan:
         self.actions = actions
 
     @staticmethod
-    def create(
-        user_ns: Namespace,
-        checkpoint_file: str,
-        exec_id: str,
-        vses_to_store: List[VariableSnapshot]
-    ):
+    def create(user_ns: Namespace, checkpoint_file: str, exec_id: str, vses_to_store: List[VariableSnapshot]):
         """
         @param user_ns  A dictionary representing a target variable namespace. In Jupyter, this
                 can be optained by `get_ipython().user_ns`.
@@ -200,11 +196,7 @@ class IncrementalCheckpointPlan:
 
     @classmethod
     def set_up_actions(
-        cls,
-        user_ns: Namespace,
-        checkpoint_file: str,
-        exec_id: str,
-        vses_to_store: List[VariableSnapshot]
+        cls, user_ns: Namespace, checkpoint_file: str, exec_id: str, vses_to_store: List[VariableSnapshot]
     ) -> List[CheckpointAction]:
         if user_ns is None or checkpoint_file is None:
             raise ValueError("Fields are not properly initialized.")

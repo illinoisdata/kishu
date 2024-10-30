@@ -29,10 +29,7 @@ class Optimizer:
     """
 
     def __init__(
-        self,
-        ahg: AHG,
-        active_vss: List[VariableSnapshot],
-        already_stored_vss: Optional[Set[VersionedName]] = None
+        self, ahg: AHG, active_vss: List[VariableSnapshot], already_stored_vss: Optional[Set[VersionedName]] = None
     ) -> None:
         """
         Creates an optimizer with a migration speed estimate. The AHG and active VS fields
@@ -79,9 +76,11 @@ class Optimizer:
                 # Else, recurse into input variables of the CE.
                 prerequisite_ces.add(current.cell_num)
                 for vs in current.src_vss:
-                    if VersionedName(vs.name, vs.version) not in self.active_versioned_names \
-                            and VersionedName(vs.name, vs.version) not in self.already_stored_vss \
-                            and VersionedName(vs.name, vs.version) not in visited:
+                    if (
+                        VersionedName(vs.name, vs.version) not in self.active_versioned_names
+                        and VersionedName(vs.name, vs.version) not in self.already_stored_vss
+                        and VersionedName(vs.name, vs.version) not in visited
+                    ):
                         self.dfs_helper(vs, visited, prerequisite_ces)
 
         elif isinstance(current, VariableSnapshot):
@@ -130,9 +129,7 @@ class Optimizer:
             active_versioned_name = VersionedName(active_vs.name, active_vs.version)
             flow_graph.add_node(active_versioned_name)
             flow_graph.add_edge(
-                "source",
-                active_versioned_name,
-                capacity=active_vs.size / self._optimizer_context.network_bandwidth
+                "source", active_versioned_name, capacity=active_vs.size / self._optimizer_context.network_bandwidth
             )
 
         # Add all CEs as nodes, connect them with the sink with edge capacity equal to recomputation cost.
