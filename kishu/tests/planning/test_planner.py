@@ -153,83 +153,91 @@ def test_post_run_cell_update_return(enable_always_migrate):
     )
 
 
-def test_checkpoint_restore_planner_incremental_store_simple(enable_incremental_store, enable_always_migrate):
-    """
-    Test incremental store.
-    """
-    filename = KishuPath.database_path("test")
-    KishuCheckpoint(filename).init_database()
+class TestPlannerIncrementalCases:
+    @pytest.fixture
+    def db_path_name(self):
+        return KishuPath.database_path("test")
 
-    planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
+    @pytest.fixture
+    def kishu_checkpoint(self, db_path_name):
+        """Fixture for initializing a KishuBranch instance."""
+        kishu_checkpoint = KishuCheckpoint(db_path_name)
+        kishu_checkpoint.init_database()
+        yield kishu_checkpoint
+        kishu_checkpoint.drop_database()
 
-    # Run cell 1.
-    planner_manager.run_cell({"x": 1}, "x = 1")
+    def test_checkpoint_restore_planner_incremental_store_simple(
+        self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_checkpoint
+    ):
+        """
+        Test incremental store.
+        """
+        planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
 
-    # Create and run checkpoint plan for cell 1.
-    planner_manager.checkpoint_session(filename, "1:1")
+        # Run cell 1.
+        planner_manager.run_cell({"x": 1}, "x = 1")
 
-    # Run cell 2.
-    planner_manager.run_cell({"y": 2}, "y = x + 1")
+        # Create and run checkpoint plan for cell 1.
+        planner_manager.checkpoint_session(db_path_name, "1:1")
 
-    # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
+        # Run cell 2.
+        planner_manager.run_cell({"y": 2}, "y = x + 1")
 
-    # Assert that only 'y' is stored in the checkpoint plan - 'x' was stored in cell 1.
-    assert len(checkpoint_plan_cell2.actions) == 1
-    assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
-    assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset("y")
+        # Create and run checkpoint plan for cell 2.
+        checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
 
+        # Assert that only 'y' is stored in the checkpoint plan - 'x' was stored in cell 1.
+        assert len(checkpoint_plan_cell2.actions) == 1
+        assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
+        assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset("y")
 
-def test_checkpoint_restore_planner_incremental_store_skip_store(enable_incremental_store, enable_always_migrate):
-    """
-    Test incremental store.
-    """
-    filename = KishuPath.database_path("test")
-    KishuCheckpoint(filename).init_database()
+    def test_checkpoint_restore_planner_incremental_store_skip_store(
+        self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_checkpoint
+    ):
+        """
+        Test incremental store.
+        """
+        planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
 
-    planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
+        # Run cell 1.
+        x = 1
+        planner_manager.run_cell({"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
-    # Run cell 1.
-    x = 1
-    planner_manager.run_cell({"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
+        # Create and run checkpoint plan for cell 1.
+        planner_manager.checkpoint_session(db_path_name, "1:1")
 
-    # Create and run checkpoint plan for cell 1.
-    planner_manager.checkpoint_session(filename, "1:1")
+        # Run cell 2.
+        planner_manager.run_cell({}, "print(x)")
 
-    # Run cell 2.
-    planner_manager.run_cell({}, "print(x)")
+        # Create and run checkpoint plan for cell 2.
+        checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
 
-    # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
+        # Assert that nothing happens in the static cell 2.
+        assert len(checkpoint_plan_cell2.actions) == 1
+        assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 0
 
-    # Assert that nothing happens in the static cell 2.
-    assert len(checkpoint_plan_cell2.actions) == 1
-    assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 0
+    def test_checkpoint_restore_planner_incremental_store_no_skip_store(
+        self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_checkpoint
+    ):
+        """
+        Test incremental store.
+        """
+        planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
 
+        # Run cell 1.
+        x = 1
+        planner_manager.run_cell({"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
-def test_checkpoint_restore_planner_incremental_store_no_skip_store(enable_incremental_store, enable_always_migrate):
-    """
-    Test incremental store.
-    """
-    filename = KishuPath.database_path("test")
-    KishuCheckpoint(filename).init_database()
+        # Create and run checkpoint plan for cell 1.
+        planner_manager.checkpoint_session(db_path_name, "1:1")
 
-    planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))
+        # Run cell 2.
+        planner_manager.run_cell({}, "del z", {"z"})
 
-    # Run cell 1.
-    x = 1
-    planner_manager.run_cell({"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
+        # Create and run checkpoint plan for cell 2.
+        checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
 
-    # Create and run checkpoint plan for cell 1.
-    planner_manager.checkpoint_session(filename, "1:1")
-
-    # Run cell 2.
-    planner_manager.run_cell({}, "del z", {"z"})
-
-    # Create and run checkpoint plan for cell 2.
-    checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(filename, "1:2", ["1:1"])
-
-    # Assert that everything is stored again; {x, y} is a different VariableSnapshot vs. {x, y, z}.
-    assert len(checkpoint_plan_cell2.actions) == 1
-    assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
-    assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset({"x", "y"})
+        # Assert that everything is stored again; {x, y} is a different VariableSnapshot vs. {x, y, z}.
+        assert len(checkpoint_plan_cell2.actions) == 1
+        assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 1
+        assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset({"x", "y"})
