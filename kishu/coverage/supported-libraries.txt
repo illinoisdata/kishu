@@ -50,4 +50,6 @@ qiskit
 ipywidgets
 dill
 dask
+dataprep
+lightgbm
 pathlib
