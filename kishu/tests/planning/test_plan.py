@@ -35,7 +35,7 @@ class TestPlan:
 
     @pytest.fixture
     def kishu_checkpoint(self, db_path_name):
-        """Fixture for initializing a KishuBranch instance."""
+        """Fixture for initializing a KishuCheckpoint instance."""
         kishu_checkpoint = KishuCheckpoint(db_path_name)
         kishu_checkpoint.init_database()
         yield kishu_checkpoint
