@@ -4,6 +4,7 @@ from kishu.storage.commit_graph import (
     CommitNodeInfo,
     KishuCommitGraph,
 )
+from kishu.storage.path import KishuPath
 
 
 class TestCommitNodeInfo:
@@ -54,17 +55,17 @@ class TestCommitNodeInfo:
 class TestKishuCommitGraph:
 
     @pytest.fixture
-    def notebook_id(self):
-        return "test_notebook_id"
+    def database_path(self, nb_simple_path):
+        return KishuPath.database_path(nb_simple_path)
 
     @pytest.fixture
     def graph_name(self):
         return "test_graph"
 
     @pytest.fixture
-    def kishu_graph(self, notebook_id, graph_name):
+    def kishu_graph(self, database_path, graph_name):
         """Fixture for initializing a KishuBranch instance."""
-        kishu_graph = KishuCommitGraph(notebook_id, graph_name)
+        kishu_graph = KishuCommitGraph(database_path, graph_name)
         kishu_graph.init_database()
         yield kishu_graph
         kishu_graph.drop_database()
@@ -165,7 +166,7 @@ class TestKishuCommitGraph:
             CommitNodeInfo("A_B", "A_A"),
         }
 
-    def test_persist_on_file_after_reload(self, kishu_graph, notebook_id, graph_name):
+    def test_persist_on_file_after_reload(self, kishu_graph, database_path, graph_name):
         """Test persistence by creating a graph, deleting the graph store and reconstructing the store.
 
         The commit graph looks like:
@@ -195,7 +196,7 @@ class TestKishuCommitGraph:
         # Create new graph. This should load existing commit graph.
 
         del kishu_graph
-        kishu_graph = KishuCommitGraph(notebook_id, graph_name)
+        kishu_graph = KishuCommitGraph(database_path, graph_name)
         assert kishu_graph.get_commit() == CommitNodeInfo("A_B", "A_A")
         assert kishu_graph.get_commit("3") == CommitNodeInfo("3", "2")
         assert kishu_graph.get_commit("non_existent_commit_id") is None
@@ -240,7 +241,7 @@ class TestKishuCommitGraph:
         ]
         assert kishu_graph.head() == "A_B"
 
-    def test_many_steps(self, kishu_graph, notebook_id, graph_name):
+    def test_many_steps(self, kishu_graph, database_path, graph_name):
         """Test persistence after many steps."""
         NUM_STEP = 1000
         for idx in range(NUM_STEP):
@@ -250,5 +251,5 @@ class TestKishuCommitGraph:
 
         # Test persistence.
         del kishu_graph
-        kishu_graph = KishuCommitGraph(notebook_id, graph_name)
+        kishu_graph = KishuCommitGraph(database_path, graph_name)
         assert len(kishu_graph.list_history(str(NUM_STEP - 1))) == NUM_STEP

@@ -11,7 +11,6 @@ import dill
 from kishu.exceptions import MissingHistoryError
 from kishu.jupyter.namespace import Namespace
 
-
 # Alias for variable name
 VariableName = FrozenSet[str]
 

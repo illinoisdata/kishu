@@ -1,15 +1,14 @@
 import sqlite3
+from pathlib import Path
 from typing import Dict, List, Set
-
-from kishu.storage.path import KishuPath
 
 VARIABLE_VERSION_TABLE = "variable_version"
 COMMIT_VARIABLE_VERSION_TABLE = "commit_variable"
 
 
 class VariableVersion:
-    def __init__(self, notebook_id: str):
-        self.database_path = KishuPath.database_path(notebook_id)
+    def __init__(self, database_path: Path):
+        self.database_path = database_path
 
     def init_database(self):
         con = sqlite3.connect(self.database_path)

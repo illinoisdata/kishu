@@ -26,7 +26,7 @@ function UserRouter() {
         <BrowserRouter>
             <Routes>
                 <Route path="/" Component={Menu}/>
-                <Route path="/:notebookName" Component={App}/>
+                <Route path="/:notebookID" Component={App}/>
             </Routes>
         </BrowserRouter>
         </ConfigProvider>

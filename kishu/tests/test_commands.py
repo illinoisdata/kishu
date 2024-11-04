@@ -1,10 +1,9 @@
-import os
 import pytest
 
 from pathlib import Path
 from typing import List
 
-from kishu.diff import VariableVersionCompare
+from kishu.diff import VariableVersionCompare, CodeDiffHunk
 from tests.helpers.nbexec import KISHU_INIT_STR
 
 from kishu.commands import (
@@ -16,33 +15,33 @@ from kishu.commands import (
     FESelectedCommit,
     InstrumentStatus,
     KishuCommand,
-    KishuSession,
     TagResult,
 )
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import CommitEntryKind, CommitEntry
-from kishu.notebook_id import NotebookId
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
+from kishu.storage.path import KishuPath
 
 
 class TestKishuCommand:
-    def test_list(self, set_notebook_path_env, notebook_key, basic_execution_ids):
+
+    def test_list_noalive(self, set_notebook_path_env, notebook_key, basic_execution_ids):
         list_result = KishuCommand.list()
         assert len(list_result.sessions) == 0
 
-        # TODO: Test with alive sessions.
-        list_result = KishuCommand.list(list_all=True)
-        assert len(list_result.sessions) == 1
-        assert list_result.sessions[0] == KishuSession(
-            notebook_key=notebook_key,
-            kernel_id="test_kernel_id",
-            notebook_path=os.environ.get("TEST_NOTEBOOK_PATH"),
-            is_alive=False,
-        )
+        # TODO: Test list_all with non-alive sessions.
+        # list_result = KishuCommand.list(list_all=True)
+        # assert len(list_result.sessions) == 1
+        # assert list_result.sessions[0] == KishuSession(
+        #     notebook_key=notebook_key,
+        #     kernel_id="test_kernel_id",
+        #     notebook_path=os.environ.get("TEST_NOTEBOOK_PATH"),
+        #     is_alive=False,
+        # )
 
-    def test_log(self, notebook_key, basic_execution_ids):
-        log_result = KishuCommand.log(notebook_key, basic_execution_ids[-1])
+    def test_log(self, basic_notebook_path, basic_execution_ids):
+        log_result = KishuCommand.log(basic_notebook_path, basic_execution_ids[-1])
         assert len(log_result.commit_graph) == 3
         assert log_result.commit_graph[0] == CommitSummary(
             commit_id="0:0:1",
@@ -75,7 +74,7 @@ class TestKishuCommand:
             tags=[],
         )
 
-        log_result = KishuCommand.log(notebook_key, basic_execution_ids[0])
+        log_result = KishuCommand.log(basic_notebook_path, basic_execution_ids[0])
         assert len(log_result.commit_graph) == 1
         assert log_result.commit_graph[0] == CommitSummary(
             commit_id="0:0:1",
@@ -88,8 +87,8 @@ class TestKishuCommand:
             tags=[],
         )
 
-    def test_log_all(self, notebook_key, basic_execution_ids):
-        log_all_result = KishuCommand.log_all(notebook_key)
+    def test_log_all(self, basic_notebook_path, basic_execution_ids):
+        log_all_result = KishuCommand.log_all(basic_notebook_path)
         assert len(log_all_result.commit_graph) == 3
         assert log_all_result.commit_graph[0] == CommitSummary(
             commit_id="0:0:1",
@@ -122,8 +121,8 @@ class TestKishuCommand:
             tags=[],
         )
 
-    def test_status(self, notebook_key, basic_execution_ids):
-        status_result = KishuCommand.status(notebook_key, basic_execution_ids[-1])
+    def test_status(self, basic_notebook_path, basic_execution_ids):
+        status_result = KishuCommand.status(basic_notebook_path, basic_execution_ids[-1])
         assert status_result.commit_node_info == CommitNodeInfo(
             commit_id="0:0:3",
             parent_id="0:0:2",
@@ -153,17 +152,17 @@ class TestKishuCommand:
             restore_plan=status_result.commit_entry.restore_plan,  # Not tested
         )
 
-    def test_branch(self, notebook_key, basic_execution_ids):
-        branch_result = KishuCommand.branch(notebook_key, "at_head", None)
+    def test_branch(self, basic_notebook_path, basic_execution_ids):
+        branch_result = KishuCommand.branch(basic_notebook_path, "at_head", None)
         assert branch_result.status == "ok"
 
-        branch_result = KishuCommand.branch(notebook_key, "historical", basic_execution_ids[1])
+        branch_result = KishuCommand.branch(basic_notebook_path, "historical", basic_execution_ids[1])
         assert branch_result.status == "ok"
 
-    def test_branch_log(self, notebook_key, basic_execution_ids):
-        _ = KishuCommand.branch(notebook_key, "at_head", None)
-        _ = KishuCommand.branch(notebook_key, "historical", basic_execution_ids[1])
-        log_result = KishuCommand.log(notebook_key, basic_execution_ids[-1])
+    def test_branch_log(self, basic_notebook_path, basic_execution_ids):
+        _ = KishuCommand.branch(basic_notebook_path, "at_head", None)
+        _ = KishuCommand.branch(basic_notebook_path, "historical", basic_execution_ids[1])
+        log_result = KishuCommand.log(basic_notebook_path, basic_execution_ids[-1])
         assert len(log_result.commit_graph) == 3
         assert log_result.commit_graph[0] == CommitSummary(
             commit_id="0:0:1",
@@ -196,50 +195,50 @@ class TestKishuCommand:
             tags=[],
         )
 
-    def test_delete_basic(self, notebook_key, basic_execution_ids):
+    def test_delete_basic(self, basic_notebook_path, basic_execution_ids):
         branch_1 = "branch_1"
-        KishuCommand.branch(notebook_key, branch_1, basic_execution_ids[1])
+        KishuCommand.branch(basic_notebook_path, branch_1, basic_execution_ids[1])
 
-        delete_result = KishuCommand.delete_branch(notebook_key, branch_1)
+        delete_result = KishuCommand.delete_branch(basic_notebook_path, branch_1)
         assert delete_result.status == "ok"
 
-        log_result = KishuCommand.log(notebook_key, basic_execution_ids[-1])
+        log_result = KishuCommand.log(basic_notebook_path, basic_execution_ids[-1])
         for commit in log_result.commit_graph:
             assert branch_1 not in commit.branches
 
-    def test_delete_branch_none_existing_branch(self, notebook_key, basic_execution_ids):
-        delete_result = KishuCommand.delete_branch(notebook_key, "non_existing_branch")
+    def test_delete_branch_none_existing_branch(self, basic_notebook_path, basic_execution_ids):
+        delete_result = KishuCommand.delete_branch(basic_notebook_path, "non_existing_branch")
         assert delete_result.status == "error"
 
-    def test_delete_checked_out_branch(self, notebook_key, basic_execution_ids):
+    def test_delete_checked_out_branch(self, basic_notebook_path, basic_execution_ids):
         branch_1 = "branch_1"
-        KishuCommand.branch(notebook_key, branch_1, None)
+        KishuCommand.branch(basic_notebook_path, branch_1, None)
 
-        delete_result = KishuCommand.delete_branch(notebook_key, branch_1)
+        delete_result = KishuCommand.delete_branch(basic_notebook_path, branch_1)
         assert delete_result.status == "error"
 
-    def test_rename_branch_basic(self, notebook_key, basic_execution_ids):
+    def test_rename_branch_basic(self, basic_notebook_path, basic_execution_ids):
         branch_1 = "branch_1"
-        KishuCommand.branch(notebook_key, branch_1, None)
+        KishuCommand.branch(basic_notebook_path, branch_1, None)
 
-        rename_branch_result = KishuCommand.rename_branch(notebook_key, branch_1, "new_branch")
-        head = KishuBranch(notebook_key).get_head()
+        rename_branch_result = KishuCommand.rename_branch(basic_notebook_path, branch_1, "new_branch")
+        head = KishuBranch(KishuPath.database_path(basic_notebook_path)).get_head()
         assert rename_branch_result.status == "ok"
         assert head.branch_name == "new_branch"
 
-    def test_rename_branch_non_existing_branch(self, notebook_key, basic_execution_ids):
-        rename_branch_result = KishuCommand.rename_branch(notebook_key, "non_existing_branch", "new_branch")
+    def test_rename_branch_non_existing_branch(self, basic_notebook_path, basic_execution_ids):
+        rename_branch_result = KishuCommand.rename_branch(basic_notebook_path, "non_existing_branch", "new_branch")
         assert rename_branch_result.status == "error"
 
-    def test_rename_branch_new_repeating_branch(self, notebook_key, basic_execution_ids):
+    def test_rename_branch_new_repeating_branch(self, basic_notebook_path, basic_execution_ids):
         branch_1 = "branch_1"
-        KishuCommand.branch(notebook_key, branch_1, None)
+        KishuCommand.branch(basic_notebook_path, branch_1, None)
 
-        rename_branch_result = KishuCommand.rename_branch(notebook_key, branch_1, branch_1)
+        rename_branch_result = KishuCommand.rename_branch(basic_notebook_path, branch_1, branch_1)
         assert rename_branch_result.status == "error"
 
-    def test_auto_detach_commit_branch(self, kishu_jupyter):
-        kishu_branch = KishuBranch(kishu_jupyter._notebook_id.key())
+    def test_auto_detach_commit_branch(self, kishu_jupyter, basic_notebook_path):
+        kishu_branch = KishuBranch(KishuPath.database_path(basic_notebook_path))
         kishu_branch.update_head(branch_name=None, commit_id="0:0:1", is_detach=True)
         commit = CommitEntry(kind=CommitEntryKind.manual, execution_count=1, raw_cell="x = 1")
         commit_id = kishu_jupyter.commit(commit)
@@ -249,23 +248,23 @@ class TestKishuCommand:
         assert "_" in head.branch_name, f"Unexpected branch name {head.branch_name}"
         assert head.commit_id == commit_id
 
-    def test_tag(self, notebook_key, basic_execution_ids):
-        tag_result = KishuCommand.tag(notebook_key, "at_head", None, "In current time")
+    def test_tag(self, basic_notebook_path, basic_execution_ids):
+        tag_result = KishuCommand.tag(basic_notebook_path, "at_head", None, "In current time")
         assert tag_result.status == "ok"
         assert tag_result.tag_name == "at_head"
         assert tag_result.commit_id == basic_execution_ids[-1]
         assert tag_result.message == "In current time"
 
-        tag_result = KishuCommand.tag(notebook_key, "historical", basic_execution_ids[1], "")
+        tag_result = KishuCommand.tag(basic_notebook_path, "historical", basic_execution_ids[1], "")
         assert tag_result.status == "ok"
         assert tag_result.tag_name == "historical"
         assert tag_result.commit_id == basic_execution_ids[1]
         assert tag_result.message == ""
 
-    def test_tag_log(self, notebook_key, basic_execution_ids):
-        _ = KishuCommand.tag(notebook_key, "at_head", None, "In current time")
-        _ = KishuCommand.tag(notebook_key, "historical", basic_execution_ids[1], "")
-        log_result = KishuCommand.log(notebook_key, basic_execution_ids[-1])
+    def test_tag_log(self, basic_notebook_path, basic_execution_ids):
+        _ = KishuCommand.tag(basic_notebook_path, "at_head", None, "In current time")
+        _ = KishuCommand.tag(basic_notebook_path, "historical", basic_execution_ids[1], "")
+        log_result = KishuCommand.log(basic_notebook_path, basic_execution_ids[-1])
         assert len(log_result.commit_graph) == 3
         assert log_result.commit_graph[0] == CommitSummary(
             commit_id=basic_execution_ids[0],
@@ -298,8 +297,8 @@ class TestKishuCommand:
             tags=["at_head"],
         )
 
-    def test_create_tag_specific(self, notebook_key, basic_execution_ids):
-        tag_result = KishuCommand.tag(notebook_key, "tag_1", basic_execution_ids[1], "At specific")
+    def test_create_tag_specific(self, basic_notebook_path, basic_execution_ids):
+        tag_result = KishuCommand.tag(basic_notebook_path, "tag_1", basic_execution_ids[1], "At specific")
         assert tag_result == TagResult(
             status="ok",
             tag_name="tag_1",
@@ -307,39 +306,39 @@ class TestKishuCommand:
             message="At specific",
         )
 
-    def test_tag_list(self, notebook_key, basic_execution_ids):
-        _ = KishuCommand.tag(notebook_key, "tag_1", None, "")
-        _ = KishuCommand.tag(notebook_key, "tag_2", None, "")
-        _ = KishuCommand.tag(notebook_key, "tag_3", None, "")
+    def test_tag_list(self, basic_notebook_path, basic_execution_ids):
+        _ = KishuCommand.tag(basic_notebook_path, "tag_1", None, "")
+        _ = KishuCommand.tag(basic_notebook_path, "tag_2", None, "")
+        _ = KishuCommand.tag(basic_notebook_path, "tag_3", None, "")
 
-        list_tag_result = KishuCommand.list_tag(notebook_key)
+        list_tag_result = KishuCommand.list_tag(basic_notebook_path)
         assert len(list_tag_result.tags) == 3
         assert set(tag.tag_name for tag in list_tag_result.tags) == {"tag_1", "tag_2", "tag_3"}
 
-    def test_delete_tag(self, notebook_key, basic_execution_ids):
-        _ = KishuCommand.tag(notebook_key, "tag_1", None, "")
+    def test_delete_tag(self, basic_notebook_path, basic_execution_ids):
+        _ = KishuCommand.tag(basic_notebook_path, "tag_1", None, "")
 
-        delete_tag_result = KishuCommand.delete_tag(notebook_key, "tag_1")
+        delete_tag_result = KishuCommand.delete_tag(basic_notebook_path, "tag_1")
         assert delete_tag_result == DeleteTagResult(
             status="ok",
             message="Tag tag_1 deleted.",
         )
 
-    def test_delete_tag_nonexisting(self, notebook_key, basic_execution_ids):
-        _ = KishuCommand.tag(notebook_key, "tag_1", None, "")
+    def test_delete_tag_nonexisting(self, basic_notebook_path, basic_execution_ids):
+        _ = KishuCommand.tag(basic_notebook_path, "tag_1", None, "")
 
-        delete_tag_result = KishuCommand.delete_tag(notebook_key, "NON_EXISTENT_TAG")
+        delete_tag_result = KishuCommand.delete_tag(basic_notebook_path, "NON_EXISTENT_TAG")
         assert delete_tag_result == DeleteTagResult(
             status="error",
             message="The provided tag 'NON_EXISTENT_TAG' does not exist.",
         )
 
-    def test_fe_commit_graph(self, notebook_key, basic_execution_ids):
-        fe_commit_graph_result = KishuCommand.fe_commit_graph(notebook_key)
+    def test_fe_commit_graph(self, basic_notebook_path, basic_execution_ids):
+        fe_commit_graph_result = KishuCommand.fe_commit_graph(basic_notebook_path)
         assert len(fe_commit_graph_result.commits) == 3
 
-    def test_fe_commit(self, notebook_key, basic_execution_ids):
-        fe_commit_result = KishuCommand.fe_commit(notebook_key, basic_execution_ids[-1], vardepth=0)
+    def test_fe_commit(self, basic_notebook_path, basic_execution_ids):
+        fe_commit_result = KishuCommand.fe_commit(basic_notebook_path, basic_execution_ids[-1], vardepth=0)
         assert fe_commit_result == FESelectedCommit(
             commit=FECommit(
                 oid=basic_execution_ids[-1],
@@ -434,15 +433,8 @@ class TestKishuCommand:
             for i in range(cell_num_to_restore, len(contents)):
                 notebook_session.run_code(contents[i])
 
-            # Get the notebook key of the session.
-            list_result = KishuCommand.list()
-            assert len(list_result.sessions) == 1
-            assert list_result.sessions[0].notebook_path is not None
-            assert Path(list_result.sessions[0].notebook_path).name == notebook_name
-            notebook_key = list_result.sessions[0].notebook_key
-
             # Get commit id of commit which we want to restore
-            log_result = KishuCommand.log_all(notebook_key)
+            log_result = KishuCommand.log_all(notebook_path)
             assert len(log_result.commit_graph) == len(contents) + 1  # all cells + init cell + print variable cell
             commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
 
@@ -472,15 +464,12 @@ class TestKishuCommand:
             for i in range(len(contents)):
                 notebook_session.run_code(contents[i])
 
-            # Get the notebook key of the session.
-            notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path)
-
             # Get commit id of commit which we want to restore
-            log_result = KishuCommand.log(notebook_key)
+            log_result = KishuCommand.log(notebook_path)
             commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
 
             # Executed cells should contain all cells from contents.
-            status_result = KishuCommand.status(notebook_key, commit_id)
+            status_result = KishuCommand.status(notebook_path, commit_id)
             assert status_result.commit_entry.executed_cells == [
                 "",  # PYTHONSTARTUP, https://ipython.readthedocs.io/en/stable/interactive/reference.html
                 *contents[: cell_num_to_restore + 1],
@@ -495,9 +484,9 @@ class TestKishuCommand:
             notebook_session.run_code("y = x + 10")
 
             # Executed cells should work.
-            log_result_2 = KishuCommand.log(notebook_key)
+            log_result_2 = KishuCommand.log(notebook_path)
             commit_id_2 = log_result_2.commit_graph[-1].commit_id
-            status_result_2 = KishuCommand.status(notebook_key, commit_id_2)
+            status_result_2 = KishuCommand.status(notebook_path, commit_id_2)
             assert status_result_2.commit_entry.executed_cells == [
                 "",  # PYTHONSTARTUP, https://ipython.readthedocs.io/en/stable/interactive/reference.html
                 *contents[: cell_num_to_restore + 1],
@@ -525,15 +514,12 @@ class TestKishuCommand:
             for i in range(len(contents)):
                 notebook_session.run_code(contents[i])
 
-            # Get the notebook key of the session.
-            notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path)
-
             # Get commit id of commit which we want to restore
-            log_result = KishuCommand.log(notebook_key)
+            log_result = KishuCommand.log(notebook_path)
             commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
             parent_commit_id = log_result.commit_graph[cell_num_to_restore - 1].commit_id
             latest_commit_id = log_result.commit_graph[-1].commit_id
-            fe_commit_result = KishuCommand.fe_commit(notebook_key, commit_id, vardepth=0)
+            fe_commit_result = KishuCommand.fe_commit(notebook_path, commit_id, vardepth=0)
             assert fe_commit_result == FESelectedCommit(
                 commit=FECommit(
                     oid=commit_id,
@@ -565,9 +551,9 @@ class TestKishuCommand:
             notebook_session.run_code("x = 1")
 
             # Executed cells should work.
-            log_result_2 = KishuCommand.log(notebook_key)
+            log_result_2 = KishuCommand.log(notebook_path)
             commit_id_2 = log_result_2.commit_graph[-1].commit_id
-            fe_commit_result_2 = KishuCommand.fe_commit(notebook_key, commit_id_2, vardepth=0)
+            fe_commit_result_2 = KishuCommand.fe_commit(notebook_path, commit_id_2, vardepth=0)
             print(fe_commit_result_2)
             assert fe_commit_result_2 == FESelectedCommit(
                 commit=FECommit(
@@ -619,15 +605,8 @@ class TestKishuCommand:
             for i in range(cell_num_to_restore, len(contents)):
                 notebook_session.run_code(contents[i])
 
-            # Get notebook key
-            list_result = KishuCommand.list()
-            assert len(list_result.sessions) == 1
-            assert list_result.sessions[0].notebook_path is not None
-            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
-            notebook_key = list_result.sessions[0].notebook_key
-
             # Verifying correct number of entries in commit graph
-            log_result = KishuCommand.log_all(notebook_key)
+            log_result = KishuCommand.log_all(notebook_path)
             assert len(log_result.commit_graph) == len(contents) + 1  # all contents + init cell
             len_log_result_before = len(log_result.commit_graph)
 
@@ -638,7 +617,7 @@ class TestKishuCommand:
                 notebook_session.run_code(contents[i])
 
             # Get commit id of commit which we want to restore
-            log_result = KishuCommand.log_all(notebook_key)
+            log_result = KishuCommand.log_all(notebook_path)
             assert len(log_result.commit_graph) == len_log_result_before  # Nothing on this session should have been tracked
 
             commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
@@ -670,27 +649,20 @@ class TestKishuCommand:
             for i in range(len(contents)):
                 notebook_session.run_code(contents[i])
 
-            # Get notebook key
-            list_result = KishuCommand.list()
-            assert len(list_result.sessions) == 1
-            assert list_result.sessions[0].notebook_path is not None
-            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
-            notebook_key = list_result.sessions[0].notebook_key
-
         # Starting second notebook session
         with jupyter_server.start_session(notebook_path) as notebook_session:
             # Run all notebook cells, note no init cell ran
             notebook_session.run_code(f"{var_to_compare} = {value_of_var}")
 
             # Get commit id of commit which we want to restore
-            log_result = KishuCommand.log_all(notebook_key)
+            log_result = KishuCommand.log_all(notebook_path)
             assert len(log_result.commit_graph) == len(contents)  # Nothing on this session should have been tracked
 
             # Prior to recent fix, this commit is where a KeyError would occur as the variable set changed while untracked
             commit_result = KishuCommand.commit(notebook_path, "Reattatch_commit")
             assert commit_result.reattachment.status == InstrumentStatus.reattach_succeeded
 
-            log_result = KishuCommand.log_all(notebook_key)
+            log_result = KishuCommand.log_all(notebook_path)
             assert len(log_result.commit_graph) == len(contents) + 1  # Addition of the new cell
 
             commit_id = log_result.commit_graph[-1].commit_id
@@ -714,12 +686,11 @@ class TestKishuCommand:
         with jupyter_server.start_session(notebook_path) as notebook_session:
             # Create a commit
             notebook_session.run_code(KISHU_INIT_STR, silent=True)
-            notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path)
             commit_result = KishuCommand.commit(notebook_path, "Wrong message")
             assert commit_result.status == "ok"
 
             # Get most recent commit ID.
-            log_result = KishuCommand.log_all(notebook_key)
+            log_result = KishuCommand.log_all(notebook_path)
             commit_id = log_result.commit_graph[-1].commit_id
 
             # Edit the commit.
@@ -734,7 +705,7 @@ class TestKishuCommand:
             ]
 
             # Assert commit in database
-            status_result = KishuCommand.status(notebook_key, commit_id)
+            status_result = KishuCommand.status(notebook_path, commit_id)
             assert status_result.commit_entry.message == "Correct one"
 
     def test_edit_commit_by_branch_name(
@@ -748,16 +719,15 @@ class TestKishuCommand:
         with jupyter_server.start_session(notebook_path) as notebook_session:
             # Create a commit
             notebook_session.run_code(KISHU_INIT_STR, silent=True)
-            notebook_key = NotebookId.parse_key_from_path_or_key(notebook_path)
             commit_result = KishuCommand.commit(notebook_path, "Wrong message")
             assert commit_result.status == "ok"
 
             # Get most recent commit ID.
-            log_result = KishuCommand.log_all(notebook_key)
+            log_result = KishuCommand.log_all(notebook_path)
             commit_id = log_result.commit_graph[-1].commit_id
 
             # Create a branch at current commit.
-            branch_result = KishuCommand.branch(notebook_key, "stick", None)
+            branch_result = KishuCommand.branch(notebook_path, "stick", None)
             assert branch_result.status == "ok"
             assert branch_result.branch_name == "stick"
             assert branch_result.commit_id == commit_id
@@ -774,7 +744,7 @@ class TestKishuCommand:
             ]
 
             # Assert commit in database
-            status_result = KishuCommand.status(notebook_key, commit_id)
+            status_result = KishuCommand.status(notebook_path, commit_id)
             assert status_result.commit_entry.message == "Correct one"
 
     def test_edit_commit_by_commit_id_not_exist(
@@ -838,25 +808,55 @@ class TestKishuCommand:
             for content in contents[0:2]:
                 notebook_session.run_code(content)
 
-            # Get notebook key
-            list_result = KishuCommand.list()
-            assert len(list_result.sessions) == 1
-            assert list_result.sessions[0].notebook_path is not None
-            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
-            notebook_key = list_result.sessions[0].notebook_key
-
             # get the commit ids
-            commits = KishuCommand.log_all(notebook_key).commit_graph
+            commits = KishuCommand.log_all(notebook_path).commit_graph
             source_commit_id = commits[0].commit_id
             dest_commit_id = commits[-1].commit_id
 
-            diff_result = KishuCommand.variable_diff(notebook_key, source_commit_id, dest_commit_id)
+            diff_result = KishuCommand.variable_diff(notebook_path, source_commit_id, dest_commit_id)
             assert set(diff_result) == {
                 VariableVersionCompare("a", "destination_only"),
                 VariableVersionCompare("z", "destination_only"),
                 VariableVersionCompare("y", "destination_only"),
                 VariableVersionCompare("x", "both_different_version"),
             }
+
+    def test_fe_code_diff(self, jupyter_server, tmp_nb_path):
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+            for content in contents[0:2]:
+                notebook_session.run_code(content)
+
+            # get the commit ids
+            commits = KishuCommand.log_all(notebook_path).commit_graph
+            source_commit_id = commits[0].commit_id
+            dest_commit_id = commits[-1].commit_id
+
+            diff_result = KishuCommand.fe_code_diff(notebook_path, source_commit_id, dest_commit_id)
+
+            assert diff_result.executed_cells_diff == [
+                CodeDiffHunk(option="Both", content="", sub_diff_hunks=None),
+                CodeDiffHunk(option="Both", content="x = 1", sub_diff_hunks=None),
+                CodeDiffHunk(
+                    option="Destination_only", content="y = x\nx = x + 1\nz = 1\na = 1\ndel a\na = 2", sub_diff_hunks=None
+                ),
+            ]
+
+            assert diff_result.notebook_cells_diff == [
+                CodeDiffHunk(option="Both", content="x = 1", sub_diff_hunks=None),
+                CodeDiffHunk(option="Both", content="y = x\nx = x + 1\nz = 1\na = 1\ndel a\na = 2", sub_diff_hunks=None),
+                CodeDiffHunk(
+                    option="Both",
+                    content="# Record imported libraries\nimport numpy as np\nfrom numpy import random",
+                    sub_diff_hunks=None,
+                ),
+                CodeDiffHunk(option="Both", content="b = 1", sub_diff_hunks=None),
+                CodeDiffHunk(option="Both", content="def func():\n    global b\n    b += 1\nfunc()", sub_diff_hunks=None),
+                CodeDiffHunk(option="Both", content="del a", sub_diff_hunks=None),
+            ]
 
     def test_variable_filter(self, jupyter_server, tmp_nb_path):
         notebook_path = tmp_nb_path("simple.ipynb")
@@ -867,20 +867,13 @@ class TestKishuCommand:
             for content in contents:
                 notebook_session.run_code(content)
 
-            # Get notebook key
-            list_result = KishuCommand.list()
-            assert len(list_result.sessions) == 1
-            assert list_result.sessions[0].notebook_path is not None
-            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
-            notebook_key = list_result.sessions[0].notebook_key
+            commits = KishuCommand.log_all(notebook_path).commit_graph
 
-            commits = KishuCommand.log_all(notebook_key).commit_graph
-
-            diff_result = KishuCommand.find_var_change(notebook_key, "b")
+            diff_result = KishuCommand.find_var_change(notebook_path, "b")
             assert diff_result == FEFindVarChangeResult([commits[3].commit_id, commits[4].commit_id])
-            diff_result = KishuCommand.find_var_change(notebook_key, "y")
+            diff_result = KishuCommand.find_var_change(notebook_path, "y")
             assert diff_result == FEFindVarChangeResult([commits[1].commit_id])
-            diff_result = KishuCommand.find_var_change(notebook_key, "a")
+            diff_result = KishuCommand.find_var_change(notebook_path, "a")
             assert diff_result == FEFindVarChangeResult([commits[1].commit_id, commits[5].commit_id])
 
     def test_undo(self, jupyter_server, tmp_nb_path):
@@ -894,22 +887,15 @@ class TestKishuCommand:
             for content in contents[0:2]:
                 notebook_session.run_code(content)
 
-            # Get notebook key.
-            list_result = KishuCommand.list()
-            assert len(list_result.sessions) == 1
-            assert list_result.sessions[0].notebook_path is not None
-            assert Path(list_result.sessions[0].notebook_path).name == "simple.ipynb"
-            notebook_key = list_result.sessions[0].notebook_key
-
-            commits = KishuCommand.log_all(notebook_key).commit_graph
+            commits = KishuCommand.log_all(notebook_path).commit_graph
 
             # Undo and assert the head id after undo is correct.
-            undoResult = KishuCommand.undo(notebook_key)
+            undoResult = KishuCommand.undo(notebook_path)
             assert undoResult.status == "ok"
-            head = KishuBranch(notebook_key).get_head()
+            head = KishuBranch(KishuPath.database_path(notebook_path)).get_head()
             assert head.commit_id == commits[0].commit_id
 
             # Undo when current node is root.
-            undoResult = KishuCommand.undo(notebook_key)
+            undoResult = KishuCommand.undo(notebook_path)
             assert undoResult.status == "ok"
             assert undoResult.message == "No more commits to undo/checkout from root."

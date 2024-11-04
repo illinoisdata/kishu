@@ -9,8 +9,8 @@ from kishu.storage.path import KishuPath
 
 class TestKishuCheckpoint:
     @pytest.fixture
-    def db_path_name(self):
-        return KishuPath.database_path("test")
+    def db_path_name(self, nb_simple_path):
+        return KishuPath.database_path(nb_simple_path)
 
     @pytest.fixture
     def kishu_checkpoint(self, db_path_name):

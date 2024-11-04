@@ -4,10 +4,10 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain, combinations
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
-
 from kishu.planning.ahg import AHG, AHGUpdateInfo, VariableName, VersionedName
 from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import Optimizer
@@ -148,7 +148,7 @@ class CheckpointRestorePlanner:
         return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
 
     def generate_checkpoint_restore_plans(
-        self, database_path: str, commit_id: str, parent_commit_ids: Optional[List[str]] = None
+        self, database_path: Path, commit_id: str, parent_commit_ids: Optional[List[str]] = None
     ) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = self._ahg.get_active_variable_snapshots()

@@ -58,14 +58,14 @@ def set_test_mode() -> Generator[None, None, None]:
 # Use this fixture to mount Kishu in a temporary directory.
 @pytest.fixture(autouse=True)
 def tmp_kishu_path(tmp_path: Path) -> Generator[Type[KishuPath], None, None]:
-    original_root = os.environ.get(ENV_KISHU_PATH_ROOT, None)
+    original_env_root = os.environ.get(ENV_KISHU_PATH_ROOT, None)
     os.environ[ENV_KISHU_PATH_ROOT] = str(tmp_path)
     original_root = KishuPath.ROOT
-    KishuPath.ROOT = str(tmp_path)
+    KishuPath.ROOT = tmp_path
     yield KishuPath
     KishuPath.ROOT = original_root
-    if original_root is not None:
-        os.environ[ENV_KISHU_PATH_ROOT] = original_root
+    if original_env_root is not None:
+        os.environ[ENV_KISHU_PATH_ROOT] = original_env_root
     else:
         del os.environ[ENV_KISHU_PATH_ROOT]
 
@@ -107,7 +107,7 @@ def nb_simple_path(tmp_nb_path: Callable[[str], Path]) -> Path:
 @pytest.fixture(autouse=True)
 def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
     prev_config_path = Config.CONFIG_PATH
-    Config.CONFIG_PATH = os.path.join(KishuPath.kishu_directory(), "config.ini")
+    Config.CONFIG_PATH = KishuPath.config_path()
     yield Config
     Config.CONFIG_PATH = prev_config_path
 
@@ -256,6 +256,16 @@ def kishu_jupyter(tmp_kishu_path, notebook_key, set_notebook_path_env) -> Genera
     ip = InteractiveShell()
     kishu_jupyter = KishuForJupyter(notebook_id=NotebookId.from_enclosing_with_key(notebook_key), ip=ip)
     yield kishu_jupyter
+
+
+@pytest.fixture()
+def basic_notebook(kishu_jupyter, set_notebook_path_env) -> Generator[str, None, None]:
+    yield set_notebook_path_env
+
+
+@pytest.fixture()
+def basic_notebook_path(basic_notebook) -> Generator[Path, None, None]:
+    yield Path(basic_notebook)
 
 
 @pytest.fixture()

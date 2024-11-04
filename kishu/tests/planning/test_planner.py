@@ -1,5 +1,6 @@
 import pytest
 
+from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
@@ -41,14 +42,16 @@ class PlannerManager:
         return self.planner.post_run_cell_update(cell_code, cell_runtime)
 
     def checkpoint_session(
-        self, filename: str, commit_id: str, parent_commit_ids: Optional[List[str]] = None
+        self, database_path: Path, commit_id: str, parent_commit_ids: Optional[List[str]] = None
     ) -> Tuple[CheckpointPlan, RestorePlan]:
-        checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(filename, commit_id, parent_commit_ids)
+        checkpoint_plan, restore_plan = self.planner.generate_checkpoint_restore_plans(
+            database_path, commit_id, parent_commit_ids
+        )
         checkpoint_plan.run(self.planner._user_ns)
         return checkpoint_plan, restore_plan
 
 
-def test_checkpoint_restore_planner(enable_always_migrate):
+def test_checkpoint_restore_planner(enable_always_migrate, nb_simple_path):
     """
     Test running a few cell updates.
     """
@@ -72,7 +75,8 @@ def test_checkpoint_restore_planner(enable_always_migrate):
     assert len(planner.get_id_graph_map().keys()) == 2
 
     # Create checkpoint and restore plans.
-    checkpoint_plan, restore_plan = planner.generate_checkpoint_restore_plans("fake_path", "fake_commit_id")
+    database_path = KishuPath.database_path(nb_simple_path)
+    checkpoint_plan, restore_plan = planner.generate_checkpoint_restore_plans(database_path, "fake_commit_id")
 
     # Assert the plans have appropriate actions.
     assert len(checkpoint_plan.actions) == 1
@@ -155,8 +159,8 @@ def test_post_run_cell_update_return(enable_always_migrate):
 
 class TestPlannerIncrementalCases:
     @pytest.fixture
-    def db_path_name(self):
-        return KishuPath.database_path("test")
+    def db_path_name(self, nb_simple_path):
+        return KishuPath.database_path(nb_simple_path)
 
     @pytest.fixture
     def kishu_checkpoint(self, db_path_name):
