@@ -19,6 +19,7 @@ from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import CommitEntry, CommitEntryKind, NotebookCommitState
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
+from kishu.storage.config import Config
 from kishu.storage.path import KishuPath
 from tests.helpers.nbexec import KISHU_INIT_STR
 
@@ -394,16 +395,7 @@ class TestKishuCommand:
             list_result = KishuCommand.list()
             assert len(list_result.sessions) == 0
 
-    @pytest.mark.parametrize(
-        ("notebook_name", "cell_num_to_restore", "var_to_compare"),
-        [
-            ("numpy.ipynb", 4, "iris_X_train"),
-            ("simple.ipynb", 4, "b"),
-            ("test_unserializable_var.ipynb", 2, "next(gen)"),  # directly printing gen prints out its memory address.
-            pytest.param("QiskitDemo_NCSA_May2023.ipynb", 61, "qc", marks=pytest.mark.skip(reason="Flaky")),
-        ],
-    )
-    def test_end_to_end_checkout(
+    def _test_end_to_end_checkout(
         self,
         tmp_nb_path,
         jupyter_server,
@@ -444,6 +436,63 @@ class TestKishuCommand:
             # Get the variable value after checkout.
             _, var_value_after = notebook_session.run_code(f"repr({var_to_compare})")
             assert var_value_before == var_value_after
+
+    @pytest.mark.parametrize(
+        ("notebook_name", "cell_num_to_restore", "var_to_compare"),
+        [
+            ("numpy.ipynb", 4, "iris_X_train"),
+            ("simple.ipynb", 4, "b"),
+            ("test_unserializable_var.ipynb", 2, "next(gen)"),  # directly printing gen prints out its memory address.
+            pytest.param("QiskitDemo_NCSA_May2023.ipynb", 61, "qc", marks=pytest.mark.skip(reason="Flaky")),
+        ],
+    )
+    def test_end_to_end_checkout(
+        self,
+        tmp_nb_path,
+        jupyter_server,
+        notebook_name: str,
+        cell_num_to_restore: int,
+        var_to_compare: str,
+    ):
+        self._test_end_to_end_checkout(
+            tmp_nb_path,
+            jupyter_server,
+            notebook_name,
+            cell_num_to_restore,
+            var_to_compare,
+        )
+
+    @pytest.mark.parametrize(
+        ("notebook_name", "cell_num_to_restore", "var_to_compare"),
+        [
+            ("numpy.ipynb", 4, "iris_X_train"),
+            ("simple.ipynb", 4, "b"),
+            pytest.param(
+                "test_unserializable_var.ipynb",
+                2,
+                "next(gen)",
+                marks=pytest.mark.skip(reason="TODO: import fix from zl20/vldb_2025 in future PR."),
+            ),
+            pytest.param("QiskitDemo_NCSA_May2023.ipynb", 61, "qc", marks=pytest.mark.skip(reason="Flaky")),
+        ],
+    )
+    def test_incremental_end_to_end_checkout(
+        self,
+        tmp_nb_path,
+        enable_incremental_store,
+        jupyter_server,
+        notebook_name: str,
+        cell_num_to_restore: int,
+        var_to_compare: str,
+    ):
+        assert Config.get("PLANNER", "incremental_store", False)
+        self._test_end_to_end_checkout(
+            tmp_nb_path,
+            jupyter_server,
+            notebook_name,
+            cell_num_to_restore,
+            var_to_compare,
+        )
 
     def test_track_executed_cells_with_checkout(
         self,

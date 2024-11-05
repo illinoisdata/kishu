@@ -123,19 +123,6 @@ class PostWithoutPreError(Exception):
 
 
 """
-Raised by plan
-"""
-
-
-class DuplicateRestoreActionError(Exception):
-    def __init__(self, cell_num: int, is_load_var: bool):
-        if is_load_var:
-            super().__init__(f"A load variable restore action exists for cell number {cell_num}.")
-        else:
-            super().__init__(f"A rerun cell restore action exists for cell number {cell_num}.")
-
-
-"""
 Raised by planner
 """
 

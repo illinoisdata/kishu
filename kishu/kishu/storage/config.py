@@ -1,9 +1,14 @@
 import ast
 import configparser
+import dill
 import os
+import sqlite3
+from pathlib import Path
 from typing import Any
 
 from kishu.storage.path import KishuPath
+
+PERSISTENT_CONFIG_TABLE = "persistent_config"
 
 
 class Config:
@@ -94,3 +99,56 @@ class Config:
         Config.config[config_category][config_entry] = str(config_value)
 
         Config._write_config_file()
+
+
+class PersistentConfig:
+    def __init__(self, database_path: Path):
+        self.database_path = database_path
+
+    def init_database(self):
+        """
+        Creates the table for storing persistent configs. Persistent configs are initialized
+        upon session start (e.g., incremental_store) and cannot be mutated.
+        """
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        cur.execute(
+            f"""create table if not exists {PERSISTENT_CONFIG_TABLE} """
+            """(config_category text, config_entry text, config_value blob)"""
+        )
+        con.commit()
+
+    def drop_database(self):
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        cur.execute(f"drop table if exists {PERSISTENT_CONFIG_TABLE}")
+        con.commit()
+
+    def _set_from_config(self, config_category: str, config_entry: str, config_value: Any) -> None:
+        config_value = Config.get(config_category, config_entry, config_value)
+        config_value_dill = dill.dumps(config_value)
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        cur.execute(
+            f"insert into {PERSISTENT_CONFIG_TABLE} values (?, ?, ?)",
+            (config_category, config_entry, memoryview(config_value_dill)),
+        )
+        con.commit()
+
+    def get(self, config_category: str, config_entry: str, default: Any) -> Any:
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        cur.execute(
+            f"select config_value from {PERSISTENT_CONFIG_TABLE} where config_category = ? and config_entry = ?",
+            (
+                config_category,
+                config_entry,
+            ),
+        )
+        res: tuple = cur.fetchone()
+        if not res:
+            self._set_from_config(config_category, config_entry, default)
+            return self.get(config_category, config_entry, default)
+        result = dill.loads(res[0])
+        con.commit()
+        return result

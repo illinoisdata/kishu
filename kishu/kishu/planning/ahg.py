@@ -270,6 +270,12 @@ class AHG:
         """
         return dill.loads(ahg_string.encode("latin1"))
 
+    def clone(self) -> AHG:
+        """
+        Deep copies all fields (e.g., VSes, cell executions) into a new AHG. For testing.
+        """
+        return AHG.deserialize(self.serialize())
+
     @staticmethod
     def union_find(variables: Set[str], linked_variables: List[Tuple[str, str]]) -> Set[VariableName]:
         roots: Dict[str, str] = {}

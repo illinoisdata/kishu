@@ -57,6 +57,26 @@ class KishuCheckpoint:
         cur.execute(f"insert into {CHECKPOINT_TABLE} values (?, ?)", (commit_id, memoryview(data)))
         con.commit()
 
+    def get_variable_snapshots(self, versioned_names: List[VersionedName]) -> List[bytes]:
+        """
+        Get the data of variable snapshots from their name and versions.
+        This function does not handle unpickling; that would be done in the RestoreActions
+        as the fallback recomputation of objects is handled in those classes.
+        """
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        param_list = [(vn.version, KishuCheckpoint.encode_name(vn.name)) for vn in versioned_names]
+        query = f"""select data from {VARIABLE_SNAPSHOT_TABLE} where """ + " OR ".join(
+            ["(version = ? AND name = ?)"] * len(param_list)
+        )
+        cur.execute(query, [i for t in param_list for i in t])
+
+        res: List = cur.fetchall()
+        res_list = [i[0] for i in res]
+        if len(res_list) != len(versioned_names):
+            raise ValueError(f"length of results {len(res_list)} not equal to queries {len(versioned_names)}:")
+        return res_list
+
     def get_stored_versioned_names(self, commit_ids: List[str]) -> Set[VersionedName]:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
