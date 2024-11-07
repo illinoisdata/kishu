@@ -1,14 +1,14 @@
 import datetime
 import json
-import requests
 import subprocess
 import time
 import uuid
-import websocket
-
 from pathlib import Path
-from requests.adapters import HTTPAdapter
 from typing import Any, Dict, Optional, Tuple
+
+import requests
+import websocket
+from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
 from kishu.jupyter.runtime import JupyterRuntimeEnv

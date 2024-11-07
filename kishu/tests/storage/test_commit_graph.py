@@ -1,9 +1,6 @@
 import pytest
 
-from kishu.storage.commit_graph import (
-    CommitNodeInfo,
-    KishuCommitGraph,
-)
+from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath
 
 

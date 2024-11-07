@@ -1,9 +1,9 @@
 import pickle
-import pytest
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pytest
 import seaborn as sns
 
 from kishu.planning.idgraph import get_object_hash, get_object_state, value_equals

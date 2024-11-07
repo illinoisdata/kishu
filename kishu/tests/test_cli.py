@@ -1,18 +1,13 @@
-import pytest
-
-from typer.testing import CliRunner
 from typing import Generator, List
 
-from kishu import __app_name__, __version__
-from kishu.exceptions import (
-    KishuNotInitializedError,
-    NotebookNotFoundError,
-    PathIsNotNotebookError,
-)
-from kishu.cli import kishu_app, kishu_experimental_app
+import pytest
+from typer.testing import CliRunner
 
-from tests.helpers.nbexec import KISHU_INIT_STR
+from kishu import __app_name__, __version__
+from kishu.cli import kishu_app, kishu_experimental_app
+from kishu.exceptions import KishuNotInitializedError, NotebookNotFoundError, PathIsNotNotebookError
 from kishu.jupyter.runtime import JupyterRuntimeEnv
+from tests.helpers.nbexec import KISHU_INIT_STR
 
 
 @pytest.fixture()

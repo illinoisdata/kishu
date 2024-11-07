@@ -1,10 +1,10 @@
-import pytest
-
 from typing import Generator
 
+import pytest
+
 from kishu.planning.ahg import AHG, VariableSnapshot, VersionedName
+from kishu.planning.optimizer import REALLY_FAST_BANDWIDTH_10GBPS, Optimizer
 from kishu.storage.config import Config
-from kishu.planning.optimizer import Optimizer, REALLY_FAST_BANDWIDTH_10GBPS
 
 
 @pytest.fixture()

@@ -1,10 +1,7 @@
-import pytest
-
 from pathlib import Path
 from typing import List
 
-from kishu.diff import VariableVersionCompare, CodeDiffHunk
-from tests.helpers.nbexec import KISHU_INIT_STR
+import pytest
 
 from kishu.commands import (
     CommitSummary,
@@ -17,11 +14,13 @@ from kishu.commands import (
     KishuCommand,
     TagResult,
 )
+from kishu.diff import CodeDiffHunk, VariableVersionCompare
 from kishu.jupyter.runtime import JupyterRuntimeEnv
-from kishu.jupyterint import CommitEntryKind, CommitEntry
+from kishu.jupyterint import CommitEntry, CommitEntryKind
 from kishu.storage.branch import KishuBranch
 from kishu.storage.commit_graph import CommitNodeInfo
 from kishu.storage.path import KishuPath
+from tests.helpers.nbexec import KISHU_INIT_STR
 
 
 class TestKishuCommand:

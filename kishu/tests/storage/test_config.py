@@ -1,7 +1,8 @@
 import configparser
 import os
-import pytest
 import time
+
+import pytest
 
 from kishu.storage.config import Config
 

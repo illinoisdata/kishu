@@ -1,9 +1,10 @@
-import pytest
 import sqlite3
+
+import pytest
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import VariableSnapshot, VersionedName
-from kishu.storage.checkpoint import CHECKPOINT_TABLE, KishuCheckpoint, VARIABLE_SNAPSHOT_TABLE
+from kishu.storage.checkpoint import CHECKPOINT_TABLE, VARIABLE_SNAPSHOT_TABLE, KishuCheckpoint
 from kishu.storage.path import KishuPath
 
 

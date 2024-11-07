@@ -1,5 +1,4 @@
 import pytest
-
 from IPython.core.interactiveshell import InteractiveShell
 
 from kishu.jupyter.namespace import Namespace
