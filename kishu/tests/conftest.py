@@ -280,7 +280,6 @@ def basic_execution_ids(kishu_jupyter) -> Generator[List[str], None, None]:
     info = JupyterInfoMock(raw_cell="y = x + 1")
     kishu_jupyter.pre_run_cell(info)
     kishu_jupyter.post_run_cell(JupyterResultMock(info=info, execution_count=execution_count))
-    kishu_jupyter.wait_until_commit_finishes()
 
     yield ["0:0:1", "0:0:2", "0:0:3"]  # List of commit IDs
 
