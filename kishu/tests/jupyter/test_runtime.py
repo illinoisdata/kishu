@@ -1,7 +1,9 @@
-import pytest
 import json
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
 from kishu.jupyter.runtime import IPythonSession, JupyterRuntimeEnv
 
 

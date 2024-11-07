@@ -1,5 +1,4 @@
 import pytest
-
 from IPython.core.interactiveshell import InteractiveShell
 
 from kishu.exceptions import CommitIdNotExistError
@@ -8,7 +7,6 @@ from kishu.planning.ahg import VariableSnapshot, VersionedName
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.path import KishuPath
-
 
 UNDESERIALIZABLE_CLASS = """
 class UndeserializableClass:

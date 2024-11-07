@@ -1,6 +1,8 @@
 .ONESHELL:
 ENV_PREFIX=$(shell python -c "if __import__('pathlib').Path('.venv/bin/pip').exists(): print('.venv/bin/')")
 USING_POETRY=$(shell grep "tool.poetry" pyproject.toml && echo "yes")
+SOURCE_DIRS=kishu/ tests/ coverage/
+MAX_LINE_LENGTH=127
 
 .PHONY: help
 help:             ## Show the help.
@@ -25,16 +27,15 @@ install:          ## Install the project in dev mode.
 
 .PHONY: fmt
 fmt:              ## Format code using black & isort.
-	$(ENV_PREFIX)isort kishu/
-	$(ENV_PREFIX)black -l 127 kishu/
-	$(ENV_PREFIX)black -l 127 tests/
+	$(ENV_PREFIX)isort ${SOURCE_DIRS}
+	$(ENV_PREFIX)black -l ${MAX_LINE_LENGTH} ${SOURCE_DIRS}
 
 .PHONY: lint
 lint:             ## Run pep8, black, mypy linters.
-	$(ENV_PREFIX)flake8 --extend-ignore=E203 --max-line-length 127 kishu/
-	$(ENV_PREFIX)black -l 127 --check kishu/
-	$(ENV_PREFIX)black -l 127 --check tests/
-	$(ENV_PREFIX)mypy --ignore-missing-imports kishu/
+	$(ENV_PREFIX)flake8 --select=E9,F63,F7,F82 --show-source ${SOURCE_DIRS}
+	$(ENV_PREFIX)flake8 --max-complexity=100 --max-line-length=${MAX_LINE_LENGTH} --extend-ignore=W503,E203,E701 ${SOURCE_DIRS}
+	$(ENV_PREFIX)black -l ${MAX_LINE_LENGTH} --check ${SOURCE_DIRS}
+	$(ENV_PREFIX)mypy --ignore-missing-imports ${SOURCE_DIRS}
 
 .PHONY: test
 test: lint        ## Run tests and generate coverage report.
@@ -44,14 +45,10 @@ test: lint        ## Run tests and generate coverage report.
 
 .PHONY: clean
 clean:            ## Clean unused files.
-	@find ./kishu -name '*.pyc' -exec rm -f {} \;
-	@find ./kishu -d -name '__pycache__' -exec rm -rf {} \;
-	@find ./kishu -name 'Thumbs.db' -exec rm -f {} \;
-	@find ./kishu -name '*~' -exec rm -f {} \;
-	@find ./tests -name '*.pyc' -exec rm -f {} \;
-	@find ./tests -d -name '__pycache__' -exec rm -rf {} \;
-	@find ./tests -name 'Thumbs.db' -exec rm -f {} \;
-	@find ./tests -name '*~' -exec rm -f {} \;
+	@find ${SOURCE_DIRS} -name '*.pyc' -exec rm -f {} \;
+	@find ${SOURCE_DIRS} -d -name '__pycache__' -exec rm -rf {} \;
+	@find ${SOURCE_DIRS} -name 'Thumbs.db' -exec rm -f {} \;
+	@find ${SOURCE_DIRS} -name '*~' -exec rm -f {} \;
 	@rm -rf .cache
 	@rm -rf .pytest_cache
 	@rm -rf .mypy_cache

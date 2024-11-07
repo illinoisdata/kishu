@@ -1,12 +1,11 @@
+from pathlib import Path
+from typing import List
+
 import dill
 import nbformat
 import pytest
 
-from pathlib import Path
-from typing import List
-
 from kishu.jupyterint import KishuForJupyter
-
 from tests.helpers.nbexec import NotebookRunner
 
 

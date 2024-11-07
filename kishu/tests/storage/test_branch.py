@@ -1,9 +1,11 @@
-import pytest
 import sqlite3
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from kishu.exceptions import BranchConflictError, BranchNotFoundError
 from kishu.storage.branch import KishuBranch
 from kishu.storage.path import KishuPath
-from kishu.exceptions import BranchConflictError, BranchNotFoundError
 
 
 class TestBranch:

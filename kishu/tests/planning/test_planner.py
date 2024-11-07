@@ -1,11 +1,11 @@
-import pytest
-
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
+import pytest
+
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.planner import CheckpointRestorePlanner, ChangedVariables
 from kishu.planning.plan import CheckpointPlan, RerunCellRestoreAction, RestorePlan, StepOrder
+from kishu.planning.planner import ChangedVariables, CheckpointRestorePlanner
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.config import Config
 from kishu.storage.path import KishuPath

@@ -1,4 +1,5 @@
 import pytest
+
 from kishu.diff import DiffAlgorithms, KishuDiff
 
 

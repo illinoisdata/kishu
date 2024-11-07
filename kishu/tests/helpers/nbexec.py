@@ -17,13 +17,13 @@ Dependencies:
 - nbformat: Library for working with Jupyter notebook file format.
 """
 
-import dill
 import os
+from typing import Dict, List, Optional, Tuple
 
+import dill
 from nbconvert.preprocessors import ExecutePreprocessor
 from nbformat import read
 from nbformat.v4 import new_code_cell
-from typing import Dict, List, Optional, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyterint import KISHU_VARS

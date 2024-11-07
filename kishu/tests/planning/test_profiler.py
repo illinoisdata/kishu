@@ -1,8 +1,8 @@
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-import sys
-
-from pathlib import Path
 
 from kishu.planning.profiler import profile_variable_size
 from kishu.storage.config import Config
