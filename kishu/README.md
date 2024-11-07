@@ -18,34 +18,29 @@ pip install kishu
 Installing Kishu in the editable mode.
 
 ```bash
-pip install -e .[dev]
+make install
 ```
 
-Running PyTest.
+Formatting source code.
+
 ```bash
-pytest
+make fmt
+```
+
+Linting source code (e.g., definitions, type checking).
+
+```bash
+make lint
+```
+
+Running all unit tests. It generates a coverage report at `./htmlcov/index.html`.
+```bash
+make test
 ```
 
 Running PyTest with benchmarks.
 ```bash
 pytest --run-benchmark
-```
-
-Running PyTest with code coverage.
-```bash
-pytest --cov=kishu/ --cov-report=xml
-head coverage.xml
-```
-
-Running formatting checker (flake8).
-```bash
-flake8 kishu/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
-flake8 kishu/ tests/ --count --max-complexity=100 --max-line-length=127 --statistics
-```
-
-Running static analysis (e.g., type checks).
-```bash
-mypy kishu/*.py kishu/*/*.py tests/*.py tests/*/*.py
 ```
 
 # Deployment
