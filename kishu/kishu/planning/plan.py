@@ -1,38 +1,54 @@
 from __future__ import annotations
 
 import atexit
-import functools
 from dataclasses import dataclass, field
 from pathlib import Path
 from queue import LifoQueue
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import dill
+import enum
 from IPython.core.interactiveshell import InteractiveShell
 
-from kishu.exceptions import CommitIdNotExistError, DuplicateRestoreActionError
+from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import VariableSnapshot
+from kishu.planning.ahg import VariableSnapshot, VersionedName
 from kishu.storage.checkpoint import KishuCheckpoint
 
 
-@functools.total_ordering
-@dataclass(frozen=True)
+class RestoreActionOrder(str, enum.Enum):
+    """
+    Order for performing restore actions; lower means higher priority within the cell execution.
+    It doesn't matter whether LOAD_VARIABLE or INCREMENTAL_LOAD comes first,
+    they will not coexist in the same RestorePlan nor do they interfere with each other.
+    """
+
+    RERUN_CELL = "rerun cell"
+    LOAD_VARIABLE = "load variable"
+    INCREMENTAL_LOAD = "incremental load"
+    MOVE_VARIABLE = "move variable"
+
+
+@dataclass(frozen=True, order=True)
 class StepOrder:
     cell_num: int
-    is_load_var: bool
+    restore_action_order: RestoreActionOrder
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(cell_num={self.cell_num}, is_load_var={self.is_load_var})"
+    @staticmethod
+    def new_rerun_cell(cell_num):
+        return StepOrder(cell_num, RestoreActionOrder.RERUN_CELL)
 
-    def __eq__(self, other):
-        return self.cell_num == other.cell_num and self.is_load_var == other.is_load_var
+    @staticmethod
+    def new_load_variable(cell_num):
+        return StepOrder(cell_num, RestoreActionOrder.LOAD_VARIABLE)
 
-    def __lt__(self, other):
-        # For the same cell number, the recomputation should be performed before variable loading.
-        if self.cell_num == other.cell_num:
-            return int(self.is_load_var) < int(other.is_load_var)
-        return self.cell_num < other.cell_num
+    @staticmethod
+    def new_incremental_load(cell_num):
+        return StepOrder(cell_num, RestoreActionOrder.INCREMENTAL_LOAD)
+
+    @staticmethod
+    def new_move_variable(cell_num):
+        return StepOrder(cell_num, RestoreActionOrder.MOVE_VARIABLE)
 
 
 @dataclass
@@ -222,6 +238,7 @@ class IncrementalCheckpointPlan:
             action.run(user_ns)
 
 
+@dataclass
 class RestoreAction:
     """
     A base class for any action.
@@ -234,24 +251,21 @@ class RestoreAction:
         raise NotImplementedError("This base class must be extended.")
 
 
+@dataclass
 class LoadVariableRestoreAction(RestoreAction):
     """
     Load variables from a pickled file (using the dill module).
+
+    @param step_order: the order (i.e., when to run) of this restore action.
+    @param var_names: The variables to load from storage.
+    @param fallback_recomputation: List of cell reruns to perform to recompute the
+        variables loaded by this action. Required when variable loading fails
+        for fallback recomputation.
     """
 
-    def __init__(
-        self, step_order: StepOrder, var_names: List[str] = [], fallback_recomputation: List[RerunCellRestoreAction] = []
-    ):
-        """
-        @param step_order: the order (i.e., when to run) of this restore action.
-        @param var_names: The variables to load from storage.
-        @param fallback_recomputation: List of cell reruns to perform to recompute the
-            variables loaded by this action. Required when variable loading fails
-            for fallback recomputation.
-        """
-        self.step_order = step_order
-        self.variable_names: Set[str] = set(var_names)
-        self.fallback_recomputation: List[RerunCellRestoreAction] = fallback_recomputation
+    step_order: StepOrder
+    variable_names: Set[str]
+    fallback_recomputation: List[RerunCellRestoreAction]
 
     def run(self, ctx: RestoreActionContext):
         """
@@ -264,27 +278,68 @@ class LoadVariableRestoreAction(RestoreAction):
             if key in self.variable_names:
                 ctx.shell.user_ns[key] = obj
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(step_order={self.step_order}, \
-        var_names={self.variable_names}, \
-        fallback recomputation cells={[i.step_order.cell_num for i in self.fallback_recomputation]})"
 
-    def __str__(self) -> str:
-        return self.__repr__()
+@dataclass
+class IncrementalLoadRestoreAction(RestoreAction):
+    """
+    Load select variables (incrementally) from the database.
+
+    @param step_order: the order (i.e., when to run) of this restore action.
+    @param var_names: The variables to load from storage.
+    @param fallback_recomputation: List of cell reruns to perform to recompute the
+        variables loaded by this action. Required when variable loading fails
+        for fallback recomputation.
+    """
+
+    step_order: StepOrder
+    versioned_names: List[VersionedName]
+    fallbacl_recomputation: List[RerunCellRestoreAction]
+
+    def run(self, ctx: RestoreActionContext):
+        """
+        @param user_ns  A target space where restored variables will be set.
+        """
+        # Each dictionary contains the data for a VS in the form of its variable name-to-data mappings.
+        snapshots: List[bytes] = KishuCheckpoint(ctx.database_path).get_variable_snapshots(self.versioned_names)
+        for snapshot in snapshots:
+            vs_dict = dill.loads(snapshot)
+            if not isinstance(vs_dict, dict):
+                raise ValueError(f"loaded snapshot is of type {type(vs_dict)}, expected type dict")
+            for k, v in vs_dict.items():
+                ctx.shell.user_ns[k] = v
 
 
+@dataclass
+class MoveVariableRestoreAction(RestoreAction):
+    """
+    Move a variable currently in the namespace to the new namespace.
+
+    @param step_order: the order (i.e., when to run) of this restore action.
+    @param vars_to_move: Variables to move to the new namespace.
+    """
+
+    step_order: StepOrder
+    vars_to_move: Namespace
+
+    def run(self, ctx: RestoreActionContext):
+        """
+        @param user_ns  A target space where the existing variable will be moved to.
+        """
+        for k, v in self.vars_to_move.to_dict().items():
+            ctx.shell.user_ns[k] = v
+
+
+@dataclass
 class RerunCellRestoreAction(RestoreAction):
     """
-    Load variables from a pickled file (using the dill module).
+    Rerun a cell execution and update the shell with the results.
+
+    @param step_order: the order (i.e., when to run) of this restore action.
+    @param cell_code: Cell code to rerun.
     """
 
-    def __init__(self, step_order: StepOrder, cell_code: str = ""):
-        """
-        cell_num: cell number of the executed cell code.
-        cell_code: cell code to rerun.
-        """
-        self.step_order = step_order
-        self.cell_code: Optional[str] = cell_code
+    step_order: StepOrder
+    cell_code: str
 
     def run(self, ctx: RestoreActionContext):
         """
@@ -295,15 +350,6 @@ class RerunCellRestoreAction(RestoreAction):
         except Exception:
             # We don't want to raise exceptions during code rerunning as the code can contain errors.
             pass
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(step_order={self.step_order}, cell_code={self.cell_code})"
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    def __eq__(self, other):
-        return self.step_order == other.step_order and self.cell_code == other.cell_code
 
 
 # Idea from https://stackoverflow.com/questions/57633815/atexit-how-does-one-trigger-it-manually
@@ -353,21 +399,40 @@ class RestorePlan:
     fallbacked_actions: List[LoadVariableRestoreAction] = field(default_factory=lambda: [])
 
     def add_rerun_cell_restore_action(self, cell_num: int, cell_code: str):
-        step_order = StepOrder(cell_num, False)
-        if step_order in self.actions:
-            raise DuplicateRestoreActionError(step_order.cell_num, step_order.is_load_var)
+        step_order = StepOrder.new_rerun_cell(cell_num)
+        assert step_order not in self.actions
+
         self.actions[step_order] = RerunCellRestoreAction(step_order, cell_code)
 
     def add_load_variable_restore_action(
         self, cell_num: int, variable_names: List[str], fallback_recomputation: List[Tuple[int, str]]
     ):
-        step_order = StepOrder(cell_num, True)
-        if step_order in self.actions:
-            raise DuplicateRestoreActionError(step_order.cell_num, step_order.is_load_var)
+        step_order = StepOrder.new_load_variable(cell_num)
+        assert step_order not in self.actions
 
         self.actions[step_order] = LoadVariableRestoreAction(
-            step_order, variable_names, [RerunCellRestoreAction(StepOrder(i[0], False), i[1]) for i in fallback_recomputation]
+            step_order,
+            set(variable_names),
+            [RerunCellRestoreAction(StepOrder.new_rerun_cell(cell_num), code) for cell_num, code in fallback_recomputation],
         )
+
+    def add_incremental_load_restore_action(
+        self, cell_num: int, versioned_names: List[VersionedName], fallback_recomputation: List[Tuple[int, str]]
+    ):
+        step_order = StepOrder.new_incremental_load(cell_num)
+        assert step_order not in self.actions
+
+        self.actions[step_order] = IncrementalLoadRestoreAction(
+            step_order,
+            versioned_names,
+            [RerunCellRestoreAction(StepOrder.new_rerun_cell(cell_num), code) for cell_num, code in fallback_recomputation],
+        )
+
+    def add_move_variable_restore_action(self, cell_num: int, vars_to_move: Namespace):
+        step_order = StepOrder.new_move_variable(cell_num)
+        assert step_order not in self.actions
+
+        self.actions[step_order] = MoveVariableRestoreAction(step_order, vars_to_move)
 
     def run(self, database_path: Path, exec_id: str) -> Namespace:
         """

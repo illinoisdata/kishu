@@ -78,7 +78,7 @@ from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, KishuCommit, NotebookCommitState
 from kishu.storage.commit_graph import KishuCommitGraph
-from kishu.storage.config import Config
+from kishu.storage.config import Config, PersistentConfig
 from kishu.storage.connection import KishuConnection
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag
@@ -270,6 +270,10 @@ class KishuForJupyter:
         self._kishu_graph = KishuCommitGraph.new_var_graph(self.database_path())
         self._kishu_nb_graph = KishuCommitGraph.new_nb_graph(self.database_path())
         self._kishu_variable_version = VariableVersion(self.database_path())
+        self._persistent_config = PersistentConfig(self.database_path())
+
+        # Initialize persistent config.
+        self._persistent_config.init_database()
 
         # Enclosing environment.
         self._ip = ip
@@ -283,7 +287,12 @@ class KishuForJupyter:
         self._checkout_id = 0
 
         # Stateful trackers.
-        self._cr_planner = CheckpointRestorePlanner.from_existing(self._user_ns)
+        self._cr_planner = CheckpointRestorePlanner.from_existing(
+            user_ns=self._user_ns,
+            kishu_graph=self._kishu_graph,
+            kishu_commit=self._kishu_commit,
+            incremental_cr=self._persistent_config.get("PLANNER", "incremental_store", False),
+        )
         self._variable_version_tracker = VariableVersionTracker({})
         self._start_time: Optional[float] = None
         self._last_execution_count = 0
@@ -454,14 +463,16 @@ class KishuForJupyter:
         if commit_entry.execution_count is not None:
             self._ip.execution_count = commit_entry.execution_count + 1  # _ip.execution_count is the next count.
 
-        # Restore user-namespace variables.
-        commit_ns = commit_entry.restore_plan.run(database_path, commit_id)
+        # Use the (non-incremental) restore plan or a dynamically computed incremental restore plan depending on config.
+        if self._persistent_config.get("PLANNER", "incremental_store", False):
+            restore_plan = self._cr_planner.generate_incremental_restore_plan(self.database_path(), commit_id)
+        else:
+            restore_plan = commit_entry.restore_plan
+
+        commit_ns = restore_plan.run(database_path, commit_id)
         self._checkout_namespace(self._user_ns, commit_ns)
 
-        # Update C/R planner with AHG from checkpoint file and new namespace.
-        if commit_entry.ahg_string is None:
-            raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
-        self._cr_planner.replace_state(commit_entry.ahg_string, self._user_ns)
+        self._cr_planner.replace_state(commit_entry, self._user_ns)
         self._variable_version_tracker.set_current(self._kishu_variable_version.get_variable_version_by_commit_id(commit_id))
 
         # Update Kishu heads.
