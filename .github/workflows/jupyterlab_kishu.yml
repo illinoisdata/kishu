@@ -30,23 +30,18 @@ jobs:
       run: |
         cd kishu
         python -m pip install --upgrade pip
-        python -m pip install .[dev]
+        make install
         python -c "import kishu, kishu.cli, kishu.commands"
-    - name: Install Jupyter-extension Kishu (jupyterlab_kishu)
+    - name: Install jupyterlab_kishu
       run: |
         cd jupyterlab_kishu
-        python -m pip install .
+        make install
         python -c "import jupyterlab_kishu, jupyterlab_kishu.handlers"
-    - name: Lint with flake8
+    - name: Lint jupyterlab_kishu
       run: |
         cd jupyterlab_kishu
-        flake8 jupyterlab_kishu/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 jupyterlab_kishu/ --count --max-complexity=100 --max-line-length=127 --statistics
-    - name: Check Python files with Mypy
-      run: |
-        cd jupyterlab_kishu
-        mypy jupyterlab_kishu/*.py
-    - name: Test Kishu with jlpm
+        make lint
+    - name: Test jupyterlab_kishu
       run: |
         cd jupyterlab_kishu
         jlpm test
