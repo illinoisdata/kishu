@@ -45,6 +45,7 @@ dependencies = [  # README: Keep in sync with requirements.txt
     "ipykernel",
     "ipylab",
     "jupyter_ui_poll",
+    "loguru",
     "nbconvert",
     "nbformat",
     "networkx",
@@ -54,6 +55,7 @@ dependencies = [  # README: Keep in sync with requirements.txt
 
     # User interfaces: cli, backend, jupyterlab_kishu
     "flask",
+    "rich",
     "typer",
     "Flask-CORS",
 
@@ -62,9 +64,6 @@ dependencies = [  # README: Keep in sync with requirements.txt
     "pandas",
     "shortuuid",
     "xxhash",
-
-    # Watchdog
-    "loguru",
 ]
 
 [project.optional-dependencies]

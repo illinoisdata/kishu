@@ -72,6 +72,12 @@ class NotebookId:
     def kernel_id(self) -> str:
         return self._kernel_id
 
+    def __str__(self) -> str:
+        return f"NotebookId(key={self._key}, path={self._path}, kernel_id={self._kernel_id})"
+
+    def __repr__(self) -> str:
+        return f"NotebookId(key={self._key}, path={self._path}, kernel_id={self._kernel_id})"
+
     """
     Kishu notebook metadata.
     """
