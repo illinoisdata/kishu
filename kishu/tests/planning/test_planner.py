@@ -4,7 +4,6 @@ from typing import Any, Dict, Generator, List, Set, Tuple
 import pytest
 
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import AHGUpdateInfo
 from kishu.planning.plan import CheckpointPlan, RerunCellRestoreAction, RestorePlan, StepOrder
 from kishu.planning.planner import ChangedVariables, CheckpointRestorePlanner
 from kishu.storage.checkpoint import KishuCheckpoint
@@ -262,8 +261,8 @@ class TestPlanner:
         # Create and run checkpoint plan for cell 1.
         planner_manager.checkpoint_session(db_path_name, "1:1", [])
 
-        # Copy cell 1's AHG as lowest common ancestor AHG.
-        lca_ahg = planner_manager.planner._ahg.clone()
+        # Copy cell 1's active VSes as VSes in lowest common ancestor state.
+        lca_active_vses = planner_manager.planner._ahg.clone_active_vses()
 
         # Run cell 2. This modifies y and creates z.
         planner_manager.run_cell({"y": 3, "z": 4}, "y += 1\nz = 4")
@@ -272,7 +271,9 @@ class TestPlanner:
         planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
 
         # Generate the incremental restore plan for undoing to cell 1.
-        restore_plan = planner_manager.planner._generate_incremental_restore_plan(db_path_name, lca_ahg, lca_ahg, ["1:1"])
+        restore_plan = planner_manager.planner._generate_incremental_restore_plan(
+            db_path_name, lca_active_vses, lca_active_vses, ["1:1"]
+        )
 
         # The restore plan consists of moving X and loading Y.
         assert len(restore_plan.actions) == 2
@@ -293,43 +294,36 @@ class TestPlanner:
         # Create and run checkpoint plan for cell 1.
         planner_manager.checkpoint_session(db_path_name, "1:1", [])
 
-        # Copy cell 1's AHG as lowest common ancestor AHG.
-        lca_ahg = planner_manager.planner._ahg.clone()
+        # Copy cell 1's active VSes as VSes of lowest common ancestor state.
+        lca_active_vses = planner_manager.planner._ahg.clone_active_vses()
 
         # Run cell 2.
-        planner_manager.run_cell({"y": 3, "z": 4}, "y += 1\nz = 4")
+        cell2_code = "y += 1\nz = 4"
+        planner_manager.run_cell({"y": 3, "z": 4}, cell2_code)
 
         # Create and run checkpoint plan for cell 2.
         planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
 
+        # Copy cell 2's active VSes as VSes of target state.
+        target_active_vses = planner_manager.planner._ahg.clone_active_vses()
+
         """
-            Create the hypothetical target AHG in another branch with a diverged cell execution:
+            Generate the incremental restore plan for checking out from 1:2 to a hypothetical new branch:
                  +- 1:2
             1:1 -+
-                 +- target_ahg
+                 +- target_state
         """
-        cell_code = "x = y+x\nz=4"
-        target_ahg = lca_ahg.clone()
-        target_ahg.update_graph(
-            AHGUpdateInfo(
-                cell=cell_code,
-                version=3,
-                cell_runtime_s=1.0,
-                accessed_variables={"x", "y"},
-                current_variables={"x", "y", "z"},
-                modified_variables={"x"},
-            )
+        # Generate the incremental restore plan for checking out from 1:2 to a hypothe.
+        restore_plan = planner_manager.planner._generate_incremental_restore_plan(
+            db_path_name, target_active_vses, lca_active_vses, ["1:1"]
         )
-
-        # Generate the incremental restore plan for checking out from 1:2 to the new branch.
-        restore_plan = planner_manager.planner._generate_incremental_restore_plan(db_path_name, target_ahg, lca_ahg, ["1:1"])
 
         # The restore plan consists of moving X, loading Y, then rerunning cell 1
         # to modify x (to the version in cell 1) and recompute z.
         assert len(restore_plan.actions) == 3
         assert len(restore_plan.actions[StepOrder.new_incremental_load(0)].versioned_names) == 1
         assert restore_plan.actions[StepOrder.new_move_variable(0)].vars_to_move.keyset() == {"x"}
-        assert restore_plan.actions[StepOrder.new_rerun_cell(1)].cell_code == cell_code
+        assert restore_plan.actions[StepOrder.new_rerun_cell(1)].cell_code == cell2_code
 
     def test_get_differing_vars_post_checkout(
         self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_checkpoint
@@ -342,10 +336,10 @@ class TestPlanner:
         # Run cell 1.
         planner_manager.run_cell({"x": 1, "y": 3}, "x = 1\ny = 3")
 
-        # Copy cell 1's AHG as the state to undo to.
-        target_ahg = planner_manager.planner._ahg.clone()
+        # Copy cell 1's active VSes as the state to undo to.
+        target_active_vses = planner_manager.planner._ahg.clone_active_vses()
 
         # Run cell 2.
         planner_manager.run_cell({"x": 2, "y": 3}, "x += 1")
 
-        assert planner_manager.planner._get_differing_vars_post_checkout(target_ahg) == {"x"}
+        assert planner_manager.planner._get_differing_vars_post_checkout(target_active_vses) == {"x"}

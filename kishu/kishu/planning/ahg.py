@@ -106,14 +106,14 @@ class AHG:
         # Cell executions in chronological order.
         self._cell_executions: List[CellExecution] = []
 
-        # Dict of variable snapshots.
-        # Keys are variable names, while values are lists of the actual VSs.
-        # i.e. {"x": [(x, 1), (x, 2)], "y": [(y, 1), (y, 2), (y, 3)]}
-        self._variable_snapshots: List[VariableSnapshot] = []
+        # All variable snapshots which have existed at some point in the session.
+        # Keys are the name-version tuples of variable snapshots (VersionedName) for fast lookup.
+        # The values are the actual VariableSnapshots.
+        self._variable_snapshots: Dict[VersionedName, VariableSnapshot] = {}
 
         # Variable snapshots that are currently active, i.e., their values are currently in the namespace.
         # The keys are the names of the variable snapshots for fast lookup.
-        # The values are a subset of self._variable_snapshots.
+        # The values are a subset of the values of self._variable_snapshots.
         self._active_variable_snapshots: Dict[VariableName, VariableSnapshot] = {}
 
     @staticmethod
@@ -232,7 +232,10 @@ class AHG:
         self.add_cell_execution(cell, update_info.cell_runtime_s, accessed_vss, output_vss)
 
         # Add output VSes to the graph.
-        self._variable_snapshots += output_vss
+        self._variable_snapshots = {
+            **self._variable_snapshots,
+            **{VersionedName(vs.name, vs.version): vs for vs in output_vss},
+        }
 
         # Update set of active VSes (those still active from previous cell exec + created VSes + modified VSes).
         self._active_variable_snapshots = {
@@ -244,7 +247,7 @@ class AHG:
         return self._cell_executions
 
     def get_variable_snapshots(self) -> List[VariableSnapshot]:
-        return self._variable_snapshots
+        return list(self._variable_snapshots.values())
 
     def get_active_variable_snapshots(self) -> List[VariableSnapshot]:
         return list(self._active_variable_snapshots.values())
@@ -275,6 +278,27 @@ class AHG:
         Deep copies all fields (e.g., VSes, cell executions) into a new AHG. For testing.
         """
         return AHG.deserialize(self.serialize())
+
+    def get_vs_by_versioned_name(self, versioned_name: VersionedName) -> VariableSnapshot:
+        return self._variable_snapshots[versioned_name]
+
+    def serialize_active_vses(self) -> str:
+        return dill.dumps([VersionedName(vs.name, vs.version) for vs in self.get_active_variable_snapshots()]).decode("latin1")
+
+    @staticmethod
+    def deserialize_active_vses(active_vs_string: str) -> List[VersionedName]:
+        return dill.loads(active_vs_string.encode("latin1"))
+
+    def clone_active_vses(self) -> List[VersionedName]:
+        return AHG.deserialize_active_vses(self.serialize_active_vses())
+
+    def replace_active_vses(self, versioned_names: List[VersionedName]) -> None:
+        """
+        Replaces the active VSes of the current AHG.
+        """
+        self._active_variable_snapshots.clear()
+        for versioned_name in versioned_names:
+            self._active_variable_snapshots[versioned_name.name] = self._variable_snapshots[versioned_name]
 
     @staticmethod
     def union_find(variables: Set[str], linked_variables: List[Tuple[str, str]]) -> Set[VariableName]:

@@ -89,7 +89,7 @@ class CommitEntry:
 
     # Planner state.
     restore_plan: Optional[kishu.planning.plan.RestorePlan] = None
-    ahg_string: Optional[str] = None
+    active_vses_string: Optional[str] = None
     checkpoint_runtime_s: Optional[float] = None
 
     # Version hashes.

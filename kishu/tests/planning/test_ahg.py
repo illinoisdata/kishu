@@ -207,3 +207,33 @@ def test_create_vs_modify_connected_component():
 
     # 2 connected components
     assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"c", "b"}), frozenset("a")}
+
+
+def test_update_active_vses():
+    ahg = AHG()
+
+    # x and y are created
+    ahg.update_graph(AHGUpdateInfo(version=1, cell_runtime_s=1.0, current_variables={"x", "y"}))
+
+    old_active_vses = ahg.clone_active_vses()
+
+    # x is read and modified, z is created, y is deleted
+    ahg.update_graph(
+        AHGUpdateInfo(
+            version=2,
+            cell_runtime_s=1.0,
+            accessed_variables={"x"},
+            current_variables={"x", "z"},
+            modified_variables={"x"},
+            deleted_variables={"y"},
+        )
+    )
+
+    # State of active VSes after 2nd cell execution: x and z are active
+    assert set(vs.name for vs in ahg.get_active_variable_snapshots()) == {frozenset("x"), frozenset("z")}
+
+    # Replace state with that of after cell 1
+    ahg.replace_active_vses(old_active_vses)
+
+    # State of active VSes after 1st cell execution: x and z are active
+    assert set(vs.name for vs in ahg.get_active_variable_snapshots()) == {frozenset("x"), frozenset("y")}

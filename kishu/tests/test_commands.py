@@ -142,7 +142,7 @@ class TestKishuCommand:
             nb_record_type=NotebookCommitState.with_commit,
             message=status_result.commit_entry.message,  # Not tested,
             timestamp=status_result.commit_entry.timestamp,  # Not tested
-            ahg_string=status_result.commit_entry.ahg_string,  # Not tested
+            active_vses_string=status_result.commit_entry.active_vses_string,  # Not tested
             code_version=status_result.commit_entry.code_version,  # Not tested
             varset_version=status_result.commit_entry.varset_version,  # Not tested
             start_time=status_result.commit_entry.start_time,  # Not tested

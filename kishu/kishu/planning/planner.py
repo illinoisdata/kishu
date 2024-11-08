@@ -262,42 +262,49 @@ class CheckpointRestorePlanner:
         if self._kishu_commit is None:
             raise ValueError("KishuCommitGraph cannot be None if incremental store is enabled.")
 
-        # Get target AHG.
+        # Get active VSes in target state.
         target_commit_entry = self._kishu_commit.get_commit(target_commit_id)
-        if target_commit_entry.ahg_string is None:
+        if target_commit_entry.active_vses_string is None:
             raise ValueError("No Application History Graph found for commit_id = {}".format(target_commit_id))
-        target_ahg = AHG.deserialize(target_commit_entry.ahg_string)
+        target_active_vses = AHG.deserialize_active_vses(target_commit_entry.active_vses_string)
 
-        # Get LCA AHG.
+        # Get active VSes in LCA state.
         current_commit_id = self._kishu_graph.head()
         lca_commit_id = self._kishu_graph.get_lowest_common_ancestor_id(target_commit_id, current_commit_id)
         lca_commit_entry = self._kishu_commit.get_commit(lca_commit_id)
-        lca_ahg = AHG.deserialize(lca_commit_entry.ahg_string) if lca_commit_entry.ahg_string is not None else AHG()
+        lca_active_vses = (
+            AHG.deserialize_active_vses(lca_commit_entry.active_vses_string)
+            if lca_commit_entry.active_vses_string is not None
+            else []
+        )
 
         # Get parent commit IDs.
         return self._generate_incremental_restore_plan(
             database_path,
-            target_ahg,
-            lca_ahg,
+            target_active_vses,
+            lca_active_vses,
             self._kishu_graph.list_ancestor_commit_ids(target_commit_id),
         )
 
     def _generate_incremental_restore_plan(
-        self, database_path: Path, target_ahg: AHG, lca_ahg: AHG, target_parent_commit_ids: List[str]
+        self,
+        database_path: Path,
+        target_active_vses: List[VersionedName],
+        lca_active_vses: List[VersionedName],
+        target_parent_commit_ids: List[str],
     ) -> RestorePlan:
         """
         Dynamically generates an incremental restore plan. To be called at checkout time if incremental CR is enabled.
         """
-        # Get the target active VSes to restore.
-        target_active_vss = target_ahg.get_active_variable_snapshots()
-
         # Find currently active VSes and stored VSes that can help restoration.
-        useful_vses = self._find_useful_vses(lca_ahg, database_path, target_parent_commit_ids)
+        useful_vses = self._find_useful_vses(lca_active_vses, database_path, target_parent_commit_ids)
+
         # Compute the incremental load plan.
         opt_result = IncrementalLoadOptimizer(
-            target_active_vss, useful_vses.useful_active_vses, useful_vses.useful_stored_vses
+            [self._ahg.get_vs_by_versioned_name(vs) for vs in target_active_vses],
+            useful_vses.useful_active_vses,
+            useful_vses.useful_stored_vses,
         ).compute_plan()
-
         # Sort the VSes to load and move by cell execution number.
         move_ce_to_vs_map: Dict[int, List[VersionedName]] = defaultdict(list)
         for versioned_name, vs in opt_result.vss_to_move.items():
@@ -309,9 +316,9 @@ class CheckpointRestorePlanner:
 
         # Compute the incremental restore plan.
         restore_plan = RestorePlan()
-        target_ces_map = {ce.cell_num: ce for ce in target_ahg.get_cell_executions()}
+        target_ces_map = {ce.cell_num: ce for ce in self._ahg.get_cell_executions()}
 
-        for ce in target_ahg.get_cell_executions():
+        for ce in self._ahg.get_cell_executions():
             # Add a rerun cell restore action if the cell needs to be rerun.
             if ce.cell_num in opt_result.ces_to_rerun:
                 restore_plan.add_rerun_cell_restore_action(ce.cell_num, ce.cell)
@@ -338,10 +345,12 @@ class CheckpointRestorePlanner:
 
         return restore_plan
 
-    def _find_useful_vses(self, lca_ahg: AHG, database_path: Path, target_parent_commit_ids: List[str]) -> UsefulVses:
+    def _find_useful_vses(
+        self, lca_active_vses: List[VersionedName], database_path: Path, target_parent_commit_ids: List[str]
+    ) -> UsefulVses:
         # If an active VS in the current session exists as an active VS in the session of the LCA,
         # the active vs can contribute toward restoration.
-        lca_vses = set(VersionedName(vs.name, vs.version) for vs in lca_ahg.get_active_variable_snapshots())
+        lca_vses = set(lca_active_vses)
         current_vses = set(VersionedName(vs.name, vs.version) for vs in self._ahg.get_active_variable_snapshots())
         useful_active_vses = lca_vses.intersection(current_vses)
 
@@ -369,41 +378,42 @@ class CheckpointRestorePlanner:
         """
         return self._ahg.serialize()
 
+    def serialize_active_vses(self) -> str:
+        return self._ahg.serialize_active_vses()
+
     def replace_state(self, target_commit_entry: CommitEntry, new_user_ns: Namespace) -> None:
         """
         Replace user namespace with new_user_ns.
         Called when a checkout is performed.
         """
         # Get target AHG.
-        if target_commit_entry.ahg_string is None:
+        if target_commit_entry.active_vses_string is None:
             raise ValueError("No Application History Graph found for target commit entry")
-        target_ahg = AHG.deserialize(target_commit_entry.ahg_string)
+        target_active_vses = AHG.deserialize_active_vses(target_commit_entry.active_vses_string)
 
-        self._replace_state(target_ahg, new_user_ns)
+        self._replace_state(target_active_vses, new_user_ns)
 
-    def _replace_state(self, new_ahg: AHG, new_user_ns: Namespace) -> None:
+    def _replace_state(self, new_active_vses: List[VersionedName], new_user_ns: Namespace) -> None:
         """
-        Replace the current AHG with new_ahg_string and user namespace with new_user_ns.
+        Replace the current AHG's active VSes with new_active_vses and user namespace with new_user_ns.
         Called when a checkout is performed.
         """
         self._user_ns = new_user_ns
 
         # Update ID graphs for differing active variables.
-        for varname in self._get_differing_vars_post_checkout(new_ahg):
+        for varname in self._get_differing_vars_post_checkout(new_active_vses):
             self._id_graph_map[varname] = get_object_state(self._user_ns[varname], {})
 
         # Replace old AHG with new AHG.
-        self._ahg = new_ahg
+        self._ahg.replace_active_vses(new_active_vses)
 
         # Clear pre-run cell info.
         self._pre_run_cell_vars = set()
 
-    def _get_differing_vars_post_checkout(self, new_ahg) -> Set[str]:
+    def _get_differing_vars_post_checkout(self, new_active_vses: List[VersionedName]) -> Set[str]:
         """
         Finds all differing active variables between the pre and post-checkout states.
         """
         pre_checkout_active_vss = set([VersionedName(vs.name, vs.version) for vs in self._ahg.get_active_variable_snapshots()])
-        post_checkout_active_vss = set([VersionedName(vs.name, vs.version) for vs in new_ahg.get_active_variable_snapshots()])
-
-        vss_diff = post_checkout_active_vss.difference(pre_checkout_active_vss)
+        vss_diff = set(new_active_vses).difference(pre_checkout_active_vss)
         return {name for var_snapshot in vss_diff for name in var_snapshot.name}
