@@ -5,8 +5,9 @@ import networkx as nx
 import numpy as np
 from networkx.algorithms.flow import shortest_augmenting_path
 
-from kishu.planning.ahg import AHG, CellExecution, VariableSnapshot, VersionedName
+from kishu.planning.ahg import AHG
 from kishu.storage.config import Config
+from kishu.storage.disk_ahg import CellExecution, VariableSnapshot
 
 REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
 
@@ -33,10 +34,10 @@ class IncrementalLoadOptimizationResult:
     @param fallback_recomputation: fallback cell executions for each VS in vss_to_load.
     """
 
-    vss_to_move: Dict[VersionedName, VariableSnapshot] = field(default_factory=lambda: {})
-    vss_to_load: Dict[VersionedName, VariableSnapshot] = field(default_factory=lambda: {})
-    ces_to_rerun: Set[int] = field(default_factory=lambda: set())
-    fallback_recomputation: Dict[VersionedName, Set[int]] = field(default_factory=lambda: {})
+    vss_to_move: Set[VariableSnapshot] = field(default_factory=lambda: set())
+    vss_to_load: Set[VariableSnapshot] = field(default_factory=lambda: set())
+    ces_to_rerun: Set[CellExecution] = field(default_factory=lambda: set())
+    fallback_recomputation: Dict[VariableSnapshot, Set[CellExecution]] = field(default_factory=lambda: {})
 
 
 class Optimizer:
@@ -49,19 +50,19 @@ class Optimizer:
     """
 
     def __init__(
-        self, ahg: AHG, active_vss: List[VariableSnapshot], already_stored_vss: Optional[Set[VersionedName]] = None
+        self, ahg: AHG, active_vss: List[VariableSnapshot], already_stored_vss: Optional[Set[VariableSnapshot]] = None
     ) -> None:
         """
         Creates an optimizer with a migration speed estimate. The AHG and active VS fields
         must be populated prior to calling select_vss.
 
         @param ahg: Application History Graph.
-        @param active_vss: active Variable Snapshots at time of checkpointing.
+        @param active_vss: active VersionedNames at time of checkpointing.
         @param already_stored_vss: A List of Variable snapshots already stored in previous plans.
             They can be loaded as part of the restoration plan to save restoration time.
         """
         self.ahg = ahg
-        self.active_vss = active_vss
+        self.active_vss = set(active_vss)
 
         # Optimizer context containing flags for optimizer parameters.
         self._optimizer_context = OptimizerContext(
@@ -71,16 +72,15 @@ class Optimizer:
         )
 
         # Set lookup for active VSs by name and version as VS objects are not hashable.
-        self.active_versioned_names = {VersionedName(vs.name, vs.version) for vs in active_vss}
         self.already_stored_vss = already_stored_vss if already_stored_vss else set()
 
         # CEs required to recompute a variables last modified by a given CE.
-        self.req_func_mapping: Dict[int, Set[int]] = {}
+        self.req_func_mapping: Dict[CellExecution, Set[CellExecution]] = {}
 
         if self._optimizer_context.always_migrate and self._optimizer_context.always_recompute:
             raise ValueError("always_migrate and always_recompute cannot both be True.")
 
-    def dfs_helper(self, current: Any, visited: Set[Any], prerequisite_ces: Set[int]):
+    def dfs_helper(self, current: Any, visited: Set[Any], prerequisite_ces: Set[CellExecution]):
         """
         Perform DFS on the Application History Graph for finding the CEs required to recompute a variable.
 
@@ -89,37 +89,34 @@ class Optimizer:
         @param prerequisite_ces: Set of CEs needing re-execution to recompute the current nodeset.
         """
         if isinstance(current, CellExecution):
-            if current.cell_num in self.req_func_mapping:
+            if current in self.req_func_mapping:
                 # Use memoized results if we already know prerequisite CEs of current CE.
-                prerequisite_ces.update(self.req_func_mapping[current.cell_num])
+                prerequisite_ces.update(self.req_func_mapping[current])
             else:
                 # Else, recurse into input variables of the CE.
-                prerequisite_ces.add(current.cell_num)
-                for vs in current.src_vss:
-                    if (
-                        VersionedName(vs.name, vs.version) not in self.active_versioned_names
-                        and VersionedName(vs.name, vs.version) not in self.already_stored_vss
-                        and VersionedName(vs.name, vs.version) not in visited
-                    ):
+                prerequisite_ces.add(current)
+                for vs in self.ahg.get_ce_input_vses(current):
+                    if vs not in self.active_vss and vs not in self.already_stored_vss and vs not in visited:
                         self.dfs_helper(vs, visited, prerequisite_ces)
 
         elif isinstance(current, VariableSnapshot):
-            visited.add(VersionedName(current.name, current.version))
-            if current.output_ce and current.output_ce.cell_num not in prerequisite_ces:
-                self.dfs_helper(current.output_ce, visited, prerequisite_ces)
+            visited.add(current)
+            upstream_ce = self.ahg.get_vs_input_ce(current)
+            if upstream_ce not in prerequisite_ces:
+                self.dfs_helper(upstream_ce, visited, prerequisite_ces)
 
     def find_prerequisites(self):
         """
         Find the necessary (prerequisite) cell executions to rerun a cell execution.
         """
-        for ce in self.ahg.get_cell_executions():
+        for ce in self.ahg.get_all_cell_executions():
             # Find prerequisites only if the CE has at least 1 active output.
-            if set(VersionedName(vs.name, vs.version) for vs in ce.dst_vss).intersection(self.active_versioned_names):
+            if set(self.ahg.get_ce_output_vses(ce)).intersection(self.active_vss):
                 prerequisite_ces = set()
                 self.dfs_helper(ce, set(), prerequisite_ces)
-                self.req_func_mapping[ce.cell_num] = prerequisite_ces
+                self.req_func_mapping[ce] = prerequisite_ces
 
-    def compute_plan(self) -> Tuple[Set[VersionedName], Set[int]]:
+    def compute_plan(self) -> Tuple[Set[VariableSnapshot], Set[CellExecution]]:
         """
         Returns the optimal replication plan for the stored AHG consisting of
         variables to migrate and cells to rerun.
@@ -132,10 +129,10 @@ class Optimizer:
         self.find_prerequisites()
 
         if self._optimizer_context.always_migrate:
-            return self.active_versioned_names, set()
+            return self.active_vss, set()
 
         if self._optimizer_context.always_recompute:
-            return set(), set(ce.cell_num for ce in self.ahg.get_cell_executions())
+            return set(), set(self.ahg.get_all_cell_executions())
 
         # Construct flow graph for computing mincut.
         flow_graph = nx.DiGraph()
@@ -146,33 +143,34 @@ class Optimizer:
 
         # Add all active VSs as nodes, connect them with the source with edge capacity equal to migration cost.
         for active_vs in self.active_vss:
-            active_versioned_name = VersionedName(active_vs.name, active_vs.version)
-            flow_graph.add_node(active_versioned_name)
+            flow_graph.add_node(active_vs)
             flow_graph.add_edge(
-                "source", active_versioned_name, capacity=active_vs.size / self._optimizer_context.network_bandwidth
+                "source",
+                active_vs,
+                capacity=active_vs.size / self._optimizer_context.network_bandwidth,
             )
 
         # Add all CEs as nodes, connect them with the sink with edge capacity equal to recomputation cost.
-        for ce in self.ahg.get_cell_executions():
-            flow_graph.add_node(ce.cell_num)
-            flow_graph.add_edge(ce.cell_num, "sink", capacity=ce.cell_runtime_s)
+        for ce in self.ahg.get_all_cell_executions():
+            flow_graph.add_node(ce)
+            flow_graph.add_edge(ce, "sink", capacity=ce.cell_runtime_s)
 
         # Connect each CE with its output variables and its prerequisite CEs.
         for active_vs in self.active_vss:
-            for cell_num in self.req_func_mapping[active_vs.output_ce.cell_num]:
-                flow_graph.add_edge(VersionedName(active_vs.name, active_vs.version), cell_num, capacity=np.inf)
+            for ce in self.req_func_mapping[self.ahg.get_vs_input_ce(active_vs)]:
+                flow_graph.add_edge(active_vs, ce, capacity=np.inf)
 
         # Prune CEs which produce no active variables to speedup computation.
-        for ce in self.ahg.get_cell_executions():
-            if flow_graph.in_degree(ce.cell_num) == 0:
-                flow_graph.remove_node(ce.cell_num)
+        for ce in self.ahg.get_all_cell_executions():
+            if flow_graph.in_degree(ce) == 0:
+                flow_graph.remove_node(ce)
 
         # Solve min-cut with Ford-Fulkerson.
         cut_value, partition = nx.minimum_cut(flow_graph, "source", "sink", flow_func=shortest_augmenting_path)
 
         # Determine the replication plan from the partition.
-        vss_to_migrate = set(partition[1]).intersection(self.active_versioned_names)
-        ces_to_recompute = set(partition[0]).intersection(set(ce.cell_num for ce in self.ahg.get_cell_executions()))
+        vss_to_migrate = set(partition[1]).intersection(self.active_vss)
+        ces_to_recompute = set(partition[0]).intersection(set(self.ahg.get_all_cell_executions()))
 
         return vss_to_migrate, ces_to_recompute
 
@@ -186,9 +184,10 @@ class IncrementalLoadOptimizer:
 
     def __init__(
         self,
+        ahg: AHG,
         target_active_vss: List[VariableSnapshot],
-        useful_active_vses: Set[VersionedName],
-        useful_stored_vses: Set[VersionedName],
+        useful_active_vses: Set[VariableSnapshot],
+        useful_stored_vses: Set[VariableSnapshot],
     ) -> None:
         """
         Creates an optimizer with a migration speed estimate. The AHG and active VS fields
@@ -199,18 +198,16 @@ class IncrementalLoadOptimizer:
         @param already_stored_vss: A List of Variable snapshots already stored in previous plans. They can be
             loaded as part of the restoration plan to save restoration time.
         """
-        self.target_active_vss = target_active_vss
+        self.ahg = ahg
+        self.target_active_vss = set(target_active_vss)
         self.useful_active_vses = useful_active_vses
         self.useful_stored_vses = useful_stored_vses
-
-        # Set lookup for active VSs by name and version as VS objects are not hashable.
-        self.target_active_versioned_names = {VersionedName(vs.name, vs.version) for vs in self.target_active_vss}
 
     def dfs_helper(
         self,
         current: Union[CellExecution, VariableSnapshot],
-        visited: Set[VersionedName],
-        prerequisite_ces: Set[int],
+        visited: Set[VariableSnapshot],
+        prerequisite_ces: Set[CellExecution],
         opt_result: IncrementalLoadOptimizationResult,
         computing_fallback=False,
     ):
@@ -224,28 +221,25 @@ class IncrementalLoadOptimizer:
             any VSes stored in the DB (as they are the main point of failure).
         """
         if isinstance(current, CellExecution):
-            prerequisite_ces.add(current.cell_num)
-            for vs in current.src_vss:
-                if (
-                    VersionedName(vs.name, vs.version) not in self.target_active_versioned_names
-                    and VersionedName(vs.name, vs.version) not in visited
-                ):
+            prerequisite_ces.add(current)
+            for vs in self.ahg.get_ce_input_vses(current):
+                if vs not in self.target_active_vss and vs not in visited:
                     self.dfs_helper(vs, visited, prerequisite_ces, opt_result, computing_fallback)
 
         elif isinstance(current, VariableSnapshot):
-            visited.add(VersionedName(current.name, current.version))
+            visited.add(current)
 
             # Current VS is in the namespace.
-            if VersionedName(current.name, current.version) in self.useful_active_vses:
-                opt_result.vss_to_move[VersionedName(current.name, current.version)] = current
+            if current in self.useful_active_vses:
+                opt_result.vss_to_move.add(current)
 
             # Current VS is stored in the DB.
-            elif not computing_fallback and VersionedName(current.name, current.version) in self.useful_stored_vses:
-                opt_result.vss_to_load[VersionedName(current.name, current.version)] = current
+            elif not computing_fallback and current in self.useful_stored_vses:
+                opt_result.vss_to_load.add(current)
 
             # Else, continue checking the dependencies required to compute this VS.
-            elif current.output_ce:
-                self.dfs_helper(current.output_ce, visited, prerequisite_ces, opt_result, computing_fallback)
+            else:
+                self.dfs_helper(self.ahg.get_vs_input_ce(current), visited, prerequisite_ces, opt_result, computing_fallback)
 
     def compute_plan(self) -> IncrementalLoadOptimizationResult:
         """
@@ -260,14 +254,14 @@ class IncrementalLoadOptimizer:
 
         # Greedily find the cells to rerun, VSes to move and VSes to load for each active VS in the target state.
         for vs in self.target_active_vss:
-            prerequisite_ces: Set[int] = set()
+            prerequisite_ces: Set[CellExecution] = set()
             self.dfs_helper(vs, set(), prerequisite_ces, opt_result)
             opt_result.ces_to_rerun |= prerequisite_ces
 
         # For the VSes to load, find their fallback recomputations.
-        for versioned_name, variable_snapshot in opt_result.vss_to_load.items():
-            fallback_ces: Set[int] = set()
-            self.dfs_helper(variable_snapshot, set(), fallback_ces, opt_result, computing_fallback=True)
-            opt_result.fallback_recomputation[versioned_name] = fallback_ces
+        for vs in opt_result.vss_to_load:
+            fallback_ces: Set[CellExecution] = set()
+            self.dfs_helper(vs, set(), fallback_ces, opt_result, computing_fallback=True)
+            opt_result.fallback_recomputation[vs] = fallback_ces
 
         return opt_result

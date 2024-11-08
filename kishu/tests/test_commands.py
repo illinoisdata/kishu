@@ -142,7 +142,6 @@ class TestKishuCommand:
             nb_record_type=NotebookCommitState.with_commit,
             message=status_result.commit_entry.message,  # Not tested,
             timestamp=status_result.commit_entry.timestamp,  # Not tested
-            ahg_string=status_result.commit_entry.ahg_string,  # Not tested
             code_version=status_result.commit_entry.code_version,  # Not tested
             varset_version=status_result.commit_entry.varset_version,  # Not tested
             start_time=status_result.commit_entry.start_time,  # Not tested
@@ -603,7 +602,6 @@ class TestKishuCommand:
             log_result_2 = KishuCommand.log(notebook_path)
             commit_id_2 = log_result_2.commit_graph[-1].commit_id
             fe_commit_result_2 = KishuCommand.fe_commit(notebook_path, commit_id_2, vardepth=0)
-            print(fe_commit_result_2)
             assert fe_commit_result_2 == FESelectedCommit(
                 commit=FECommit(
                     oid=commit_id_2,
@@ -705,6 +703,7 @@ class TestKishuCommand:
 
             # Get commit id of commit which we want to restore
             log_result = KishuCommand.log_all(notebook_path)
+
             assert len(log_result.commit_graph) == len(contents)  # Nothing on this session should have been tracked
 
             # Prior to recent fix, this commit is where a KeyError would occur as the variable set changed while untracked

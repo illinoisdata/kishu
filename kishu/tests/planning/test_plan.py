@@ -4,9 +4,9 @@ from IPython.core.interactiveshell import InteractiveShell
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import VariableSnapshot, VersionedName
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
 from kishu.storage.checkpoint import KishuCheckpoint
+from kishu.storage.disk_ahg import VariableSnapshot
 from kishu.storage.path import KishuPath
 
 UNDESERIALIZABLE_CLASS = """
@@ -197,18 +197,21 @@ class TestPlan:
         shell.run_cell("b = [a]")
         shell.run_cell("c = 2")
 
+        vs_ab = VariableSnapshot(frozenset({"a", "b"}), 1)
+        vs_c = VariableSnapshot(frozenset("c"), 1)
+
         user_ns = Namespace(shell.user_ns)
 
         # Save.
         exec_id = 1
-        vses_to_store = [VariableSnapshot(frozenset({"a", "b"}), 1), VariableSnapshot(frozenset("c"), 1)]
+        vses_to_store = [vs_ab, vs_c]
         checkpoint = IncrementalCheckpointPlan.create(user_ns, db_path_name, exec_id, vses_to_store)
         checkpoint.run(user_ns)
 
         # Read stored versioned names
         stored_versioned_names = kishu_incremental_checkpoint.get_stored_versioned_names([exec_id])
 
-        assert VersionedName(frozenset({"a", "b"}), 1), VersionedName(frozenset("c"), 1) in stored_versioned_names
+        assert vs_ab.versioned_name(), vs_c.versioned_name() in stored_versioned_names
 
     def test_incremental_restore(self, db_path_name, kishu_incremental_checkpoint):
         user_ns = Namespace({"a": 1, "b": 2, "c": 3})
@@ -221,7 +224,7 @@ class TestPlan:
 
         # Incrementally restore only 'b'.
         restore_plan = RestorePlan()
-        restore_plan.add_incremental_load_restore_action(1, [VersionedName("b", 1)], [(1, "b=2")])
+        restore_plan.add_incremental_load_restore_action(1, [VariableSnapshot("b", 1)], [(1, "b=2")])
         result_ns = restore_plan.run(db_path_name, exec_id)
 
         assert result_ns["b"] == 2
@@ -239,15 +242,17 @@ class TestPlan:
     def test_comprehensive_incremental_restore_plan(self, db_path_name, kishu_incremental_checkpoint):
         user_ns = Namespace({"a": 1, "b": 2, "c": 3})
 
+        vs_b = VariableSnapshot(frozenset("b"), 1)
+
         # Save.
         exec_id = 1
-        vses_to_store = [VariableSnapshot(frozenset("b"), 1)]
+        vses_to_store = [vs_b]
         checkpoint = IncrementalCheckpointPlan.create(user_ns, db_path_name, exec_id, vses_to_store)
         checkpoint.run(user_ns)
 
         # Restore; 'a' is moved, 'b' is read incrementally, 'c' is restored through rerunning a cell.
         restore_plan = RestorePlan()
-        restore_plan.add_incremental_load_restore_action(1, [VersionedName("b", 1)], [(1, "b=2")])
+        restore_plan.add_incremental_load_restore_action(1, [vs_b], [(1, "b=2")])
         restore_plan.add_move_variable_restore_action(2, Namespace({"a": 1}))
         restore_plan.add_rerun_cell_restore_action(3, "c=3")
         result_ns = restore_plan.run(db_path_name, exec_id)

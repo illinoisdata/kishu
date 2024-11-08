@@ -80,6 +80,7 @@ from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, Ki
 from kishu.storage.commit_graph import KishuCommitGraph
 from kishu.storage.config import Config, PersistentConfig
 from kishu.storage.connection import KishuConnection
+from kishu.storage.disk_ahg import KishuDiskAHG
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag
 from kishu.storage.variable_version import VariableVersion
@@ -269,10 +270,14 @@ class KishuForJupyter:
         self._kishu_graph = KishuCommitGraph.new_var_graph(self.database_path())
         self._kishu_nb_graph = KishuCommitGraph.new_nb_graph(self.database_path())
         self._kishu_variable_version = VariableVersion(self.database_path())
-        self._persistent_config = PersistentConfig(self.database_path())
-
+        
         # Initialize persistent config.
+        self._persistent_config = PersistentConfig(self.database_path())
         self._persistent_config.init_database()
+
+        # Initialize kishu disk AHG.
+        self._kishu_disk_ahg = KishuDiskAHG(self.database_path())
+        self._kishu_disk_ahg.init_database()
 
         # Enclosing environment.
         self._ip = ip
@@ -299,8 +304,8 @@ class KishuForJupyter:
         # Stateful trackers.
         self._cr_planner = CheckpointRestorePlanner.from_existing(
             user_ns=self._user_ns,
+            kishu_disk_ahg=self._kishu_disk_ahg,
             kishu_graph=self._kishu_graph,
-            kishu_commit=self._kishu_commit,
             incremental_cr=self._incremental_cr,
         )
         self._variable_version_tracker = VariableVersionTracker({})
@@ -480,7 +485,7 @@ class KishuForJupyter:
         commit_ns = restore_plan.run(database_path, commit_id)
         self._checkout_namespace(self._user_ns, commit_ns)
 
-        self._cr_planner.replace_state(commit_entry, self._user_ns)
+        self._cr_planner.replace_state(commit_id, self._user_ns)
         self._variable_version_tracker.set_current(self._kishu_variable_version.get_variable_version_by_commit_id(commit_id))
 
         # Update Kishu heads.
@@ -544,15 +549,12 @@ class KishuForJupyter:
         entry.error_in_exec = repr_if_not_none(result.error_in_exec)
         entry.result = repr_if_not_none(result.result)
 
-        # Update optimization items.
-        changed_vars = self._cr_planner.post_run_cell_update(entry.raw_cell, entry.end_time - entry.start_time)
-
         # Step forward internal data.
         self._last_execution_count += 1
         self._start_time = None
 
         # Commit this entry.
-        self._commit_entry(entry, changed_vars)
+        self._commit_entry(entry)
 
     @staticmethod
     def kishu_sessions() -> List[KishuSession]:
@@ -617,6 +619,11 @@ class KishuForJupyter:
         entry.commit_id = self._commit_id()
         entry.timestamp = time.time()
 
+        # Update optimization items.
+        changed_vars = self._cr_planner.post_run_cell_update(
+            entry.commit_id, entry.raw_cell, entry.end_time - entry.start_time if entry.end_time and entry.start_time else 1.0
+        )
+
         # Observe all executed cells and outputs.
         entry.executed_cells = self._user_ns.ipython_in()
         executed_outputs = self._user_ns.ipython_out()
@@ -629,7 +636,7 @@ class KishuForJupyter:
         # Plan for checkpointing and restoration.
         checkpoint_start_time = time.time()
         entry.restore_plan, entry.varset_version = self._checkpoint(entry)
-        entry.ahg_string = self._cr_planner.serialize_ahg()
+
         checkpoint_runtime_s = time.time() - checkpoint_start_time
         entry.checkpoint_runtime_s = checkpoint_runtime_s
 
@@ -683,7 +690,7 @@ class KishuForJupyter:
         checkpoint_plan.run(self._user_ns)
 
         # Extra: generate variable version.
-        data_version = hash(pickle.dumps(self._cr_planner.get_ahg().get_variable_snapshots()))
+        data_version = hash(pickle.dumps(self._cr_planner.get_ahg().get_active_variable_snapshots(cell_info.commit_id)))
         return restore_plan, data_version
 
     @staticmethod

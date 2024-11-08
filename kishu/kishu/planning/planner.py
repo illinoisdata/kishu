@@ -8,14 +8,13 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import AHG, AHGUpdateInfo, VariableName, VersionedName
+from kishu.planning.ahg import AHG, AHGUpdateInfo
 from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import IncrementalLoadOptimizer, Optimizer
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
-from kishu.planning.profiler import profile_variable_size
 from kishu.storage.checkpoint import KishuCheckpoint
-from kishu.storage.commit import CommitEntry, KishuCommit
 from kishu.storage.commit_graph import CommitId, KishuCommitGraph
+from kishu.storage.disk_ahg import CellExecution, KishuDiskAHG, VariableName, VariableSnapshot
 
 
 @dataclass
@@ -44,8 +43,8 @@ class UsefulVses:
     computation of incremental restore plan.
     """
 
-    useful_active_vses: Set[VersionedName]
-    useful_stored_vses: Set[VersionedName]
+    useful_active_vses: Set[VariableSnapshot]
+    useful_stored_vses: Set[VariableSnapshot]
 
 
 class CheckpointRestorePlanner:
@@ -56,16 +55,16 @@ class CheckpointRestorePlanner:
 
     def __init__(
         self,
+        kishu_disk_ahg: KishuDiskAHG,
+        kishu_graph: KishuCommitGraph,
         user_ns: Namespace = Namespace(),
         ahg: Optional[AHG] = None,
-        kishu_graph: Optional[KishuCommitGraph] = None,
-        kishu_commit: Optional[KishuCommit] = None,
         incremental_cr: bool = False,
     ) -> None:
         """
         @param user_ns  User namespace containing variables in the kernel.
         """
-        self._ahg = ahg if ahg else AHG()
+        self._ahg = ahg if ahg else AHG(kishu_disk_ahg)
         self._user_ns = user_ns
         self._id_graph_map: Dict[str, GraphNode] = {}
         self._pre_run_cell_vars: Set[str] = set()
@@ -75,30 +74,37 @@ class CheckpointRestorePlanner:
 
         # Storage-related items.
         self._kishu_graph = kishu_graph
-        self._kishu_commit = kishu_commit
+        self._kishu_disk_ahg = kishu_disk_ahg
 
         # Used by instrumentation to compute whether data has changed.
         self._modified_vars_structure: Set[str] = set()
 
     @staticmethod
     def from_existing(
-        user_ns: Namespace, kishu_graph: KishuCommitGraph, kishu_commit: KishuCommit, incremental_cr: bool
+        user_ns: Namespace,
+        kishu_disk_ahg: KishuDiskAHG,
+        kishu_graph: KishuCommitGraph,
+        incremental_cr: bool,
     ) -> CheckpointRestorePlanner:
-        return CheckpointRestorePlanner(user_ns, AHG.from_existing(user_ns), kishu_graph, kishu_commit, incremental_cr)
+        return CheckpointRestorePlanner(
+            kishu_disk_ahg, kishu_graph, user_ns, AHG.from_db(kishu_disk_ahg, user_ns), incremental_cr
+        )
 
     def pre_run_cell_update(self) -> None:
         """
         Preprocessing steps performed prior to cell execution.
         """
-        # Record variables in the user name prior to running cell.
-        self._pre_run_cell_vars = self._user_ns.keyset()
+        # Record variables in the user name prior to running cell if we are not in a new session.
+        self._pre_run_cell_vars = self._user_ns.keyset() if self._kishu_graph.head() else set()
 
         # Populate missing ID graph entries.
-        for var in self._ahg.get_variable_names():
-            if var not in self._id_graph_map and var in self._user_ns:
+        for var in self._user_ns.keyset():
+            if var not in self._id_graph_map:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
-    def post_run_cell_update(self, code_block: Optional[str], runtime_s: Optional[float]) -> ChangedVariables:
+    def post_run_cell_update(
+        self, commit_id: CommitId, code_block: Optional[str], runtime_s: Optional[float]
+    ) -> ChangedVariables:
         """
         Post-processing steps performed after cell execution.
         @param code_block: code of executed cell.
@@ -146,6 +152,9 @@ class CheckpointRestorePlanner:
         runtime_s = 0.0 if runtime_s is None else runtime_s
         self._ahg.update_graph(
             AHGUpdateInfo(
+                self._kishu_graph.head(),
+                commit_id,
+                self._user_ns,
                 code_block,
                 version,
                 runtime_s,
@@ -161,8 +170,6 @@ class CheckpointRestorePlanner:
 
     def generate_checkpoint_restore_plans(self, database_path: Path, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
         if self._incremental_cr:
-            if self._kishu_graph is None:
-                raise ValueError("KishuGraph cannot be None if incremental store is enabled.")
             return self._generate_checkpoint_restore_plans(
                 database_path, commit_id, self._kishu_graph.list_ancestor_commit_ids(self._kishu_graph.head())
             )
@@ -173,36 +180,27 @@ class CheckpointRestorePlanner:
         self, database_path: Path, commit_id: str, parent_commit_ids: List[str]
     ) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
-        active_vss = self._ahg.get_active_variable_snapshots()
-        for vs in active_vss:
-            for varname in vs.name:
-                """If manual commit made before init, pre-run cell update doesn't happen for new variables
-                so we need to add them to self._id_graph_map"""
-                if varname not in self._id_graph_map:
-                    self._id_graph_map[varname] = get_object_state(self._user_ns[varname], {})
-
-        # Profile the size of each variable defined in the current session.
-        for active_vs in active_vss:
-            active_vs.size = profile_variable_size([self._user_ns[var] for var in active_vs.name])
+        active_vss = self._ahg.get_active_variable_snapshots(commit_id)
+        for varname in self._user_ns.keyset():
+            """If manual commit made before init, pre-run cell update doesn't happen for new variables
+            so we need to add them to self._id_graph_map"""
+            if varname not in self._id_graph_map:
+                self._id_graph_map[varname] = get_object_state(self._user_ns[varname], {})
 
         # If incremental storage is enabled, retrieve list of currently stored VSes and compute VSes to
         # NOT migrate as they are already stored.
         if self._incremental_cr:
             stored_versioned_names = KishuCheckpoint(database_path).get_stored_versioned_names(parent_commit_ids)
-            active_vss = [vs for vs in active_vss if VersionedName(vs.name, vs.version) not in stored_versioned_names]
+            stored_variable_snapshots = set(self._ahg.get_vs_by_versioned_names(frozenset(stored_versioned_names)))
+            active_vss = [vs for vs in active_vss if vs not in stored_variable_snapshots]
 
         # Initialize optimizer.
         # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
         # Currently, a variable is recomputed only if it is unserialzable.
-        optimizer = Optimizer(self._ahg, active_vss, stored_versioned_names if self._incremental_cr else None)
+        optimizer = Optimizer(self._ahg, active_vss, stored_variable_snapshots if self._incremental_cr else None)
 
         # Use the optimizer to compute the checkpointing configuration.
         vss_to_migrate, ces_to_recompute = optimizer.compute_plan()
-
-        # Sort variables to migrate based on cells they were created in.
-        ce_to_vs_map = defaultdict(list)
-        for vs_name in vss_to_migrate:
-            ce_to_vs_map[self._ahg.get_active_variable_snapshots_dict()[vs_name.name].output_ce.cell_num].append(vs_name.name)
 
         if self._incremental_cr:
             # Create incremental checkpoint plan using optimization results.
@@ -210,7 +208,7 @@ class CheckpointRestorePlanner:
                 self._user_ns,
                 database_path,
                 commit_id,
-                list(self._ahg.get_active_variable_snapshots_dict()[vn.name] for vn in vss_to_migrate),
+                list(vss_to_migrate),
             )
 
         else:
@@ -219,13 +217,21 @@ class CheckpointRestorePlanner:
                 self._user_ns, database_path, commit_id, list(chain.from_iterable([vs.name for vs in vss_to_migrate]))
             )
 
+        # Sort variables to migrate based on cells they were created in.
+        ce_to_vs_map = defaultdict(list)
+        for vs_name in vss_to_migrate:
+            ce_to_vs_map[self._ahg.get_vs_input_ce(vs_name)].append(vs_name.name)
+
         # Create restore plan using optimization results.
         restore_plan = self._generate_restore_plan(ces_to_recompute, ce_to_vs_map, optimizer.req_func_mapping)
 
         return checkpoint_plan, restore_plan
 
     def _generate_restore_plan(
-        self, ces_to_recompute: Set[int], ce_to_vs_map: Dict[int, List[VariableName]], req_func_mapping: Dict[int, Set[int]]
+        self,
+        ces_to_recompute: Set[CellExecution],
+        ce_to_vs_map: Dict[CellExecution, List[VariableName]],
+        req_func_mapping: Dict[CellExecution, Set[CellExecution]],
     ) -> RestorePlan:
         """
         Generates a restore plan based on results from the optimizer.
@@ -236,19 +242,17 @@ class CheckpointRestorePlanner:
         """
         restore_plan = RestorePlan()
 
-        ce_dict = {ce.cell_num: ce for ce in self._ahg.get_cell_executions()}
-
-        for ce in self._ahg.get_cell_executions():
+        for ce in self._ahg.get_all_cell_executions():
             # Add a rerun cell restore action if the cell needs to be rerun
-            if ce.cell_num in ces_to_recompute:
+            if ce in ces_to_recompute:
                 restore_plan.add_rerun_cell_restore_action(ce.cell_num, ce.cell)
 
             # Add a load variable restore action if there are variables from the cell that needs to be stored
-            if len(ce_to_vs_map[ce.cell_num]) > 0:
+            if len(ce_to_vs_map[ce]) > 0:
                 restore_plan.add_load_variable_restore_action(
                     ce.cell_num,
-                    list(chain.from_iterable(ce_to_vs_map[ce.cell_num])),
-                    [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]],
+                    list(chain.from_iterable(ce_to_vs_map[ce])),
+                    [(req_ce.cell_num, req_ce.cell) for req_ce in req_func_mapping[ce]],
                 )
         return restore_plan
 
@@ -257,99 +261,93 @@ class CheckpointRestorePlanner:
         database_path: Path,
         target_commit_id: CommitId,
     ) -> RestorePlan:
-        if self._kishu_graph is None:
-            raise ValueError("KishuGraph cannot be None if incremental store is enabled.")
-        if self._kishu_commit is None:
-            raise ValueError("KishuCommitGraph cannot be None if incremental store is enabled.")
+        # Get active VSes in target state.
+        target_active_vses = self._ahg.get_active_variable_snapshots(target_commit_id)
 
-        # Get target AHG.
-        target_commit_entry = self._kishu_commit.get_commit(target_commit_id)
-        if target_commit_entry.ahg_string is None:
-            raise ValueError("No Application History Graph found for commit_id = {}".format(target_commit_id))
-        target_ahg = AHG.deserialize(target_commit_entry.ahg_string)
-
-        # Get LCA AHG.
+        # Get active VSes in LCA state.
         current_commit_id = self._kishu_graph.head()
         lca_commit_id = self._kishu_graph.get_lowest_common_ancestor_id(target_commit_id, current_commit_id)
-        lca_commit_entry = self._kishu_commit.get_commit(lca_commit_id)
-        lca_ahg = AHG.deserialize(lca_commit_entry.ahg_string) if lca_commit_entry.ahg_string is not None else AHG()
+        lca_active_vses = self._ahg.get_active_variable_snapshots(lca_commit_id)
 
         # Get parent commit IDs.
         return self._generate_incremental_restore_plan(
             database_path,
-            target_ahg,
-            lca_ahg,
+            target_active_vses,
+            lca_active_vses,
             self._kishu_graph.list_ancestor_commit_ids(target_commit_id),
         )
 
     def _generate_incremental_restore_plan(
-        self, database_path: Path, target_ahg: AHG, lca_ahg: AHG, target_parent_commit_ids: List[str]
+        self,
+        database_path: Path,
+        target_active_vses: List[VariableSnapshot],
+        lca_active_vses: List[VariableSnapshot],
+        target_parent_commit_ids: List[str],
     ) -> RestorePlan:
         """
         Dynamically generates an incremental restore plan. To be called at checkout time if incremental CR is enabled.
         """
-        # Get the target active VSes to restore.
-        target_active_vss = target_ahg.get_active_variable_snapshots()
-
         # Find currently active VSes and stored VSes that can help restoration.
-        useful_vses = self._find_useful_vses(lca_ahg, database_path, target_parent_commit_ids)
+        useful_vses = self._find_useful_vses(lca_active_vses, database_path, target_parent_commit_ids)
+
         # Compute the incremental load plan.
         opt_result = IncrementalLoadOptimizer(
-            target_active_vss, useful_vses.useful_active_vses, useful_vses.useful_stored_vses
+            self._ahg,
+            target_active_vses,
+            useful_vses.useful_active_vses,
+            useful_vses.useful_stored_vses,
         ).compute_plan()
-
         # Sort the VSes to load and move by cell execution number.
-        move_ce_to_vs_map: Dict[int, List[VersionedName]] = defaultdict(list)
-        for versioned_name, vs in opt_result.vss_to_move.items():
-            move_ce_to_vs_map[vs.output_ce.cell_num].append(versioned_name)
+        move_ce_to_vs_map: Dict[CellExecution, List[VariableSnapshot]] = defaultdict(list)
+        for vs in opt_result.vss_to_move:
+            move_ce_to_vs_map[self._ahg.get_vs_input_ce(vs)].append(vs)
 
-        load_ce_to_vs_map: Dict[int, List[VersionedName]] = defaultdict(list)
-        for versioned_name, vs in opt_result.vss_to_load.items():
-            load_ce_to_vs_map[vs.output_ce.cell_num].append(versioned_name)
+        load_ce_to_vs_map: Dict[CellExecution, List[VariableSnapshot]] = defaultdict(list)
+        for vs in opt_result.vss_to_load:
+            load_ce_to_vs_map[self._ahg.get_vs_input_ce(vs)].append(vs)
 
         # Compute the incremental restore plan.
         restore_plan = RestorePlan()
-        target_ces_map = {ce.cell_num: ce for ce in target_ahg.get_cell_executions()}
 
-        for ce in target_ahg.get_cell_executions():
+        for ce in self._ahg.get_all_cell_executions():
             # Add a rerun cell restore action if the cell needs to be rerun.
-            if ce.cell_num in opt_result.ces_to_rerun:
+            if ce in opt_result.ces_to_rerun:
                 restore_plan.add_rerun_cell_restore_action(ce.cell_num, ce.cell)
 
             # Add a move variable action if variables need to be moved.
-            if len(move_ce_to_vs_map[ce.cell_num]) > 0:
+            if len(move_ce_to_vs_map[ce]) > 0:
                 restore_plan.add_move_variable_restore_action(
                     ce.cell_num,
-                    self._user_ns.subset(set(chain.from_iterable([vn.name for vn in move_ce_to_vs_map[ce.cell_num]]))),
+                    self._user_ns.subset(set(chain.from_iterable([vs.name for vs in move_ce_to_vs_map[ce]]))),
                 )
 
             # Add a incremental load restore action if there are variables from the cell that needs to be loaded.
-            if len(load_ce_to_vs_map[ce.cell_num]) > 0:
+            if len(load_ce_to_vs_map[ce]) > 0:
                 # All loaded VSes from the same cell execution share the same fallback execution; it
                 # suffices to pick any one of them.
                 fallback_recomputations = [
-                    (cell_num, target_ces_map[cell_num].cell)
-                    for cell_num in opt_result.fallback_recomputation[load_ce_to_vs_map[ce.cell_num][0]]
+                    (req_ce.cell_num, req_ce.cell) for req_ce in opt_result.fallback_recomputation[load_ce_to_vs_map[ce][0]]
                 ]
 
-                restore_plan.add_incremental_load_restore_action(
-                    ce.cell_num, load_ce_to_vs_map[ce.cell_num], fallback_recomputations
-                )
+                restore_plan.add_incremental_load_restore_action(ce.cell_num, load_ce_to_vs_map[ce], fallback_recomputations)
 
         return restore_plan
 
-    def _find_useful_vses(self, lca_ahg: AHG, database_path: Path, target_parent_commit_ids: List[str]) -> UsefulVses:
+    def _find_useful_vses(
+        self, lca_active_vses: List[VariableSnapshot], database_path: Path, target_parent_commit_ids: List[str]
+    ) -> UsefulVses:
         # If an active VS in the current session exists as an active VS in the session of the LCA,
         # the active vs can contribute toward restoration.
-        lca_vses = set(VersionedName(vs.name, vs.version) for vs in lca_ahg.get_active_variable_snapshots())
-        current_vses = set(VersionedName(vs.name, vs.version) for vs in self._ahg.get_active_variable_snapshots())
+        lca_vses = set(lca_active_vses)
+        current_vses = set(self._ahg.get_active_variable_snapshots(self._kishu_graph.head()))
         useful_active_vses = lca_vses.intersection(current_vses)
 
         # Get the stored VSes potentially useful for session restoration. However, if a variable is
         # currently both in the session and stored, we will never use the stored version. Discard them.
-        useful_stored_vses = (
-            KishuCheckpoint(database_path).get_stored_versioned_names(target_parent_commit_ids).difference(useful_active_vses)
+        stored_vses = self._ahg.get_vs_by_versioned_names(
+            frozenset(KishuCheckpoint(database_path).get_stored_versioned_names(target_parent_commit_ids))
         )
+        useful_stored_vses = set(stored_vses).difference(useful_active_vses)
 
         return UsefulVses(useful_active_vses, useful_stored_vses)
 
@@ -362,48 +360,34 @@ class CheckpointRestorePlanner:
         """
         return self._id_graph_map
 
-    def serialize_ahg(self) -> str:
-        """
-        Returns the decoded serialized bytestring (str type) of the AHG.
-        Required as the AHG is not JSON serializable by default.
-        """
-        return self._ahg.serialize()
-
-    def replace_state(self, target_commit_entry: CommitEntry, new_user_ns: Namespace) -> None:
+    def replace_state(self, target_commit_id: CommitId, new_user_ns: Namespace) -> None:
         """
         Replace user namespace with new_user_ns.
         Called when a checkout is performed.
         """
         # Get target AHG.
-        if target_commit_entry.ahg_string is None:
-            raise ValueError("No Application History Graph found for target commit entry")
-        target_ahg = AHG.deserialize(target_commit_entry.ahg_string)
+        target_active_vses = self._ahg.get_active_variable_snapshots(target_commit_id)
 
-        self._replace_state(target_ahg, new_user_ns)
+        self._replace_state(target_active_vses, new_user_ns)
 
-    def _replace_state(self, new_ahg: AHG, new_user_ns: Namespace) -> None:
+    def _replace_state(self, new_active_vses: List[VariableSnapshot], new_user_ns: Namespace) -> None:
         """
-        Replace the current AHG with new_ahg_string and user namespace with new_user_ns.
+        Replace the current AHG's active VSes with new_active_vses and user namespace with new_user_ns.
         Called when a checkout is performed.
         """
         self._user_ns = new_user_ns
 
         # Update ID graphs for differing active variables.
-        for varname in self._get_differing_vars_post_checkout(new_ahg):
+        for varname in self._get_differing_vars_post_checkout(new_active_vses):
             self._id_graph_map[varname] = get_object_state(self._user_ns[varname], {})
-
-        # Replace old AHG with new AHG.
-        self._ahg = new_ahg
 
         # Clear pre-run cell info.
         self._pre_run_cell_vars = set()
 
-    def _get_differing_vars_post_checkout(self, new_ahg) -> Set[str]:
+    def _get_differing_vars_post_checkout(self, new_active_vses: List[VariableSnapshot]) -> Set[str]:
         """
         Finds all differing active variables between the pre and post-checkout states.
         """
-        pre_checkout_active_vss = set([VersionedName(vs.name, vs.version) for vs in self._ahg.get_active_variable_snapshots()])
-        post_checkout_active_vss = set([VersionedName(vs.name, vs.version) for vs in new_ahg.get_active_variable_snapshots()])
-
-        vss_diff = post_checkout_active_vss.difference(pre_checkout_active_vss)
+        pre_checkout_active_vss = set(self._ahg.get_active_variable_snapshots(self._kishu_graph.head()))
+        vss_diff = set(new_active_vses).difference(pre_checkout_active_vss)
         return {name for var_snapshot in vss_diff for name in var_snapshot.name}
