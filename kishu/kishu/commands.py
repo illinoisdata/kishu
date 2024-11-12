@@ -3,7 +3,6 @@ from __future__ import annotations
 import datetime
 import enum
 import json
-import sys
 from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TypedDict
@@ -22,6 +21,7 @@ from kishu.exceptions import (
 from kishu.jupyter.namespace import Namespace
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import JupyterCommandResult, JupyterConnection, KishuForJupyter, KishuSession
+from kishu.logging import logger
 from kishu.notebook_id import NotebookId
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.storage.commit import CommitEntry, FormattedCell, KishuCommit
@@ -336,7 +336,7 @@ class KishuCommand:
             sessions = list(filter(lambda session: session.is_alive, sessions))
         else:
             # TODO: Support list_all properly.
-            print("WARNING: listing all returns only alive sessions.", file=sys.stderr)
+            logger.warning("WARNING: listing all returns only alive sessions.")
 
         # Sort by notebook ID.
         sessions = sorted(sessions, key=lambda session: session.notebook_key)
@@ -373,7 +373,7 @@ class KishuCommand:
         return DetachResult.wrap(
             JupyterConnection(kernel_id).execute_one_command(
                 pre_command=f'from kishu import detach_kishu; detach_kishu("{notebook_path.resolve()}")',
-                command=f'"Successfully detatched notebook at {notebook_path.resolve()}"',
+                command=f'"Successfully detached notebook at {notebook_path.resolve()}"',
             )
         )
 

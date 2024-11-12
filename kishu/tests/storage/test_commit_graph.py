@@ -1,6 +1,7 @@
 import pytest
 
 from kishu.storage.commit_graph import (
+    ABSOLUTE_PAST,
     CommitNodeInfo,
     KishuCommitGraph,
 )
@@ -148,6 +149,8 @@ class TestKishuCommitGraph:
             CommitNodeInfo("2", "1"),
             CommitNodeInfo("1", ""),
         ]
+        assert kishu_graph.list_ancestor_commit_ids() == ["A_B", "A_A", "A"]
+        assert kishu_graph.list_ancestor_commit_ids("5") == ["5", "4", "3", "2", "1"]
         assert kishu_graph.head() == "A_B"
 
         # Test listing all history.
@@ -240,6 +243,46 @@ class TestKishuCommitGraph:
             CommitNodeInfo("1", ""),
         ]
         assert kishu_graph.head() == "A_B"
+
+    def test_lowest_common_ancestor(self, kishu_graph, database_path, graph_name):
+        """
+        Tests the lowest commit ancestor algorithm.
+
+        The commit graph looks like:
+
+             |-- 1 -- 2 -- 3 -- 4 -- 5
+             |             |
+        ~ -- +             | -- 3_1 -- 3_2 -- 3_3 -- 3_4
+             |
+             |-- A -- A_A -- A_B
+        """
+        assert kishu_graph.list_history() == []
+
+        kishu_graph.step("1")
+        kishu_graph.step("2")
+        kishu_graph.step("3")
+        kishu_graph.step("4")
+        kishu_graph.step("5")
+        kishu_graph.jump("3")
+        kishu_graph.step("3_1")
+        kishu_graph.step("3_2")
+        kishu_graph.step("3_3")
+        kishu_graph.step("3_4")
+        kishu_graph.jump("A")
+        kishu_graph.step("A_A")
+        kishu_graph.step("A_B")
+
+        # 5 and 3_4 are on two different branches.
+        assert kishu_graph.get_lowest_common_ancestor_id("5", "3_4") == "3"
+
+        # LCA of ancestor and descendant returns the ancestor.
+        assert kishu_graph.get_lowest_common_ancestor_id("5", "3") == "3"
+
+        # LCA of 2 identical commits returns the commit(s).
+        assert kishu_graph.get_lowest_common_ancestor_id("2", "2") == "2"
+
+        # LCA of 2 commits with no common ancestor returns ABSOLUTE_PAST.
+        assert kishu_graph.get_lowest_common_ancestor_id("A", "2") == ABSOLUTE_PAST
 
     def test_many_steps(self, kishu_graph, database_path, graph_name):
         """Test persistence after many steps."""

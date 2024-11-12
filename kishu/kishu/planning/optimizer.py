@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import networkx as nx
 import numpy as np
@@ -12,7 +12,7 @@ REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
 
 
 @dataclass
-class PlannerContext:
+class OptimizerContext:
     """
     Optimizer-related config options.
     """
@@ -22,10 +22,30 @@ class PlannerContext:
     network_bandwidth: float
 
 
+@dataclass
+class IncrementalLoadOptimizationResult:
+    """
+    Optimization result for incremental load. To be packed into a RestorePlan by the planner.
+
+    @param vss_to_move: VSes to move from the old namespace to the new namespace.
+    @param vss_to_load: VSes to load from the database.
+    @param ces_to_rerun: cell executions to rerun.
+    @param fallback_recomputation: fallback cell executions for each VS in vss_to_load.
+    """
+
+    vss_to_move: Dict[VersionedName, VariableSnapshot] = field(default_factory=lambda: {})
+    vss_to_load: Dict[VersionedName, VariableSnapshot] = field(default_factory=lambda: {})
+    ces_to_rerun: Set[int] = field(default_factory=lambda: set())
+    fallback_recomputation: Dict[VersionedName, Set[int]] = field(default_factory=lambda: {})
+
+
 class Optimizer:
     """
     The optimizer constructs a flow graph and runs the min-cut algorithm to exactly find the best
-    checkpointing configuration.
+    checkpointing and restore configurations.
+
+    If incremental restore is enabled, the restore configuration is not used;
+    it is computed on-the-fly by the GreedyIncrementalRestoreOptimizer (see below).
     """
 
     def __init__(
@@ -44,7 +64,7 @@ class Optimizer:
         self.active_vss = active_vss
 
         # Optimizer context containing flags for optimizer parameters.
-        self._optimizer_context = PlannerContext(
+        self._optimizer_context = OptimizerContext(
             always_recompute=Config.get("OPTIMIZER", "always_recompute", False),
             always_migrate=Config.get("OPTIMIZER", "always_migrate", False),
             network_bandwidth=Config.get("OPTIMIZER", "network_bandwidth", REALLY_FAST_BANDWIDTH_10GBPS),
@@ -155,3 +175,99 @@ class Optimizer:
         ces_to_recompute = set(partition[0]).intersection(set(ce.cell_num for ce in self.ahg.get_cell_executions()))
 
         return vss_to_migrate, ces_to_recompute
+
+
+class IncrementalLoadOptimizer:
+    """
+    The incremental load optimizer computes the optimal way to restore to a target session state represented
+    by target_active_vss, given the current variables in the namespace useful_active_vses and stored variables
+    in the database useful_stored_vses.
+    """
+
+    def __init__(
+        self,
+        target_active_vss: List[VariableSnapshot],
+        useful_active_vses: Set[VersionedName],
+        useful_stored_vses: Set[VersionedName],
+    ) -> None:
+        """
+        Creates an optimizer with a migration speed estimate. The AHG and active VS fields
+        must be populated prior to calling select_vss.
+
+        @param ahg: Application History Graph.
+        @param target_active_vss: active Variable Snapshots of the state to restore to.
+        @param already_stored_vss: A List of Variable snapshots already stored in previous plans. They can be
+            loaded as part of the restoration plan to save restoration time.
+        """
+        self.target_active_vss = target_active_vss
+        self.useful_active_vses = useful_active_vses
+        self.useful_stored_vses = useful_stored_vses
+
+        # Set lookup for active VSs by name and version as VS objects are not hashable.
+        self.target_active_versioned_names = {VersionedName(vs.name, vs.version) for vs in self.target_active_vss}
+
+    def dfs_helper(
+        self,
+        current: Union[CellExecution, VariableSnapshot],
+        visited: Set[VersionedName],
+        prerequisite_ces: Set[int],
+        opt_result: IncrementalLoadOptimizationResult,
+        computing_fallback=False,
+    ):
+        """
+        Perform DFS on the Application History Graph for finding the CEs required to recompute a variable.
+
+        @param current: Name of current nodeset.
+        @param visited: Visited nodesets.
+        @param prerequisite_ces: Set of CEs needing re-execution to recompute the current nodeset.
+        @param computing_fallback: whether this DFS run is for finding fallback recomputation. If yes, skip using
+            any VSes stored in the DB (as they are the main point of failure).
+        """
+        if isinstance(current, CellExecution):
+            prerequisite_ces.add(current.cell_num)
+            for vs in current.src_vss:
+                if (
+                    VersionedName(vs.name, vs.version) not in self.target_active_versioned_names
+                    and VersionedName(vs.name, vs.version) not in visited
+                ):
+                    self.dfs_helper(vs, visited, prerequisite_ces, opt_result, computing_fallback)
+
+        elif isinstance(current, VariableSnapshot):
+            visited.add(VersionedName(current.name, current.version))
+
+            # Current VS is in the namespace.
+            if VersionedName(current.name, current.version) in self.useful_active_vses:
+                opt_result.vss_to_move[VersionedName(current.name, current.version)] = current
+
+            # Current VS is stored in the DB.
+            elif not computing_fallback and VersionedName(current.name, current.version) in self.useful_stored_vses:
+                opt_result.vss_to_load[VersionedName(current.name, current.version)] = current
+
+            # Else, continue checking the dependencies required to compute this VS.
+            elif current.output_ce:
+                self.dfs_helper(current.output_ce, visited, prerequisite_ces, opt_result, computing_fallback)
+
+    def compute_plan(self) -> IncrementalLoadOptimizationResult:
+        """
+        Returns the optimal replication plan for the stored AHG consisting of
+        variables to migrate and cells to rerun.
+
+        Test parameters (mutually exclusive):
+        @param always_migrate: migrate all variables.
+        @param always_recompute: rerun all cells.
+        """
+        opt_result = IncrementalLoadOptimizationResult()
+
+        # Greedily find the cells to rerun, VSes to move and VSes to load for each active VS in the target state.
+        for vs in self.target_active_vss:
+            prerequisite_ces: Set[int] = set()
+            self.dfs_helper(vs, set(), prerequisite_ces, opt_result)
+            opt_result.ces_to_rerun |= prerequisite_ces
+
+        # For the VSes to load, find their fallback recomputations.
+        for versioned_name, variable_snapshot in opt_result.vss_to_load.items():
+            fallback_ces: Set[int] = set()
+            self.dfs_helper(variable_snapshot, set(), fallback_ces, opt_result, computing_fallback=True)
+            opt_result.fallback_recomputation[versioned_name] = fallback_ces
+
+        return opt_result

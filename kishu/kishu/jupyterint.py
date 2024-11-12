@@ -41,15 +41,12 @@ Reference
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import io
 import json
 import os
-import threading
 import time
 import uuid
-from asyncio.events import AbstractEventLoop
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -79,9 +76,9 @@ from kishu.planning.planner import ChangedVariables, CheckpointRestorePlanner
 from kishu.planning.variable_version_tracker import VariableVersionTracker
 from kishu.storage.branch import KishuBranch
 from kishu.storage.checkpoint import KishuCheckpoint
-from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, KishuCommit
+from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, KishuCommit, NotebookCommitState
 from kishu.storage.commit_graph import KishuCommitGraph
-from kishu.storage.config import Config
+from kishu.storage.config import Config, PersistentConfig
 from kishu.storage.connection import KishuConnection
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag
@@ -273,6 +270,10 @@ class KishuForJupyter:
         self._kishu_graph = KishuCommitGraph.new_var_graph(self.database_path())
         self._kishu_nb_graph = KishuCommitGraph.new_nb_graph(self.database_path())
         self._kishu_variable_version = VariableVersion(self.database_path())
+        self._persistent_config = PersistentConfig(self.database_path())
+
+        # Initialize persistent config.
+        self._persistent_config.init_database()
 
         # Enclosing environment.
         self._ip = ip
@@ -286,11 +287,15 @@ class KishuForJupyter:
         self._checkout_id = 0
 
         # Stateful trackers.
-        self._cr_planner = CheckpointRestorePlanner.from_existing(self._user_ns)
+        self._cr_planner = CheckpointRestorePlanner.from_existing(
+            user_ns=self._user_ns,
+            kishu_graph=self._kishu_graph,
+            kishu_commit=self._kishu_commit,
+            incremental_cr=self._persistent_config.get("PLANNER", "incremental_store", False),
+        )
         self._variable_version_tracker = VariableVersionTracker({})
         self._start_time: Optional[float] = None
         self._last_execution_count = 0
-        self._commit_thread: Optional[threading.Thread] = None
 
         # Configurations.
         self._test_mode = Config.get("JUPYTERINT", "test_mode", False)
@@ -401,11 +406,6 @@ class KishuForJupyter:
             # In Jupyter Notebook.
             IPython.display.display(IPython.display.Javascript(KishuForJupyter.RELOAD_CMD))
 
-    def wait_until_commit_finishes(self):
-        if self._commit_thread is not None:
-            self._commit_thread.join()
-            self._commit_thread = None
-
     def checkout(self, branch_or_commit_id: str, skip_notebook: bool = False) -> BareReprStr:
         """
         Restores a variable state from commit_id.
@@ -463,14 +463,16 @@ class KishuForJupyter:
         if commit_entry.execution_count is not None:
             self._ip.execution_count = commit_entry.execution_count + 1  # _ip.execution_count is the next count.
 
-        # Restore user-namespace variables.
-        commit_ns = commit_entry.restore_plan.run(database_path, commit_id)
+        # Use the (non-incremental) restore plan or a dynamically computed incremental restore plan depending on config.
+        if self._persistent_config.get("PLANNER", "incremental_store", False):
+            restore_plan = self._cr_planner.generate_incremental_restore_plan(self.database_path(), commit_id)
+        else:
+            restore_plan = commit_entry.restore_plan
+
+        commit_ns = restore_plan.run(database_path, commit_id)
         self._checkout_namespace(self._user_ns, commit_ns)
 
-        # Update C/R planner with AHG from checkpoint file and new namespace.
-        if commit_entry.ahg_string is None:
-            raise ValueError("No Application History Graph found for commit_id = {}".format(commit_id))
-        self._cr_planner.replace_state(commit_entry.ahg_string, self._user_ns)
+        self._cr_planner.replace_state(commit_entry, self._user_ns)
         self._variable_version_tracker.set_current(self._kishu_variable_version.get_variable_version_by_commit_id(commit_id))
 
         # Update Kishu heads.
@@ -505,9 +507,6 @@ class KishuForJupyter:
         print('info.cell_id =', info.cell_id)
         print(dir(info))
         """
-        # Block cell executoin when a commit is ongoing.
-        self.wait_until_commit_finishes()
-
         self._start_time = time.time()
         self._cr_planner.pre_run_cell_update()
 
@@ -544,25 +543,7 @@ class KishuForJupyter:
         self._last_execution_count += 1
         self._start_time = None
 
-        # Commit later once IPython returns to Jupyter and Jupyter updates cell information.
-        self._commit_thread = threading.Thread(
-            target=self._async_commit_entry,
-            args=(asyncio.get_event_loop(), entry, changed_vars),
-        )
-        self._commit_thread.start()
-        if self._test_mode:
-            # Join immediately in test mode.
-            self.wait_until_commit_finishes()
-
-    def _async_commit_entry(
-        self,
-        loop: AbstractEventLoop,
-        entry: CommitEntry,
-        changed_vars: Optional[ChangedVariables] = None,
-    ) -> None:
-        if not self._test_mode:  # Skip waiting to speed up testing. TODO: Remove when we acheive frontend testing.
-            time.sleep(1.2)  # Wait until autosaving is completed (200 ms margin).
-        asyncio.set_event_loop(loop)
+        # Commit this entry.
         self._commit_entry(entry, changed_vars)
 
     @staticmethod
@@ -611,22 +592,31 @@ class KishuForJupyter:
         self._commit_entry(entry)
         return BareReprStr(entry.commit_id)
 
+    def amend_notebook(self) -> None:
+        # Find the latest commit.
+        head = self._kishu_branch.get_head()
+        commit_id = head.commit_id
+        assert commit_id is not None, "No commit to update notebook state."
+
+        # Read notebook and amend the commit entry.
+        entry = self._kishu_commit.get_commit(commit_id)
+        self._read_and_fill_notebook_state(entry)
+        entry.nb_record_type = NotebookCommitState.amend_notebook
+        self._kishu_commit.update_commit(entry)
+
     def _commit_entry(self, entry: CommitEntry, changed_vars: Optional[ChangedVariables] = None) -> None:
         # Generate commit ID.
         entry.commit_id = self._commit_id()
         entry.timestamp = time.time()
 
-        # Observe all cells and extract notebook informations.
+        # Observe all executed cells and outputs.
         entry.executed_cells = self._user_ns.ipython_in()
         executed_outputs = self._user_ns.ipython_out()
         entry.executed_outputs = {k: str(v) for k, v in executed_outputs.items()} if executed_outputs is not None else None
-        entry.raw_nb, entry.formatted_cells = self._all_notebook_cells()
-        if entry.formatted_cells is not None:
-            code_cells = []
-            for cell in entry.formatted_cells:
-                code_cells.append(cell.cell_type)
-                code_cells.append(cell.source)
-            entry.code_version = hash(tuple(code_cells))
+
+        # Readn and fill in notebook state.
+        self._read_and_fill_notebook_state(entry)
+        entry.nb_record_type = NotebookCommitState.with_commit
 
         # Plan for checkpointing and restoration.
         checkpoint_start_time = time.time()
@@ -660,6 +650,15 @@ class KishuForJupyter:
         if self._commit_id_mode == "counter":
             return f"{self._session_id}:{self._checkout_id}:{self._last_execution_count}"
         return uuid.uuid4().hex
+
+    def _read_and_fill_notebook_state(self, entry: CommitEntry) -> None:
+        entry.raw_nb, entry.formatted_cells = self._all_notebook_cells()
+        if entry.formatted_cells is not None:
+            code_cells = []
+            for cell in entry.formatted_cells:
+                code_cells.append(cell.cell_type)
+                code_cells.append(cell.source)
+            entry.code_version = hash(tuple(code_cells))
 
     def _checkpoint(self, cell_info: CommitEntry) -> Tuple[RestorePlan, int]:
         """

@@ -1,9 +1,10 @@
+import pickle
 import pytest
 import sqlite3
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import VariableSnapshot, VersionedName
-from kishu.storage.checkpoint import CHECKPOINT_TABLE, KishuCheckpoint, VARIABLE_SNAPSHOT_TABLE
+from kishu.storage.checkpoint import CHECKPOINT_TABLE, VARIABLE_SNAPSHOT_TABLE, KishuCheckpoint
 from kishu.storage.path import KishuPath
 
 
@@ -58,11 +59,29 @@ class TestKishuCheckpoint:
         nameset = kishu_checkpoint.get_stored_versioned_names(["1"])
         assert nameset == {VersionedName(frozenset({"a", "b"}), 1), VersionedName(frozenset("c"), 1)}
 
-    def test_select_variable_snapshots(self, enable_incremental_store, kishu_checkpoint):
+    def test_get_stored_versioned_names(self, enable_incremental_store, kishu_checkpoint):
         # Create 2 commits
         kishu_checkpoint.store_variable_snapshots("1", [VariableSnapshot(frozenset("a"), 1)], Namespace({"a": 1}))
-        kishu_checkpoint.store_variable_snapshots("2", [VariableSnapshot(frozenset("b"), 1)], Namespace({"b": 2}))
+        kishu_checkpoint.store_variable_snapshots("2", [VariableSnapshot(frozenset("b"), 2)], Namespace({"b": 2}))
 
         # Only the VS stored in commit 1 ("a") should be returned.
         nameset = kishu_checkpoint.get_stored_versioned_names(["1"])
         assert nameset == {VersionedName(frozenset("a"), 1)}
+
+    def test_get_variable_snapshots(self, enable_incremental_store, kishu_checkpoint):
+        # Create 2 commits; first has 2 VSes, second has 1.
+        empty_list = []
+        empty_nested_list = [empty_list]
+        kishu_checkpoint.store_variable_snapshots(
+            "1",
+            [VariableSnapshot(frozenset({"b", "a"}), 1), VariableSnapshot(frozenset("c"), 1)],
+            Namespace({"a": empty_list, "b": empty_nested_list, "c": "strc"}),
+        )
+        kishu_checkpoint.store_variable_snapshots("2", [VariableSnapshot(frozenset("b"), 2)], Namespace({"b": "strb"}))
+
+        data_list = kishu_checkpoint.get_variable_snapshots([VersionedName("c", 1), VersionedName("b", 2)])
+
+        # Returned data is sorted in the same order as the passed in versioned names.
+        unpickled_data_list = [pickle.loads(i) for i in data_list]
+        assert unpickled_data_list[0] == {"c": "strc"}
+        assert unpickled_data_list[1] == {"b": "strb"}

@@ -1,10 +1,10 @@
-import pytest
+import sqlite3
 from unittest.mock import patch
 
-import sqlite3
+import pytest
 
 from kishu.notebook_id import NotebookId
-from kishu.storage.connection import KishuConnection, CONNECTION_TABLE
+from kishu.storage.connection import CONNECTION_TABLE, KishuConnection
 from kishu.storage.path import KishuPath
 
 

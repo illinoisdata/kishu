@@ -1,9 +1,10 @@
 import configparser
 import os
-import pytest
 import time
+import pytest
 
-from kishu.storage.config import Config
+from kishu.storage.config import Config, PersistentConfig
+from kishu.storage.path import KishuPath
 
 
 def test_initialize_config_get_default():
@@ -135,3 +136,36 @@ def test_backward_compatibility():
     # Querying for the new category should create it.
     assert Config.get("OPTIMIZER", "network_bandwidth", 1.0) == 1.0
     assert "OPTIMIZER" in Config.config
+
+
+class TestPersistentConfig:
+    @pytest.fixture
+    def db_path_name(self, nb_simple_path):
+        return KishuPath.database_path(nb_simple_path)
+
+    @pytest.fixture
+    def persistent_config(self, db_path_name):
+        """Fixture for initializing a KishuBranch instance."""
+        persistent_config = PersistentConfig(db_path_name)
+        persistent_config.init_database()
+        yield persistent_config
+        persistent_config.drop_database()
+
+    def test_set_persistent_config(self, persistent_config):
+        # Set the fields in config.
+        Config.set("PLANNER", "string_field", "42")
+        Config.set("PROFILER", "excluded_modules", ["a"])
+
+        # Set the fields in persistent config.
+        persistent_config._set_from_config("PLANNER", "string_field", "42")
+        persistent_config._set_from_config("PROFILER", "excluded_modules", ["a"])
+
+        # Assert that the set fields exist.
+        assert persistent_config.get("PROFILER", "excluded_modules", []) == ["a"]
+
+        # Assert that the set field is persistent even if the original config is changed.
+        Config.set("PLANNER", "string_field", "43")
+        assert persistent_config.get("PLANNER", "string_field", "43") == "42"
+
+    def test_get_dynamically_populated_field(self, persistent_config):
+        assert persistent_config.get("PLANNER", "string_field", "42") == "42"

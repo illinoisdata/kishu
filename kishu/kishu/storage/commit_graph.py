@@ -172,11 +172,33 @@ class KishuCommitGraph:
             commit_id = self._store.get_head()
         return self._store.read_ancestry(commit_id)
 
+    def list_ancestor_commit_ids(self, commit_id: Optional[CommitId] = None) -> List[CommitId]:
+        """
+        Lists the commit IDs of past commit(s) leading to the given commit.
+        """
+        return [node.commit_id for node in self.list_history(commit_id)]
+
     def list_all_history(self) -> List[CommitNodeInfo]:
         """
         Lists all existing commit(s).
         """
         return self._store.read_all()
+
+    def get_lowest_common_ancestor_id(self, commit_id1: CommitId, commit_id2: CommitId) -> CommitId:
+        """
+        Find the id of the lowest common ancestor commit of commit_id1 and commit_id2. Assumes that the commit graph is rooted.
+        """
+        commit_id1_history = list(reversed(self.list_ancestor_commit_ids(commit_id1)))
+        commit_id2_history = list(reversed(self.list_ancestor_commit_ids(commit_id2)))
+
+        lca = ABSOLUTE_PAST
+        for i in range(min(len(commit_id1_history), len(commit_id2_history))):
+            if commit_id1_history[i] == commit_id2_history[i]:
+                lca = commit_id1_history[i]
+            else:
+                break
+
+        return lca
 
     def head(self) -> CommitId:
         """
