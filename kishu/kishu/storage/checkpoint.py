@@ -25,7 +25,7 @@ class KishuCheckpoint:
         cur = con.cursor()
         cur.execute(f"create table if not exists {CHECKPOINT_TABLE} (commit_id text primary key, data blob)")
 
-        # Create incremental checkpointing related tables only if the config flag is enabled.
+        # Create incremental checkpointing related tables only if incremental store is enabled.
         if incremental_store:
             cur.execute(
                 f"create table if not exists {VARIABLE_SNAPSHOT_TABLE} " f"(version int, name text, commit_id text, data blob)"
