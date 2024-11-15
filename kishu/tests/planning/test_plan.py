@@ -39,6 +39,14 @@ class TestPlan:
         yield kishu_checkpoint
         kishu_checkpoint.drop_database()
 
+    @pytest.fixture
+    def kishu_incremental_checkpoint(self, db_path_name):
+        """Fixture for initializing a KishuCheckpoint instance with incremental CR."""
+        kishu_incremental_checkpoint = KishuCheckpoint(db_path_name, incremental_cr=True)
+        kishu_incremental_checkpoint.init_database()
+        yield kishu_incremental_checkpoint
+        kishu_incremental_checkpoint.drop_database()
+
     def test_checkout_wrong_id_error(self, db_path_name, kishu_checkpoint):
         exec_id = "abc"
         restore_plan = RestorePlan()
@@ -118,7 +126,7 @@ class TestPlan:
         assert result_ns.keyset() == user_ns.keyset()
         assert result_ns["foo"] == user_ns["foo"]
 
-    def test_store_versioned_names(self, db_path_name, enable_incremental_store, kishu_checkpoint):
+    def test_store_versioned_names(self, db_path_name, kishu_incremental_checkpoint):
         """
         Tests that the VARIABLE_SNAPSHOT table are populated correctly for incremental storage.
         TODO: add test for loading incrementally once that is implemented.
@@ -137,11 +145,11 @@ class TestPlan:
         checkpoint.run(user_ns)
 
         # Read stored versioned names
-        stored_versioned_names = kishu_checkpoint.get_stored_versioned_names([exec_id])
+        stored_versioned_names = kishu_incremental_checkpoint.get_stored_versioned_names([exec_id])
 
         assert VersionedName(frozenset({"a", "b"}), 1), VersionedName(frozenset("c"), 1) in stored_versioned_names
 
-    def test_incremental_restore(self, db_path_name, enable_incremental_store, kishu_checkpoint):
+    def test_incremental_restore(self, db_path_name, kishu_incremental_checkpoint):
         user_ns = Namespace({"a": 1, "b": 2, "c": 3})
 
         # Save.
@@ -157,7 +165,7 @@ class TestPlan:
 
         assert result_ns["b"] == 2
 
-    def test_move_variable(self, db_path_name, enable_incremental_store, kishu_checkpoint):
+    def test_move_variable(self, db_path_name, kishu_incremental_checkpoint):
         user_ns = Namespace({"a": 1, "b": 2, "c": 3})
 
         # The restore plan is to move the entire namespace.
@@ -167,7 +175,7 @@ class TestPlan:
 
         assert result_ns.to_dict() == user_ns.to_dict()
 
-    def test_comprehensive_incremental_restore_plan(self, db_path_name, enable_incremental_store, kishu_checkpoint):
+    def test_comprehensive_incremental_restore_plan(self, db_path_name, kishu_incremental_checkpoint):
         user_ns = Namespace({"a": 1, "b": 2, "c": 3})
 
         # Save.

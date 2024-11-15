@@ -264,7 +264,6 @@ class KishuForJupyter:
             kernel_id=self._notebook_id.kernel_id(),
         )
         self._kishu_commit = KishuCommit(self.database_path())
-        self._kishu_checkpoint = KishuCheckpoint(self.database_path())
         self._kishu_branch = KishuBranch(self.database_path())
         self._kishu_tag = KishuTag(self.database_path())
         self._kishu_graph = KishuCommitGraph.new_var_graph(self.database_path())
@@ -286,17 +285,6 @@ class KishuForJupyter:
         self._session_id = 0
         self._checkout_id = 0
 
-        # Stateful trackers.
-        self._cr_planner = CheckpointRestorePlanner.from_existing(
-            user_ns=self._user_ns,
-            kishu_graph=self._kishu_graph,
-            kishu_commit=self._kishu_commit,
-            incremental_cr=self._persistent_config.get("PLANNER", "incremental_store", False),
-        )
-        self._variable_version_tracker = VariableVersionTracker({})
-        self._start_time: Optional[float] = None
-        self._last_execution_count = 0
-
         # Configurations.
         self._test_mode = Config.get("JUPYTERINT", "test_mode", False)
         self._commit_id_mode = Config.get("JUPYTERINT", "commit_id_mode", "uuid4")
@@ -306,6 +294,21 @@ class KishuForJupyter:
             "enable_auto_commit_when_skip_notebook",
             False,
         )
+        self._incremental_cr = self._persistent_config.get("PLANNER", "incremental_store", False)
+
+        # Stateful trackers.
+        self._cr_planner = CheckpointRestorePlanner.from_existing(
+            user_ns=self._user_ns,
+            kishu_graph=self._kishu_graph,
+            kishu_commit=self._kishu_commit,
+            incremental_cr=self._incremental_cr,
+        )
+        self._variable_version_tracker = VariableVersionTracker({})
+        self._start_time: Optional[float] = None
+        self._last_execution_count = 0
+
+        # Kishu Checkpoint storage.
+        self._kishu_checkpoint = KishuCheckpoint(self.database_path(), self._incremental_cr)
 
         # Initialize databases.
         self._kishu_connection.init_database()
@@ -464,7 +467,7 @@ class KishuForJupyter:
             self._ip.execution_count = commit_entry.execution_count + 1  # _ip.execution_count is the next count.
 
         # Use the (non-incremental) restore plan or a dynamically computed incremental restore plan depending on config.
-        if self._persistent_config.get("PLANNER", "incremental_store", False):
+        if self._incremental_cr:
             restore_plan = self._cr_planner.generate_incremental_restore_plan(self.database_path(), commit_id)
         else:
             restore_plan = commit_entry.restore_plan

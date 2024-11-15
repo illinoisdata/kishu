@@ -67,6 +67,14 @@ class TestPlanner:
         yield kishu_checkpoint
         kishu_checkpoint.drop_database()
 
+    @pytest.fixture
+    def kishu_incremental_checkpoint(self, db_path_name):
+        """Fixture for initializing a KishuCheckpoint instance with incremental CR."""
+        kishu_incremental_checkpoint = KishuCheckpoint(db_path_name, incremental_cr=True)
+        kishu_incremental_checkpoint.init_database()
+        yield kishu_incremental_checkpoint
+        kishu_incremental_checkpoint.drop_database()
+
     def test_checkpoint_restore_planner(self, enable_always_migrate, nb_simple_path):
         """
         Test running a few cell updates.
@@ -173,7 +181,7 @@ class TestPlanner:
         )
 
     def test_checkpoint_restore_planner_incremental_store_simple(
-        self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_checkpoint
+        self, db_path_name, enable_always_migrate, kishu_incremental_checkpoint
     ):
         """
         Test incremental store.
@@ -198,7 +206,7 @@ class TestPlanner:
         assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset("y")
 
     def test_checkpoint_restore_planner_incremental_store_skip_store(
-        self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_checkpoint
+        self, db_path_name, enable_always_migrate, kishu_incremental_checkpoint
     ):
         """
         Test incremental store.
@@ -223,7 +231,7 @@ class TestPlanner:
         assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 0
 
     def test_checkpoint_restore_planner_incremental_store_no_skip_store(
-        self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_checkpoint
+        self, db_path_name, enable_always_migrate, kishu_incremental_checkpoint
     ):
         """
         Test incremental store.
@@ -249,7 +257,7 @@ class TestPlanner:
         assert checkpoint_plan_cell2.actions[0].vses_to_store[0].name == frozenset({"x", "y"})
 
     def test_checkpoint_restore_planner_incremental_restore_undo(
-        self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_checkpoint
+        self, db_path_name, enable_always_migrate, kishu_incremental_checkpoint
     ):
         """
         Test incremental restore with dynamically generated restore plan.
@@ -280,7 +288,7 @@ class TestPlanner:
         assert restore_plan.actions[StepOrder.new_move_variable(0)].vars_to_move.keyset() == {"x"}
 
     def test_checkpoint_restore_planner_incremental_restore_branch(
-        self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_checkpoint
+        self, db_path_name, enable_always_migrate, kishu_incremental_checkpoint
     ):
         """
         Test incremental restore with dynamically generated restore plan.
@@ -331,9 +339,7 @@ class TestPlanner:
         assert restore_plan.actions[StepOrder.new_move_variable(0)].vars_to_move.keyset() == {"x"}
         assert restore_plan.actions[StepOrder.new_rerun_cell(1)].cell_code == cell_code
 
-    def test_get_differing_vars_post_checkout(
-        self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_checkpoint
-    ):
+    def test_get_differing_vars_post_checkout(self, db_path_name, enable_always_migrate, kishu_incremental_checkpoint):
         """
         Tests the differing variables between pre and post-checkout are correctly identified.
         """

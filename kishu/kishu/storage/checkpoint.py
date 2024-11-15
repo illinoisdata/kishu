@@ -11,23 +11,23 @@ import dill as pickle
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import VariableName, VariableSnapshot, VersionedName
-from kishu.storage.config import Config
 
 CHECKPOINT_TABLE = "checkpoint"
 VARIABLE_SNAPSHOT_TABLE = "variable_snapshot"
 
 
 class KishuCheckpoint:
-    def __init__(self, database_path: Path):
+    def __init__(self, database_path: Path, incremental_cr: bool = False):
         self.database_path = database_path
+        self._incremental_cr = incremental_cr
 
     def init_database(self):
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(f"create table if not exists {CHECKPOINT_TABLE} (commit_id text primary key, data blob)")
 
-        # Create incremental checkpointing related tables only if the config flag is enabled.
-        if Config.get("PLANNER", "incremental_store", False):
+        # Create incremental checkpointing related tables only if incremental store is enabled.
+        if self._incremental_cr:
             cur.execute(
                 f"create table if not exists {VARIABLE_SNAPSHOT_TABLE} " f"(version int, name text, commit_id text, data blob)"
             )
