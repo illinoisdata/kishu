@@ -3,7 +3,7 @@ from typing import Generator
 import pytest
 
 from kishu.planning.ahg import AHG, VariableSnapshot, VersionedName
-from kishu.planning.optimizer import IncrementalLoadOptimizer, Optimizer, REALLY_FAST_BANDWIDTH_10GBPS
+from kishu.planning.optimizer import REALLY_FAST_BANDWIDTH_10GBPS, IncrementalLoadOptimizer, Optimizer
 from kishu.storage.config import Config
 
 

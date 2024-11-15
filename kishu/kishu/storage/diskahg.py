@@ -4,9 +4,10 @@ Sqlite interface for storing the AHG.
 
 import sqlite3
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
-from kishu.planning.ahg import AHGUpdateResult, CellExecution, VariableSnapshot, VersionedName
+from kishu.planning.ahg import AHGUpdateResult, CellExecution, VariableName, VariableSnapshot, VersionedName
+from kishu.storage.commit_graph import CommitId
 
 AHG_VARIABLE_SNAPSHOT_TABLE = "ahg_variable_snapshot"
 AHG_CELL_EXECUTION_TABLE = "ahg_cell_execution"
@@ -21,6 +22,7 @@ class KishuDiskAHG:
     def init_database(self):
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
+        # TODO(Billy): Indicate primary keys in all tables.
         cur.execute(
             f"create table if not exists {AHG_VARIABLE_SNAPSHOT_TABLE} (version int, name text, deleted bool, size int)"
         )
@@ -51,7 +53,7 @@ class KishuDiskAHG:
         for vs in output_vss:
             cur.execute(
                 f"insert into {AHG_VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?, ?)",
-                (vs.version, VersionedName.encode_name(vs.name), vs.deleted, vs.size),
+                (vs.version, vs.name.encode_name(), vs.deleted, vs.size),
             )
 
         # Store the newest CE.
@@ -64,14 +66,14 @@ class KishuDiskAHG:
         for vs in accessed_vss:
             cur.execute(
                 f"insert into {AHG_CE_INPUT_TABLE} values (?, ?, ?)",
-                (newest_ce.cell_num, vs.version, VersionedName.encode_name(vs.name)),
+                (newest_ce.cell_num, vs.version, vs.name.encode_name()),
             )
 
         # Store each CE to VS edge.
         for vs in output_vss:
             cur.execute(
                 f"insert into {AHG_CE_OUTPUT_TABLE} values (?, ?, ?)",
-                (newest_ce.cell_num, vs.version, VersionedName.encode_name(vs.name)),
+                (newest_ce.cell_num, vs.version, vs.name.encode_name()),
             )
 
         con.commit()
@@ -82,8 +84,14 @@ class KishuDiskAHG:
         cur.execute(f"select * from {AHG_VARIABLE_SNAPSHOT_TABLE}")
         res: List = cur.fetchall()
         return [
-            VariableSnapshot(VersionedName.decode_name(name), version, deleted, size) for version, name, deleted, size in res
+            VariableSnapshot(VariableName.decode_name(name), version, deleted, size) for version, name, deleted, size in res
         ]
+
+    def get_variable_snapshot(self, versioned_name: VersionedName) -> VariableSnapshot:
+        return ...  # TODO(Billy): SELECT ... WHERE ...
+
+    def get_batch_cell_executions(self, commit_ids: List[CommitId]) -> Dict[int, CellExecution]:
+        return ...  # TODO(Billy): SELECT ... WHERE ...
 
     def get_cell_executions(self) -> List[CellExecution]:
         con = sqlite3.connect(self.database_path)
@@ -97,11 +105,11 @@ class KishuDiskAHG:
         cur = con.cursor()
         cur.execute(f"select * from {AHG_CE_INPUT_TABLE}")
         res: List = cur.fetchall()
-        return [(VersionedName(VersionedName.decode_name(name), version), cell_num) for cell_num, version, name in res]
+        return [(VersionedName(VariableName.decode_name(name), version), cell_num) for cell_num, version, name in res]
 
     def get_ce_to_vs_edges(self) -> List[Tuple[int, VersionedName]]:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(f"select * from {AHG_CE_OUTPUT_TABLE}")
         res: List = cur.fetchall()
-        return [(cell_num, VersionedName(VersionedName.decode_name(name), version)) for cell_num, version, name in res]
+        return [(cell_num, VersionedName(VariableName.decode_name(name), version)) for cell_num, version, name in res]

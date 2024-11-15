@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import atexit
+import enum
 from dataclasses import dataclass, field
 from pathlib import Path
 from queue import LifoQueue
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import dill
-import enum
 from IPython.core.interactiveshell import InteractiveShell
 
 from kishu.exceptions import CommitIdNotExistError

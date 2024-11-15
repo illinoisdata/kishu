@@ -1,6 +1,7 @@
 import pickle
-import pytest
 import sqlite3
+
+import pytest
 
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import VariableSnapshot, VersionedName

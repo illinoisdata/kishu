@@ -1,21 +1,37 @@
 from __future__ import annotations
 
+import functools
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from itertools import chain
 from typing import Dict, FrozenSet, List, Optional, Set, Tuple
 
-import dill
-
 from kishu.exceptions import MissingHistoryError
 from kishu.jupyter.namespace import Namespace
+from kishu.planning.profiler import profile_variable_size
+from kishu.storage.commit_graph import CommitId
+from kishu.storage.diskahg import KishuDiskAHG
 
-# Alias for variable name
-VariableName = FrozenSet[str]
+# TODO(Billy): Many of these primitive classes may be moved to disk_ahg.py to avoid circular import.
 
 
-@dataclass
+CellExecutionId = int
+
+
+class VariableName(FrozenSet[str]):
+
+    def encode_name(self) -> str:
+        return repr(sorted(self))
+
+    @staticmethod
+    def decode_name(encoded_name: str) -> VariableName:
+        return VariableName(
+            [name.strip().replace("'", "") for name in encoded_name.replace("[", "").replace("]", "").split(",")]
+        )
+
+
+@dataclass(frozen=True)
 class CellExecution:
     """
     A cell execution (object) corresponds to a cell execution (action, i.e. press play) in the notebook session.
@@ -27,11 +43,9 @@ class CellExecution:
     @param dst_vss: List containing output VSs of the cell execution.
     """
 
-    cell_num: int
-    cell: str = ""
-    cell_runtime_s: float = 1.0
-    src_vss: List[VariableSnapshot] = field(default_factory=lambda: [])
-    dst_vss: List[VariableSnapshot] = field(default_factory=lambda: [])
+    cell_num: CellExecutionId
+    cell: str
+    cell_runtime_s: float
 
 
 @dataclass(frozen=True)
@@ -43,16 +57,8 @@ class VersionedName:
     name: VariableName
     version: int
 
-    @staticmethod
-    def encode_name(variable_name: VariableName) -> str:
-        return repr(sorted(variable_name))
 
-    @staticmethod
-    def decode_name(encoded_name: str) -> VariableName:
-        return frozenset([name.strip().replace("'", "") for name in encoded_name.replace("[", "").replace("]", "").split(",")])
-
-
-@dataclass
+@dataclass(frozen=True)
 class VariableSnapshot:
     """
     A variable snapshot in the dependency graph corresponds to a version of a variable.
@@ -61,16 +67,23 @@ class VariableSnapshot:
         @param name: one or more variable names sharing references forming a connected component.
         @param version: time of creation or update to the corresponding variable name.
         @param deleted: whether this VS is created for the deletion of a variable, i.e., 'del x'.
-        @param input_ces: Cell executions accessing this variable snapshot (i.e. require this variable snapshot to run).
         @param output_ce: The (unique) cell execution creating this variable snapshot.
     """
 
     name: VariableName
     version: int
-    deleted: bool = False
-    size: float = 0.0
-    input_ces: List[CellExecution] = field(default_factory=lambda: [])
-    output_ce: CellExecution = field(default_factory=lambda: CellExecution(0, "", 0.0, [], []))
+    deleted: bool
+    size: float
+
+    @staticmethod
+    def select_names_from_update(update_info: AHGUpdateInfo, name: VariableName) -> VariableSnapshot:
+        size = profile_variable_size([update_info.user_ns[var] for var in name])
+        return VariableSnapshot(
+            name=name,
+            version=update_info.version,
+            deleted=False,
+            size=size,
+        )
 
 
 @dataclass
@@ -90,7 +103,10 @@ class AHGUpdateInfo:
     @param deleted_variables: set of deleted variables.
     """
 
-    cell: Optional[str] = None
+    parent_commit_id: CommitId
+    commit_id: CommitId
+    user_ns: Namespace
+    cell: str = ""
     version: int = -1
     cell_runtime_s: float = 1.0
     accessed_variables: Set[str] = field(default_factory=set)
@@ -110,6 +126,9 @@ class AHGUpdateResult:
     output_vss: List[VariableSnapshot]
     newest_ce: CellExecution
 
+    # TODO(Billy): Write this to self._disk_ahg
+    active_variable_snapshots: Dict[VariableName, VariableSnapshot]
+
 
 class AHG:
     """
@@ -118,60 +137,28 @@ class AHG:
     Edges represent dependencies between VSs and CEs.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, disk_ahg: KishuDiskAHG) -> None:
         """
         Create a new AHG. Called when Kishu is initialized for a notebook.
         """
-        # Cell executions.
-        self._cell_executions: Dict[int, CellExecution] = {}
-
-        # All variable snapshots which have existed at some point in the session.
-        # Keys are the name-version tuples of variable snapshots (VersionedName) for fast lookup.
-        # The values are the actual VariableSnapshots.
-        self._variable_snapshots: Dict[VersionedName, VariableSnapshot] = {}
-
-        # Variable snapshots that are currently active, i.e., their values are currently in the namespace.
-        # The keys are the names of the variable snapshots for fast lookup.
-        # The values are a subset of the values of self._variable_snapshots.
-        self._active_variable_snapshots: Dict[VariableName, VariableSnapshot] = {}
+        self._disk_ahg = disk_ahg
 
     @staticmethod
     def from_db(
-        variable_snapshots: List[VariableSnapshot],
-        cell_executions: List[CellExecution],
-        vs_to_ce_edges: List[Tuple[VersionedName, int]],
-        ce_to_vs_edges: List[Tuple[int, VersionedName]],
+        disk_ahg: KishuDiskAHG,
+        user_ns: Namespace,
     ) -> AHG:
-        # We manually set the fields of this new AHG as we are not following the regular notebook cell execution workflow.
-        ahg = AHG()
-
-        # Set variable snapshots.
-        for vs in variable_snapshots:
-            ahg._variable_snapshots[VersionedName(vs.name, vs.version)] = vs
-
-        # Set cell executions.
-        for ce in cell_executions:
-            ahg._cell_executions[ce.cell_num] = ce
-
-        # Set VS to CE edges.
-        for versioned_name, cell_num in vs_to_ce_edges:
-            ahg._variable_snapshots[versioned_name].input_ces.append(ahg._cell_executions[cell_num])
-            ahg._cell_executions[cell_num].src_vss.append(ahg._variable_snapshots[versioned_name])
-
-        # Set CE to VS edges.
-        for cell_num, versioned_name in ce_to_vs_edges:
-            ahg._variable_snapshots[versioned_name].output_ce = ahg._cell_executions[cell_num]
-            ahg._cell_executions[cell_num].dst_vss.append(ahg._variable_snapshots[versioned_name])
-
+        ahg = AHG(disk_ahg)
+        ahg._augment_existing(user_ns)
         return ahg
 
-    def augment_existing(self, user_ns: Namespace) -> Optional[AHGUpdateResult]:
+    def _augment_existing(self, user_ns: Namespace) -> Optional[AHGUpdateResult]:
         """
         Augments the current AHG with a dummy cell execution representing existing untracked cell executions.
         """
         # Throw error if there are existing variables but the cell executions are missing.
         existing_cell_executions = user_ns.ipython_in()
-        if not existing_cell_executions and user_ns.keyset():
+        if existing_cell_executions is not None and len(existing_cell_executions) == 0 and len(user_ns.keyset()) > 0:
             raise MissingHistoryError()
 
         # First cell execution has no input variables and outputs all existing variables.
@@ -182,59 +169,26 @@ class AHG:
 
             # This dummy cell execution consists of all untracked code, accesses nothing, and deletes all VSes
             # which are no longer in the namespace.
-            update_result = self.update_graph(
+            self.update_graph(
                 AHGUpdateInfo(
                     cell="\n".join(existing_cell_executions),
                     version=time.monotonic_ns(),
                     current_variables=user_ns.keyset(),
                     linked_variable_pairs=linked_variable_pairs,
-                    deleted_variables=self.get_variable_names().difference(user_ns.keyset()),
+                    deleted_variables=self.get_active_variable_names().difference(user_ns.keyset()),
                 )
             )
-
-            return update_result
         return None
 
-    def add_cell_execution(
-        self,
-        cell: str,
-        cell_runtime_s: float,
-        src_vss: List[VariableSnapshot],
-        dst_vss: List[VariableSnapshot],
-    ) -> CellExecution:
-        """
-        Create a cell execution from captured metrics. Returns the newly added CE.
-
-        @param cell: Raw cell code.
-        @param cell_runtime_s: Cell runtime in seconnds.
-        @param src_vss: List containing input VSs of the cell execution.
-        @param dst_vss: List containing output VSs of the cell execution.
-        """
-        # Create a cell execution.
-        ce = CellExecution(len(self._cell_executions), cell, cell_runtime_s, src_vss, dst_vss)
-
-        # Add the newly created cell execution to the graph.
-        self._cell_executions[ce.cell_num] = ce
-
-        # Set the newly created cell execution as dependent on its input variable snapshots.
-        for src_vs in src_vss:
-            src_vs.input_ces.append(ce)
-
-        # Set the newly created cell execution as the parent of its output variable snapshots.
-        for dst_vs in dst_vss:
-            dst_vs.output_ce = ce
-
-        return ce
-
-    def update_graph(self, update_info: AHGUpdateInfo) -> AHGUpdateResult:
+    def update_graph(self, update_info: AHGUpdateInfo):
         """
         Updates the graph according to the newly executed cell and its input and output variables.
         """
-        cell = "" if not update_info.cell else update_info.cell
+        current_active_variable_snapshots = self.get_active_variable_snapshots_dict(update_info.commit_id)
 
         # Retrieve accessed variable snapshots. A VS is accessed if any of the names in its connected component are accessed.
         accessed_vss = [
-            vs for vs in self._active_variable_snapshots.values() if vs.name.intersection(update_info.accessed_variables)
+            vs for vs in current_active_variable_snapshots.values() if vs.name.intersection(update_info.accessed_variables)
         ]
 
         # Compute the set of current connected components of variables in the namespace.
@@ -242,16 +196,16 @@ class AHG:
 
         # If a new component does not exactly match an existing component, it is treated as a created VS.
         output_vss_create = [
-            VariableSnapshot(k, update_info.version, False)
+            VariableSnapshot.select_names_from_update(update_info, k)
             for k in connected_components_set
-            if k not in self._active_variable_snapshots.keys()
+            if k not in current_active_variable_snapshots.keys()
         ]
 
         # An active VS (from the previous cell exec) is still active only if it exactly matches a connected component and
         # wasn't modified.
         unmodified_still_active_vss = {
             k: v
-            for k, v in self._active_variable_snapshots.items()
+            for k, v in current_active_variable_snapshots.items()
             if k in connected_components_set and not k.intersection(update_info.modified_variables)
         }
 
@@ -259,96 +213,93 @@ class AHG:
         # during the cell execution (i.e., in connected_components_set) and (2) at
         # least 1 of its member variables were modified.
         output_vss_modify = [
-            VariableSnapshot(frozenset(v.name), update_info.version, False)
-            for k, v in self._active_variable_snapshots.items()
+            VariableSnapshot.select_names_from_update(update_info, VariableName(v.name))
+            for k, v in current_active_variable_snapshots.items()
             if k in connected_components_set and v.name.intersection(update_info.modified_variables)
         ]
 
         # Deleted VSes are always singletons of the deleted names.
         output_vss_delete = [
-            VariableSnapshot(frozenset({k}), update_info.version, False) for k in update_info.deleted_variables
+            VariableSnapshot.select_names_from_update(update_info, VariableName({k})) for k in update_info.deleted_variables
         ]
 
-        # Add a CE to the graph.
+        # TODO(Bill): Add comment?
         output_vss = output_vss_create + output_vss_modify + output_vss_delete
-        newest_ce = self.add_cell_execution(cell, update_info.cell_runtime_s, accessed_vss, output_vss)
-
-        # Add output VSes to the graph.
-        self._variable_snapshots = {
-            **self._variable_snapshots,
-            **{VersionedName(vs.name, vs.version): vs for vs in output_vss},
-        }
 
         # Update set of active VSes (those still active from previous cell exec + created VSes + modified VSes).
-        self._active_variable_snapshots = {
+        active_variable_snapshots = {
             **unmodified_still_active_vss,
             **{vs.name: vs for vs in output_vss_create + output_vss_modify},
         }
+        newest_ce = CellExecution(
+            cell_num=self.get_next_cell_num(update_info.parent_commit_id),
+            cell="" if not update_info.cell else update_info.cell,
+            cell_runtime_s=update_info.cell_runtime_s,
+        )
 
-        return AHGUpdateResult(accessed_vss, output_vss, newest_ce)
+        # Persist AHG updates to disk.
+        self._disk_ahg.store_update_results(
+            AHGUpdateResult(
+                accessed_vss=accessed_vss,
+                output_vss=output_vss,
+                newest_ce=newest_ce,
+                active_variable_snapshots=active_variable_snapshots,
+            )
+        )
 
-    def get_cell_executions(self) -> List[CellExecution]:
-        return [self._cell_executions[cell_num] for cell_num in sorted(self._cell_executions.keys())]
+    """Cell Executions."""
 
-    def get_cell_executions_dict(self) -> Dict[int, CellExecution]:
-        return self._cell_executions
+    @functools.lru_cache(maxsize=None)
+    def get_cell_executions_dict(self, commit_id: CommitId) -> Dict[int, CellExecution]:
+        past_commit_ids = ...  # TODO(Billy): Get this from commit graph.
+        return self._disk_ahg.get_batch_cell_executions(past_commit_ids)
 
-    def get_variable_snapshots(self) -> List[VariableSnapshot]:
-        return list(self._variable_snapshots.values())
+    def get_cell_executions(self, commit_id: CommitId) -> List[CellExecution]:
+        return self.get_cell_executions_dict(commit_id).values()
 
-    def get_variable_snapshots_dict(self) -> Dict[VersionedName, VariableSnapshot]:
-        return self._variable_snapshots
+    @functools.lru_cache(maxsize=None)
+    def get_next_cell_num(self, commit_id: CommitId) -> int: ...  # TODO(Billy): Get from _disk_ahg
 
-    def get_active_variable_snapshots(self) -> List[VariableSnapshot]:
-        return list(self._active_variable_snapshots.values())
+    """Variable snapshots."""
 
-    def get_active_variable_snapshots_dict(self) -> Dict[VariableName, VariableSnapshot]:
-        return self._active_variable_snapshots
+    @functools.lru_cache(maxsize=None)
+    def get_variable_snapshot(self, versioned_name: VersionedName) -> List[VariableSnapshot]:
+        return self._disk_ahg.get_variable_snapshot(versioned_name)
 
-    def get_variable_names(self) -> Set[str]:
+    """Active variable snapshots."""
+
+    @functools.lru_cache(maxsize=None)
+    def get_active_variable_snapshots_dict(self, commit_id: CommitId) -> Dict[VariableName, VariableSnapshot]:
+        return self._disk_ahg.get_active_variable_snapshots_dict(commit_id)
+
+    def get_active_variable_snapshots(self, commit_id: CommitId) -> List[VariableSnapshot]:
+        return list(self.get_active_variable_snapshots_dict(commit_id).values())
+
+    def get_active_variable_names(self, commit_id: CommitId) -> Set[str]:
         # Return all variable KVs in components as a flattened set.
-        return set(chain.from_iterable(self._active_variable_snapshots.keys()))
+        return set(chain.from_iterable(self.get_active_variable_snapshots_dict(commit_id).keys()))
 
-    def serialize(self) -> str:
-        """
-        Returns the decoded serialized bytestring (str type) of the AHG.
-        Required as the AHG is not JSON serializable by default.
-        """
-        return dill.dumps(self).decode("latin1")
-
-    @staticmethod
-    def deserialize(ahg_string: str) -> AHG:
-        """
-        Returns the AHG object from serialized AHG in string format.
-        """
-        return dill.loads(ahg_string.encode("latin1"))
-
-    def clone(self) -> AHG:
-        """
-        Deep copies all fields (e.g., VSes, cell executions) into a new AHG. For testing.
-        """
-        return AHG.deserialize(self.serialize())
-
+    @functools.lru_cache(maxsize=None)
     def get_vs_by_versioned_name(self, versioned_name: VersionedName) -> VariableSnapshot:
-        return self._variable_snapshots[versioned_name]
+        return self._disk_ahg.get_vs_by_versioned_name(versioned_name)
 
-    def serialize_active_vses(self) -> str:
-        return dill.dumps([VersionedName(vs.name, vs.version) for vs in self.get_active_variable_snapshots()]).decode("latin1")
+    @functools.lru_cache(maxsize=None)
+    def get_source_variable_snapshots(self, cell_num: CellExecutionId) -> List[VariableSnapshot]:
+        # TODO(Billy): Get this from _disk_ahg.
+        # TODO(Billy): In place of `source_vss` use this function.
+        return ...
 
-    @staticmethod
-    def deserialize_active_vses(active_vs_string: str) -> List[VersionedName]:
-        return dill.loads(active_vs_string.encode("latin1"))
+    @functools.lru_cache(maxsize=None)
+    def get_destination_variable_snapshots(self, cell_num: CellExecutionId) -> List[VariableSnapshot]:
+        # TODO(Billy): Get this from _disk_ahg.
+        # TODO(Billy): In place of `dst_vss` use this function.
+        return ...
 
-    def clone_active_vses(self) -> List[VersionedName]:
-        return AHG.deserialize_active_vses(self.serialize_active_vses())
-
-    def replace_active_vses(self, versioned_names: List[VersionedName]) -> None:
-        """
-        Replaces the active VSes of the current AHG.
-        """
-        self._active_variable_snapshots.clear()
-        for versioned_name in versioned_names:
-            self._active_variable_snapshots[versioned_name.name] = self._variable_snapshots[versioned_name]
+    @functools.lru_cache(maxsize=None)
+    def get_output_cell_execution(self, versioned_name: VersionedName) -> CellExecution:
+        # TODO(Billy): Get this from _disk_ahg.
+        # TODO(Billy): In place of `output_ce` use this function.
+        return ...
 
     @staticmethod
     def union_find(variables: Set[str], linked_variables: List[Tuple[str, str]]) -> Set[VariableName]:
@@ -373,4 +324,4 @@ class AHG:
         connected_components_dict = defaultdict(set)
         for var, var_root in roots.items():
             connected_components_dict[var_root].add(var)
-        return set(frozenset(v) for v in connected_components_dict.values())
+        return set(VariableName(v) for v in connected_components_dict.values())

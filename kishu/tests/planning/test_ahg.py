@@ -1,5 +1,5 @@
-from kishu.planning.ahg import AHG, AHGUpdateInfo, CellExecution, VariableSnapshot, VersionedName
 from kishu.jupyter.namespace import Namespace
+from kishu.planning.ahg import AHG, AHGUpdateInfo, CellExecution, VariableSnapshot, VersionedName
 
 
 def test_add_cell_execution():

@@ -12,7 +12,6 @@ from kishu.planning.ahg import AHG, AHGUpdateInfo, VariableName, VersionedName
 from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
 from kishu.planning.optimizer import IncrementalLoadOptimizer, Optimizer
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
-from kishu.planning.profiler import profile_variable_size
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit import CommitEntry, KishuCommit
 from kishu.storage.commit_graph import CommitId, KishuCommitGraph
@@ -94,17 +93,7 @@ class CheckpointRestorePlanner:
         cr_planner = CheckpointRestorePlanner(user_ns, None, kishu_graph, kishu_commit, kishu_disk_ahg, incremental_cr)
 
         # Initialize AHG with records stored in the disk AHG DB.
-        cr_planner._ahg = AHG.from_db(
-            kishu_disk_ahg.get_variable_snapshots(),
-            kishu_disk_ahg.get_cell_executions(),
-            kishu_disk_ahg.get_vs_to_ce_edges(),
-            kishu_disk_ahg.get_ce_to_vs_edges(),
-        )
-
-        # Add a dummy cell execution for the untracked cell executions.
-        update_result = cr_planner._ahg.augment_existing(user_ns)
-        if update_result:
-            kishu_disk_ahg.store_update_results(update_result)
+        cr_planner._ahg = AHG.from_db(kishu_disk_ahg, user_ns)
 
         return cr_planner
 
@@ -116,7 +105,7 @@ class CheckpointRestorePlanner:
         self._pre_run_cell_vars = self._user_ns.keyset()
 
         # Populate missing ID graph entries.
-        for var in self._ahg.get_variable_names():
+        for var in self._ahg.get_active_variable_names():
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
@@ -166,7 +155,7 @@ class CheckpointRestorePlanner:
 
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
-        update_result = self._ahg.update_graph(
+        self._ahg.update_graph(
             AHGUpdateInfo(
                 code_block,
                 version,
@@ -178,10 +167,6 @@ class CheckpointRestorePlanner:
                 deleted_vars,
             )
         )
-
-        # Persist AHG updates to disk.
-        if self._kishu_disk_ahg:
-            self._kishu_disk_ahg.store_update_results(update_result)
 
         return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
 
@@ -206,10 +191,6 @@ class CheckpointRestorePlanner:
                 so we need to add them to self._id_graph_map"""
                 if varname not in self._id_graph_map:
                     self._id_graph_map[varname] = get_object_state(self._user_ns[varname], {})
-
-        # Profile the size of each variable defined in the current session.
-        for active_vs in active_vss:
-            active_vs.size = profile_variable_size([self._user_ns[var] for var in active_vs.name])
 
         # If incremental storage is enabled, retrieve list of currently stored VSes and compute VSes to
         # NOT migrate as they are already stored.
@@ -398,13 +379,6 @@ class CheckpointRestorePlanner:
         """
         return self._id_graph_map
 
-    def serialize_ahg(self) -> str:
-        """
-        Returns the decoded serialized bytestring (str type) of the AHG.
-        Required as the AHG is not JSON serializable by default.
-        """
-        return self._ahg.serialize()
-
     def serialize_active_vses(self) -> str:
         return self._ahg.serialize_active_vses()
 
@@ -416,11 +390,14 @@ class CheckpointRestorePlanner:
         # Get target AHG.
         if target_commit_entry.active_vses_string is None:
             raise ValueError("No Application History Graph found for target commit entry")
-        target_active_vses = AHG.deserialize_active_vses(target_commit_entry.active_vses_string)
+        source_active_vses = list(self.get_active_variable_snapshots_dict(self._kishu_graph.head()).keys())
+        target_active_vses = list(self.get_active_variable_snapshots_dict(target_commit_entry.commit_id).keys())
 
-        self._replace_state(target_active_vses, new_user_ns)
+        self._replace_state(source_active_vses, target_active_vses, new_user_ns)
 
-    def _replace_state(self, new_active_vses: List[VersionedName], new_user_ns: Namespace) -> None:
+    def _replace_state(
+        self, current_active_vses: List[VersionedName], new_active_vses: List[VersionedName], new_user_ns: Namespace
+    ) -> None:
         """
         Replace the current AHG's active VSes with new_active_vses and user namespace with new_user_ns.
         Called when a checkout is performed.
@@ -431,16 +408,14 @@ class CheckpointRestorePlanner:
         for varname in self._get_differing_vars_post_checkout(new_active_vses):
             self._id_graph_map[varname] = get_object_state(self._user_ns[varname], {})
 
-        # Replace old AHG with new AHG.
-        self._ahg.replace_active_vses(new_active_vses)
-
         # Clear pre-run cell info.
         self._pre_run_cell_vars = set()
 
-    def _get_differing_vars_post_checkout(self, new_active_vses: List[VersionedName]) -> Set[str]:
+    def _get_differing_vars_post_checkout(
+        self, current_active_vses: List[VersionedName], new_active_vses: List[VersionedName]
+    ) -> Set[str]:
         """
         Finds all differing active variables between the pre and post-checkout states.
         """
-        pre_checkout_active_vss = set([VersionedName(vs.name, vs.version) for vs in self._ahg.get_active_variable_snapshots()])
-        vss_diff = set(new_active_vses).difference(pre_checkout_active_vss)
+        vss_diff = set(new_active_vses).difference(set(current_active_vses))
         return {name for var_snapshot in vss_diff for name in var_snapshot.name}

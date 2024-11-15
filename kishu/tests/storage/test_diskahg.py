@@ -1,11 +1,12 @@
-import pytest
 import sqlite3
+
+import pytest
 
 from kishu.planning.ahg import AHG, AHGUpdateInfo
 from kishu.storage.diskahg import (
-    AHG_CELL_EXECUTION_TABLE,
     AHG_CE_INPUT_TABLE,
     AHG_CE_OUTPUT_TABLE,
+    AHG_CELL_EXECUTION_TABLE,
     AHG_VARIABLE_SNAPSHOT_TABLE,
     KishuDiskAHG,
 )
