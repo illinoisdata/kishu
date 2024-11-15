@@ -70,8 +70,8 @@ class TestPlanner:
     @pytest.fixture
     def kishu_incremental_checkpoint(self, db_path_name):
         """Fixture for initializing a KishuCheckpoint instance with incremental CR."""
-        kishu_incremental_checkpoint = KishuCheckpoint(db_path_name)
-        kishu_incremental_checkpoint.init_database(incremental_store=True)
+        kishu_incremental_checkpoint = KishuCheckpoint(db_path_name, incremental_cr=True)
+        kishu_incremental_checkpoint.init_database()
         yield kishu_incremental_checkpoint
         kishu_incremental_checkpoint.drop_database()
 

@@ -17,16 +17,17 @@ VARIABLE_SNAPSHOT_TABLE = "variable_snapshot"
 
 
 class KishuCheckpoint:
-    def __init__(self, database_path: Path):
+    def __init__(self, database_path: Path, incremental_cr: bool = False):
         self.database_path = database_path
+        self._incremental_cr = incremental_cr
 
-    def init_database(self, incremental_store: bool = False):
+    def init_database(self):
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(f"create table if not exists {CHECKPOINT_TABLE} (commit_id text primary key, data blob)")
 
         # Create incremental checkpointing related tables only if incremental store is enabled.
-        if incremental_store:
+        if self._incremental_cr:
             cur.execute(
                 f"create table if not exists {VARIABLE_SNAPSHOT_TABLE} " f"(version int, name text, commit_id text, data blob)"
             )
