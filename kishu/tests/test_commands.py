@@ -712,6 +712,7 @@ class TestKishuCommand:
             assert commit_result.reattachment.status == InstrumentStatus.reattach_succeeded
 
             log_result = KishuCommand.log_all(notebook_path)
+            print("cells:", [c.commit_id for c in log_result.commit_graph])
             assert len(log_result.commit_graph) == len(contents) + 1  # Addition of the new cell
 
             commit_id = log_result.commit_graph[-1].commit_id

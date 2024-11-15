@@ -448,6 +448,9 @@ class CheckpointRestorePlanner:
         # Replace old AHG with new AHG.
         self._ahg.replace_active_vses(new_active_vses)
 
+        print("ahg active vses:", self._ahg.get_variable_names())
+        print("namespace:", self._user_ns.keyset())
+
         # Clear pre-run cell info.
         self._pre_run_cell_vars = set()
 
