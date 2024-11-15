@@ -15,7 +15,7 @@ from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, Resto
 from kishu.planning.profiler import profile_variable_size
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit import CommitEntry, KishuCommit
-from kishu.storage.commit_graph import ABSOLUTE_PAST, CommitId, KishuCommitGraph
+from kishu.storage.commit_graph import CommitId, KishuCommitGraph
 from kishu.storage.diskahg import KishuDiskAHG
 
 
@@ -101,18 +101,7 @@ class CheckpointRestorePlanner:
             kishu_disk_ahg.get_ce_to_vs_edges(),
         )
 
-        # Retrieve active VSes of latest commit (if one exists) as active VSes of the new AHG.
-        latest_commit_id = kishu_graph.head()
-        if latest_commit_id != ABSOLUTE_PAST:
-            latest_commit_entry = kishu_commit.get_commit(latest_commit_id)
-            latest_active_vses = (
-                AHG.deserialize_active_vses(latest_commit_entry.active_vses_string)
-                if latest_commit_entry.active_vses_string is not None
-                else []
-            )
-            cr_planner._ahg.replace_active_vses(latest_active_vses)
-
-        # Finally, add a dummy cell execution for the untracked cell executions.
+        # Add a dummy cell execution for the untracked cell executions.
         update_result = cr_planner._ahg.augment_existing(user_ns)
         if update_result:
             kishu_disk_ahg.store_update_results(update_result)
