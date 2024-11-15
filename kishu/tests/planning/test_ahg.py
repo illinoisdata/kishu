@@ -1,4 +1,5 @@
-from kishu.planning.ahg import AHG, AHGUpdateInfo, VariableSnapshot
+from kishu.planning.ahg import AHG, AHGUpdateInfo, AHGUpdateResult, CellExecution, VariableSnapshot, VersionedName
+from kishu.jupyter.namespace import Namespace
 
 
 def test_add_cell_execution():
@@ -6,7 +7,7 @@ def test_add_cell_execution():
     vs1 = VariableSnapshot(frozenset("x"), 1)
     vs2 = VariableSnapshot(frozenset("y"), 1)
 
-    ahg.add_cell_execution("", 1, [vs1], [vs2])
+    newest_ce = ahg.add_cell_execution("", 1, [vs1], [vs2])
 
     cell_executions = ahg.get_cell_executions()
 
@@ -16,16 +17,64 @@ def test_add_cell_execution():
     # Newly create CE correctly set as adjacent CE of variable snapshots
     assert vs1.input_ces[0] == cell_executions[0]
     assert vs2.output_ce == cell_executions[0]
+    assert newest_ce == cell_executions[0]
+
+
+def test_from_db():
+    ce1 = CellExecution(1)
+    vs1 = VariableSnapshot(frozenset("x"), 1)
+    vs2 = VariableSnapshot(frozenset("y"), 1)
+
+    ce2 = CellExecution(2)
+    vs3 = VariableSnapshot(frozenset("x"), 2)
+    vs4 = VariableSnapshot(frozenset("y"), 2)
+
+    vs_list = [vs1, vs2, vs3, vs4]
+    ce_list = [ce1, ce2]
+    vs_to_ce_edges = [
+        (VersionedName(frozenset("x"), 1), 2),
+        (VersionedName(frozenset("y"), 1), 2),
+    ]
+    ce_to_vs_edges = [
+        (1, VersionedName(frozenset("x"), 1)),
+        (1, VersionedName(frozenset("y"), 1)),
+        (2, VersionedName(frozenset("x"), 2)),
+        (2, VersionedName(frozenset("x"), 2)),
+    ]
+
+    ahg = AHG.from_db(vs_list, ce_list, vs_to_ce_edges, ce_to_vs_edges)
+
+    variable_snapshots_dict = ahg.get_variable_snapshots_dict()
+    cell_executions_dict = ahg.get_cell_executions_dict()
+
+    assert variable_snapshots_dict == {
+        VersionedName(frozenset("x"), 1): vs1,
+        VersionedName(frozenset("y"), 1): vs2,
+        VersionedName(frozenset("x"), 2): vs3,
+        VersionedName(frozenset("y"), 2): vs4,
+    }
+    assert cell_executions_dict == {1: ce1, 2: ce2}
+
+    # VS to CE edges set correctly
+    assert vs1.input_ces == [ce2]
+    assert vs1 in ce2.src_vss
+
+    # CE to VS edges set correctly
+    assert vs3.output_ce == ce2
+    assert vs3 in ce2.dst_vss
 
 
 def test_update_graph():
     ahg = AHG()
 
     # x and y are created
-    ahg.update_graph(AHGUpdateInfo(version=1, cell_runtime_s=1.0, current_variables={"x", "y"}))
+    update_result = ahg.update_graph(AHGUpdateInfo(version=1, cell_runtime_s=1.0, current_variables={"x", "y"}))
+    assert update_result.accessed_vss == []
+    assert set([vs.name for vs in update_result.output_vss]) == {frozenset("x"), frozenset("y")}
+    assert update_result.newest_ce.cell_num == 0
 
     # x is read and modified, z is created, y is deleted
-    ahg.update_graph(
+    update_result = ahg.update_graph(
         AHGUpdateInfo(
             version=2,
             cell_runtime_s=1.0,
@@ -35,6 +84,9 @@ def test_update_graph():
             deleted_variables={"y"},
         )
     )
+    assert set([vs.name for vs in update_result.accessed_vss]) == {frozenset("x")}
+    assert set([vs.name for vs in update_result.output_vss]) == {frozenset("x"), frozenset("y"), frozenset("z")}
+    assert update_result.newest_ce.cell_num == 1
 
     variable_snapshots = ahg.get_variable_snapshots()
     active_variable_snapshots = ahg.get_active_variable_snapshots()
@@ -53,6 +105,22 @@ def test_update_graph():
     assert len(cell_executions[1].dst_vss) == 3
 
 
+def test_augment_existing():
+    ahg = AHG()
+
+    # x and y are created
+    _ = ahg.update_graph(AHGUpdateInfo(version=1, cell_runtime_s=1.0, current_variables={"x", "y"}))
+
+    # Existing AHG is augmented
+    namespace = Namespace({"a": 3, "b": 4, "In": ["print(x)\nprint(y)", "a=3\nb=4"]})
+    update_result = ahg.augment_existing(namespace)
+
+    assert update_result.newest_ce.cell_num == 1
+    assert update_result.newest_ce.cell == "print(x)\nprint(y)\na=3\nb=4"  # Concatenated
+    assert len(update_result.accessed_vss) == 2  # x and y
+    assert len(update_result.output_vss) == 3  # x and y were deleted and {a, b} was created
+
+
 def test_update_graph_with_connected_components():
     """
     Connected components:
@@ -62,7 +130,7 @@ def test_update_graph_with_connected_components():
 
     current_variables = {"a", "b", "c", "d", "e", "f"}
     linked_variable_pairs = [("a", "b"), ("b", "c"), ("d", "e")]
-    ahg.update_graph(
+    _ = ahg.update_graph(
         AHGUpdateInfo(
             version=1, cell_runtime_s=1.0, current_variables=current_variables, linked_variable_pairs=linked_variable_pairs
         )
@@ -96,7 +164,7 @@ def test_create_vs_merge_connected_components():
     linked_variable_pairs = [("a", "b"), ("b", "c"), ("a", "c"), ("d", "e"), ("f", "e"), ("a", "f")]
 
     # components 'abc' and 'def' are merged.
-    ahg.update_graph(
+    _ = ahg.update_graph(
         AHGUpdateInfo(
             version=1, cell_runtime_s=1.0, current_variables=current_variables, linked_variable_pairs=linked_variable_pairs
         )
@@ -130,7 +198,7 @@ def test_create_vs_split_connected_component():
     linked_variable_pairs = [("a", "b")]
 
     # 'ab' is in 1 component.
-    ahg.update_graph(
+    _ = ahg.update_graph(
         AHGUpdateInfo(
             version=1, cell_runtime_s=1.0, current_variables=current_variables, linked_variable_pairs=linked_variable_pairs
         )
@@ -145,7 +213,7 @@ def test_create_vs_split_connected_component():
     assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"a", "b"})}
 
     # 'ab' is split into 2 components.
-    ahg.update_graph(
+    _ = ahg.update_graph(
         AHGUpdateInfo(version=2, cell_runtime_s=1.0, current_variables=current_variables, modified_variables={"b"})
     )
 
@@ -175,7 +243,7 @@ def test_create_vs_modify_connected_component():
     linked_variable_pairs = [("a", "b")]
 
     # 2 components: 'ab' and 'c'.
-    ahg.update_graph(
+    _ = ahg.update_graph(
         AHGUpdateInfo(
             version=1, cell_runtime_s=1.0, current_variables=current_variables, linked_variable_pairs=linked_variable_pairs
         )
@@ -190,7 +258,7 @@ def test_create_vs_modify_connected_component():
     assert set(vs.name for vs in active_variable_snapshots) == {frozenset({"a", "b"}), frozenset("c")}
 
     # 'ab' is split into 2 components.
-    ahg.update_graph(
+    _ = ahg.update_graph(
         AHGUpdateInfo(
             version=2,
             cell_runtime_s=1.0,
@@ -213,12 +281,12 @@ def test_update_active_vses():
     ahg = AHG()
 
     # x and y are created
-    ahg.update_graph(AHGUpdateInfo(version=1, cell_runtime_s=1.0, current_variables={"x", "y"}))
+    _ = ahg.update_graph(AHGUpdateInfo(version=1, cell_runtime_s=1.0, current_variables={"x", "y"}))
 
     old_active_vses = ahg.clone_active_vses()
 
     # x is read and modified, z is created, y is deleted
-    ahg.update_graph(
+    _ = ahg.update_graph(
         AHGUpdateInfo(
             version=2,
             cell_runtime_s=1.0,

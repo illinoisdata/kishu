@@ -65,7 +65,7 @@ class KishuCheckpoint:
         """
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        param_list = [(vn.version, KishuCheckpoint.encode_name(vn.name)) for vn in versioned_names]
+        param_list = [(vn.version, VersionedName.encode_name(vn.name)) for vn in versioned_names]
         query = f"""select data from {VARIABLE_SNAPSHOT_TABLE} where """ + " OR ".join(
             ["(version = ? AND name = ?)"] * len(param_list)
         )
@@ -87,7 +87,7 @@ class KishuCheckpoint:
             commit_ids,
         )
         res: List = cur.fetchall()
-        return {VersionedName(KishuCheckpoint.decode_name(name), version) for version, name in res}
+        return {VersionedName(VersionedName.decode_name(name), version) for version, name in res}
 
     def store_variable_snapshots(self, commit_id: str, vses_to_store: List[VariableSnapshot], user_ns: Namespace) -> None:
         con = sqlite3.connect(self.database_path)
@@ -101,14 +101,6 @@ class KishuCheckpoint:
             data_dump = pickle.dumps(ns_subset.to_dict())
             cur.execute(
                 f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?, ?)",
-                (vs.version, KishuCheckpoint.encode_name(vs.name), commit_id, memoryview(data_dump)),
+                (vs.version, VersionedName.encode_name(vs.name), commit_id, memoryview(data_dump)),
             )
             con.commit()
-
-    @staticmethod
-    def encode_name(variable_name: VariableName) -> str:
-        return repr(sorted(variable_name))
-
-    @staticmethod
-    def decode_name(encoded_name: str) -> VariableName:
-        return frozenset([name.strip().replace("'", "") for name in encoded_name.replace("[", "").replace("]", "").split(",")])

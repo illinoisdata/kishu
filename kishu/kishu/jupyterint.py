@@ -80,6 +80,7 @@ from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, Ki
 from kishu.storage.commit_graph import KishuCommitGraph
 from kishu.storage.config import Config, PersistentConfig
 from kishu.storage.connection import KishuConnection
+from kishu.storage.diskahg import KishuDiskAHG
 from kishu.storage.path import KishuPath
 from kishu.storage.tag import KishuTag
 from kishu.storage.variable_version import VariableVersion
@@ -184,11 +185,11 @@ class JupyterConnection:
             )
             stdout = stdout_f.getvalue()
             stderr = stderr_f.getvalue()
-        # print("**************************")
-        # print(f"stdout>\n{stdout}")
-        # print("**************************")
-        # print(f"stderr>\n{stderr}")
-        # print("**************************")
+        print("**************************")
+        print(f"stdout>\n{stdout}")
+        print("**************************")
+        print(f"stderr>\n{stderr}")
+        print("**************************")
         return reply, stdout, stderr
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -270,10 +271,8 @@ class KishuForJupyter:
         self._kishu_graph = KishuCommitGraph.new_var_graph(self.database_path())
         self._kishu_nb_graph = KishuCommitGraph.new_nb_graph(self.database_path())
         self._kishu_variable_version = VariableVersion(self.database_path())
+        self._kishu_disk_ahg = KishuDiskAHG(self.database_path())
         self._persistent_config = PersistentConfig(self.database_path())
-
-        # Initialize persistent config.
-        self._persistent_config.init_database()
 
         # Enclosing environment.
         self._ip = ip
@@ -285,17 +284,6 @@ class KishuForJupyter:
         self._platform = enclosing_platform()
         self._session_id = 0
         self._checkout_id = 0
-
-        # Stateful trackers.
-        self._cr_planner = CheckpointRestorePlanner.from_existing(
-            user_ns=self._user_ns,
-            kishu_graph=self._kishu_graph,
-            kishu_commit=self._kishu_commit,
-            incremental_cr=self._persistent_config.get("PLANNER", "incremental_store", False),
-        )
-        self._variable_version_tracker = VariableVersionTracker({})
-        self._start_time: Optional[float] = None
-        self._last_execution_count = 0
 
         # Configurations.
         self._test_mode = Config.get("JUPYTERINT", "test_mode", False)
@@ -317,6 +305,20 @@ class KishuForJupyter:
         self._kishu_graph.init_database()
         self._kishu_nb_graph.init_database()
         self._kishu_variable_version.init_database()
+        self._persistent_config.init_database()
+        self._kishu_disk_ahg.init_database()
+
+        # Stateful trackers.
+        self._cr_planner = CheckpointRestorePlanner.from_existing(
+            user_ns=self._user_ns,
+            kishu_graph=self._kishu_graph,
+            kishu_commit=self._kishu_commit,
+            kishu_disk_ahg=self._kishu_disk_ahg,
+            incremental_cr=self._persistent_config.get("PLANNER", "incremental_store", False),
+        )
+        self._variable_version_tracker = VariableVersionTracker({})
+        self._start_time: Optional[float] = None
+        self._last_execution_count = 0
 
         # For unit tests.
         if os.environ.get(KishuForJupyter.ENV_KISHU_TEST_MODE, False):

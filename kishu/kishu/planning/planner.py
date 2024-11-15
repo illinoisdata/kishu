@@ -15,7 +15,8 @@ from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, Resto
 from kishu.planning.profiler import profile_variable_size
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit import CommitEntry, KishuCommit
-from kishu.storage.commit_graph import CommitId, KishuCommitGraph
+from kishu.storage.commit_graph import ABSOLUTE_PAST, CommitId, KishuCommitGraph
+from kishu.storage.diskahg import KishuDiskAHG
 
 
 @dataclass
@@ -60,6 +61,7 @@ class CheckpointRestorePlanner:
         ahg: Optional[AHG] = None,
         kishu_graph: Optional[KishuCommitGraph] = None,
         kishu_commit: Optional[KishuCommit] = None,
+        kishu_disk_ahg: Optional[KishuDiskAHG] = None,
         incremental_cr: bool = False,
     ) -> None:
         """
@@ -76,15 +78,48 @@ class CheckpointRestorePlanner:
         # Storage-related items.
         self._kishu_graph = kishu_graph
         self._kishu_commit = kishu_commit
+        self._kishu_disk_ahg = kishu_disk_ahg
 
         # Used by instrumentation to compute whether data has changed.
         self._modified_vars_structure: Set[str] = set()
 
     @staticmethod
     def from_existing(
-        user_ns: Namespace, kishu_graph: KishuCommitGraph, kishu_commit: KishuCommit, incremental_cr: bool
+        user_ns: Namespace,
+        kishu_graph: KishuCommitGraph,
+        kishu_commit: KishuCommit,
+        kishu_disk_ahg: KishuDiskAHG,
+        incremental_cr: bool,
     ) -> CheckpointRestorePlanner:
-        return CheckpointRestorePlanner(user_ns, AHG.from_existing(user_ns), kishu_graph, kishu_commit, incremental_cr)
+        cr_planner = CheckpointRestorePlanner(user_ns, None, kishu_graph, kishu_commit, kishu_disk_ahg, incremental_cr)
+
+        # Initialize AHG with records stored in the disk AHG DB.
+        cr_planner._ahg = AHG.from_db(
+            kishu_disk_ahg.get_variable_snapshots(),
+            kishu_disk_ahg.get_cell_executions(),
+            kishu_disk_ahg.get_vs_to_ce_edges(),
+            kishu_disk_ahg.get_ce_to_vs_edges(),
+        )
+
+        # Retrieve active VSes of latest commit (if one exists) as active VSes of the new AHG.
+        latest_commit_id = kishu_graph.head()
+        if latest_commit_id != ABSOLUTE_PAST:
+            latest_commit_entry = kishu_commit.get_commit(latest_commit_id)
+            latest_active_vses = (
+                AHG.deserialize_active_vses(latest_commit_entry.active_vses_string)
+                if latest_commit_entry.active_vses_string is not None
+                else []
+            )
+            cr_planner._ahg.replace_active_vses(latest_active_vses)
+
+        # Finally, add a dummy cell execution for the untracked cell executions.
+        update_result = cr_planner._ahg.augment_existing(user_ns)
+        if update_result:
+            kishu_disk_ahg.store_update_results(update_result)
+
+        print("existing variable names:", cr_planner._ahg._variable_snapshots.keys())
+
+        return cr_planner
 
     def pre_run_cell_update(self) -> None:
         """
@@ -94,6 +129,7 @@ class CheckpointRestorePlanner:
         self._pre_run_cell_vars = self._user_ns.keyset()
 
         # Populate missing ID graph entries.
+        print("variable names:", self._ahg.get_variable_names())
         for var in self._ahg.get_variable_names():
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
@@ -144,7 +180,7 @@ class CheckpointRestorePlanner:
 
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
-        self._ahg.update_graph(
+        update_result = self._ahg.update_graph(
             AHGUpdateInfo(
                 code_block,
                 version,
@@ -156,6 +192,10 @@ class CheckpointRestorePlanner:
                 deleted_vars,
             )
         )
+
+        # Persist AHG updates to disk.
+        if self._kishu_disk_ahg:
+            self._kishu_disk_ahg.store_update_results(update_result)
 
         return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
 
@@ -236,8 +276,6 @@ class CheckpointRestorePlanner:
         """
         restore_plan = RestorePlan()
 
-        ce_dict = {ce.cell_num: ce for ce in self._ahg.get_cell_executions()}
-
         for ce in self._ahg.get_cell_executions():
             # Add a rerun cell restore action if the cell needs to be rerun
             if ce.cell_num in ces_to_recompute:
@@ -248,7 +286,10 @@ class CheckpointRestorePlanner:
                 restore_plan.add_load_variable_restore_action(
                     ce.cell_num,
                     list(chain.from_iterable(ce_to_vs_map[ce.cell_num])),
-                    [(cell_num, ce_dict[cell_num].cell) for cell_num in req_func_mapping[ce.cell_num]],
+                    [
+                        (cell_num, self._ahg.get_cell_executions_dict()[cell_num].cell)
+                        for cell_num in req_func_mapping[ce.cell_num]
+                    ],
                 )
         return restore_plan
 

@@ -4,12 +4,14 @@ from typing import Any, Dict, Generator, List, Set, Tuple
 import pytest
 
 from kishu.jupyter.namespace import Namespace
+from kishu.planning.ahg import AHG, AHGUpdateInfo
 from kishu.planning.plan import CheckpointPlan, RerunCellRestoreAction, RestorePlan, StepOrder
 from kishu.planning.planner import ChangedVariables, CheckpointRestorePlanner
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit import KishuCommit
 from kishu.storage.commit_graph import KishuCommitGraph
 from kishu.storage.config import Config
+from kishu.storage.diskahg import KishuDiskAHG
 from kishu.storage.path import KishuPath
 
 
@@ -59,12 +61,32 @@ class TestPlanner:
         return KishuPath.database_path(nb_simple_path)
 
     @pytest.fixture
+    def graph_name(self):
+        return "test_graph"
+
+    @pytest.fixture
     def kishu_checkpoint(self, db_path_name):
         """Fixture for initializing a KishuCheckpoint instance."""
         kishu_checkpoint = KishuCheckpoint(db_path_name)
         kishu_checkpoint.init_database()
         yield kishu_checkpoint
         kishu_checkpoint.drop_database()
+
+    @pytest.fixture
+    def kishu_graph(self, db_path_name, graph_name):
+        """Fixture for initializing a KishuBranch instance."""
+        kishu_graph = KishuCommitGraph(db_path_name, graph_name)
+        kishu_graph.init_database()
+        yield kishu_graph
+        kishu_graph.drop_database()
+
+    @pytest.fixture
+    def kishu_disk_ahg(self, db_path_name):
+        """Fixture for initializing a KishuBranch instance."""
+        kishu_disk_ahg = KishuDiskAHG(db_path_name)
+        kishu_disk_ahg.init_database()
+        yield kishu_disk_ahg
+        kishu_disk_ahg.drop_database()
 
     def test_checkpoint_restore_planner(self, enable_always_migrate, nb_simple_path):
         """
@@ -102,25 +124,28 @@ class TestPlanner:
             RerunCellRestoreAction(StepOrder.new_rerun_cell(0), "x = 1")
         ]
 
-    def test_checkpoint_restore_planner_with_existing_items(self, enable_always_migrate, nb_simple_path):
+    def test_checkpoint_restore_planner_with_existing_items(
+        self, enable_always_migrate, kishu_graph, kishu_disk_ahg, nb_simple_path
+    ):
         """
         Test running a few cell updates.
         """
         user_ns = Namespace({"x": 1000, "y": 2000, "In": ["x = 1000", "y = 2000"]})
 
         planner = CheckpointRestorePlanner.from_existing(
-            user_ns, KishuCommitGraph.new_var_graph(nb_simple_path), KishuCommit(nb_simple_path), False
+            user_ns, kishu_graph, KishuCommit(nb_simple_path), kishu_disk_ahg, False
         )
 
         variable_snapshots = planner.get_ahg().get_variable_snapshots()
         active_variable_snapshots = planner.get_ahg().get_active_variable_snapshots()
         cell_executions = planner.get_ahg().get_cell_executions()
 
-        # Assert correct contents of AHG. x and y are pessimistically assumed to be modified twice each.
-        assert len(variable_snapshots) == 2
+        # Assert correct contents of AHG. x and y are pessimistically assumed to be linked and modified by the
+        # added cell execution.
+        assert len(variable_snapshots) == 1
         assert len(active_variable_snapshots) == 1
         assert active_variable_snapshots[0].name == frozenset({"x", "y"})
-        assert len(cell_executions) == 2
+        assert len(cell_executions) == 1
 
         # Pre run cell 3
         planner.pre_run_cell_update()
@@ -140,9 +165,33 @@ class TestPlanner:
         cell_executions = planner.get_ahg().get_cell_executions()
 
         # Assert correct contents of AHG is maintained after initializing the planner in a non-empty namespace.
-        assert len(variable_snapshots) == 4  # (x, y), (x, y), (x), (y)
+        assert len(variable_snapshots) == 3  # (x, y), (x), (y)
         assert set(vs.name for vs in active_variable_snapshots) == {frozenset("x"), frozenset("y")}
-        assert len(cell_executions) == 3
+        assert len(cell_executions) == 2
+
+    def test_checkpoint_restore_planner_with_existing_items_and_ahg(
+        self, enable_always_migrate, kishu_graph, kishu_disk_ahg, nb_simple_path
+    ):
+        # x and y are created and stored into the DB.
+        update_result = AHG().update_graph(AHGUpdateInfo(version=1, cell_runtime_s=1.0, current_variables={"x", "y"}))
+        kishu_disk_ahg.store_update_results(update_result)
+
+        user_ns = Namespace({"x": 1000, "y": 2000, "In": ["x = 1000", "y = 2000"]})
+
+        planner = CheckpointRestorePlanner.from_existing(
+            user_ns, kishu_graph, KishuCommit(nb_simple_path), kishu_disk_ahg, False
+        )
+
+        variable_snapshots = planner.get_ahg().get_variable_snapshots()
+        active_variable_snapshots = planner.get_ahg().get_active_variable_snapshots()
+        cell_executions = planner.get_ahg().get_cell_executions()
+
+        # Assert correct contents of AHG. x and y are pessimistically assumed to accessed by the new cell execution,
+        # which creates a new (linked) variable (x, y).
+        assert len(variable_snapshots) == 3  # (x, y, (x, y))
+        assert len(active_variable_snapshots) == 1
+        assert active_variable_snapshots[0].name == frozenset({"x", "y"})
+        assert len(cell_executions) == 2
 
     def test_post_run_cell_update_return(self, enable_always_migrate):
         planner_manager = PlannerManager(CheckpointRestorePlanner(Namespace({})))

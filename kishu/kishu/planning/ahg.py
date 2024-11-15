@@ -28,10 +28,10 @@ class CellExecution:
     """
 
     cell_num: int
-    cell: str
-    cell_runtime_s: float
-    src_vss: List[VariableSnapshot]
-    dst_vss: List[VariableSnapshot]
+    cell: str = ""
+    cell_runtime_s: float = 1.0
+    src_vss: List[VariableSnapshot] = field(default_factory=lambda: [])
+    dst_vss: List[VariableSnapshot] = field(default_factory=lambda: [])
 
 
 @dataclass(frozen=True)
@@ -42,6 +42,14 @@ class VersionedName:
 
     name: VariableName
     version: int
+
+    @staticmethod
+    def encode_name(variable_name: VariableName) -> str:
+        return repr(sorted(variable_name))
+
+    @staticmethod
+    def decode_name(encoded_name: str) -> VariableName:
+        return frozenset([name.strip().replace("'", "") for name in encoded_name.replace("[", "").replace("]", "").split(",")])
 
 
 @dataclass
@@ -92,6 +100,17 @@ class AHGUpdateInfo:
     deleted_variables: Set[str] = field(default_factory=set)
 
 
+@dataclass
+class AHGUpdateResult:
+    """
+    New items from an AHG update to persist to database.
+    """
+
+    accessed_vss: List[VariableSnapshot]
+    output_vss: List[VariableSnapshot]
+    newest_ce: CellExecution
+
+
 class AHG:
     """
     The Application History Graph (AHG) tracks the history of a notebook instance.
@@ -103,8 +122,8 @@ class AHG:
         """
         Create a new AHG. Called when Kishu is initialized for a notebook.
         """
-        # Cell executions in chronological order.
-        self._cell_executions: List[CellExecution] = []
+        # Cell executions.
+        self._cell_executions: Dict[int, CellExecution] = {}
 
         # All variable snapshots which have existed at some point in the session.
         # Keys are the name-version tuples of variable snapshots (VersionedName) for fast lookup.
@@ -117,9 +136,39 @@ class AHG:
         self._active_variable_snapshots: Dict[VariableName, VariableSnapshot] = {}
 
     @staticmethod
-    def from_existing(user_ns: Namespace) -> AHG:
+    def from_db(
+        variable_snapshots: List[VariableSnapshot],
+        cell_executions: List[CellExecution],
+        vs_to_ce_edges: List[Tuple[VersionedName, int]],
+        ce_to_vs_edges: List[Tuple[int, VersionedName]],
+    ) -> AHG:
+        # We manually set the fields of this new AHG as we are not following the regular notebook cell execution workflow.
         ahg = AHG()
 
+        # Set variable snapshots.
+        for vs in variable_snapshots:
+            ahg._variable_snapshots[VersionedName(vs.name, vs.version)] = vs
+
+        # Set cell executions.
+        for ce in cell_executions:
+            ahg._cell_executions[ce.cell_num] = ce
+
+        # Set VS to CE edges.
+        for versioned_name, cell_num in vs_to_ce_edges:
+            ahg._variable_snapshots[versioned_name].input_ces.append(ahg._cell_executions[cell_num])
+            ahg._cell_executions[cell_num].src_vss.append(ahg._variable_snapshots[versioned_name])
+
+        # Set CE to VS edges.
+        for cell_num, versioned_name in ce_to_vs_edges:
+            ahg._variable_snapshots[versioned_name].output_ce = ahg._cell_executions[cell_num]
+            ahg._cell_executions[cell_num].dst_vss.append(ahg._variable_snapshots[versioned_name])
+
+        return ahg
+
+    def augment_existing(self, user_ns: Namespace) -> Optional[AHGUpdateResult]:
+        """
+        Augments the current AHG with a dummy cell execution representing existing untracked cell executions.
+        """
         # Throw error if there are existing variables but the cell executions are missing.
         existing_cell_executions = user_ns.ipython_in()
         if not existing_cell_executions and user_ns.keyset():
@@ -131,31 +180,21 @@ class AHG:
             keyset_list = list(user_ns.keyset())
             linked_variable_pairs = [(keyset_list[i], keyset_list[i + 1]) for i in range(len(keyset_list) - 1)]
 
-            ahg.update_graph(
+            # This dummy cell execution consists of all untracked code, accesses all active VSes, and deletes all VSes
+            # which are no longer in the namespace.
+            update_result = self.update_graph(
                 AHGUpdateInfo(
-                    cell=existing_cell_executions[0],
+                    cell="\n".join(existing_cell_executions),
                     version=time.monotonic_ns(),
-                    cell_runtime_s=1.0,
+                    accessed_variables=self.get_variable_names(),
                     current_variables=user_ns.keyset(),
                     linked_variable_pairs=linked_variable_pairs,
+                    deleted_variables=self.get_variable_names().difference(user_ns.keyset()),
                 )
             )
 
-            # Subsequent cell executions has all existing variables as input and output variables.
-            for i in range(1, len(existing_cell_executions)):
-                ahg.update_graph(
-                    AHGUpdateInfo(
-                        cell=existing_cell_executions[i],
-                        version=time.monotonic_ns(),
-                        cell_runtime_s=1.0,
-                        accessed_variables=user_ns.keyset(),
-                        current_variables=user_ns.keyset(),
-                        linked_variable_pairs=linked_variable_pairs,
-                        modified_variables=user_ns.keyset(),
-                    )
-                )
-
-        return ahg
+            return update_result
+        return None
 
     def add_cell_execution(
         self,
@@ -163,9 +202,9 @@ class AHG:
         cell_runtime_s: float,
         src_vss: List[VariableSnapshot],
         dst_vss: List[VariableSnapshot],
-    ) -> None:
+    ) -> CellExecution:
         """
-        Create a cell execution from captured metrics.
+        Create a cell execution from captured metrics. Returns the newly added CE.
 
         @param cell: Raw cell code.
         @param cell_runtime_s: Cell runtime in seconnds.
@@ -176,7 +215,7 @@ class AHG:
         ce = CellExecution(len(self._cell_executions), cell, cell_runtime_s, src_vss, dst_vss)
 
         # Add the newly created cell execution to the graph.
-        self._cell_executions.append(ce)
+        self._cell_executions[ce.cell_num] = ce
 
         # Set the newly created cell execution as dependent on its input variable snapshots.
         for src_vs in src_vss:
@@ -186,7 +225,9 @@ class AHG:
         for dst_vs in dst_vss:
             dst_vs.output_ce = ce
 
-    def update_graph(self, update_info: AHGUpdateInfo) -> None:
+        return ce
+
+    def update_graph(self, update_info: AHGUpdateInfo) -> AHGUpdateResult:
         """
         Updates the graph according to the newly executed cell and its input and output variables.
         """
@@ -225,11 +266,11 @@ class AHG:
         ]
 
         # Deleted VSes are always singletons of the deleted names.
-        output_vss_delete = [VariableSnapshot(frozenset(k), update_info.version, False) for k in update_info.deleted_variables]
+        output_vss_delete = [VariableSnapshot(frozenset({k}), update_info.version, False) for k in update_info.deleted_variables]
 
         # Add a CE to the graph.
         output_vss = output_vss_create + output_vss_modify + output_vss_delete
-        self.add_cell_execution(cell, update_info.cell_runtime_s, accessed_vss, output_vss)
+        newest_ce = self.add_cell_execution(cell, update_info.cell_runtime_s, accessed_vss, output_vss)
 
         # Add output VSes to the graph.
         self._variable_snapshots = {
@@ -243,11 +284,19 @@ class AHG:
             **{vs.name: vs for vs in output_vss_create + output_vss_modify},
         }
 
+        return AHGUpdateResult(accessed_vss, output_vss, newest_ce)
+
     def get_cell_executions(self) -> List[CellExecution]:
+        return [self._cell_executions[cell_num] for cell_num in sorted(self._cell_executions.keys())]
+
+    def get_cell_executions_dict(self) -> Dict[int, CellExecution]:
         return self._cell_executions
 
     def get_variable_snapshots(self) -> List[VariableSnapshot]:
         return list(self._variable_snapshots.values())
+
+    def get_variable_snapshots_dict(self) -> Dict[VersionedName, VariableSnapshot]:
+        return self._variable_snapshots
 
     def get_active_variable_snapshots(self) -> List[VariableSnapshot]:
         return list(self._active_variable_snapshots.values())
