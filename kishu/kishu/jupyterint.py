@@ -311,7 +311,7 @@ class KishuForJupyter:
         self._kishu_connection.init_database()
         self._kishu_connection.record_connection()
         self._kishu_commit.init_database()
-        self._kishu_checkpoint.init_database()
+        self._kishu_checkpoint.init_database(self._persistent_config.get("PLANNER", "incremental_store", False))
         self._kishu_branch.init_database()
         self._kishu_tag.init_database()
         self._kishu_graph.init_database()
