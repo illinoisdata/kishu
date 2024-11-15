@@ -185,11 +185,11 @@ class JupyterConnection:
             )
             stdout = stdout_f.getvalue()
             stderr = stderr_f.getvalue()
-        print("**************************")
-        print(f"stdout>\n{stdout}")
-        print("**************************")
-        print(f"stderr>\n{stderr}")
-        print("**************************")
+        # print("**************************")
+        # print(f"stdout>\n{stdout}")
+        # print("**************************")
+        # print(f"stderr>\n{stderr}")
+        # print("**************************")
         return reply, stdout, stderr
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -623,6 +623,7 @@ class KishuForJupyter:
         # Plan for checkpointing and restoration.
         checkpoint_start_time = time.time()
         entry.restore_plan, entry.varset_version = self._checkpoint(entry)
+
         entry.active_vses_string = self._cr_planner.serialize_active_vses()
         checkpoint_runtime_s = time.time() - checkpoint_start_time
         entry.checkpoint_runtime_s = checkpoint_runtime_s

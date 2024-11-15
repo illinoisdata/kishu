@@ -1,9 +1,7 @@
-import pickle
 import pytest
 import sqlite3
 
-from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import AHG, AHGUpdateInfo, VariableSnapshot, VersionedName
+from kishu.planning.ahg import AHG, AHGUpdateInfo
 from kishu.storage.diskahg import (
     AHG_CELL_EXECUTION_TABLE,
     AHG_CE_INPUT_TABLE,

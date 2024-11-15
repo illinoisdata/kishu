@@ -10,7 +10,7 @@ import dill as pickle
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import VariableName, VariableSnapshot, VersionedName
+from kishu.planning.ahg import VariableSnapshot, VersionedName
 from kishu.storage.config import Config
 
 CHECKPOINT_TABLE = "checkpoint"

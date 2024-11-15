@@ -117,8 +117,6 @@ class CheckpointRestorePlanner:
         if update_result:
             kishu_disk_ahg.store_update_results(update_result)
 
-        print("existing variable names:", cr_planner._ahg._variable_snapshots.keys())
-
         return cr_planner
 
     def pre_run_cell_update(self) -> None:
@@ -129,7 +127,6 @@ class CheckpointRestorePlanner:
         self._pre_run_cell_vars = self._user_ns.keyset()
 
         # Populate missing ID graph entries.
-        print("variable names:", self._ahg.get_variable_names())
         for var in self._ahg.get_variable_names():
             if var not in self._id_graph_map and var in self._user_ns:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
@@ -447,9 +444,6 @@ class CheckpointRestorePlanner:
 
         # Replace old AHG with new AHG.
         self._ahg.replace_active_vses(new_active_vses)
-
-        print("ahg active vses:", self._ahg.get_variable_names())
-        print("namespace:", self._user_ns.keyset())
 
         # Clear pre-run cell info.
         self._pre_run_cell_vars = set()

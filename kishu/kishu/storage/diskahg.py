@@ -4,11 +4,9 @@ Sqlite interface for storing the AHG.
 
 import sqlite3
 from pathlib import Path
-from typing import List, Set, Tuple
+from typing import List, Tuple
 
-import dill as pickle
-
-from kishu.planning.ahg import AHG, AHGUpdateResult, CellExecution, VariableSnapshot, VersionedName
+from kishu.planning.ahg import AHGUpdateResult, CellExecution, VariableSnapshot, VersionedName
 
 AHG_VARIABLE_SNAPSHOT_TABLE = "ahg_variable_snapshot"
 AHG_CELL_EXECUTION_TABLE = "ahg_cell_execution"
@@ -107,45 +105,3 @@ class KishuDiskAHG:
         cur.execute(f"select * from {AHG_CE_OUTPUT_TABLE}")
         res: List = cur.fetchall()
         return [(cell_num, VersionedName(VersionedName.decode_name(name), version)) for cell_num, version, name in res]
-
-    # def construct_ahg(self) -> AHG:
-    #     con = sqlite3.connect(self.database_path)
-    #     cur = con.cursor()
-
-    #     # We manually set the fields of this new AHG as we are not following the regular notebook cell execution workflow.
-    #     ahg = AHG()
-
-    #     # Get all VSes
-    #     cur.execute(f"select * from {AHG_VARIABLE_SNAPSHOT_TABLE}")
-    #     res: List = cur.fetchall()
-    #     for version, name, deleted, size in res:
-    #         decoded_name = VersionedName.decode_name(name)
-    #         ahg._variable_snapshots[VersionedName(decoded_name, version)] = VariableSnapshot(decoded_name, version, deleted, size)
-
-    #     # Add cell executions.
-    #     cur.execute(f"select * from {AHG_CELL_EXECUTION_TABLE} ORDER BY ce_id ASC")
-    #     res: List = cur.fetchall()
-    #     for cell_num, cell, cell_runtime_s in res:
-    #         ahg._cell_executions[cell_num] = CellExecution(cell_num, cell, cell_runtime_s)
-
-    #     # Add VS to CE edges.
-    #     cur.execute(f"select * from {AHG_CE_INPUT_TABLE}")
-    #     res: List = cur.fetchall()
-    #     for cell_num, version, name in res:
-    #         decoded_name = VersionedName.decode_name(name)
-    #         vs = ahg._variable_snapshots[VersionedName(decoded_name, version)]
-    #         ce = ahg._cell_executions[cell_num]
-    #         vs.input_ces.append(ce)
-    #         ce.src_vss.append(vs)
-
-    #     # Add CE to VS edges.
-    #     cur.execute(f"select * from {AHG_CE_OUTPUT_TABLE}")
-    #     res: List = cur.fetchall()
-    #     for cell_num, version, name in res:
-    #         decoded_name = VersionedName.decode_name(name)
-    #         vs = ahg._variable_snapshots[VersionedName(decoded_name, version)]
-    #         ce = ahg._cell_executions[cell_num]
-    #         vs.output_ce = ce
-    #         ce.dst_vss.append(vs)
-
-    #     return ahg

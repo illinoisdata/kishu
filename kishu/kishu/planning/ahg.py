@@ -180,13 +180,12 @@ class AHG:
             keyset_list = list(user_ns.keyset())
             linked_variable_pairs = [(keyset_list[i], keyset_list[i + 1]) for i in range(len(keyset_list) - 1)]
 
-            # This dummy cell execution consists of all untracked code, accesses all active VSes, and deletes all VSes
+            # This dummy cell execution consists of all untracked code, accesses nothing, and deletes all VSes
             # which are no longer in the namespace.
             update_result = self.update_graph(
                 AHGUpdateInfo(
                     cell="\n".join(existing_cell_executions),
                     version=time.monotonic_ns(),
-                    accessed_variables=self.get_variable_names(),
                     current_variables=user_ns.keyset(),
                     linked_variable_pairs=linked_variable_pairs,
                     deleted_variables=self.get_variable_names().difference(user_ns.keyset()),
@@ -266,7 +265,9 @@ class AHG:
         ]
 
         # Deleted VSes are always singletons of the deleted names.
-        output_vss_delete = [VariableSnapshot(frozenset({k}), update_info.version, False) for k in update_info.deleted_variables]
+        output_vss_delete = [
+            VariableSnapshot(frozenset({k}), update_info.version, False) for k in update_info.deleted_variables
+        ]
 
         # Add a CE to the graph.
         output_vss = output_vss_create + output_vss_modify + output_vss_delete

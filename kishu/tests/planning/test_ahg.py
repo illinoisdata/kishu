@@ -1,4 +1,4 @@
-from kishu.planning.ahg import AHG, AHGUpdateInfo, AHGUpdateResult, CellExecution, VariableSnapshot, VersionedName
+from kishu.planning.ahg import AHG, AHGUpdateInfo, CellExecution, VariableSnapshot, VersionedName
 from kishu.jupyter.namespace import Namespace
 
 
@@ -117,7 +117,7 @@ def test_augment_existing():
 
     assert update_result.newest_ce.cell_num == 1
     assert update_result.newest_ce.cell == "print(x)\nprint(y)\na=3\nb=4"  # Concatenated
-    assert len(update_result.accessed_vss) == 2  # x and y
+    assert len(update_result.accessed_vss) == 0  # Accesses nothing
     assert len(update_result.output_vss) == 3  # x and y were deleted and {a, b} was created
 
 
