@@ -53,7 +53,7 @@ class StepOrder:
 
 @dataclass
 class RestoreActionContext:
-    dict: Dict
+    namespace: Dict[str, Any]
     database_path: Path
     exec_id: str
 
@@ -276,7 +276,7 @@ class LoadVariableRestoreAction(RestoreAction):
         for key, obj in namespace.items():
             # if self.variable_names is set, limit the restoration only to those variables.
             if key in self.variable_names:
-                ctx.dict[key] = obj
+                ctx.namespace[key] = obj
 
 
 @dataclass
@@ -306,7 +306,7 @@ class IncrementalLoadRestoreAction(RestoreAction):
             if not isinstance(vs_dict, dict):
                 raise ValueError(f"loaded snapshot is of type {type(vs_dict)}, expected type dict")
             for k, v in vs_dict.items():
-                ctx.dict[k] = v
+                ctx.namespace[k] = v
 
 
 @dataclass
@@ -326,7 +326,7 @@ class MoveVariableRestoreAction(RestoreAction):
         @param user_ns  A target space where the existing variable will be moved to.
         """
         for k, v in self.vars_to_move.to_dict().items():
-            ctx.dict[k] = v
+            ctx.namespace[k] = v
 
 
 @dataclass
@@ -348,7 +348,7 @@ class RerunCellRestoreAction(RestoreAction):
         try:
             # Transform cell content to handle cell magics
             transformed_code = TransformerManager().transform_cell(self.cell_code)
-            exec(transformed_code, ctx.dict, ctx.dict)
+            exec(transformed_code, ctx.namespace, ctx.namespace)
         except Exception:
             # We don't want to raise exceptions during code rerunning as the code can contain errors.
             pass
@@ -465,4 +465,4 @@ class RestorePlan:
                             self.actions[rerun_cell_action.step_order] = rerun_cell_action
                         break
                 else:
-                    return Namespace(ctx.dict)
+                    return Namespace(ctx.namespace)
