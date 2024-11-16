@@ -444,7 +444,7 @@ class RestorePlan:
         @param database_path  The file where information is stored.
         """
         while True:
-            with AtExitContext():
+            with AtExitContext():  # Intercept and trigger all atexit functions.
                 ctx = RestoreActionContext({}, database_path, exec_id)
 
                 # Run restore actions sorted by cell number, then rerun cells before loading variables.
