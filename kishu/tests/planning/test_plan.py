@@ -85,6 +85,21 @@ class TestPlan:
 
         assert result_ns.to_dict() == user_ns.to_dict()
 
+    def test_recompute_with_cell_magic(self, db_path_name, kishu_checkpoint):
+        user_ns = Namespace({"a": 1})
+
+        # save
+        exec_id = 1
+        checkpoint = CheckpointPlan.create(user_ns, db_path_name, exec_id)
+        checkpoint.run(user_ns)
+
+        # restore; the cell magic should be rerun successfully as it has been decoded by the TransformerManager.
+        restore_plan = RestorePlan()
+        restore_plan.add_rerun_cell_restore_action(1, "a=1\n%who_ls")
+        result_ns = restore_plan.run(db_path_name, exec_id)
+
+        assert result_ns.to_dict() == user_ns.to_dict()
+
     def test_mix_reload_recompute_restore_plan(self, db_path_name, kishu_checkpoint):
         user_ns = Namespace({"a": 1, "b": 2})
 
