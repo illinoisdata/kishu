@@ -143,8 +143,8 @@ class TestPlan:
             result_ns = restore_plans[i].run(db_path_name, exec_id)
             assert result_ns.to_dict() == user_ns.to_dict()
 
-        # There should be no leftover open files.
-        assert get_open_file_count() == num_open_files_before
+            # There should be no leftover open files.
+            assert get_open_file_count() == num_open_files_before
 
     def test_mix_reload_recompute_restore_plan(self, db_path_name, kishu_checkpoint):
         user_ns = Namespace({"a": 1, "b": 2})
