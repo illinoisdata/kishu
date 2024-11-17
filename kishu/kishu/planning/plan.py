@@ -4,6 +4,7 @@ import atexit
 from dataclasses import dataclass, field
 from pathlib import Path
 from queue import LifoQueue
+from traitlets.config import Config
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import dill
@@ -14,6 +15,17 @@ from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import VariableSnapshot, VersionedName
 from kishu.storage.checkpoint import KishuCheckpoint
+
+
+def no_history_interactive_shell():
+    """
+    Spawns an IPython InteractiveShell with no history tracking. This stops the shell from opening a file handler to a
+    SQLite database that tracks history, which is not properly closed when the shell is destructed and causes a "too
+    many files open" bug if many RestorePlans are run.
+    """
+    config = Config()
+    config.HistoryManager.enabled = False
+    return InteractiveShell(config=config)
 
 
 class RestoreActionOrder(str, enum.Enum):
@@ -443,7 +455,7 @@ class RestorePlan:
         """
         while True:
             with AtExitContext():  # Intercept and trigger all atexit functions.
-                ctx = RestoreActionContext(InteractiveShell(), database_path, exec_id)
+                ctx = RestoreActionContext(no_history_interactive_shell(), database_path, exec_id)
 
                 # Run restore actions sorted by cell number, then rerun cells before loading variables.
                 for _, action in sorted(self.actions.items(), key=lambda k: k[0]):

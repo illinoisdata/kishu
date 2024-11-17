@@ -1,3 +1,4 @@
+import psutil
 import pytest
 from IPython.core.interactiveshell import InteractiveShell
 
@@ -24,6 +25,11 @@ class UndeserializableClass:
         if not self.baz:  # Infinite loop when unpickling
             pass
 """
+
+
+def get_open_file_count():
+    process = psutil.Process()
+    return len(process.open_files())
 
 
 class TestPlan:
@@ -73,17 +79,72 @@ class TestPlan:
     def test_recompute_everything_restore_plan(self, db_path_name, kishu_checkpoint):
         user_ns = Namespace({"a": 1, "b": 2})
 
-        # save
+        # Save.
         exec_id = 1
         checkpoint = CheckpointPlan.create(user_ns, db_path_name, exec_id)
         checkpoint.run(user_ns)
 
-        # restore
+        # Restore.
         restore_plan = RestorePlan()
         restore_plan.add_rerun_cell_restore_action(1, "a=1\nb=2")
         result_ns = restore_plan.run(db_path_name, exec_id)
 
         assert result_ns.to_dict() == user_ns.to_dict()
+
+    def test_recompute_with_line_magic(self, db_path_name, kishu_checkpoint):
+        user_ns = Namespace({"a": 1})
+
+        # Save.
+        exec_id = 1
+        checkpoint = CheckpointPlan.create(user_ns, db_path_name, exec_id)
+        checkpoint.run(user_ns)
+
+        # Restore; the line magic should be rerun successfully as it has been decoded by the TransformerManager.
+        restore_plan = RestorePlan()
+        restore_plan.add_rerun_cell_restore_action(1, "a=1\n%who_ls")
+        result_ns = restore_plan.run(db_path_name, exec_id)
+
+        assert result_ns.to_dict() == user_ns.to_dict()
+
+    def test_recompute_with_cell_magic(self, db_path_name, kishu_checkpoint):
+        user_ns = Namespace({"a": 1})
+
+        # Save.
+        exec_id = 1
+        checkpoint = CheckpointPlan.create(user_ns, db_path_name, exec_id)
+        checkpoint.run(user_ns)
+
+        # Restore; the cell magic should be rerun successfully as it has been decoded by the TransformerManager.
+        restore_plan = RestorePlan()
+        restore_plan.add_rerun_cell_restore_action(1, "%%time\na=1")
+        result_ns = restore_plan.run(db_path_name, exec_id)
+
+        assert result_ns.to_dict() == user_ns.to_dict()
+
+    def test_recompute_many_restore_plans(self, db_path_name, kishu_checkpoint):
+        """
+        This test verifies RestorePlan states are properly cleaned up.
+        """
+        user_ns = Namespace({"a": 1, "b": 2})
+
+        # Save.
+        exec_id = 1
+        checkpoint = CheckpointPlan.create(user_ns, db_path_name, exec_id)
+        checkpoint.run(user_ns)
+
+        num_open_files_before = get_open_file_count()
+
+        # Create many plans for restoration; this should successfully run.
+        num_plans = 10
+        restore_plans = [RestorePlan() for i in range(num_plans)]
+        for i in range(num_plans):
+            restore_plans[i].add_rerun_cell_restore_action(1, "a=1")
+            restore_plans[i].add_rerun_cell_restore_action(2, "b=2")
+            result_ns = restore_plans[i].run(db_path_name, exec_id)
+            assert result_ns.to_dict() == user_ns.to_dict()
+
+            # There should be no leftover open files.
+            assert get_open_file_count() == num_open_files_before
 
     def test_mix_reload_recompute_restore_plan(self, db_path_name, kishu_checkpoint):
         user_ns = Namespace({"a": 1, "b": 2})
