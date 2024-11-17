@@ -466,5 +466,4 @@ class RestorePlan:
                             self.actions[rerun_cell_action.step_order] = rerun_cell_action
                         break
                 else:
-                    result_ns = Namespace(ctx.shell.user_ns.copy())
-                    return result_ns
+                    return Namespace(ctx.shell.user_ns.copy())
