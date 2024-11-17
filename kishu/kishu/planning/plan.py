@@ -444,25 +444,24 @@ class RestorePlan:
         @param database_path  The file where information is stored.
         """
         while True:
-            with AtExitContext():  # Intercept and trigger all atexit functions.
-                ctx = RestoreActionContext({}, database_path, exec_id)
+            ctx = RestoreActionContext({}, database_path, exec_id)
 
-                # Run restore actions sorted by cell number, then rerun cells before loading variables.
-                for _, action in sorted(self.actions.items(), key=lambda k: k[0]):
-                    try:
-                        action.run(ctx)
-                    except CommitIdNotExistError as e:
-                        # Problem was caused by Kishu itself (specifically, missing file for commit ID).
+            # Run restore actions sorted by cell number, then rerun cells before loading variables.
+            for _, action in sorted(self.actions.items(), key=lambda k: k[0]):
+                try:
+                    action.run(ctx)
+                except CommitIdNotExistError as e:
+                    # Problem was caused by Kishu itself (specifically, missing file for commit ID).
+                    raise e
+                except Exception as e:
+                    if not isinstance(action, LoadVariableRestoreAction):
                         raise e
-                    except Exception as e:
-                        if not isinstance(action, LoadVariableRestoreAction):
-                            raise e
 
-                        # If action is load variable, replace action with fallback recomputation plan
-                        self.fallbacked_actions.append(action)
-                        del self.actions[action.step_order]
-                        for rerun_cell_action in action.fallback_recomputation:
-                            self.actions[rerun_cell_action.step_order] = rerun_cell_action
-                        break
-                else:
-                    return Namespace(ctx.namespace)
+                    # If action is load variable, replace action with fallback recomputation plan
+                    self.fallbacked_actions.append(action)
+                    del self.actions[action.step_order]
+                    for rerun_cell_action in action.fallback_recomputation:
+                        self.actions[rerun_cell_action.step_order] = rerun_cell_action
+                    break
+            else:
+                return Namespace(ctx.namespace)
