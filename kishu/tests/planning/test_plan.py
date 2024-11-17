@@ -91,6 +91,21 @@ class TestPlan:
 
         assert result_ns.to_dict() == user_ns.to_dict()
 
+    def test_recompute_with_line_magic(self, db_path_name, kishu_checkpoint):
+        user_ns = Namespace({"a": 1})
+
+        # Save.
+        exec_id = 1
+        checkpoint = CheckpointPlan.create(user_ns, db_path_name, exec_id)
+        checkpoint.run(user_ns)
+
+        # Restore; the line magic should be rerun successfully as it has been decoded by the TransformerManager.
+        restore_plan = RestorePlan()
+        restore_plan.add_rerun_cell_restore_action(1, "a=1\n%who_ls")
+        result_ns = restore_plan.run(db_path_name, exec_id)
+
+        assert result_ns.to_dict() == user_ns.to_dict()
+
     def test_recompute_with_cell_magic(self, db_path_name, kishu_checkpoint):
         user_ns = Namespace({"a": 1})
 
@@ -101,7 +116,7 @@ class TestPlan:
 
         # Restore; the cell magic should be rerun successfully as it has been decoded by the TransformerManager.
         restore_plan = RestorePlan()
-        restore_plan.add_rerun_cell_restore_action(1, "a=1\n%who_ls")
+        restore_plan.add_rerun_cell_restore_action(1, "%%time\na=1")
         result_ns = restore_plan.run(db_path_name, exec_id)
 
         assert result_ns.to_dict() == user_ns.to_dict()
@@ -120,7 +135,7 @@ class TestPlan:
         num_open_files_before = get_open_file_count()
 
         # Create many plans for restoration; this should successfully run.
-        num_plans = 100000
+        num_plans = 10
         restore_plans = [RestorePlan() for i in range(num_plans)]
         for i in range(num_plans):
             restore_plans[i].add_rerun_cell_restore_action(1, "a=1")

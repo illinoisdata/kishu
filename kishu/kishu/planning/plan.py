@@ -4,11 +4,12 @@ import atexit
 from dataclasses import dataclass, field
 from pathlib import Path
 from queue import LifoQueue
+from traitlets.config import Config
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import dill
 import enum
-from IPython.core.inputtransformer2 import TransformerManager
+from IPython.core.interactiveshell import InteractiveShell
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
@@ -53,7 +54,7 @@ class StepOrder:
 
 @dataclass
 class RestoreActionContext:
-    namespace: Dict[str, Any]
+    shell: InteractiveShell
     database_path: Path
     exec_id: str
 
@@ -276,7 +277,7 @@ class LoadVariableRestoreAction(RestoreAction):
         for key, obj in namespace.items():
             # if self.variable_names is set, limit the restoration only to those variables.
             if key in self.variable_names:
-                ctx.namespace[key] = obj
+                ctx.shell.user_ns[key] = obj
 
 
 @dataclass
@@ -306,7 +307,7 @@ class IncrementalLoadRestoreAction(RestoreAction):
             if not isinstance(vs_dict, dict):
                 raise ValueError(f"loaded snapshot is of type {type(vs_dict)}, expected type dict")
             for k, v in vs_dict.items():
-                ctx.namespace[k] = v
+                ctx.shell.user_ns[k] = v
 
 
 @dataclass
@@ -326,7 +327,7 @@ class MoveVariableRestoreAction(RestoreAction):
         @param user_ns  A target space where the existing variable will be moved to.
         """
         for k, v in self.vars_to_move.to_dict().items():
-            ctx.namespace[k] = v
+            ctx.shell.user_ns[k] = v
 
 
 @dataclass
@@ -346,9 +347,7 @@ class RerunCellRestoreAction(RestoreAction):
         @param user_ns  A target space where restored variables will be set.
         """
         try:
-            # Transform cell content to handle cell magics
-            transformed_code = TransformerManager().transform_cell(self.cell_code)
-            exec(transformed_code, ctx.namespace, ctx.namespace)
+            ctx.shell.run_cell(self.cell_code)
         except Exception:
             # We don't want to raise exceptions during code rerunning as the code can contain errors.
             pass
@@ -444,24 +443,28 @@ class RestorePlan:
         @param database_path  The file where information is stored.
         """
         while True:
-            ctx = RestoreActionContext({}, database_path, exec_id)
+            with AtExitContext():  # Intercept and trigger all atexit functions.
+                config = Config()
+                config.HistoryManager.enabled = False
+                ctx = RestoreActionContext(InteractiveShell(config=config), database_path, exec_id)
 
-            # Run restore actions sorted by cell number, then rerun cells before loading variables.
-            for _, action in sorted(self.actions.items(), key=lambda k: k[0]):
-                try:
-                    action.run(ctx)
-                except CommitIdNotExistError as e:
-                    # Problem was caused by Kishu itself (specifically, missing file for commit ID).
-                    raise e
-                except Exception as e:
-                    if not isinstance(action, LoadVariableRestoreAction):
+                # Run restore actions sorted by cell number, then rerun cells before loading variables.
+                for _, action in sorted(self.actions.items(), key=lambda k: k[0]):
+                    try:
+                        action.run(ctx)
+                    except CommitIdNotExistError as e:
+                        # Problem was caused by Kishu itself (specifically, missing file for commit ID).
                         raise e
+                    except Exception as e:
+                        if not isinstance(action, LoadVariableRestoreAction):
+                            raise e
 
-                    # If action is load variable, replace action with fallback recomputation plan
-                    self.fallbacked_actions.append(action)
-                    del self.actions[action.step_order]
-                    for rerun_cell_action in action.fallback_recomputation:
-                        self.actions[rerun_cell_action.step_order] = rerun_cell_action
-                    break
-            else:
-                return Namespace(ctx.namespace)
+                        # If action is load variable, replace action with fallback recomputation plan
+                        self.fallbacked_actions.append(action)
+                        del self.actions[action.step_order]
+                        for rerun_cell_action in action.fallback_recomputation:
+                            self.actions[rerun_cell_action.step_order] = rerun_cell_action
+                        break
+                else:
+                    result_ns = Namespace(ctx.shell.user_ns.copy())
+                    return result_ns
