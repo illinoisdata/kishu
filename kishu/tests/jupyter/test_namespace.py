@@ -4,7 +4,7 @@ from IPython.core.interactiveshell import InteractiveShell
 from kishu.jupyter.namespace import Namespace
 
 
-class ShellManager:
+class PatchedShell:
     def __init__(self, namespace: Namespace, managed_shell: InteractiveShell):
         self._shell = managed_shell
         self._namespace = namespace
@@ -25,58 +25,58 @@ def namespace():  # Or namespace(shell)
 
 
 @pytest.fixture
-def shell_manager(shell, namespace) -> ShellManager:
+def patched_shell(shell, namespace) -> PatchedShell:
     shell.init_create_namespaces(
         user_module=None,
         user_ns=namespace.get_tracked_namespace(),
     )
-    return ShellManager(namespace, shell)
+    return PatchedShell(namespace, shell)
 
 
-def test_find_input_vars(namespace, shell_manager):
-    shell_manager.run_cell("x = 1")
-    shell_manager.run_cell("y = x")
+def test_find_input_vars(namespace, patched_shell):
+    patched_shell.run_cell("x = 1")
+    patched_shell.run_cell("y = x")
     assert namespace.accessed_vars() == {"x"}
 
 
-def test_find_input_vars_augassign(namespace, shell_manager):
+def test_find_input_vars_augassign(namespace, patched_shell):
     # Test access by augassign.
-    shell_manager.run_cell("x = 1")
-    shell_manager.run_cell("x += 1")
+    patched_shell.run_cell("x = 1")
+    patched_shell.run_cell("x += 1")
     assert namespace.accessed_vars() == {"x"}
 
 
-def test_find_input_vars_index(namespace, shell_manager):
+def test_find_input_vars_index(namespace, patched_shell):
     # Test access by indexing.
-    shell_manager.run_cell("x = [1, 2, 3]")
-    shell_manager.run_cell("y = x[0]")
+    patched_shell.run_cell("x = [1, 2, 3]")
+    patched_shell.run_cell("y = x[0]")
     assert namespace.accessed_vars() == {"x"}
 
 
-def test_find_input_vars_error_no_var(namespace, shell_manager):
+def test_find_input_vars_error_no_var(namespace, patched_shell):
     # Access is not recorded as x doesn't exist.
-    shell_manager.run_cell("y = x")
+    patched_shell.run_cell("y = x")
     assert namespace.accessed_vars() == set()
 
 
-def test_find_input_vars_error_no_field(namespace, shell_manager):
+def test_find_input_vars_error_no_field(namespace, patched_shell):
     # Access is recorded even in the case of errors (x doesn't have field foo).
-    shell_manager.run_cell("x = 1")
-    shell_manager.run_cell("y = x.foo")
+    patched_shell.run_cell("x = 1")
+    patched_shell.run_cell("y = x.foo")
     assert namespace.accessed_vars() == {"x"}
 
 
-def test_find_input_vars_subfield(namespace, shell_manager):
+def test_find_input_vars_subfield(namespace, patched_shell):
     # Test access by subfield.
-    shell_manager.run_cell("x = {1: 2}")
-    shell_manager.run_cell("y = x.items()")
+    patched_shell.run_cell("x = {1: 2}")
+    patched_shell.run_cell("y = x.items()")
     assert namespace.accessed_vars() == {"x"}
 
 
-def test_find_input_global_assign(namespace, shell_manager):
+def test_find_input_global(namespace, patched_shell):
     # Test access by global keyword.
-    shell_manager.run_cell("x = 1")
-    shell_manager.run_cell(
+    patched_shell.run_cell("x = 1")
+    patched_shell.run_cell(
         """
             def func():
                 global x
@@ -87,47 +87,47 @@ def test_find_input_global_assign(namespace, shell_manager):
     assert namespace.accessed_vars() == {"x"}
 
 
-def test_special_inputs_magic(namespace, shell_manager):
+def test_special_inputs_magic(namespace, patched_shell):
     # Test compatibility with magic commands.
-    shell_manager.run_cell("a = %who_ls")
+    patched_shell.run_cell("a = %who_ls")
     assert namespace.accessed_vars() == set()
 
 
-def test_special_inputs_cmd(namespace, shell_manager):
+def test_special_inputs_cmd(namespace, patched_shell):
     # Test compatibility with command-line inputs (!)
-    shell_manager.run_cell("!pip install numpy")
+    patched_shell.run_cell("!pip install numpy")
     assert namespace.accessed_vars() == set()
 
 
-def test_special_inputs_not_magic(namespace, shell_manager):
-    shell_manager.run_cell("b = 2")
-    shell_manager.run_cell("who_ls = 3")
-    shell_manager.run_cell("a = b%who_ls")
+def test_special_inputs_not_magic(namespace, patched_shell):
+    patched_shell.run_cell("b = 2")
+    patched_shell.run_cell("who_ls = 3")
+    patched_shell.run_cell("a = b%who_ls")
     assert namespace.accessed_vars() == {"b", "who_ls"}
 
 
-def test_find_assigned_vars_augassign(namespace, shell_manager):
+def test_find_assigned_vars_augassign(namespace, patched_shell):
     # Test assigning via overwrite.
-    shell_manager.run_cell("x = 1")
-    shell_manager.run_cell("x += 1")
+    patched_shell.run_cell("x = 1")
+    patched_shell.run_cell("x += 1")
     assert namespace.assigned_vars() == {"x"}
 
 
-def test_find_assigned_vars_overwrite(namespace, shell_manager):
+def test_find_assigned_vars_overwrite(namespace, patched_shell):
     # Test assigning via overwrite.
-    shell_manager.run_cell("x = 1")
-    shell_manager.run_cell("x = 2")
+    patched_shell.run_cell("x = 1")
+    patched_shell.run_cell("x = 2")
     assert namespace.assigned_vars() == {"x"}
 
 
-def test_find_assigned_vars_redefine(namespace, shell_manager):
-    shell_manager.run_cell(
+def test_find_assigned_vars_redefine(namespace, patched_shell):
+    patched_shell.run_cell(
         """
             def func():
                 print("hello")
         """
     )
-    shell_manager.run_cell(
+    patched_shell.run_cell(
         """
             def func():
                 print("world")
