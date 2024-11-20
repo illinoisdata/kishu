@@ -110,9 +110,6 @@ class CheckpointRestorePlanner:
         # Record variables in the user name prior to running cell if we are not in a new session.
         self._pre_run_cell_vars = self._user_ns.keyset() if self._kishu_graph.head() else set()
 
-        # We only want to track accesses and assigns to variables that existed in the namespace prior to the cell run.
-        self._user_ns.set_vars_to_track(self._pre_run_cell_vars)
-
         # Populate missing ID graph entries.
         for var in self._user_ns.keyset():
             if var not in self._id_graph_map:
@@ -130,9 +127,9 @@ class CheckpointRestorePlanner:
         version = time.monotonic_ns()
 
         # Find accessed and assigned variables from monkey-patched namespace.
-        accessed_vars = self._user_ns.accessed_vars()
+        accessed_vars = self._user_ns.accessed_vars().intersection(self._pre_run_cell_vars)
         self._user_ns.reset_accessed_vars()
-        assigned_vars = self._user_ns.assigned_vars()
+        assigned_vars = self._user_ns.assigned_vars().intersection(self._pre_run_cell_vars)
         self._user_ns.reset_assigned_vars()
 
         # Find created and deleted variables
