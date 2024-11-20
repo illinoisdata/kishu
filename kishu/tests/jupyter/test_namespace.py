@@ -123,5 +123,5 @@ def test_find_assigned_vars_redefine(namespace, patched_shell):
 def test_find_assigned_vars_error(namespace, patched_shell):
     # Test assigning via overwrite.
     patched_shell.run_cell("x = 1")
-    patched_shell.run_cell("x = y")   # This assignment did not go through as finding y precedes assigning to x.
+    patched_shell.run_cell("x = y")  # This assignment did not go through as finding y precedes assigning to x.
     assert namespace.assigned_vars() == set("x")
