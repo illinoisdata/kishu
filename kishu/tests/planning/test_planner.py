@@ -134,7 +134,7 @@ class TestPlanner:
         # Assert the restore plan has correct fields.
         version = planner.get_ahg().get_all_cell_executions()[0].cell_num  # Get timestamp from stored CE
         assert restore_plan.actions[StepOrder.new_load_variable(version)].fallback_recomputation == [
-            RerunCellRestoreAction(StepOrder.new_rerun_cell(version), "x = 1")
+            RerunCellRestoreAction(StepOrder.new_rerun_cell(version), "x = 1\n")
         ]
 
     def test_checkpoint_restore_planner_with_existing_items(
@@ -144,7 +144,7 @@ class TestPlanner:
         Test running a few cell updates.
         """
         # Namespace contains untracked cells 1 and 2.
-        user_ns = Namespace({"x": 1000, "y": 2000, "In": ["x = 1000", "y = 2000"]})
+        user_ns = Namespace({"x": 1000, "y": 2000, "In": ["%%time\nx = 1000", "%%time\ny = 2000"]})
 
         planner = CheckpointRestorePlanner.from_existing(user_ns, kishu_disk_ahg, kishu_graph, incremental_cr=False)
         planner_manager = PlannerManager(planner)
@@ -158,7 +158,7 @@ class TestPlanner:
         # If x and y are integers between 0-255, they will be detected as linked as they are stored in
         # fixed memory addresses.
         # TODO in a later PR: hardcode these cases as exceptions in ID graph to not consider as linking.
-        planner_manager.run_cell("1:3", {"x": 2001}, "x += 1")
+        planner_manager.run_cell("1:3", {"x": 2001}, "%%time\nx += 1")
 
         # Assert correct contents of AHG is maintained after initializing the planner in a non-empty namespace.
         assert len(planner.get_ahg().get_all_variable_snapshots()) == 2
@@ -249,7 +249,13 @@ class TestPlanner:
         assert len(checkpoint_plan_cell2.actions[0].vses_to_store) == 0
 
     def test_checkpoint_restore_planner_incremental_store_no_skip_store(
-        self, db_path_name, enable_incremental_store, enable_always_migrate, kishu_disk_ahg, kishu_graph, kishu_incremental_checkpoint
+        self,
+        db_path_name,
+        enable_incremental_store,
+        enable_always_migrate,
+        kishu_disk_ahg,
+        kishu_graph,
+        kishu_incremental_checkpoint,
     ):
         """
         Test incremental store.
@@ -321,7 +327,7 @@ class TestPlanner:
         planner_manager.checkpoint_session(db_path_name, "1:1", [])
 
         # Run cell 2.
-        cell2_code = "y += 1\nz = 4"
+        cell2_code = "y += 1\nz = 4\n"
         planner_manager.run_cell("1:2", {"y": 3, "z": 4}, cell2_code)
 
         # Create and run checkpoint plan for cell 2.

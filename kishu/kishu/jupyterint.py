@@ -270,7 +270,7 @@ class KishuForJupyter:
         self._kishu_graph = KishuCommitGraph.new_var_graph(self.database_path())
         self._kishu_nb_graph = KishuCommitGraph.new_nb_graph(self.database_path())
         self._kishu_variable_version = VariableVersion(self.database_path())
-        
+
         # Initialize persistent config.
         self._persistent_config = PersistentConfig(self.database_path())
         self._persistent_config.init_database()

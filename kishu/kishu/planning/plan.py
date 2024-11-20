@@ -5,11 +5,11 @@ import enum
 from dataclasses import dataclass, field
 from pathlib import Path
 from queue import LifoQueue
-from traitlets.config import Config
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import dill
 from IPython.core.interactiveshell import InteractiveShell
+from traitlets.config import Config
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace

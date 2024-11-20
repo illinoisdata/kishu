@@ -83,7 +83,7 @@ class TestDiskAHG:
     def test_from_db(self, kishu_disk_ahg):
         # First cell is untracked and creates variable a with a=3
         ns_with_existing_cells = Namespace({"In": ["a=3"], "a": 3})
-        ahg = AHG.from_db(kishu_disk_ahg, ns_with_existing_cells)
+        ahg = AHG.from_db(kishu_disk_ahg, ns_with_existing_cells.ipython_in())
 
         ns_with_existing_cells["b"] = 4
 

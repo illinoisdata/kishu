@@ -4,9 +4,11 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain, combinations
+from IPython.core.inputtransformer2 import TransformerManager
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
+from kishu.exceptions import MissingHistoryError
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG, AHGUpdateInfo
 from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
@@ -86,8 +88,15 @@ class CheckpointRestorePlanner:
         kishu_graph: KishuCommitGraph,
         incremental_cr: bool,
     ) -> CheckpointRestorePlanner:
+        existing_cell_executions = user_ns.ipython_in()
+        if not existing_cell_executions and user_ns.keyset():
+            raise MissingHistoryError()
+
+        # Transform all magics in untracked cell code.
+        untracked_cells = [TransformerManager().transform_cell(cell) for cell in user_ns.ipython_in()]
+
         return CheckpointRestorePlanner(
-            kishu_disk_ahg, kishu_graph, user_ns, AHG.from_db(kishu_disk_ahg, user_ns), incremental_cr
+            kishu_disk_ahg, kishu_graph, user_ns, AHG.from_db(kishu_disk_ahg, untracked_cells), incremental_cr
         )
 
     def pre_run_cell_update(self) -> None:
@@ -150,12 +159,13 @@ class CheckpointRestorePlanner:
 
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
+        cell = TransformerManager().transform_cell(code_block) if code_block else ""
         self._ahg.update_graph(
             AHGUpdateInfo(
                 self._kishu_graph.head(),
                 commit_id,
                 self._user_ns,
-                code_block,
+                cell,
                 version,
                 runtime_s,
                 accessed_vars,

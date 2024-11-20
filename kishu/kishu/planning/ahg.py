@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from itertools import chain
 from typing import Dict, FrozenSet, List, Optional, Set, Tuple
 
-from kishu.exceptions import MissingHistoryError
 from kishu.jupyter.namespace import Namespace
 from kishu.storage.commit_graph import CommitId
 from kishu.storage.disk_ahg import (
@@ -39,7 +38,7 @@ class AHGUpdateInfo:
     parent_commit_id: CommitId
     commit_id: CommitId
     user_ns: Namespace
-    cell: Optional[str] = None
+    cell: str = ""
     version: int = -1
     cell_runtime_s: float = 1.0
     accessed_variables: Set[str] = field(default_factory=set)
@@ -76,15 +75,10 @@ class AHG:
         ahg._augment_existing(user_ns)
         return ahg
 
-    def _augment_existing(self, user_ns: Namespace) -> None:
+    def _augment_existing(self, existing_cell_executions: List[str]) -> None:
         """
         Augments the current AHG with a dummy cell execution representing existing untracked cell executions.
         """
-        # Throw error if there are existing variables but the cell executions are missing.
-        existing_cell_executions = user_ns.ipython_in()
-        if not existing_cell_executions and user_ns.keyset():
-            raise MissingHistoryError()
-
         # Create a dummy cell execution containing concatenated code of all existing cell executions.
         if existing_cell_executions:
             self._existing_cells = "\n".join(existing_cell_executions)
@@ -133,7 +127,7 @@ class AHG:
         # Output VSes consists of VSes created/modified/deleted in this cell execution.
         output_vss = output_vss_create + output_vss_modify + output_vss_delete
 
-        cell = "" if not update_info.cell else update_info.cell
+        cell = update_info.cell
 
         # If there are untracked cell executions, prepend them to the current cell.
         if self._existing_cells:

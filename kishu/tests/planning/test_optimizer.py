@@ -73,7 +73,6 @@ class TestOptimizer:
         )
 
         ahg = AHG(kishu_disk_ahg)
-        ahg._fresh_attach = False
         return ahg
 
     def test_optimizer(self, test_ahg, enable_slow_network_bandwidth):
