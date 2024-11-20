@@ -257,38 +257,11 @@ class KishuForJupyter:
         notebook_id: NotebookId,
         ip: InteractiveShell,
     ) -> None:
-        # Kishu info and storages.
         self._notebook_id = notebook_id
-        self._kishu_connection = KishuConnection(
-            key=self._notebook_id.key(),
-            path=self._notebook_id.path(),
-            kernel_id=self._notebook_id.kernel_id(),
-        )
-        self._kishu_commit = KishuCommit(self.database_path())
-        self._kishu_branch = KishuBranch(self.database_path())
-        self._kishu_tag = KishuTag(self.database_path())
-        self._kishu_graph = KishuCommitGraph.new_var_graph(self.database_path())
-        self._kishu_nb_graph = KishuCommitGraph.new_nb_graph(self.database_path())
-        self._kishu_variable_version = VariableVersion(self.database_path())
 
         # Initialize persistent config.
         self._persistent_config = PersistentConfig(self.database_path())
         self._persistent_config.init_database()
-
-        # Initialize kishu disk AHG.
-        self._kishu_disk_ahg = KishuDiskAHG(self.database_path())
-        self._kishu_disk_ahg.init_database()
-
-        # Enclosing environment.
-        self._ip = ip
-        self._user_ns = Namespace(self._ip.user_ns)
-
-        # Patch global and local namespace to monitor variable accesses.
-        self._ip.init_create_namespaces(user_module=None, user_ns=self._user_ns.get_tracked_namespace())
-
-        self._platform = enclosing_platform()
-        self._session_id = 0
-        self._checkout_id = 0
 
         # Configurations.
         self._test_mode = Config.get("JUPYTERINT", "test_mode", False)
@@ -301,19 +274,20 @@ class KishuForJupyter:
         )
         self._incremental_cr = self._persistent_config.get("PLANNER", "incremental_store", False)
 
-        # Stateful trackers.
-        self._cr_planner = CheckpointRestorePlanner.from_existing(
-            user_ns=self._user_ns,
-            kishu_disk_ahg=self._kishu_disk_ahg,
-            kishu_graph=self._kishu_graph,
-            incremental_cr=self._incremental_cr,
+        # Kishu info and storages.
+        self._kishu_connection = KishuConnection(
+            key=self._notebook_id.key(),
+            path=self._notebook_id.path(),
+            kernel_id=self._notebook_id.kernel_id(),
         )
-        self._variable_version_tracker = VariableVersionTracker({})
-        self._start_time: Optional[float] = None
-        self._last_execution_count = 0
-
-        # Kishu Checkpoint storage.
+        self._kishu_commit = KishuCommit(self.database_path())
         self._kishu_checkpoint = KishuCheckpoint(self.database_path(), self._incremental_cr)
+        self._kishu_branch = KishuBranch(self.database_path())
+        self._kishu_tag = KishuTag(self.database_path())
+        self._kishu_graph = KishuCommitGraph.new_var_graph(self.database_path())
+        self._kishu_nb_graph = KishuCommitGraph.new_nb_graph(self.database_path())
+        self._kishu_variable_version = VariableVersion(self.database_path())
+        self._kishu_disk_ahg = KishuDiskAHG(self.database_path())
 
         # Initialize databases.
         self._kishu_connection.init_database()
@@ -325,11 +299,34 @@ class KishuForJupyter:
         self._kishu_graph.init_database()
         self._kishu_nb_graph.init_database()
         self._kishu_variable_version.init_database()
+        self._kishu_disk_ahg.init_database()
 
         # Always reset head.
         self._kishu_branch.reset_head()
         self._kishu_graph.reset()
         self._kishu_nb_graph.reset()
+
+        # Enclosing environment.
+        self._ip = ip
+        self._user_ns = Namespace(self._ip.user_ns)
+
+        # Patch global and local namespace to monitor variable accesses.
+        self._ip.init_create_namespaces(user_module=None, user_ns=self._user_ns.get_tracked_namespace())
+
+        # Stateful trackers.
+        self._cr_planner = CheckpointRestorePlanner.from_existing(
+            user_ns=self._user_ns,
+            kishu_disk_ahg=self._kishu_disk_ahg,
+            kishu_graph=self._kishu_graph,
+            incremental_cr=self._incremental_cr,
+        )
+        self._platform = enclosing_platform()
+        self._session_id = 0
+        self._checkout_id = 0
+
+        self._variable_version_tracker = VariableVersionTracker({})
+        self._start_time: Optional[float] = None
+        self._last_execution_count = 0
 
         # For unit tests.
         if os.environ.get(KishuForJupyter.ENV_KISHU_TEST_MODE, False):

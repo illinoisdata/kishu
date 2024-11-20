@@ -304,7 +304,7 @@ class IncrementalLoadRestoreAction(RestoreAction):
     """
 
     step_order: StepOrder
-    variable_snapshots: List[VariableSnapshot]
+    variable_snapshots: Set[VariableSnapshot]
     fallbacl_recomputation: List[RerunCellRestoreAction]
 
     def run(self, ctx: RestoreActionContext):
@@ -429,7 +429,7 @@ class RestorePlan:
         )
 
     def add_incremental_load_restore_action(
-        self, cell_num: int, variable_snapshots: List[VariableSnapshot], fallback_recomputation: List[Tuple[int, str]]
+        self, cell_num: int, variable_snapshots: Set[VariableSnapshot], fallback_recomputation: List[Tuple[int, str]]
     ):
         step_order = StepOrder.new_incremental_load(cell_num)
         assert step_order not in self.actions

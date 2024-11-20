@@ -4,9 +4,10 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain, combinations
-from IPython.core.inputtransformer2 import TransformerManager
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
+
+from IPython.core.inputtransformer2 import TransformerManager
 
 from kishu.exceptions import MissingHistoryError
 from kishu.jupyter.namespace import Namespace
@@ -93,10 +94,13 @@ class CheckpointRestorePlanner:
             raise MissingHistoryError()
 
         # Transform all magics in untracked cell code.
-        untracked_cells = [TransformerManager().transform_cell(cell) for cell in user_ns.ipython_in()]
+        untracked_cells = user_ns.ipython_in()
+        transformed_untracked_cells = (
+            [TransformerManager().transform_cell(cell) for cell in untracked_cells] if untracked_cells else []
+        )
 
         return CheckpointRestorePlanner(
-            kishu_disk_ahg, kishu_graph, user_ns, AHG.from_db(kishu_disk_ahg, untracked_cells), incremental_cr
+            kishu_disk_ahg, kishu_graph, user_ns, AHG.from_db(kishu_disk_ahg, transformed_untracked_cells), incremental_cr
         )
 
     def pre_run_cell_update(self) -> None:
@@ -202,7 +206,7 @@ class CheckpointRestorePlanner:
         if self._incremental_cr:
             stored_versioned_names = KishuCheckpoint(database_path).get_stored_versioned_names(parent_commit_ids)
             stored_variable_snapshots = set(self._ahg.get_vs_by_versioned_names(frozenset(stored_versioned_names)))
-            active_vss = [vs for vs in active_vss if vs not in stored_variable_snapshots]
+            active_vss = set(vs for vs in active_vss if vs not in stored_variable_snapshots)
 
         # Initialize optimizer.
         # Migration speed is set to (finite) large value to prompt optimizer to store all serializable variables.
@@ -290,8 +294,8 @@ class CheckpointRestorePlanner:
     def _generate_incremental_restore_plan(
         self,
         database_path: Path,
-        target_active_vses: List[VariableSnapshot],
-        lca_active_vses: List[VariableSnapshot],
+        target_active_vses: Set[VariableSnapshot],
+        lca_active_vses: Set[VariableSnapshot],
         target_parent_commit_ids: List[str],
     ) -> RestorePlan:
         """
@@ -308,13 +312,13 @@ class CheckpointRestorePlanner:
             useful_vses.useful_stored_vses,
         ).compute_plan()
         # Sort the VSes to load and move by cell execution number.
-        move_ce_to_vs_map: Dict[CellExecution, List[VariableSnapshot]] = defaultdict(list)
+        move_ce_to_vs_map: Dict[CellExecution, Set[VariableSnapshot]] = defaultdict(set)
         for vs in opt_result.vss_to_move:
-            move_ce_to_vs_map[self._ahg.get_vs_input_ce(vs)].append(vs)
+            move_ce_to_vs_map[self._ahg.get_vs_input_ce(vs)].add(vs)
 
-        load_ce_to_vs_map: Dict[CellExecution, List[VariableSnapshot]] = defaultdict(list)
+        load_ce_to_vs_map: Dict[CellExecution, Set[VariableSnapshot]] = defaultdict(set)
         for vs in opt_result.vss_to_load:
-            load_ce_to_vs_map[self._ahg.get_vs_input_ce(vs)].append(vs)
+            load_ce_to_vs_map[self._ahg.get_vs_input_ce(vs)].add(vs)
 
         # Compute the incremental restore plan.
         restore_plan = RestorePlan()
@@ -336,7 +340,8 @@ class CheckpointRestorePlanner:
                 # All loaded VSes from the same cell execution share the same fallback execution; it
                 # suffices to pick any one of them.
                 fallback_recomputations = [
-                    (req_ce.cell_num, req_ce.cell) for req_ce in opt_result.fallback_recomputation[load_ce_to_vs_map[ce][0]]
+                    (req_ce.cell_num, req_ce.cell)
+                    for req_ce in opt_result.fallback_recomputation[next(iter(load_ce_to_vs_map[ce]))]
                 ]
 
                 restore_plan.add_incremental_load_restore_action(ce.cell_num, load_ce_to_vs_map[ce], fallback_recomputations)
@@ -344,20 +349,19 @@ class CheckpointRestorePlanner:
         return restore_plan
 
     def _find_useful_vses(
-        self, lca_active_vses: List[VariableSnapshot], database_path: Path, target_parent_commit_ids: List[str]
+        self, lca_active_vses: Set[VariableSnapshot], database_path: Path, target_parent_commit_ids: List[str]
     ) -> UsefulVses:
         # If an active VS in the current session exists as an active VS in the session of the LCA,
         # the active vs can contribute toward restoration.
-        lca_vses = set(lca_active_vses)
-        current_vses = set(self._ahg.get_active_variable_snapshots(self._kishu_graph.head()))
-        useful_active_vses = lca_vses.intersection(current_vses)
+        current_vses = self._ahg.get_active_variable_snapshots(self._kishu_graph.head())
+        useful_active_vses = lca_active_vses.intersection(current_vses)
 
         # Get the stored VSes potentially useful for session restoration. However, if a variable is
         # currently both in the session and stored, we will never use the stored version. Discard them.
         stored_vses = self._ahg.get_vs_by_versioned_names(
             frozenset(KishuCheckpoint(database_path).get_stored_versioned_names(target_parent_commit_ids))
         )
-        useful_stored_vses = set(stored_vses).difference(useful_active_vses)
+        useful_stored_vses = stored_vses.difference(useful_active_vses)
 
         return UsefulVses(useful_active_vses, useful_stored_vses)
 
@@ -380,7 +384,7 @@ class CheckpointRestorePlanner:
 
         self._replace_state(target_active_vses, new_user_ns)
 
-    def _replace_state(self, new_active_vses: List[VariableSnapshot], new_user_ns: Namespace) -> None:
+    def _replace_state(self, new_active_vses: Set[VariableSnapshot], new_user_ns: Namespace) -> None:
         """
         Replace the current AHG's active VSes with new_active_vses and user namespace with new_user_ns.
         Called when a checkout is performed.
@@ -394,10 +398,10 @@ class CheckpointRestorePlanner:
         # Clear pre-run cell info.
         self._pre_run_cell_vars = set()
 
-    def _get_differing_vars_post_checkout(self, new_active_vses: List[VariableSnapshot]) -> Set[str]:
+    def _get_differing_vars_post_checkout(self, new_active_vses: Set[VariableSnapshot]) -> Set[str]:
         """
         Finds all differing active variables between the pre and post-checkout states.
         """
-        pre_checkout_active_vss = set(self._ahg.get_active_variable_snapshots(self._kishu_graph.head()))
-        vss_diff = set(new_active_vses).difference(pre_checkout_active_vss)
+        pre_checkout_active_vss = self._ahg.get_active_variable_snapshots(self._kishu_graph.head())
+        vss_diff = new_active_vses.difference(pre_checkout_active_vss)
         return {name for var_snapshot in vss_diff for name in var_snapshot.name}

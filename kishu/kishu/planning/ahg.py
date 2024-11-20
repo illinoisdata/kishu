@@ -4,7 +4,7 @@ import functools
 from collections import defaultdict
 from dataclasses import dataclass, field
 from itertools import chain
-from typing import Dict, FrozenSet, List, Optional, Set, Tuple
+from typing import Dict, FrozenSet, List, Set, Tuple
 
 from kishu.jupyter.namespace import Namespace
 from kishu.storage.commit_graph import CommitId
@@ -69,10 +69,10 @@ class AHG:
     @staticmethod
     def from_db(
         disk_ahg: KishuDiskAHG,
-        user_ns: Namespace,
+        existing_cell_executions: List[str],
     ) -> AHG:
         ahg = AHG(disk_ahg)
-        ahg._augment_existing(user_ns)
+        ahg._augment_existing(existing_cell_executions)
         return ahg
 
     def _augment_existing(self, existing_cell_executions: List[str]) -> None:
@@ -143,15 +143,15 @@ class AHG:
             AHGUpdateResult(update_info.commit_id, accessed_vss, output_vss, newest_ce, new_active_variables)
         )
 
-    def get_all_cell_executions(self) -> List[CellExecution]:
-        return self._disk_ahg.get_all_cell_executions()
+    def get_all_cell_executions(self) -> Set[CellExecution]:
+        return set(self._disk_ahg.get_all_cell_executions())
 
-    def get_all_variable_snapshots(self) -> List[VariableSnapshot]:
-        return self._disk_ahg.get_all_variable_snapshots()
+    def get_all_variable_snapshots(self) -> Set[VariableSnapshot]:
+        return set(self._disk_ahg.get_all_variable_snapshots())
 
     @functools.lru_cache(maxsize=None)
-    def get_active_variable_snapshots(self, commit_id: CommitId) -> List[VariableSnapshot]:
-        return self._disk_ahg.get_active_vses(commit_id)
+    def get_active_variable_snapshots(self, commit_id: CommitId) -> Set[VariableSnapshot]:
+        return set(self._disk_ahg.get_active_vses(commit_id))
 
     @functools.lru_cache(maxsize=None)
     def get_active_variable_names(self, commit_id: CommitId) -> Set[str]:
@@ -159,11 +159,11 @@ class AHG:
         return set(chain.from_iterable([vs.name for vs in self.get_active_variable_snapshots(commit_id)]))
 
     @functools.lru_cache(maxsize=None)
-    def get_vs_by_versioned_names(self, versioned_names: FrozenSet[str]) -> List[VariableSnapshot]:
+    def get_vs_by_versioned_names(self, versioned_names: FrozenSet[str]) -> Set[VariableSnapshot]:
         """
         The conversion is for caching.
         """
-        return self._disk_ahg.get_vs_by_versioned_names(list(versioned_names))
+        return set(self._disk_ahg.get_vs_by_versioned_names(list(versioned_names)))
 
     @functools.lru_cache(maxsize=None)
     def get_ce_by_cell_num(self, cell_num: CellExecutionNumber) -> CellExecution:
@@ -174,14 +174,14 @@ class AHG:
         return self._disk_ahg.get_vs_input_ce(vs)
 
     @functools.lru_cache(maxsize=None)
-    def get_ce_input_vses(self, ce: CellExecution) -> List[VariableSnapshot]:
-        return self._disk_ahg.get_ce_input_vses(ce)
+    def get_ce_input_vses(self, ce: CellExecution) -> Set[VariableSnapshot]:
+        return set(self._disk_ahg.get_ce_input_vses(ce))
 
-    def get_ce_output_vses(self, ce: CellExecution) -> List[VariableSnapshot]:
+    def get_ce_output_vses(self, ce: CellExecution) -> Set[VariableSnapshot]:
         """
         This is explicitly not cached as the VSes a CE contributes to is not immutable.
         """
-        return self._disk_ahg.get_ce_output_vses(ce)
+        return set(self._disk_ahg.get_ce_output_vses(ce))
 
     @staticmethod
     def union_find(variables: Set[str], linked_variables: List[Tuple[str, str]]) -> Set[VariableName]:

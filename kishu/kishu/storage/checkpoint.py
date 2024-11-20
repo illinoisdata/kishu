@@ -58,7 +58,7 @@ class KishuCheckpoint:
         cur.execute(f"insert into {CHECKPOINT_TABLE} values (?, ?)", (commit_id, memoryview(data)))
         con.commit()
 
-    def get_variable_snapshots(self, variable_snapshots: List[VariableSnapshot]) -> List[bytes]:
+    def get_variable_snapshots(self, variable_snapshots: Set[VariableSnapshot]) -> List[bytes]:
         """
         Get the data of variable snapshots.
         This function does not handle unpickling; that would be done in the RestoreActions

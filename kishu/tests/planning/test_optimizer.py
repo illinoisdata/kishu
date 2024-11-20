@@ -123,8 +123,10 @@ class TestOptimizer:
 
     def test_incremental_load_optimizer_mixed(self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store):
         # Problem setting: y can be moved while z is to be recomputed.
-        vs_x = test_ahg.get_active_variable_snapshots("1:1")[0]
-        vs_y = test_ahg.get_active_variable_snapshots("1:3")[0]
+        vs_x = next(iter(test_ahg.get_active_variable_snapshots("1:1")))
+        vs_y = next(
+            iter(test_ahg.get_active_variable_snapshots("1:2").difference(test_ahg.get_active_variable_snapshots("1:1")))
+        )
 
         target_active_vss = test_ahg.get_active_variable_snapshots("1:3")  # y and z
         useful_active_vss = {vs_y}

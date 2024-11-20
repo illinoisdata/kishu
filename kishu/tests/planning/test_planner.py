@@ -132,7 +132,7 @@ class TestPlanner:
         assert len(restore_plan.actions) == 2
 
         # Assert the restore plan has correct fields.
-        version = planner.get_ahg().get_all_cell_executions()[0].cell_num  # Get timestamp from stored CE
+        version = min([ce.cell_num for ce in planner.get_ahg().get_all_cell_executions()])  # Get timestamp from stored CE
         assert restore_plan.actions[StepOrder.new_load_variable(version)].fallback_recomputation == [
             RerunCellRestoreAction(StepOrder.new_rerun_cell(version), "x = 1\n")
         ]
@@ -306,7 +306,7 @@ class TestPlanner:
         restore_plan = planner_manager.planner.generate_incremental_restore_plan(db_path_name, "1:1")
 
         # The restore plan consists of moving X and loading Y.
-        version = planner.get_ahg().get_all_cell_executions()[0].cell_num  # Get timestamp from stored CE
+        version = min([ce.cell_num for ce in planner.get_ahg().get_all_cell_executions()])  # Get timestamp from stored CE
         assert len(restore_plan.actions) == 2
         assert len(restore_plan.actions[StepOrder.new_incremental_load(version)].variable_snapshots) == 1
         assert restore_plan.actions[StepOrder.new_move_variable(version)].vars_to_move.keyset() == {"x"}
@@ -348,8 +348,8 @@ class TestPlanner:
             ["1:1"],
         )
 
-        version_1 = planner.get_ahg().get_all_cell_executions()[0].cell_num  # Get timestamp from stored CE
-        version_2 = planner.get_ahg().get_all_cell_executions()[1].cell_num
+        version_1 = min([ce.cell_num for ce in planner.get_ahg().get_all_cell_executions()])  # Get timestamp from stored CE
+        version_2 = max([ce.cell_num for ce in planner.get_ahg().get_all_cell_executions()])
 
         # The restore plan consists of moving X, loading Y, then rerunning cell 1
         # to modify x (to the version in cell 1) and recompute z.

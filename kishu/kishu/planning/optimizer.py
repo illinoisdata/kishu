@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Optional, Set, Tuple, Union
 
 import networkx as nx
 import numpy as np
@@ -10,6 +10,10 @@ from kishu.storage.config import Config
 from kishu.storage.disk_ahg import CellExecution, VariableSnapshot
 
 REALLY_FAST_BANDWIDTH_10GBPS = 10_000_000_000
+
+
+FLOW_GRAPH_SOURCE = "source"
+FLOW_GRAPH_SINK = "sink"
 
 
 @dataclass
@@ -50,7 +54,7 @@ class Optimizer:
     """
 
     def __init__(
-        self, ahg: AHG, active_vss: List[VariableSnapshot], already_stored_vss: Optional[Set[VariableSnapshot]] = None
+        self, ahg: AHG, active_vss: Set[VariableSnapshot], already_stored_vss: Optional[Set[VariableSnapshot]] = None
     ) -> None:
         """
         Creates an optimizer with a migration speed estimate. The AHG and active VS fields
@@ -138,14 +142,14 @@ class Optimizer:
         flow_graph = nx.DiGraph()
 
         # Add source and sink to flow graph.
-        flow_graph.add_node("source")
-        flow_graph.add_node("sink")
+        flow_graph.add_node(FLOW_GRAPH_SOURCE)
+        flow_graph.add_node(FLOW_GRAPH_SINK)
 
         # Add all active VSs as nodes, connect them with the source with edge capacity equal to migration cost.
         for active_vs in self.active_vss:
             flow_graph.add_node(active_vs)
             flow_graph.add_edge(
-                "source",
+                FLOW_GRAPH_SOURCE,
                 active_vs,
                 capacity=active_vs.size / self._optimizer_context.network_bandwidth,
             )
@@ -153,7 +157,7 @@ class Optimizer:
         # Add all CEs as nodes, connect them with the sink with edge capacity equal to recomputation cost.
         for ce in self.ahg.get_all_cell_executions():
             flow_graph.add_node(ce)
-            flow_graph.add_edge(ce, "sink", capacity=ce.cell_runtime_s)
+            flow_graph.add_edge(ce, FLOW_GRAPH_SINK, capacity=ce.cell_runtime_s)
 
         # Connect each CE with its output variables and its prerequisite CEs.
         for active_vs in self.active_vss:
@@ -166,7 +170,9 @@ class Optimizer:
                 flow_graph.remove_node(ce)
 
         # Solve min-cut with Ford-Fulkerson.
-        cut_value, partition = nx.minimum_cut(flow_graph, "source", "sink", flow_func=shortest_augmenting_path)
+        cut_value, partition = nx.minimum_cut(
+            flow_graph, FLOW_GRAPH_SOURCE, FLOW_GRAPH_SINK, flow_func=shortest_augmenting_path
+        )
 
         # Determine the replication plan from the partition.
         vss_to_migrate = set(partition[1]).intersection(self.active_vss)
@@ -185,7 +191,7 @@ class IncrementalLoadOptimizer:
     def __init__(
         self,
         ahg: AHG,
-        target_active_vss: List[VariableSnapshot],
+        target_active_vss: Set[VariableSnapshot],
         useful_active_vses: Set[VariableSnapshot],
         useful_stored_vses: Set[VariableSnapshot],
     ) -> None:
@@ -199,7 +205,7 @@ class IncrementalLoadOptimizer:
             loaded as part of the restoration plan to save restoration time.
         """
         self.ahg = ahg
-        self.target_active_vss = set(target_active_vss)
+        self.target_active_vss = target_active_vss
         self.useful_active_vses = useful_active_vses
         self.useful_stored_vses = useful_stored_vses
 
