@@ -321,6 +321,11 @@ class KishuForJupyter:
         self._kishu_nb_graph.init_database()
         self._kishu_variable_version.init_database()
 
+        # Always reset head.
+        self._kishu_branch.reset_head()
+        self._kishu_graph.reset()
+        self._kishu_nb_graph.reset()
+
         # For unit tests.
         if os.environ.get(KishuForJupyter.ENV_KISHU_TEST_MODE, False):
             self._test_mode = True

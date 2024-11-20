@@ -18,7 +18,7 @@ from kishu.diff import CodeDiffHunk, VariableVersionCompare
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import CommitEntry, CommitEntryKind, NotebookCommitState
 from kishu.storage.branch import KishuBranch
-from kishu.storage.commit_graph import CommitNodeInfo
+from kishu.storage.commit_graph import ABSOLUTE_PAST, CommitNodeInfo, KishuCommitGraph
 from kishu.storage.config import Config
 from kishu.storage.path import KishuPath
 from tests.helpers.nbexec import KISHU_INIT_STR
@@ -847,6 +847,38 @@ class TestKishuCommand:
             # Run one more cell.
             _, x_value = notebook_session.run_code("x")
             assert x_value == "2"
+
+    def test_init_reattachment(
+        self,
+        tmp_nb_path,
+        jupyter_server,
+    ):
+        # Start the notebook session. Even though this test doesn't use the notebook contents, the session
+        # still must be based on an existing notebook file.
+        notebook_path = tmp_nb_path("simple.ipynb")
+        database_path = KishuPath.database_path(notebook_path)
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+
+            # Run some notebook cells.
+            notebook_session.run_code("x = 1")
+            notebook_session.run_code("x += 1")
+
+            # Check head state.
+            assert KishuCommand.log(notebook_path).head.commit_id is not None
+            assert KishuCommitGraph.new_var_graph(database_path).head() is not None
+            assert KishuCommitGraph.new_nb_graph(database_path).head() is not None
+
+        # Test reattachment state.
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell to reattach.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+
+            # Check head state.
+            assert KishuCommand.log(notebook_path).head.commit_id is None
+            assert KishuCommitGraph.new_var_graph(database_path).head() is ABSOLUTE_PAST
+            assert KishuCommitGraph.new_nb_graph(database_path).head() is ABSOLUTE_PAST
 
     def test_variable_diff(self, jupyter_server, tmp_nb_path):
         notebook_path = tmp_nb_path("simple.ipynb")
