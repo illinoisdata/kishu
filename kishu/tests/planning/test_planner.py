@@ -36,10 +36,11 @@ class PlannerManager:
         ns_deletions: Set[str] = set(),
         cell_runtime: float = 1.0,
     ) -> ChangedVariables:
+        # Update namespace.
         self.planner.pre_run_cell_update()
 
-        # Update namespace.
-        self.planner._user_ns.update(Namespace(ns_updates))
+        for k, v in ns_updates.items():
+            self.planner._user_ns[k] = v
 
         # Delete variables from namespace.
         for var_name in ns_deletions:

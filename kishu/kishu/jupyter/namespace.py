@@ -10,22 +10,38 @@ class TrackedNamespace(dict):
 
     def __init__(self, *args, **kwargs) -> None:
         dict.__init__(self, *args, **kwargs)
+        self._vars_to_track: Set[str] = set()
         self._accessed_vars: Set[str] = set()
+        self._assigned_vars: Set[str] = set()
 
     def __getitem__(self, name: str) -> Any:
-        if name in self:
+        if name in self._vars_to_track:
             self._accessed_vars.add(name)
         return dict.__getitem__(self, name)
 
+    def __setitem__(self, name: str, value: Any) -> None:
+        if name in self._vars_to_track:
+            self._assigned_vars.add(name)
+        dict.__setitem__(self, name, value)
+
     def __iter__(self):
-        self._accessed_vars = set(self.keys())  # TODO: Use enum for this.
+        self._accessed_vars = set(self.keys()).intersection(self._vars_to_track)  # TODO: Use enum for this.
         return dict.__iter__(self)
+
+    def set_vars_to_track(self, vars_to_track: Set[str]) -> None:
+        self._vars_to_track = vars_to_track
 
     def accessed_vars(self) -> Set[str]:
         return self._accessed_vars
 
     def reset_accessed_vars(self) -> None:
         self._accessed_vars = set()
+
+    def assigned_vars(self) -> Set[str]:
+        return self._assigned_vars
+
+    def reset_assigned_vars(self) -> None:
+        self._assigned_vars = set()
 
 
 class Namespace:
@@ -71,11 +87,20 @@ class Namespace:
         # Need to filter with other.to_dict() to not replace ipython variables.
         self._tracked_namespace.update(other.to_dict())
 
+    def set_vars_to_track(self, vars_to_track: Set[str]) -> None:
+        self._tracked_namespace.set_vars_to_track(vars_to_track)
+
     def accessed_vars(self) -> Set[str]:
         return set(name for name in self._tracked_namespace.accessed_vars() if Namespace.no_ipython_var((name, None)))
 
     def reset_accessed_vars(self) -> None:
         self._tracked_namespace.reset_accessed_vars()
+
+    def assigned_vars(self) -> Set[str]:
+        return set(name for name in self._tracked_namespace.assigned_vars() if Namespace.no_ipython_var((name, None)))
+
+    def reset_assigned_vars(self) -> None:
+        self._tracked_namespace.reset_assigned_vars()
 
     def ipython_in(self) -> Optional[List[str]]:
         return self._tracked_namespace["In"] if "In" in self._tracked_namespace else None
