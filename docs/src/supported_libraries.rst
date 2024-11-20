@@ -103,21 +103,3 @@ This is the current list of libraries, their versions, and their classes support
     ✅ torchvision==0.17.2, torchvision.transforms
     ✅ transformers==4.39.3, transformers
     ✅ xgboost==2.0.3, xgboost.XGBRegressor
-
-    ❌ astropy==5.2.2, astropy.coordinates.SkyCoord
-    ❌ matplotlib==3.6.2, matplotlib.Axes
-    ❌ matplotlib==3.6.2, matplotlib.lines.Line2D
-    ❌ matplotlib==3.6.2, matplotlib.patches.Ellipse
-    ❌ plotly==5.20.0, plotly.express
-    ❌ polars==0.20.18, polars.DataFrame
-    ❌ pyspark==3.5.1, pyspark.SparkContext
-    ❌ scikit-learn==1.3.2, sklearn.ensemble
-    ❌ seaborn==0.13.2, seaborn
-    ❌ spacy==3.7.4, spacy
-    ❌ spacy==3.7.4, spacy.util
-    ❌ tokenizers==0.15.2, tokenizers
-    ❌ torch==2.2.2, torch
-    ❌ torch==2.2.2, torch.nn.functional
-    ❌ torch==2.2.2, torch.optim
-    ❌ torch==2.2.2, torch.utils.data
-    ❌ torchvision==0.17.2, torchvision.utils

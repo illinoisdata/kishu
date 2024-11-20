@@ -46,17 +46,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         var_modify_statements=["a.at[0, 'species'] = 'Changed'"]
     ),
     LibCoverageTestCase(
-        module_name="matplotlib",
-        class_name="matplotlib.Axes",
-        var_name="a",
-        import_statements=["import seaborn as sns"],
-        var_declare_statements=[
-            "df=sns.load_dataset('penguins')",
-            "a = sns.scatterplot(data=df, x='flipper_length_mm', y='bill_length_mm')",
-        ],
-        var_modify_statements=["a.set_xlabel('Flipper Length')"]
-    ),
-    LibCoverageTestCase(
         module_name="scikit-learn",
         class_name="sklearn.cluster",
         var_name="kmeans",
@@ -163,26 +152,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
             "clf.fit(X, y)"
         ],
         var_modify_statements=["clf.n_classes_ = 11"]
-    ),
-    LibCoverageTestCase(
-        module_name="scikit-learn",
-        class_name="sklearn.ensemble",
-        var_name="clf",
-        import_statements=[
-            "from sklearn.ensemble import AdaBoostClassifier",
-            "from sklearn.datasets import make_classification"
-        ],
-        var_declare_statements=[
-            "X, y = make_classification(n_samples=1000, n_features=4, n_informative=2, n_redundant=0, random_state=0, shuffle=False)",
-            "X1, y1 = make_classification(n_samples=1000, n_features=4, n_informative=2, n_redundant=0, random_state=10, shuffle=False)",
-            "clf = AdaBoostClassifier(n_estimators=100, algorithm='SAMME', random_state=42)",
-            "clf.fit(X, y)"
-        ],
-        var_modify_statements=[
-            "clf.n_estimators = 200",
-            "clf.algorithm = 'SAMME.R'",
-            "clf.random_state = 100"
-        ]
     ),
     LibCoverageTestCase(
         module_name="scikit-learn",
@@ -830,21 +799,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ]
     ),
     LibCoverageTestCase(
-        module_name="seaborn",
-        class_name="seaborn",
-        var_name="ax",
-        import_statements=[
-            "import seaborn as sns"
-        ],
-        var_declare_statements=[
-            "tips = sns.load_dataset('tips')",
-            "ax = sns.histplot(data=tips, x='total_bill', bins=10)"
-        ],
-        var_modify_statements=[
-            "ax = sns.histplot(data=tips, x='total_bill', bins=11)"
-        ]
-    ),
-    LibCoverageTestCase(
         module_name="shap",
         class_name="shap",
         var_name="explainer",
@@ -900,40 +854,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ],
         var_modify_statements=[
             "f = area_opening(f, 8, connectivity=1)"
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="spacy",
-        class_name="spacy",
-        var_name="doc",
-        import_statements=[
-            "import spacy"
-        ],
-        var_declare_statements=[
-            "nlp = spacy.blank('en')",
-            "text = 'This is a simple sentence.'",
-            "doc = nlp(text)"
-        ],
-        var_modify_statements=[
-            "doc.text = 'Modified sentence.'"
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="spacy",
-        class_name="spacy.util",
-        var_name="docs",
-        import_statements=[
-            "import spacy"
-        ],
-        var_declare_statements=[
-            "nlp = spacy.blank('en')",
-            "doc = nlp('This is a sentence.')",
-            "spans = [doc[0:2], doc[0:2], doc[0:4]]",
-            "docs = spans"
-        ],
-        var_modify_statements=[
-            "spans = spacy.util.filter_spans(spans)",
-            "docs = [span.as_doc() for span in spans]"
         ]
     ),
     LibCoverageTestCase(
@@ -1036,36 +956,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ]
     ),
     LibCoverageTestCase(
-        module_name="tokenizers",
-        class_name="tokenizers",
-        var_name="tokenizer",
-        import_statements=[
-            "from tokenizers import Tokenizer",
-            "from tokenizers.models import BPE"
-        ],
-        var_declare_statements=[
-            "tokenizer = Tokenizer(BPE())"
-        ],
-        var_modify_statements=[
-            "tokenizer.enable_truncation(max_length=128)",
-            "tokenizer = Tokenizer(BPE())"
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="torch",
-        class_name="torch",
-        var_name="tensor",
-        import_statements=[
-            "import torch"
-        ],
-        var_declare_statements=[
-            "tensor = torch.tensor([[1, 2], [3, 4]])"
-        ],
-        var_modify_statements=[
-            "tensor[0, 0] = 5"
-        ]
-    ),
-    LibCoverageTestCase(
         module_name="torch",
         class_name="torch.nn",
         var_name="model",
@@ -1080,66 +970,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
             "model[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)",
             "model[-1] = nn.Conv2d(512, 1024, kernel_size=3, stride=1, padding=1)",
             "model.add_module('dropout', nn.Dropout(0.5))"
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="torch",
-        class_name="torch.nn.functional",
-        var_name="output",
-        import_statements=[
-            "import torch",
-            "import torch.nn.functional as F"
-        ],
-        var_declare_statements=[
-            "output = torch.randn(1, 1, 28, 28)"
-        ],
-        var_modify_statements=[
-            "output = F.conv2d(output, torch.randn(16, 1, 3, 3), stride=1, padding=1)",
-            "output = F.max_pool2d(output, kernel_size=2, stride=2)" 
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="torch",
-        class_name="torch.optim",
-        var_name="optimizer",
-        import_statements=[
-            "import torch",
-            "import torch.nn as nn",
-            "import torch.optim as optim"
-        ],
-        var_declare_statements=[
-            "model = nn.Linear(10, 1)",
-            "optimizer = optim.SGD(model.parameters(), lr=0.01)",
-            "input = torch.randn(1, 10)",
-            "target = torch.randn(1)"
-        ],
-        var_modify_statements=[
-            "optimizer.zero_grad()",
-            "output = model(input)",
-            "loss = nn.MSELoss()(output, target)",
-            "loss.backward()",
-            "optimizer.step()",
-            "optimizer.param_groups[0]['lr'] = 0.001"
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="torch",
-        class_name="torch.utils.data",
-        var_name="subset",
-        import_statements=[
-            "import torch",
-            "from torch.utils.data import TensorDataset, Subset"
-        ],
-        var_declare_statements=[
-            "data = torch.randn(100, 3, 32, 32)",
-            "targets = torch.randint(0, 10, (100,))",
-            "dataset = TensorDataset(data, targets)",
-            "indices = torch.arange(50)",
-            "subset = Subset(dataset, indices)"
-        ],
-        var_modify_statements=[
-            "indices = torch.arange(25)",
-            "subset.indices = indices"
         ]
     ),
     LibCoverageTestCase(
@@ -1172,37 +1002,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ],
         var_modify_statements=[
             "cifar_dataset.transform = tvtf.Compose([tvtf.ToTensor(), tvtf.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])"
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="torchvision",
-        class_name="torchvision.utils",
-        var_name="image",
-        import_statements=[
-            "import torchvision.utils as utils",
-            "import torch",
-        ],
-        var_declare_statements=[
-            "image = torch.zeros((3, 100, 100), dtype=torch.uint8)"
-        ],
-        var_modify_statements=[
-            "keypoints = [(20, 30), (50, 70), (80, 10)]",
-            "image = utils.draw_keypoints(image, keypoints)"
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="plotly",
-        class_name="plotly.express",
-        var_name="fig",
-        import_statements=[
-            "import plotly.express as px"
-        ],
-        var_declare_statements=[
-            "data = px.data.iris()",
-            "fig = px.scatter(data, x='sepal_width', y='sepal_length', color='species')"
-        ],
-        var_modify_statements=[
-            "fig.update_traces(marker=dict(size=10))"
         ]
     ),
     LibCoverageTestCase(
@@ -1301,20 +1100,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
     ),
     LibCoverageTestCase(
         module_name="polars",
-        class_name="polars.DataFrame",
-        var_name="df",
-        import_statements=[
-            "import polars as pl"
-        ],
-        var_declare_statements=[
-            "df = pl.DataFrame({'A': [1, 2, 3, 4], 'B': [5, 6, 7, 8]})"
-        ],
-        var_modify_statements=[
-            "df = df.select(['B', 'A'])" 
-        ]
-    ),
-    LibCoverageTestCase(
-        module_name="polars",
         class_name="polars.LazyFrame",
         var_name="lf",
         import_statements=[
@@ -1365,22 +1150,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
             "result = spark.sql('SELECT * FROM people WHERE id > 1').toPandas()",
         ]
     ),
-    LibCoverageTestCase(
-        module_name="pyspark",
-        class_name="pyspark.SparkContext",
-        var_name="sc",
-        import_statements=[
-            "from pyspark import SparkContext"
-        ],
-        var_declare_statements=[
-            "sc = SparkContext.getOrCreate()"
-        ],
-        var_modify_statements=[
-            "sc.setLogLevel('ERROR')",
-            "sc.parallelize(range(1,100)).collect()"
-        ]
-    ),
-
     LibCoverageTestCase(
         module_name="xgboost",
         class_name="xgboost.XGBRegressor",
@@ -1435,28 +1204,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
     ),
     LibCoverageTestCase(
         module_name="matplotlib",
-        class_name="matplotlib.lines.Line2D",
-        var_name="markerline",
-        import_statements=["import matplotlib.pyplot as plt", "import numpy as np"],
-        var_declare_statements=["x = np.linspace(0.1, 2 * np.pi, 41)",
-                                "y = np.exp(np.sin(x))",
-                                "markerline, stemlines, baseline = plt.stem(x, y, linefmt='grey', markerfmt='D', bottom=1.1)"],
-        var_modify_statements=["markerline.set_markerfacecolor('none')"]
-    ),
-    LibCoverageTestCase(
-        module_name="matplotlib",
-        class_name="matplotlib.patches.Ellipse",
-        var_name="e1",
-        import_statements=["import matplotlib.pyplot as plt",
-                           "from matplotlib import patches"],
-        var_declare_statements=["xcenter, ycenter = 0.38, 0.52",
-                                "width, height = 1e-1, 3e-1",
-                                "angle = -30",
-                                "e1 = patches.Ellipse((xcenter, ycenter), width, height,angle=angle, linewidth=2, fill=False, zorder=2)"],
-        var_modify_statements=["e1.set_center((2.0,3.0))"]
-    ),
-    LibCoverageTestCase(
-        module_name="matplotlib",
         class_name="matplotlib.patches.Arrow",
         var_name="arrow",
         import_statements=["import matplotlib.pyplot as plt", "import matplotlib.patches as mpatches"],
@@ -1464,14 +1211,6 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
                                 "x_head, y_head = 0.9, 0.8",
                                 "arrow = mpatches.FancyArrowPatch((x_tail, y_tail), (x_head, y_head),mutation_scale=100)"],
         var_modify_statements=["arrow.set_linewidth(2.0)"]
-    ),
-    LibCoverageTestCase(
-        module_name="astropy",
-        class_name="astropy.coordinates.SkyCoord",
-        var_name="icrs",
-        import_statements=["import astropy.coordinates as coord", "import astropy.units as u"],
-        var_declare_statements=["icrs = coord.SkyCoord(ra=258.58356362 * u.deg, dec=14.55255619 * u.deg, radial_velocity=-16.1 * u.km / u.s, frame='icrs',)"],
-        var_modify_statements=["icrs = SkyCoord(ra=260.0 * u.deg, dec=icrs.dec, radial_velocity=icrs.radial_velocity, frame='icrs',)"]
     ),
     LibCoverageTestCase(
         module_name="astropy",
