@@ -189,6 +189,13 @@ class KishuBranch:
         finally:
             con.close()
 
+    def reset_head(self) -> None:
+        # Delete head to no-head state.
+        con = sqlite3.connect(self.database_path)
+        cur = con.cursor()
+        cur.execute(f"delete from {HEAD_BRANCH_TABLE} where head = '{HEAD_KEY}'")
+        con.commit()
+
     def update_head(
         self, branch_name: Optional[str] = None, commit_id: Optional[str] = None, is_detach: bool = False
     ) -> HeadBranch:

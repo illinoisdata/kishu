@@ -129,6 +129,12 @@ class CommitGraphStore:
         finally:
             con.close()
 
+    def reset_head(self):
+        con = sqlite3.connect(self._database_path)
+        cur = con.cursor()
+        cur.execute(f"delete from {self._head_commit_table} where head = '{HEAD_KEY}'")
+        con.commit()
+
     def set_head(self, commit_id: CommitId):
         con = sqlite3.connect(self._database_path)
         cur = con.cursor()
@@ -224,3 +230,9 @@ class KishuCommitGraph:
         if commit_node_info is None:
             self._store.insert_parent(CommitNodeInfo(commit_id, ABSOLUTE_PAST))
         self._store.set_head(commit_id)
+
+    def reset(self) -> None:
+        """
+        Resets head to ABSOLUTE_PAST.
+        """
+        self._store.reset_head()
