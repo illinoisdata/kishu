@@ -36,9 +36,9 @@ class PlannerManager:
         ns_deletions: Set[str] = set(),
         cell_runtime: float = 1.0,
     ) -> ChangedVariables:
-        # Update namespace.
         self.planner.pre_run_cell_update()
 
+        # Update namespace. KV-pairs are manually set as update() does not trigger assignment (nor is it called by IPython).
         for k, v in ns_updates.items():
             self.planner._user_ns[k] = v
 
