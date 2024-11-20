@@ -10,7 +10,7 @@ import dill as pickle
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import VariableName, VariableSnapshot, VersionedName
+from kishu.storage.disk_ahg import VariableSnapshot
 
 CHECKPOINT_TABLE = "checkpoint"
 VARIABLE_SNAPSHOT_TABLE = "variable_snapshot"
@@ -29,7 +29,8 @@ class KishuCheckpoint:
         # Create incremental checkpointing related tables only if incremental store is enabled.
         if self._incremental_cr:
             cur.execute(
-                f"create table if not exists {VARIABLE_SNAPSHOT_TABLE} " f"(version int, name text, commit_id text, data blob)"
+                f"create table if not exists {VARIABLE_SNAPSHOT_TABLE} "
+                f"(versioned_name text primary key, commit_id text, data blob)"
             )
         con.commit()
 
@@ -57,37 +58,37 @@ class KishuCheckpoint:
         cur.execute(f"insert into {CHECKPOINT_TABLE} values (?, ?)", (commit_id, memoryview(data)))
         con.commit()
 
-    def get_variable_snapshots(self, versioned_names: List[VersionedName]) -> List[bytes]:
+    def get_variable_snapshots(self, variable_snapshots: Set[VariableSnapshot]) -> List[bytes]:
         """
-        Get the data of variable snapshots from their name and versions.
+        Get the data of variable snapshots.
         This function does not handle unpickling; that would be done in the RestoreActions
         as the fallback recomputation of objects is handled in those classes.
         """
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        param_list = [(vn.version, KishuCheckpoint.encode_name(vn.name)) for vn in versioned_names]
-        query = f"""select data from {VARIABLE_SNAPSHOT_TABLE} where """ + " OR ".join(
-            ["(version = ? AND name = ?)"] * len(param_list)
+        param_list = [vs.versioned_name() for vs in variable_snapshots]
+        cur.execute(
+            f"select data from {VARIABLE_SNAPSHOT_TABLE} WHERE versioned_name IN (%s)" % ",".join("?" * len(param_list)),
+            param_list,
         )
-        cur.execute(query, [i for t in param_list for i in t])
 
         res: List = cur.fetchall()
         res_list = [i[0] for i in res]
-        if len(res_list) != len(versioned_names):
-            raise ValueError(f"length of results {len(res_list)} not equal to queries {len(versioned_names)}:")
+        if len(res_list) != len(variable_snapshots):
+            raise ValueError(f"length of results {len(res_list)} not equal to queries {len(variable_snapshots)}:")
         return res_list
 
-    def get_stored_versioned_names(self, commit_ids: List[str]) -> Set[VersionedName]:
+    def get_stored_versioned_names(self, commit_ids: List[str]) -> Set[str]:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
 
         # Get all namespaces
         cur.execute(
-            f"select version, name from {VARIABLE_SNAPSHOT_TABLE} WHERE commit_id IN (%s)" % ",".join("?" * len(commit_ids)),
+            f"select versioned_name from {VARIABLE_SNAPSHOT_TABLE} WHERE commit_id IN (%s)" % ",".join("?" * len(commit_ids)),
             commit_ids,
         )
         res: List = cur.fetchall()
-        return {VersionedName(KishuCheckpoint.decode_name(name), version) for version, name in res}
+        return set([i[0] for i in res])
 
     def store_variable_snapshots(self, commit_id: str, vses_to_store: List[VariableSnapshot], user_ns: Namespace) -> None:
         con = sqlite3.connect(self.database_path)
@@ -100,15 +101,7 @@ class KishuCheckpoint:
 
             data_dump = pickle.dumps(ns_subset.to_dict())
             cur.execute(
-                f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?, ?)",
-                (vs.version, KishuCheckpoint.encode_name(vs.name), commit_id, memoryview(data_dump)),
+                f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?)",
+                (vs.versioned_name(), commit_id, memoryview(data_dump)),
             )
             con.commit()
-
-    @staticmethod
-    def encode_name(variable_name: VariableName) -> str:
-        return repr(sorted(variable_name))
-
-    @staticmethod
-    def decode_name(encoded_name: str) -> VariableName:
-        return frozenset([name.strip().replace("'", "") for name in encoded_name.replace("[", "").replace("]", "").split(",")])

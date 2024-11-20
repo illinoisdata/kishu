@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import atexit
+import enum
 from dataclasses import dataclass, field
 from pathlib import Path
 from queue import LifoQueue
-from traitlets.config import Config
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import dill
-import enum
 from IPython.core.interactiveshell import InteractiveShell
+from traitlets.config import Config
 
 from kishu.exceptions import CommitIdNotExistError
 from kishu.jupyter.namespace import Namespace
-from kishu.planning.ahg import VariableSnapshot, VersionedName
 from kishu.storage.checkpoint import KishuCheckpoint
+from kishu.storage.disk_ahg import VariableSnapshot
 
 
 def no_history_interactive_shell():
@@ -304,7 +304,7 @@ class IncrementalLoadRestoreAction(RestoreAction):
     """
 
     step_order: StepOrder
-    versioned_names: List[VersionedName]
+    variable_snapshots: Set[VariableSnapshot]
     fallbacl_recomputation: List[RerunCellRestoreAction]
 
     def run(self, ctx: RestoreActionContext):
@@ -312,7 +312,7 @@ class IncrementalLoadRestoreAction(RestoreAction):
         @param user_ns  A target space where restored variables will be set.
         """
         # Each dictionary contains the data for a VS in the form of its variable name-to-data mappings.
-        snapshots: List[bytes] = KishuCheckpoint(ctx.database_path).get_variable_snapshots(self.versioned_names)
+        snapshots: List[bytes] = KishuCheckpoint(ctx.database_path).get_variable_snapshots(self.variable_snapshots)
         for snapshot in snapshots:
             vs_dict = dill.loads(snapshot)
             if not isinstance(vs_dict, dict):
@@ -429,14 +429,14 @@ class RestorePlan:
         )
 
     def add_incremental_load_restore_action(
-        self, cell_num: int, versioned_names: List[VersionedName], fallback_recomputation: List[Tuple[int, str]]
+        self, cell_num: int, variable_snapshots: Set[VariableSnapshot], fallback_recomputation: List[Tuple[int, str]]
     ):
         step_order = StepOrder.new_incremental_load(cell_num)
         assert step_order not in self.actions
 
         self.actions[step_order] = IncrementalLoadRestoreAction(
             step_order,
-            versioned_names,
+            variable_snapshots,
             [RerunCellRestoreAction(StepOrder.new_rerun_cell(cell_num), code) for cell_num, code in fallback_recomputation],
         )
 

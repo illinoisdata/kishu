@@ -1,10 +1,11 @@
 import ast
 import configparser
-import dill
 import os
 import sqlite3
 from pathlib import Path
 from typing import Any
+
+import dill
 
 from kishu.storage.path import KishuPath
 
