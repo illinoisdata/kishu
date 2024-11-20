@@ -128,17 +128,29 @@ class CheckpointRestorePlanner:
         # Use current timestamp as version for new VSes to be created during the update.
         version = time.monotonic_ns()
 
-        # Find accessed variables from monkey-patched namespace.
+        # Find accessed and assigned variables from monkey-patched namespace.
         accessed_vars = self._user_ns.accessed_vars().intersection(self._pre_run_cell_vars)
         self._user_ns.reset_accessed_vars()
+        assigned_vars = self._user_ns.assigned_vars().intersection(self._pre_run_cell_vars)
+        self._user_ns.reset_assigned_vars()
 
         # Find created and deleted variables
         created_vars = self._user_ns.keyset().difference(self._pre_run_cell_vars)
         deleted_vars = self._pre_run_cell_vars.difference(self._user_ns.keyset())
 
+        # Find candidates for modified variables: a variable can only be modified if it was
+        # linked with a variable that was accessed, modified, or deleted.
+        modified_vars_candidates: Set[str] = set()
+        unmodified_vses: List[VariableSnapshot] = []
+        for vs in self._ahg.get_active_variable_snapshots(self._kishu_graph.head()):
+            if vs.name.intersection(accessed_vars.union(assigned_vars).union(deleted_vars)):
+                modified_vars_candidates.update(vs.name)
+            else:
+                unmodified_vses.append(vs)
+
         # Find modified variables.
         modified_vars = set()
-        for k in filter(self._user_ns.__contains__, self._id_graph_map.keys()):
+        for k in filter(self._user_ns.__contains__, modified_vars_candidates):
             new_idgraph = IdGraph.from_object(self._user_ns[k])
 
             if not self._id_graph_map[k] == new_idgraph:
@@ -159,11 +171,18 @@ class CheckpointRestorePlanner:
         for var in created_vars:
             self._id_graph_map[var] = IdGraph.from_object(self._user_ns[var])
 
-        # Find pairs of linked variables.
-        linked_var_pairs = []
-        for x, y in combinations(self._user_ns.keyset(), 2):
+        # Pairs of linked variables from the previous iteration that were untouched.
+        # The linked pairs created here are functionally equivalent to the ground truth in terms of union-find components.
+        untouched_linked_var_pairs = []
+        for vs in unmodified_vses:
+            name_list = list(vs.name)
+            untouched_linked_var_pairs += [(name_list[i], name_list[i + 1]) for i in range(len(name_list) - 1)]
+
+        # Intersect ID graphs of potentially changed variables and newly created variables to find new linked variable pairs.
+        new_linked_var_pairs = []
+        for x, y in combinations(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)), 2):
             if self._id_graph_map[x].is_overlap(self._id_graph_map[y]):
-                linked_var_pairs.append((x, y))
+                new_linked_var_pairs.append((x, y))
 
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
@@ -178,7 +197,7 @@ class CheckpointRestorePlanner:
                 runtime_s,
                 accessed_vars,
                 self._user_ns.keyset(),
-                linked_var_pairs,
+                untouched_linked_var_pairs + new_linked_var_pairs,
                 modified_vars,
                 deleted_vars,
             )

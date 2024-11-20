@@ -11,11 +11,15 @@ class TrackedNamespace(dict):
     def __init__(self, *args, **kwargs) -> None:
         dict.__init__(self, *args, **kwargs)
         self._accessed_vars: Set[str] = set()
+        self._assigned_vars: Set[str] = set()
 
     def __getitem__(self, name: str) -> Any:
-        if name in self:
-            self._accessed_vars.add(name)
+        self._accessed_vars.add(name)
         return dict.__getitem__(self, name)
+
+    def __setitem__(self, name: str, value: Any) -> None:
+        self._assigned_vars.add(name)
+        dict.__setitem__(self, name, value)
 
     def __iter__(self):
         self._accessed_vars = set(self.keys())  # TODO: Use enum for this.
@@ -26,6 +30,12 @@ class TrackedNamespace(dict):
 
     def reset_accessed_vars(self) -> None:
         self._accessed_vars = set()
+
+    def assigned_vars(self) -> Set[str]:
+        return self._assigned_vars
+
+    def reset_assigned_vars(self) -> None:
+        self._assigned_vars = set()
 
 
 class Namespace:
@@ -76,6 +86,12 @@ class Namespace:
 
     def reset_accessed_vars(self) -> None:
         self._tracked_namespace.reset_accessed_vars()
+
+    def assigned_vars(self) -> Set[str]:
+        return set(name for name in self._tracked_namespace.assigned_vars() if Namespace.no_ipython_var((name, None)))
+
+    def reset_assigned_vars(self) -> None:
+        self._tracked_namespace.reset_assigned_vars()
 
     def ipython_in(self) -> Optional[List[str]]:
         return self._tracked_namespace["In"] if "In" in self._tracked_namespace else None
