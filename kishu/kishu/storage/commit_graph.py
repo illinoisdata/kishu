@@ -64,7 +64,7 @@ class CommitGraphStore:
     def init_database(self):
         con = sqlite3.connect(self._database_path)
         cur = con.cursor()
-        cur.execute(f"create table if not exists {self._commit_parent_table} (commit_id text, parent_id text)")
+        cur.execute(f"create table if not exists {self._commit_parent_table} (commit_id text primary key, parent_id text)")
         cur.execute(f"create table if not exists {self._head_commit_table} (head primary key, commit_id text)")
         con.commit()
 

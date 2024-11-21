@@ -15,6 +15,9 @@ HEAD_BRANCH_TABLE = "head_branch"
 HEAD_KEY = "HEAD"
 
 
+BRAHCN_TABLE_COMMIT_ID_IDX = "branch_commit_id_idx"
+
+
 BRANCH_NAME_ADJECTIVES = [
     "agile",
     "algebraic",
@@ -166,6 +169,7 @@ class KishuBranch:
         cur = con.cursor()
         cur.execute(f"create table if not exists {BRANCH_TABLE} (branch_name text primary key, commit_id text)")
         cur.execute(f"create table if not exists {HEAD_BRANCH_TABLE} (head primary key, branch_name text, commit_id text)")
+        cur.execute(f"create index if not exists {BRAHCN_TABLE_COMMIT_ID_IDX} on {BRANCH_TABLE} (commit_id)")
         con.commit()
 
     def drop_database(self):

@@ -115,7 +115,7 @@ class PersistentConfig:
         cur = con.cursor()
         cur.execute(
             f"""create table if not exists {PERSISTENT_CONFIG_TABLE} """
-            """(config_category text, config_entry text, config_value blob)"""
+            """(config_category text, config_entry text, config_value blob, primary key(config_category, config_entry))"""
         )
         con.commit()
 

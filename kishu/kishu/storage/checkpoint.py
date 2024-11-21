@@ -30,7 +30,7 @@ class KishuCheckpoint:
         if self._incremental_cr:
             cur.execute(
                 f"create table if not exists {VARIABLE_SNAPSHOT_TABLE} "
-                f"(versioned_name text primary key, commit_id text, data blob)"
+                f"(versioned_name text, commit_id text, data blob, primary key (versioned_name, commit_id))"
             )
         con.commit()
 
