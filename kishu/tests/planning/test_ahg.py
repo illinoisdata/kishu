@@ -43,7 +43,7 @@ class TestDiskAHG:
         # Check links are correct
         ce1 = ahg.get_ce_by_cell_num(1)
         assert set(vs.name for vs in ahg.get_ce_output_vses(ce1)) == {frozenset("x"), frozenset("y")}
-        assert set(ahg.get_vs_input_ce(vs).cell_num for vs in ahg.get_ce_output_vses(ce1)) == 1
+        assert set(ahg.get_vs_input_ce(vs).cell_num for vs in ahg.get_ce_output_vses(ce1)) == {1}
 
         # Check active VSes are correct
         assert set(vs.name for vs in ahg.get_active_variable_snapshots("1:1")) == {frozenset("x"), frozenset("y")}
@@ -162,7 +162,7 @@ class TestDiskAHG:
             frozenset({"d", "e"}),
             frozenset("f"),
         }
-        assert set(ahg.get_vs_input_ce(vs).cell_num for vs in ahg.get_ce_output_vses(ce1)) == 1
+        assert set(ahg.get_vs_input_ce(vs).cell_num for vs in ahg.get_ce_output_vses(ce1)) == {1}
 
         # 6 variables in total
         assert ahg.get_active_variable_names("1:1") == {"a", "b", "c", "d", "e", "f"}

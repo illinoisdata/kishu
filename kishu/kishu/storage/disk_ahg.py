@@ -19,6 +19,10 @@ AHG_CE_INPUT_TABLE = "ahg_ce_input"
 AHG_CE_OUTPUT_TABLE = "ahg_ce_output"
 AHG_ACTIVE_VSES_TABLE = "ahg_active_vses"
 
+AHG_CE_OUTPUT_TABLE_CE_IDX = "ahg_ce_output_ce_idx"
+AHG_CE_OUTPUT_TABLE_VS_IDX = "ahg_ce_output_vs_idx"
+AHG_CE_INPUT_TABLE_CE_IDX = "ahg_ce_output_ce_idx"
+
 
 # Aliases
 VariableName = FrozenSet[str]
@@ -107,6 +111,12 @@ class KishuDiskAHG:
         cur.execute(f"create table if not exists {AHG_CE_INPUT_TABLE} (cell_num int, versioned_name text)")
         cur.execute(f"create table if not exists {AHG_CE_OUTPUT_TABLE} (cell_num int, versioned_name text)")
         cur.execute(f"create table if not exists {AHG_ACTIVE_VSES_TABLE} (commit_id text, versioned_name text)")
+
+        # Indexes on the mapping tables
+        cur.execute(f"create index if not exists {AHG_CE_OUTPUT_TABLE_CE_IDX} on {AHG_CE_OUTPUT_TABLE} (cell_num)")
+        cur.execute(f"create index if not exists {AHG_CE_OUTPUT_TABLE_VS_IDX} on {AHG_CE_OUTPUT_TABLE} (versioned_name)")
+        cur.execute(f"create index if not exists {AHG_CE_INPUT_TABLE_CE_IDX} on {AHG_CE_INPUT_TABLE} (cell_num)")
+
         con.commit()
 
     def drop_database(self):
@@ -193,7 +203,7 @@ class KishuDiskAHG:
     def get_ce_by_cell_num(self, cell_num: CellExecutionNumber) -> CellExecution:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(f"select * from {AHG_CELL_EXECUTION_TABLE} where cell_num = {cell_num}")
+        cur.execute(f"select * from {AHG_CELL_EXECUTION_TABLE} where cell_num = ?", (cell_num,))
         res: tuple = cur.fetchone()
         if not res:
             raise ValueError(f"The CellExecution for cell number = {cell_num} was not found")
@@ -209,7 +219,7 @@ class KishuDiskAHG:
     def get_vs_input_ce(self, vs: VariableSnapshot) -> CellExecution:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(f"select cell_num from {AHG_CE_OUTPUT_TABLE} where versioned_name = '{vs.versioned_name()}'")
+        cur.execute(f"select cell_num from {AHG_CE_OUTPUT_TABLE} where versioned_name = ?", (vs.versioned_name(),))
         res: tuple = cur.fetchone()
         if not res:
             raise ValueError(f"The (unique) CE creating VS with version = {vs.version} and name = {vs.name} not found")
@@ -218,13 +228,13 @@ class KishuDiskAHG:
     def get_ce_input_vses(self, ce: CellExecution) -> List[VariableSnapshot]:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(f"select versioned_name from {AHG_CE_INPUT_TABLE} where cell_num = {ce.cell_num}")
+        cur.execute(f"select versioned_name from {AHG_CE_INPUT_TABLE} where cell_num = ?", (ce.cell_num,))
         res: List = cur.fetchall()
         return self.get_vs_by_versioned_names([i[0] for i in res])
 
     def get_ce_output_vses(self, ce: CellExecution) -> List[VariableSnapshot]:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(f"select versioned_name from {AHG_CE_OUTPUT_TABLE} where cell_num = {ce.cell_num}")
+        cur.execute(f"select versioned_name from {AHG_CE_OUTPUT_TABLE} where cell_num = ?", (ce.cell_num,))
         res: List = cur.fetchall()
         return self.get_vs_by_versioned_names([i[0] for i in res])

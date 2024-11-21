@@ -10,6 +10,9 @@ from kishu.exceptions import TagNotFoundError
 TAG_TABLE = "tag"
 
 
+TAG_TABLE_COMMIT_ID_IDX = "tag_commit_id_idx"
+
+
 @dataclass
 class TagRow:
     tag_name: str
@@ -26,6 +29,7 @@ class KishuTag:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(f"create table if not exists {TAG_TABLE} (tag_name text primary key, commit_id text, message text)")
+        cur.execute(f"create index if not exists {TAG_TABLE_COMMIT_ID_IDX} on {TAG_TABLE} (commit_id)")
         con.commit()
 
     def upsert_tag(self, tag: TagRow) -> None:

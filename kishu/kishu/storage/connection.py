@@ -11,6 +11,9 @@ CONNECTION_TABLE = "connection"
 CONNECTION_KEY = "CONN"
 
 
+CONNECTION_TABLE_NOTEBOOK_PATH_IDX = "connection_notebook_path_idx"
+
+
 @dataclass
 class JupyterConnectionInfo:
     kernel_id: str
@@ -34,6 +37,7 @@ class KishuConnection:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(f"create table if not exists {CONNECTION_TABLE} (conn primary key, kernel_id text, notebook_path text)")
+        cur.execute(f"create index if not exists {CONNECTION_TABLE_NOTEBOOK_PATH_IDX} on {CONNECTION_TABLE} (notebook_path)")
         con.commit()
 
     def drop_database(self):
