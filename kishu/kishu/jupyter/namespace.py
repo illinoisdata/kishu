@@ -14,7 +14,7 @@ class TrackedNamespace(dict):
         self._assigned_vars: Set[str] = set()
 
     def __getitem__(self, name: str) -> Any:
-        self._accessed_vars.add(name)  # Moved filtering to planner
+        self._accessed_vars.add(name)
         return dict.__getitem__(self, name)
 
     def __setitem__(self, name: str, value: Any) -> None:
