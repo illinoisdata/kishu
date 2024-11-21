@@ -472,7 +472,7 @@ class TestKishuCommand:
                 "next(gen)",
                 marks=pytest.mark.skip(reason="TODO: import fix from zl20/vldb_2025 in future PR."),
             ),
-            pytest.param("QiskitDemo_NCSA_May2023.ipynb", 61, "qc", marks=pytest.mark.skip(reason="Flaky")),
+            ("QiskitDemo_NCSA_May2023.ipynb", 61, "qc"),
         ],
     )
     def test_incremental_end_to_end_checkout(
