@@ -12,9 +12,6 @@ from kishu.storage.path import KishuPath
 PERSISTENT_CONFIG_TABLE = "persistent_config"
 
 
-PERSISTENT_CONFIG_TABLE_IDX = "persistent_config_idx"
-
-
 class Config:
     CONFIG_PATH = KishuPath.config_path()
     config = configparser.ConfigParser()
@@ -118,10 +115,7 @@ class PersistentConfig:
         cur = con.cursor()
         cur.execute(
             f"""create table if not exists {PERSISTENT_CONFIG_TABLE} """
-            """(config_category text, config_entry text, config_value blob)"""
-        )
-        cur.execute(
-            f"create index if not exists {PERSISTENT_CONFIG_TABLE_IDX} on {PERSISTENT_CONFIG_TABLE} (config_category, config_entry)"
+            """(config_category text, config_entry text, config_value blob, primary key(config_category, config_entry))"""
         )
         con.commit()
 

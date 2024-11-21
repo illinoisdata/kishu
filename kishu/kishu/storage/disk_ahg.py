@@ -19,10 +19,6 @@ AHG_CE_INPUT_TABLE = "ahg_ce_input"
 AHG_CE_OUTPUT_TABLE = "ahg_ce_output"
 AHG_ACTIVE_VSES_TABLE = "ahg_active_vses"
 
-AHG_CE_OUTPUT_TABLE_CE_IDX = "ahg_ce_output_ce_idx"
-AHG_CE_OUTPUT_TABLE_VS_IDX = "ahg_ce_output_vs_idx"
-AHG_CE_INPUT_TABLE_CE_IDX = "ahg_ce_output_ce_idx"
-
 
 # Aliases
 VariableName = FrozenSet[str]
@@ -108,14 +104,13 @@ class KishuDiskAHG:
         cur.execute(
             f"create table if not exists {AHG_CELL_EXECUTION_TABLE} (cell_num int primary key, cell text, cell_runtime_s float)"
         )
-        cur.execute(f"create table if not exists {AHG_CE_INPUT_TABLE} (cell_num int, versioned_name text)")
-        cur.execute(f"create table if not exists {AHG_CE_OUTPUT_TABLE} (cell_num int, versioned_name text)")
+        cur.execute(
+            f"create table if not exists {AHG_CE_INPUT_TABLE} (cell_num int, versioned_name text, primary key (cell_num, versioned_name))"
+        )
+        cur.execute(
+            f"create table if not exists {AHG_CE_OUTPUT_TABLE} (cell_num int, versioned_name text, primary key (cell_num, versioned_name))"
+        )
         cur.execute(f"create table if not exists {AHG_ACTIVE_VSES_TABLE} (commit_id text, versioned_name text)")
-
-        # Indexes on the mapping tables
-        cur.execute(f"create index if not exists {AHG_CE_OUTPUT_TABLE_CE_IDX} on {AHG_CE_OUTPUT_TABLE} (cell_num)")
-        cur.execute(f"create index if not exists {AHG_CE_OUTPUT_TABLE_VS_IDX} on {AHG_CE_OUTPUT_TABLE} (versioned_name)")
-        cur.execute(f"create index if not exists {AHG_CE_INPUT_TABLE_CE_IDX} on {AHG_CE_INPUT_TABLE} (cell_num)")
 
         con.commit()
 

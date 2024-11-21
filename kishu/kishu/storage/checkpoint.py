@@ -16,9 +16,6 @@ CHECKPOINT_TABLE = "checkpoint"
 VARIABLE_SNAPSHOT_TABLE = "variable_snapshot"
 
 
-VARIABLE_SNAPSHOT_TABLE_COMMIT_ID_IDX = "variable_snapshot_commit_id_idx"
-
-
 class KishuCheckpoint:
     def __init__(self, database_path: Path, incremental_cr: bool = False):
         self.database_path = database_path
@@ -33,10 +30,7 @@ class KishuCheckpoint:
         if self._incremental_cr:
             cur.execute(
                 f"create table if not exists {VARIABLE_SNAPSHOT_TABLE} "
-                f"(versioned_name text primary key, commit_id text, data blob)"
-            )
-            cur.execute(
-                f"create index if not exists {VARIABLE_SNAPSHOT_TABLE_COMMIT_ID_IDX} on {VARIABLE_SNAPSHOT_TABLE} (commit_id)"
+                f"(versioned_name text, commit_id text, data blob, primary key (versioned_name, commit_id))"
             )
         con.commit()
 
