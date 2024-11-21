@@ -38,7 +38,7 @@ class PlannerManager:
     ) -> ChangedVariables:
         self.planner.pre_run_cell_update()
 
-        # Update namespace. KV-pairs are manually set as update() does not trigger assignment (nor is it called by IPython).
+        # Update namespace. KV-pairs are manually set as update() does not trigger __setitem__.
         for k, v in ns_updates.items():
             self.planner._user_ns[k] = v
 
