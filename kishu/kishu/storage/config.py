@@ -10,6 +10,8 @@ import dill
 from kishu.storage.path import KishuPath
 
 PERSISTENT_CONFIG_TABLE = "persistent_config"
+
+
 PERSISTENT_CONFIG_TABLE_IDX = "persistent_config_idx"
 
 
