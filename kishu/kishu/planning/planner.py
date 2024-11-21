@@ -137,14 +137,14 @@ class CheckpointRestorePlanner:
         deleted_vars = self._pre_run_cell_vars.difference(self._user_ns.keyset())
 
         # Find candidates for modified variables: a variable can only be modified if it was
-        # linked with a variable that was accessed or modified.
+        # linked with a variable that was accessed, modified, or deleted.
         modified_vars_candidates: Set[str] = set()
-        unmodifed_vars: List[VariableName] = []
-        for vs in self._ahg.get_active_variable_snapshots():
+        unmodified_vses: List[VariableSnapshot] = []
+        for vs in self._ahg.get_active_variable_snapshots(self._kishu_graph.head()):
             if vs.name.intersection(accessed_vars.union(assigned_vars).union(deleted_vars)):
                 modified_vars_candidates.update(vs.name)
             else:
-                unmodifed_vars.append(vs.name)
+                unmodified_vses.append(vs)
 
         # Find modified variables.
         modified_vars_structure = set()
@@ -168,14 +168,15 @@ class CheckpointRestorePlanner:
             self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
 
         # Pairs of linked variables from the previous iteration that were untouched.
-        # The linked pairs created here are functionally equivalent to the ground truth in terms of union-find.
+        # The linked pairs created here are functionally equivalent to the ground truth in terms of union-find components.
         untouched_linked_var_pairs = []
-        for name in unmodifed_vars:
-            name_list = list(name)
+        for vs in unmodified_vses:
+            name_list = list(vs.name)
             untouched_linked_var_pairs += [(name_list[i], name_list[i + 1]) for i in range(len(name_list) - 1)]
 
+        # Intersect ID graphs of potentially changed variables and newly created variables to find new linked variable pairs.
         new_linked_var_pairs = []
-        for x, y in combinations(modified_vars_candidates.union(created_vars).difference(deleted_vars), 2):
+        for x, y in combinations(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)), 2):
             if self._id_graph_map[x].is_overlap(self._id_graph_map[y]):
                 new_linked_var_pairs.append((x, y))
 
