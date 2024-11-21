@@ -116,3 +116,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+tmp*
+*.ipynb
+*log.txt

@@ -72,6 +72,7 @@ class NotebookHandler:
         # Read output.
         stream_output = ""
         data_output = ""
+        traceback = ""
         try:
             while True:  
 
@@ -89,7 +90,7 @@ class NotebookHandler:
                     data_output += content["data"].get("text/plain", "")
                 elif msg_type == "error":
                     traceback = "\n".join(content["traceback"])
-                    raise CellExecutionError(cell_code, traceback)
+                    # raise CellExecutionError(cell_code, traceback)
 
                 # Stopping criteria.
                 if msg_type == "status" and content["execution_state"] == "idle":
@@ -97,7 +98,7 @@ class NotebookHandler:
         except TimeoutError:
             print("Cell execution timed out.")
 
-        return stream_output, data_output
+        return stream_output, data_output, traceback
 
     def __exit__(self, exception_type, exception_value, traceback):
         if self.websocket is not None:
