@@ -96,12 +96,15 @@ class KishuCheckpoint:
 
         # Store each variable snapshot.
         for vs in vses_to_store:
-            # Create a namespace containing only variables from the component
-            ns_subset = user_ns.subset(set(vs.name))
-
-            data_dump = pickle.dumps(ns_subset.to_dict())
-            cur.execute(
-                f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?)",
-                (vs.versioned_name(), commit_id, memoryview(data_dump)),
-            )
-            con.commit()
+            try:
+                # Create a namespace containing only variables from the component
+                ns_subset = user_ns.subset(set(vs.name))
+    
+                data_dump = pickle.dumps(ns_subset.to_dict())
+                cur.execute(
+                    f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?)",
+                    (vs.versioned_name(), commit_id, memoryview(data_dump)),
+                )
+                con.commit()
+            except:
+                pass

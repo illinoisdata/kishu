@@ -185,11 +185,11 @@ class JupyterConnection:
             )
             stdout = stdout_f.getvalue()
             stderr = stderr_f.getvalue()
-        # print("**************************")
-        # print(f"stdout>\n{stdout}")
-        # print("**************************")
-        # print(f"stderr>\n{stderr}")
-        # print("**************************")
+        print("**************************")
+        print(f"stdout>\n{stdout}")
+        print("**************************")
+        print(f"stderr>\n{stderr}")
+        print("**************************")
         return reply, stdout, stderr
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:

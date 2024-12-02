@@ -90,6 +90,12 @@ def test_special_inputs_not_magic(namespace, patched_shell):
     assert namespace.accessed_vars() == {"b", "who_ls"}
 
 
+def test_accessed_vars_import(namespace, patched_shell):
+    patched_shell.run_cell("import numpy as np")
+    patched_shell.run_cell("a = np.zeros((1, 1))")
+    assert namespace.accessed_vars() == {"np"}
+
+
 def test_find_assigned_vars_augassign(namespace, patched_shell):
     # Test assigning via overwrite.
     patched_shell.run_cell("x = 1")
@@ -125,3 +131,18 @@ def test_find_assigned_vars_error(namespace, patched_shell):
     patched_shell.run_cell("x = 1")
     patched_shell.run_cell("x = y")  # This assignment did not go through as finding y precedes assigning to x.
     assert namespace.assigned_vars() == set("x")
+
+
+def test_assigned_vars_import(namespace, patched_shell):
+    patched_shell.run_cell("import numpy as np")
+    patched_shell.run_cell("import random")
+    assert namespace.accessed_vars() == {"np", "random"}
+
+def test_assigned_vars_class(namespace, patched_shell):
+    patched_shell.run_cell("A = 1")
+    patched_shell.run_cell("""
+    class A:
+        def __init__(self):
+            pass
+    """)
+    assert namespace.accessed_vars() == {"A"}

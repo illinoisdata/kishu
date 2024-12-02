@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from itertools import chain, combinations
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
+from pympler import asizeof
 
 from IPython.core.inputtransformer2 import TransformerManager
 
@@ -81,6 +82,7 @@ class CheckpointRestorePlanner:
 
         # Used by instrumentation to compute whether data has changed.
         self._modified_vars_structure: Set[str] = set()
+        self._cell_num = 0
 
     @staticmethod
     def from_existing(
@@ -107,6 +109,8 @@ class CheckpointRestorePlanner:
         """
         Preprocessing steps performed prior to cell execution.
         """
+        self._user_ns.turn_off_track()
+
         # Record variables in the user name prior to running cell if we are not in a new session.
         self._pre_run_cell_vars = self._user_ns.keyset() if self._kishu_graph.head() else set()
 
@@ -114,6 +118,11 @@ class CheckpointRestorePlanner:
         for var in self._user_ns.keyset():
             if var not in self._id_graph_map:
                 self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
+
+        self._user_ns.reset_accessed_vars()
+        self._user_ns.reset_assigned_vars()
+
+        self._user_ns.turn_on_track()
 
     def post_run_cell_update(
         self, commit_id: CommitId, code_block: Optional[str], runtime_s: Optional[float]
@@ -123,6 +132,8 @@ class CheckpointRestorePlanner:
         @param code_block: code of executed cell.
         @param runtime_s: runtime of cell execution.
         """
+        self._user_ns.turn_off_track()
+
         # Use current timestamp as version for new VSes to be created during the update.
         version = time.monotonic_ns()
 
@@ -131,22 +142,29 @@ class CheckpointRestorePlanner:
         self._user_ns.reset_accessed_vars()
         assigned_vars = self._user_ns.assigned_vars().intersection(self._pre_run_cell_vars)
         self._user_ns.reset_assigned_vars()
+        print("accessed vars:", accessed_vars)
+        print("assigned vars:", assigned_vars)
 
         # Find created and deleted variables
         created_vars = self._user_ns.keyset().difference(self._pre_run_cell_vars)
         deleted_vars = self._pre_run_cell_vars.difference(self._user_ns.keyset())
 
+        # Variable that were touched (in any way).
+        touched_vars = accessed_vars.union(assigned_vars).union(deleted_vars)
+
         # Find candidates for modified variables: a variable can only be modified if it was
         # linked with a variable that was accessed, modified, or deleted.
-        modified_vars_candidates: Set[str] = set()
-        unmodified_vses: List[VariableSnapshot] = []
+        potentially_modified_vses: List[VariableSnapshot] = []
+        surely_unmodified_vses: List[VariableSnapshot] = []
         for vs in self._ahg.get_active_variable_snapshots(self._kishu_graph.head()):
-            if vs.name.intersection(accessed_vars.union(assigned_vars).union(deleted_vars)):
-                modified_vars_candidates.update(vs.name)
+            if vs.name.intersection(touched_vars):
+                potentially_modified_vses.append(vs)
             else:
-                unmodified_vses.append(vs)
+                surely_unmodified_vses.append(vs)
+        print("potentially modified vses:", [vs.name for vs in potentially_modified_vses])
 
         # Find modified variables.
+        modified_vars_candidates = set(chain.from_iterable([vs.name for vs in potentially_modified_vses]))
         modified_vars_structure = set()
         modified_vars_value = set()
         for k in filter(self._user_ns.__contains__, modified_vars_candidates):
@@ -170,7 +188,7 @@ class CheckpointRestorePlanner:
         # Pairs of linked variables from the previous iteration that were untouched.
         # The linked pairs created here are functionally equivalent to the ground truth in terms of union-find components.
         untouched_linked_var_pairs = []
-        for vs in unmodified_vses:
+        for vs in surely_unmodified_vses:
             name_list = list(vs.name)
             untouched_linked_var_pairs += [(name_list[i], name_list[i + 1]) for i in range(len(name_list) - 1)]
 
@@ -179,6 +197,8 @@ class CheckpointRestorePlanner:
         for x, y in combinations(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)), 2):
             if self._id_graph_map[x].is_overlap(self._id_graph_map[y]):
                 new_linked_var_pairs.append((x, y))
+
+        linked_var_pairs = untouched_linked_var_pairs + new_linked_var_pairs
 
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
@@ -193,11 +213,25 @@ class CheckpointRestorePlanner:
                 runtime_s,
                 accessed_vars,
                 self._user_ns.keyset(),
-                untouched_linked_var_pairs + new_linked_var_pairs,
+                linked_var_pairs,
                 modified_vars_structure,
                 deleted_vars,
             )
         )
+
+        # Logging.
+        self._cell_num += 1
+        print("cell num:", self._cell_num)
+        print("profiled_variables", len(modified_vars_candidates))
+        print("total_variables", len(self._user_ns.keyset()))
+        print("profiled_variable_size", asizeof.asizeof(self._user_ns.subset(modified_vars_candidates)))
+        print("total_variable_size", asizeof.asizeof(self._user_ns))
+        print("modified_variables", len(modified_vars_structure))
+        print("created_variables", len(created_vars))
+        print("modified_variables_size", asizeof.asizeof(self._user_ns.subset(modified_vars_structure)))
+        print("created_variables_size", asizeof.asizeof(self._user_ns.subset(created_vars)))
+
+        self._user_ns.turn_on_track()
 
         return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
 
@@ -213,6 +247,8 @@ class CheckpointRestorePlanner:
         self, database_path: Path, commit_id: str, parent_commit_ids: List[str]
     ) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
+        self._user_ns.turn_off_track()
+
         active_vss = self._ahg.get_active_variable_snapshots(commit_id)
         for varname in self._user_ns.keyset():
             """If manual commit made before init, pre-run cell update doesn't happen for new variables
@@ -257,6 +293,8 @@ class CheckpointRestorePlanner:
 
         # Create restore plan using optimization results.
         restore_plan = self._generate_restore_plan(ces_to_recompute, ce_to_vs_map, optimizer.req_func_mapping)
+
+        self._user_ns.turn_on_track()
 
         return checkpoint_plan, restore_plan
 
@@ -320,6 +358,8 @@ class CheckpointRestorePlanner:
         """
         Dynamically generates an incremental restore plan. To be called at checkout time if incremental CR is enabled.
         """
+        self._user_ns.turn_off_track()
+
         # Find currently active VSes and stored VSes that can help restoration.
         useful_vses = self._find_useful_vses(lca_active_vses, database_path, target_parent_commit_ids)
 
@@ -364,6 +404,7 @@ class CheckpointRestorePlanner:
                 ]
 
                 restore_plan.add_incremental_load_restore_action(ce.cell_num, load_ce_to_vs_map[ce], fallback_recomputations)
+        self._user_ns.turn_on_track()
 
         return restore_plan
 
@@ -410,12 +451,16 @@ class CheckpointRestorePlanner:
         """
         self._user_ns = new_user_ns
 
+        self._user_ns.turn_off_track()
+
         # Update ID graphs for differing active variables.
         for varname in self._get_differing_vars_post_checkout(new_active_vses):
             self._id_graph_map[varname] = get_object_state(self._user_ns[varname], {})
 
         # Clear pre-run cell info.
         self._pre_run_cell_vars = set()
+
+        self._user_ns.turn_on_track()
 
     def _get_differing_vars_post_checkout(self, new_active_vses: Set[VariableSnapshot]) -> Set[str]:
         """

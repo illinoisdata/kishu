@@ -10,19 +10,34 @@ class TrackedNamespace(dict):
 
     def __init__(self, *args, **kwargs) -> None:
         dict.__init__(self, *args, **kwargs)
+        self._track: bool = False
         self._accessed_vars: Set[str] = set()
         self._assigned_vars: Set[str] = set()
 
     def __getitem__(self, name: str) -> Any:
-        self._accessed_vars.add(name)
+        if self._track:
+            self._accessed_vars.add(name)
         return dict.__getitem__(self, name)
 
     def __setitem__(self, name: str, value: Any) -> None:
-        self._assigned_vars.add(name)
+        if self._track:
+            self._assigned_vars.add(name)
         dict.__setitem__(self, name, value)
 
+    def update(self, iter) -> None:
+        """
+        Update the dictionary with the key-value pairs from the given iterable
+        or another dictionary, tracking variable accesses and assignments for
+        tracked variables.
+        """
+        for key, value in iter.items() if isinstance(iter, dict) else iter:
+            if self._track:
+                self._assigned_vars.add(key)
+            dict.__setitem__(self, key, value)
+
     def __iter__(self):
-        self._accessed_vars = set(self.keys())  # TODO: Use enum for this.
+        if self._track:
+            self._accessed_vars = set(self.keys())  # TODO: Use enum for this.
         return dict.__iter__(self)
 
     def accessed_vars(self) -> Set[str]:
@@ -36,6 +51,12 @@ class TrackedNamespace(dict):
 
     def reset_assigned_vars(self) -> None:
         self._assigned_vars = set()
+
+    def turn_on_track(self) -> None:
+        self._track = True
+
+    def turn_off_track(self) -> None:
+        self._track = False
 
 
 class Namespace:
@@ -101,6 +122,12 @@ class Namespace:
 
     def subset(self, varnames: Set[str]) -> Namespace:
         return Namespace({k: self._tracked_namespace[k] for k in varnames if k in self})
+
+    def turn_on_track(self) -> None:
+        self._tracked_namespace.turn_on_track()
+
+    def turn_off_track(self) -> None:
+        self._tracked_namespace.turn_off_track()
 
     @staticmethod
     def no_ipython_var(name_obj: Tuple[str, Any]) -> bool:
