@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from coverage.coverage_test_cases import LibCoverageTestCase
-from kishu.planning.idgraph import get_object_state
+from kishu.planning.idgraph import IdGraph
 
 
 class TestResult(str, enum.Enum):
@@ -59,12 +59,12 @@ class LibCoverageTesting:
 
         # Generate 2 ID graphs for the original object.
         try:
-            idgraph_original = get_object_state(locals[test_case.var_name], {})
+            idgraph_original = IdGraph(locals[test_case.var_name])
         except Exception as e:
             return TestResult.id_graph_error, str(e)
 
         try:
-            idgraph_original_2 = get_object_state(locals[test_case.var_name], {})
+            idgraph_original_2 = IdGraph(locals[test_case.var_name])
         except Exception as e:
             return TestResult.id_graph_error, str(e)
 
@@ -86,7 +86,7 @@ class LibCoverageTesting:
 
         # Generate an ID graph for the modified object.
         try:
-            idgraph_modified = get_object_state(locals[test_case.var_name], {})
+            idgraph_modified = IdGraph(locals[test_case.var_name])
         except Exception as e:
             return TestResult.id_graph_error, str(e)
 

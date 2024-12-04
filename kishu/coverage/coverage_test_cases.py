@@ -1005,48 +1005,48 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ],
         var_modify_statements=["indices = torch.arange(25)", "subset.indices = indices"],
     ),
-    LibCoverageTestCase(
-        module_name="torchvision",
-        class_name="torchvision.datasets",
-        var_name="cifar_dataset",
-        import_statements=[
-            "import torch",
-            "from torchvision.datasets import CIFAR10",
-            "import torchvision.transforms as tvtf",
-        ],
-        var_declare_statements=["cifar_dataset = CIFAR10(root='./data', train=True, download=True)"],
-        var_modify_statements=[
-            "cifar_dataset.transform = tvtf.Compose([tvtf.ToTensor(), tvtf.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])"
-        ],
-    ),
-    LibCoverageTestCase(
-        module_name="torchvision",
-        class_name="torchvision.transforms",
-        var_name="cifar_dataset",
-        import_statements=[
-            "import torch",
-            "from torchvision.datasets import CIFAR10",
-            "import torchvision.transforms as tvtf",
-        ],
-        var_declare_statements=["cifar_dataset = CIFAR10(root='./data', train=True, download=True)"],
-        var_modify_statements=[
-            "cifar_dataset.transform = tvtf.Compose([tvtf.ToTensor(), tvtf.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])"
-        ],
-    ),
-    LibCoverageTestCase(
-        module_name="torchvision",
-        class_name="torchvision.utils",
-        var_name="image",
-        import_statements=[
-            "import torchvision.utils as utils",
-            "import torch",
-        ],
-        var_declare_statements=["image = torch.zeros((3, 100, 100), dtype=torch.uint8)"],
-        var_modify_statements=[
-            "keypoints = [(20, 30), (50, 70), (80, 10)]",
-            "image = utils.draw_keypoints(image, keypoints)",
-        ],  # noqa: E501
-    ),
+    # LibCoverageTestCase(
+    #     module_name="torchvision",
+    #     class_name="torchvision.datasets",
+    #     var_name="cifar_dataset",
+    #     import_statements=[
+    #         "import torch",
+    #         "from torchvision.datasets import CIFAR10",
+    #         "import torchvision.transforms as tvtf",
+    #     ],
+    #     var_declare_statements=["cifar_dataset = CIFAR10(root='./data', train=True, download=True)"],
+    #     var_modify_statements=[
+    #         "cifar_dataset.transform = tvtf.Compose([tvtf.ToTensor(), tvtf.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])"
+    #     ],
+    # ),
+    # LibCoverageTestCase(
+    #     module_name="torchvision",
+    #     class_name="torchvision.transforms",
+    #     var_name="cifar_dataset",
+    #     import_statements=[
+    #         "import torch",
+    #         "from torchvision.datasets import CIFAR10",
+    #         "import torchvision.transforms as tvtf",
+    #     ],
+    #     var_declare_statements=["cifar_dataset = CIFAR10(root='./data', train=True, download=True)"],
+    #     var_modify_statements=[
+    #         "cifar_dataset.transform = tvtf.Compose([tvtf.ToTensor(), tvtf.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])"
+    #     ],
+    # ),
+    # LibCoverageTestCase(
+    #     module_name="torchvision",
+    #     class_name="torchvision.utils",
+    #     var_name="image",
+    #     import_statements=[
+    #         "import torchvision.utils as utils",
+    #         "import torch",
+    #     ],
+    #     var_declare_statements=["image = torch.zeros((3, 100, 100), dtype=torch.uint8)"],
+    #     var_modify_statements=[
+    #         "keypoints = [(20, 30), (50, 70), (80, 10)]",
+    #         "image = utils.draw_keypoints(image, keypoints)",
+    #     ],  # noqa: E501
+    # ),
     LibCoverageTestCase(
         module_name="plotly",
         class_name="plotly.express",

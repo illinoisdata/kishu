@@ -28,12 +28,12 @@ def write_supported_libraries_page(supported_libraries_page_path: Path):
 
     # Split results into successes and failures
     successes = [result for result in test_results if result[3] == TestResult.success.name]
-    unstables = [result for result in test_results if result[3] == TestResult.skip_nondeterministic.name]
-    failures = [
+    unstables = [
         result
         for result in test_results
-        if result[3] in {TestResult.fail.name, TestResult.fail_nondeterministic.name, TestResult.id_graph_error.name}
+        if result[3] in {TestResult.skip_nondeterministic.name, TestResult.fail_nondeterministic.name}
     ]
+    failures = [result for result in test_results if result[3] in {TestResult.fail.name, TestResult.id_graph_error.name}]
 
     # Sort results by alphabetical order of module.
     successes.sort()

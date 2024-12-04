@@ -28,93 +28,55 @@ This is the current list of libraries, their versions, and their classes support
     ✅ astropy==5.2.2, astropy.stats.SigmaClip
     ✅ astropy==5.2.2, astropy.units.Quantity
     ✅ astropy==5.2.2, astropy.visualization.PercentileInterval
-    ✅ astropy==5.2.2, astropy.visualization.mpl_normalize.ImageNormalize
-    ✅ astropy==5.2.2, astropy.wcs.WCS
-    ✅ catboost==1.2.3, catboost
+    ✅ bokeh==2.4.3, bokeh.plotting._figure.figure
     ✅ dask==2023.5.0, dask
     ✅ dataprep==0.4.5, dataprep.datasets
+    ✅ dataprep==0.4.5, dataprep.eda.intermediate.Intermediate
     ✅ dill==0.3.8, dill
     ✅ gym==0.26.2, gym
     ✅ keras==2.13.1, keras.src.initializers.initializers.RandomNormal
     ✅ keras==2.13.1, keras.src.initializers.initializers.RandomUniform
     ✅ keras==2.13.1, keras.src.layers.core.dense.Dense
-    ✅ lightgbm==4.3.0, lightgbm.basic.Dataset
     ✅ keras==2.13.1, keras.src.optimizers.schedules.learning_rate_schedule.ExponentialDecay
     ✅ llm==0.13.1, llm.default_plugins.openai_models.Chat
-    ✅ lmfit==1.3.1, lmfit.parameter.Parameters
-    ✅ matplotlib==3.6.2, matplotlib.colors.BoundaryNorm
-    ✅ matplotlib==3.6.2, matplotlib.colors.ListedColormap
-    ✅ matplotlib==3.6.2, matplotlib.dates.AutoDateFormatter
-    ✅ matplotlib==3.6.2, matplotlib.dates.WeekdayLocator
-    ✅ matplotlib==3.6.2, matplotlib.patches.Arrow
-    ✅ matplotlib==3.6.2, matplotlib.ticker.AutoLocator
+    ✅ lmfit==1.2.2, lmfit.parameter.Parameters
+    ✅ matplotlib==3.7.5, matplotlib.colors.ListedColormap
+    ✅ matplotlib==3.7.5, matplotlib.dates.AutoDateFormatter
+    ✅ matplotlib==3.7.5, matplotlib.dates.WeekdayLocator
+    ✅ matplotlib==3.7.5, matplotlib.ticker.AutoLocator
     ✅ networkx==3.1, networkx.classes.digraph.DiGraph
     ✅ networkx==3.1, networkx.classes.graph.Graph
-    ✅ nltk==3.8.1, nltk.stem.porter.PorterStemmer
-    ✅ numpy==1.23.4, ast
-    ✅ numpy==1.23.4, copy
-    ✅ numpy==1.23.4, datetime.time
-    ✅ numpy==1.23.4, datetime.timedelta
-    ✅ numpy==1.23.4, hashlib
-    ✅ numpy==1.23.4, itertools
-    ✅ numpy==1.23.4, json
-    ✅ numpy==1.23.4, numpy.ndarray
-    ✅ numpy==1.23.4, numpy.ndarray
-    ✅ numpy==1.23.4, pickle
-    ✅ numpy==1.23.4, random.Random
-    ✅ numpy==1.23.4, urllib.request.Request
-    ✅ numpy==1.23.4, uuid.UUID
+    ✅ numpy==1.24.3, ast
+    ✅ numpy==1.24.3, copy
+    ✅ numpy==1.24.3, datetime.time
+    ✅ numpy==1.24.3, datetime.timedelta
+    ✅ numpy==1.24.3, hashlib
+    ✅ numpy==1.24.3, itertools
+    ✅ numpy==1.24.3, json
+    ✅ numpy==1.24.3, numpy.ndarray
+    ✅ numpy==1.24.3, numpy.ndarray
+    ✅ numpy==1.24.3, pickle
+    ✅ numpy==1.24.3, random.Random
+    ✅ numpy==1.24.3, urllib.request.Request
     ✅ opencv-python==4.9.0.80, cv2
-    ✅ optuna==3.6.1, optuna.Study
-    ✅ pandas==1.5.1, pandas.DataFrame
-    ✅ pandas==1.5.1, pandas.Series
+    ✅ pandas==1.5.3, pandas.DataFrame
     ✅ pathlib==1.0.1, pathlib.PosixPath
     ✅ photoutils==0.0.1, photutils.psf.matching.CosineBellWindow
     ✅ photoutils==0.0.1, photutils.psf.matching.HanningWindow
     ✅ photoutils==0.0.1, photutils.utils.CutoutImage
     ✅ photoutils==0.0.1, photutils.utils.ImageDepth
-    ✅ plotly==5.20.0, plotly.express
-    ✅ plotly==5.20.0, plotly.figure_factory
-    ✅ plotly==5.20.0, plotly.graph_objects
-    ✅ plotly==5.20.0, plotly.graph_objs
-    ✅ plotly==5.20.0, plotly.io
-    ✅ plotly==5.20.0, plotly.offline
-    ✅ plotly==5.20.0, plotly.subplots
-    ✅ polars==0.20.18, polars.LazyFrame
+    ✅ plotly==5.18.0, plotly.io
+    ✅ plotly==5.18.0, plotly.offline
     ✅ prophet==1.1.5, prophet.Prophet
     ✅ pyspark==3.5.1, pyspark.sql
     ✅ scikit-image==0.21.0, skimage
     ✅ scikit-image==0.21.0, skimage.morphology
-    ✅ scikit-learn==1.3.2, sklearn.cluster
-    ✅ scikit-learn==1.3.2, sklearn.cluster
-    ✅ scikit-learn==1.3.2, sklearn.compose
     ✅ scikit-learn==1.3.2, sklearn.datasets
     ✅ scikit-learn==1.3.2, sklearn.datasets
-    ✅ scikit-learn==1.3.2, sklearn.decomposition
-    ✅ scikit-learn==1.3.2, sklearn.discriminant_analysis
-    ✅ scikit-learn==1.3.2, sklearn.dummy
     ✅ scikit-learn==1.3.2, sklearn.feature_extraction.text
-    ✅ scikit-learn==1.3.2, sklearn.feature_selection
-    ✅ scikit-learn==1.3.2, sklearn.impute
-    ✅ scikit-learn==1.3.2, sklearn.impute
-    ✅ scikit-learn==1.3.2, sklearn.impute
-    ✅ scikit-learn==1.3.2, sklearn.kernel_ridge
-    ✅ scikit-learn==1.3.2, sklearn.linear_model
-    ✅ scikit-learn==1.3.2, sklearn.linear_model
-    ✅ scikit-learn==1.3.2, sklearn.manifold
     ✅ scikit-learn==1.3.2, sklearn.metrics
     ✅ scikit-learn==1.3.2, sklearn.metrics.pairwise
-    ✅ scikit-learn==1.3.2, sklearn.mixture
     ✅ scikit-learn==1.3.2, sklearn.model_selection
-    ✅ scikit-learn==1.3.2, sklearn.multiclass
-    ✅ scikit-learn==1.3.2, sklearn.naive_bayes
-    ✅ scikit-learn==1.3.2, sklearn.neighbors
-    ✅ scikit-learn==1.3.2, sklearn.neural_network
-    ✅ scikit-learn==1.3.2, sklearn.pipeline
-    ✅ scikit-learn==1.3.2, sklearn.preprocessing
-    ✅ scikit-learn==1.3.2, sklearn.random_projection
-    ✅ scikit-learn==1.3.2, sklearn.svm
-    ✅ scikit-learn==1.3.2, sklearn.tree
     ✅ scikit-learn==1.3.2, sklearn.utils
     ✅ scipy==1.10.1, scipy.interpolate
     ✅ scipy==1.10.1, scipy.ndimage
@@ -132,37 +94,71 @@ This is the current list of libraries, their versions, and their classes support
     ✅ tensorflow==2.13.1, tensorflow
     ✅ tensorflow==2.13.1, tensorflow.keras.models
     ✅ tensorflow==2.13.1, tensorflow.keras.optimizers
-    ✅ textblob==0.18.0.post0, textblob.TextBlob
-    ✅ torch==2.2.2, torch.nn
-    ✅ torchvision==0.17.2, torchvision.datasets
-    ✅ torchvision==0.17.2, torchvision.transforms
-    ✅ transformers==4.39.3, huggingface
-    ✅ transformers==4.39.3, transformers
+    ✅ textblob==0.17.1, textblob.TextBlob
+    ✅ torch==2.4.1, torch
+    ✅ torch==2.4.1, torch.nn
+    ✅ torch==2.4.1, torch.nn.functional
+    ✅ torch==2.4.1, torch.utils.data
+    ✅ transformers==4.38.2, huggingface
+    ✅ transformers==4.38.2, transformers
     ✅ typing==3.7.4.3, typing
     ✅ wordcloud==1.9.3, wordcloud.WordCloud
-
-    ❌ astropy==5.2.2, astropy.coordinates.SkyCoord
-    ❌ astropy==5.2.2, astropy.table.QTable
-    ❌ dataprep==0.4.5, dataprep.eda.intermediate.Intermediate
-    ❌ gensim==4.3.2, gensim
-    ❌ ipywidgets==8.1.2, ipywidgets
-    ❌ matplotlib==3.6.2, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
-    ❌ matplotlib==3.6.2, matplotlib.Axes
-    ❌ matplotlib==3.6.2, matplotlib.Axes
-    ❌ matplotlib==3.6.2, matplotlib.image.AxesImage
-    ❌ matplotlib==3.6.2, matplotlib.image.FigureImage
-    ❌ matplotlib==3.6.2, matplotlib.lines.Line2D
-    ❌ matplotlib==3.6.2, matplotlib.offsetbox.AnchoredOffsetbox
-    ❌ matplotlib==3.6.2, matplotlib.patches.Ellipse
-    ❌ numpy==1.23.4, re.Pattern
-    ❌ polars==0.20.18, polars.DataFrame
-    ❌ qiskit==1.0.2, qiskit.QuantumCircuit
-    ❌ scikit-learn==1.3.2, sklearn.ensemble
-    ❌ seaborn==0.13.2, seaborn
-    ❌ statsmodels==0.14.1, statsmodels.api
-    ❌ tokenizers==0.15.2, tokenizers
-    ❌ torch==2.2.2, torch
-    ❌ torch==2.2.2, torch.nn.functional
-    ❌ torch==2.2.2, torch.optim
-    ❌ torch==2.2.2, torch.utils.data
-    ❌ torchvision==0.17.2, torchvision.utils
+    ❓ pandas==1.5.3, pandas.Series
+    ❓ matplotlib==3.7.5, matplotlib.Axes
+    ❓ matplotlib==3.7.5, matplotlib.Axes
+    ❓ qiskit==0.45.0, qiskit.QuantumCircuit
+    ❓ ipywidgets==7.8.5, ipywidgets
+    ❓ numpy==1.24.3, uuid.UUID
+    ❓ numpy==1.24.3, re.Pattern
+    ❓ scikit-learn==1.3.2, sklearn.cluster
+    ❓ scikit-learn==1.3.2, sklearn.cluster
+    ❓ scikit-learn==1.3.2, sklearn.compose
+    ❓ scikit-learn==1.3.2, sklearn.decomposition
+    ❓ scikit-learn==1.3.2, sklearn.discriminant_analysis
+    ❓ scikit-learn==1.3.2, sklearn.dummy
+    ❓ scikit-learn==1.3.2, sklearn.ensemble
+    ❓ scikit-learn==1.3.2, sklearn.feature_selection
+    ❓ scikit-learn==1.3.2, sklearn.impute
+    ❓ scikit-learn==1.3.2, sklearn.impute
+    ❓ scikit-learn==1.3.2, sklearn.impute
+    ❓ scikit-learn==1.3.2, sklearn.kernel_ridge
+    ❓ scikit-learn==1.3.2, sklearn.linear_model
+    ❓ scikit-learn==1.3.2, sklearn.linear_model
+    ❓ scikit-learn==1.3.2, sklearn.manifold
+    ❓ scikit-learn==1.3.2, sklearn.mixture
+    ❓ scikit-learn==1.3.2, sklearn.multiclass
+    ❓ scikit-learn==1.3.2, sklearn.naive_bayes
+    ❓ scikit-learn==1.3.2, sklearn.neighbors
+    ❓ scikit-learn==1.3.2, sklearn.neural_network
+    ❓ scikit-learn==1.3.2, sklearn.pipeline
+    ❓ scikit-learn==1.3.2, sklearn.preprocessing
+    ❓ scikit-learn==1.3.2, sklearn.random_projection
+    ❓ scikit-learn==1.3.2, sklearn.svm
+    ❓ scikit-learn==1.3.2, sklearn.tree
+    ❓ seaborn==0.13.0, seaborn
+    ❓ statsmodels==0.14.1, statsmodels.api
+    ❓ tokenizers==0.15.2, tokenizers
+    ❓ torch==2.4.1, torch.optim
+    ❓ plotly==5.18.0, plotly.express
+    ❓ plotly==5.18.0, plotly.graph_objects
+    ❓ plotly==5.18.0, plotly.figure_factory
+    ❓ plotly==5.18.0, plotly.graph_objs
+    ❓ plotly==5.18.0, plotly.subplots
+    ❓ polars==0.14.29, polars.DataFrame
+    ❓ catboost==1.2.3, catboost
+    ❓ gensim==4.3.2, gensim
+    ❓ matplotlib==3.7.5, matplotlib.colors.BoundaryNorm
+    ❓ matplotlib==3.7.5, matplotlib.lines.Line2D
+    ❓ matplotlib==3.7.5, matplotlib.patches.Ellipse
+    ❓ matplotlib==3.7.5, matplotlib.patches.Arrow
+    ❓ matplotlib==3.7.5, matplotlib.image.AxesImage
+    ❓ matplotlib==3.7.5, matplotlib.image.FigureImage
+    ❓ matplotlib==3.7.5, matplotlib.offsetbox.AnchoredOffsetbox
+    ❓ astropy==5.2.2, astropy.coordinates.SkyCoord
+    ❓ astropy==5.2.2, astropy.table.QTable
+    ❓ astropy==5.2.2, astropy.visualization.mpl_normalize.ImageNormalize
+    ❓ astropy==5.2.2, astropy.wcs.WCS
+    ❓ optuna==3.5.0, optuna.Study
+    ❓ matplotlib==3.7.5, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
+    ❓ nltk==3.8.1, nltk.stem.porter.PorterStemmer
+    ❓ lightgbm==4.3.0, lightgbm.basic.Dataset
