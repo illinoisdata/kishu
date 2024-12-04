@@ -1005,6 +1005,8 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ],
         var_modify_statements=["indices = torch.arange(25)", "subset.indices = indices"],
     ),
+    # All torchvision tests have been temporarily disabled due to conflicting dependent library versions. Will be re-introduced
+    # In later PRs.
     # LibCoverageTestCase(
     #     module_name="torchvision",
     #     class_name="torchvision.datasets",

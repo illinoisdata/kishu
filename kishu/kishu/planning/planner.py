@@ -115,7 +115,7 @@ class CheckpointRestorePlanner:
         # Populate missing ID graph entries.
         for var in self._user_ns.keyset():
             if var not in self._id_graph_map:
-                self._id_graph_map[var] = IdGraph(self._user_ns[var])
+                self._id_graph_map[var] = IdGraph.from_object(self._user_ns[var])
 
     def post_run_cell_update(
         self, commit_id: CommitId, code_block: Optional[str], runtime_s: Optional[float]
@@ -140,7 +140,7 @@ class CheckpointRestorePlanner:
         modified_vars_structure = set()
         modified_vars_value = set()
         for k in filter(self._user_ns.__contains__, self._id_graph_map.keys()):
-            new_idgraph = IdGraph(self._user_ns[k])
+            new_idgraph = IdGraph.from_object(self._user_ns[k])
 
             # Identify objects which have changed by value. For displaying in front end.
             if not self._id_graph_map[k].value_equals(new_idgraph):
@@ -162,7 +162,7 @@ class CheckpointRestorePlanner:
 
         # Update ID graphs for newly created variables.
         for var in created_vars:
-            self._id_graph_map[var] = IdGraph(self._user_ns[var])
+            self._id_graph_map[var] = IdGraph.from_object(self._user_ns[var])
 
         # Find pairs of linked variables.
         linked_var_pairs = []
@@ -208,7 +208,7 @@ class CheckpointRestorePlanner:
             """If manual commit made before init, pre-run cell update doesn't happen for new variables
             so we need to add them to self._id_graph_map"""
             if varname not in self._id_graph_map:
-                self._id_graph_map[varname] = IdGraph(self._user_ns[varname])
+                self._id_graph_map[varname] = IdGraph.from_object(self._user_ns[varname])
 
         # If incremental storage is enabled, retrieve list of currently stored VSes and compute VSes to
         # NOT migrate as they are already stored.
@@ -403,7 +403,7 @@ class CheckpointRestorePlanner:
 
         # Update ID graphs for differing active variables.
         for varname in self._get_differing_vars_post_checkout(new_active_vses):
-            self._id_graph_map[varname] = IdGraph(self._user_ns[varname])
+            self._id_graph_map[varname] = IdGraph.from_object(self._user_ns[varname])
 
         # Clear pre-run cell info.
         self._pre_run_cell_vars = set()

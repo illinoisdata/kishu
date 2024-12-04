@@ -3,29 +3,43 @@ from __future__ import annotations
 import pickle
 import re
 from dataclasses import dataclass, field
+from functools import cached_property
 from types import FunctionType, GeneratorType
 from typing import Any, List, Optional
 
-import matplotlib.pyplot as plt
 import numpy
 import pandas
-import scipy
-import sklearn.ensemble
-import sklearn.feature_extraction
-import sklearn.tree
-import torch
 import xxhash
-from matplotlib.contour import QuadContourSet
 
 from kishu.storage.config import Config
 
-KISHU_DEFAULT_PICKLES = (
-    sklearn.tree._classes.DecisionTreeRegressor,
-    sklearn.ensemble.RandomForestRegressor,
-    sklearn.feature_extraction.text.CountVectorizer,
-    plt.Axes,
-    QuadContourSet,
-)
+
+@dataclass(frozen=True)
+class ClassInstance:
+    name: str
+    module: str
+
+    @staticmethod
+    def from_object(obj: Any) -> ClassInstance:
+        return ClassInstance(type(obj).__name__, type(obj).__module__)
+
+
+KISHU_DEFAULT_PICKLES = {
+    ClassInstance("sklearn.tree._classes", "DecisionTreeRegressor"),
+    ClassInstance("sklearn.ensemble", "RandomForestRegressor"),
+    ClassInstance("sklearn.feature_extraction.text", "CountVectorizer"),
+    ClassInstance("matplotlib.pyplot", "Axes"),
+    ClassInstance("matplotlib.contour", "QuadContourSet"),
+}
+
+
+KISHU_DEFAULT_ARRAYTYPES = {
+    ClassInstance("numpy", "ndarray"),
+    ClassInstance("torch", "Tensor"),
+    ClassInstance("scipy.sparse", "csr_matrix"),
+    ClassInstance("scipy.sparse", "csc_matrix"),
+    ClassInstance("scipy.sparse", "lil_matrix"),
+}
 
 
 @dataclass
@@ -160,9 +174,7 @@ class GraphNode:
                 col.__array__().flags.writeable = False
             return node
 
-        if isinstance(
-            obj, (numpy.ndarray, torch.Tensor, scipy.sparse.csr_matrix, scipy.sparse.csc_matrix, scipy.sparse.lil_matrix)
-        ) and Config.get("IDGRAPH", "arraytype_hack", True):
+        if ClassInstance.from_object(obj) in Config.get("IDGRAPH", "arraytype_hack", KISHU_DEFAULT_ARRAYTYPES):
             # Hash hack for arraytypes. They are hashed instead of recursing into the array themselves.
             # Like the pandas dataframe hack, this may incur correctness loss if a field inside the array is assigned
             # to another variable (and causing an overlap); however, this is rare in notebooks and the speedup this brings
@@ -172,13 +184,13 @@ class GraphNode:
             h = xxhash.xxh3_128()
 
             # xxhash's update works with arbitrary arrays, even object arrays
-            h.update(numpy.ascontiguousarray(obj.data))  # type: ignore 
+            h.update(numpy.ascontiguousarray(obj.data))  # type: ignore
 
             node.children.append(h.intdigest())
             node.children.append(EndOfChildren())
             return node
 
-        if isinstance(obj, Config.get("IDGRAPH", "pickle_hack", KISHU_DEFAULT_PICKLES)):
+        if ClassInstance.from_object(obj) in Config.get("IDGRAPH", "pickle_hack", KISHU_DEFAULT_PICKLES):
             # Hack for a (configurable list of) objects which typically contain many deeply nested fields (e.g., lists) which
             # are inaccessible through member functions, so we early stop and pickle it instead (as it is very unlikely to be
             # shared via reference with other variables); otherwise ID graph construction may be very slow.
@@ -390,21 +402,25 @@ class GraphNode:
         return x
 
 
+@dataclass
 class IdGraph:
-    def __init__(self, obj: Any):
-        self._obj = obj
+    root: GraphNode
 
-        # Initialize tree of GraphNodes.
-        self._root = GraphNode.get_object_state(self._obj, {})
+    @staticmethod
+    def from_object(obj: Any) -> IdGraph:
+        return IdGraph(GraphNode.get_object_state(obj, {}))
 
-        # Initialize list for ID graph comparison.
-        self._id_list = self._root.convert_to_list()
+    @cached_property
+    def _id_list(self):
+        return self.root.convert_to_list()
 
-        # Initialize object values list for value_equals.
-        self._value_equals_list = [i for i in self._id_list if not isinstance(i, ObjectId)]
+    @cached_property
+    def _value_equals_list(self):
+        return [i for i in self._id_list if not isinstance(i, ObjectId)]
 
-        # Initialize set for ID graph overlap detection.
-        self._id_set = set([i for i in self._id_list if isinstance(i, ObjectId)])
+    @cached_property
+    def _id_set(self):
+        return set([i for i in self._id_list if isinstance(i, ObjectId)])
 
     def is_overlap(self, other: IdGraph) -> bool:
         return bool(self._id_set.intersection(other._id_set))
@@ -414,7 +430,7 @@ class IdGraph:
         Compare only the ID and type fields of root nodes of 2 ID graphs.
         Used for detecting non-overwrite modifications.
         """
-        return self._root.obj_id == other._root.obj_id and self._root.obj_type == other._root.obj_type
+        return self.root.obj_id == other.root.obj_id and self.root.obj_type == other.root.obj_type
 
     def __eq__(self, other: Any):
         if not isinstance(other, IdGraph):

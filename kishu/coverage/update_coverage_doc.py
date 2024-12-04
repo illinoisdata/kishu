@@ -12,11 +12,11 @@ Supported Libraries
 
 This is the current list of libraries, their versions, and their classes supported by Kishu:
 
-- ✅ : supported
+- ✅ : supported: All changes to instances of this class are always captured.
 
-- ❓ : unstable
+- ❓ : unstable: Kishu may report changes on non-changes to instances of this class, i.e., false positives.
 
-- ❌ : failing
+- ❌ : failing: Some changes to an instance of this class may not be captured.
 
 .. code-block:: console
 
@@ -31,7 +31,7 @@ def write_supported_libraries_page(supported_libraries_page_path: Path):
     unstables = [
         result
         for result in test_results
-        if result[3] in {TestResult.skip_nondeterministic.name, TestResult.fail_nondeterministic.name}
+        if result[3] in {TestResult.skip_nondeterministic.name, TestResult.nondeterministic_false_positive.name}
     ]
     failures = [result for result in test_results if result[3] in {TestResult.fail.name, TestResult.id_graph_error.name}]
 

@@ -24,10 +24,6 @@ Flask-CORS
 
 # Planning
 numpy
-matplotlib
 pandas
-scikit-learn
-scipy
 shortuuid
-torch
 xxhash

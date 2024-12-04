@@ -15,11 +15,11 @@ def test_idgraph_simple_list_compare_by_value():
     before and after reassigning, while comparing by structure will report a difference.
     """
     a = [1, 2]
-    idgraph1 = IdGraph(a)
+    idgraph1 = IdGraph.from_object(a)
 
     # reference swap
     a = [1, 2]
-    idgraph2 = IdGraph(a)
+    idgraph2 = IdGraph.from_object(a)
 
     assert idgraph1 != idgraph2
     assert idgraph1.value_equals(idgraph2)
@@ -28,10 +28,10 @@ def test_idgraph_simple_list_compare_by_value():
 def test_idgraph_nested_list_compare_by_value():
     a = [1, 2, 3]
     b = [a, a]
-    idgraph1 = IdGraph(a)
+    idgraph1 = IdGraph.from_object(a)
 
     b[1] = [1, 2, 3]  # Different list from a
-    idgraph2 = IdGraph(b)
+    idgraph2 = IdGraph.from_object(b)
 
     assert idgraph1 != idgraph2
     assert not idgraph1.value_equals(idgraph2)
@@ -43,11 +43,11 @@ def test_idgraph_dict_compare_by_value():
     before and after reassigning, while comparing by structure will report a difference.
     """
     a = {"foo": {"bar": "baz"}}
-    idgraph1 = IdGraph(a)
+    idgraph1 = IdGraph.from_object(a)
 
     # reference swap
     a["foo"] = {"bar": "baz"}
-    idgraph2 = IdGraph(a)
+    idgraph2 = IdGraph.from_object(a)
 
     assert idgraph1 != idgraph2
     assert idgraph1.value_equals(idgraph2)
@@ -59,23 +59,23 @@ def test_idgraph_numpy():
     """
     a = np.arange(6)
 
-    idgraph1 = IdGraph(a)
-    idgraph2 = IdGraph(a)
+    idgraph1 = IdGraph.from_object(a)
+    idgraph2 = IdGraph.from_object(a)
 
     # Assert that the obj id is as expected
-    assert idgraph1._root.obj_id == ObjectId(id(a))
+    assert idgraph1.root.obj_id == ObjectId(id(a))
 
     # Assert that the id graph does not change when the object remains unchanged
     assert idgraph1 == idgraph2
 
     a[3] = 10
-    idgraph3 = IdGraph(a)
+    idgraph3 = IdGraph.from_object(a)
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph3
 
     a[3] = 3
-    idgraph4 = IdGraph(a)
+    idgraph4 = IdGraph.from_object(a)
 
     # Assert that the original id graph is restored when the original object state is restored
     assert idgraph1 == idgraph4
@@ -115,25 +115,25 @@ def test_idgraph_pandas_Series():
     """
     s1 = pd.Series([1, 2, 3, 4])
 
-    idgraph1 = IdGraph(s1)
-    idgraph2 = IdGraph(s1)
+    idgraph1 = IdGraph.from_object(s1)
+    idgraph2 = IdGraph.from_object(s1)
 
     # Assert that the obj id is as expected
-    assert idgraph1._root.obj_id == id(s1)
+    assert idgraph1.root.obj_id == id(s1)
 
     # Assert that the id graph does not change when the object remains unchanged
     assert idgraph1.value_equals(idgraph2)
 
     s1[2] = 0
 
-    idgraph3 = IdGraph(s1)
+    idgraph3 = IdGraph.from_object(s1)
 
     # Assert that the id graph changes when the object changes
     assert not idgraph1.value_equals(idgraph3)
 
     s1[2] = 3
 
-    idgraph4 = IdGraph(s1)
+    idgraph4 = IdGraph.from_object(s1)
 
     # Assert that the original id graph is restored when the original object state is restored
     assert idgraph1.value_equals(idgraph4)
@@ -175,23 +175,23 @@ def test_idgraph_pandas_df():
     for _, col in df.items():
         col.__array__().flags.writeable = False
 
-    idgraph1 = IdGraph(df)
-    idgraph2 = IdGraph(df)
+    idgraph1 = IdGraph.from_object(df)
+    idgraph2 = IdGraph.from_object(df)
 
     # Assert that the obj id is as expected
-    assert idgraph1._root.obj_id == ObjectId(id(df))
+    assert idgraph1.root.obj_id == ObjectId(id(df))
 
     # Assert that the id graph does not change when the object remains unchanged
     assert idgraph1 == idgraph2
 
     df.at[0, "species"] = "Changed"
-    idgraph3 = IdGraph(df)
+    idgraph3 = IdGraph.from_object(df)
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph3
 
     df.at[0, "species"] = "Adelie"
-    idgraph4 = IdGraph(df)
+    idgraph4 = IdGraph.from_object(df)
 
     # Assert that with the hack, the equality is solely based on whether the current dataframe
     # (hash4) is dirty or not, even though idgraph1 and idgraph4 are id graphs
@@ -209,7 +209,7 @@ def test_idgraph_pandas_df():
     }
     df.loc[len(df)] = new_row
 
-    idgraph5 = IdGraph(df)
+    idgraph5 = IdGraph.from_object(df)
 
     # Assert that idgraph changes when new row is added to dataframe
     assert idgraph1 != idgraph5
@@ -265,11 +265,11 @@ def test_idgraph_matplotlib():
     a = plt.plot(df["a"], df["b"])
     plt.xlabel("XLABEL_1")
 
-    idgraph1 = IdGraph(a)
-    idgraph2 = IdGraph(a)
+    idgraph1 = IdGraph.from_object(a)
+    idgraph2 = IdGraph.from_object(a)
 
     # Assert that the obj id is as expected
-    assert idgraph1._root.obj_id.obj_id == id(a) and idgraph1._root.children[0].obj_id.obj_id == id(a[0])
+    assert idgraph1.root.obj_id.obj_id == id(a) and idgraph1.root.children[0].obj_id.obj_id == id(a[0])
 
     # Assert that the id graph does not change when the object remains unchanged if pickle binaries are the same
     pick1 = pickle.dumps(a[0])
@@ -281,13 +281,13 @@ def test_idgraph_matplotlib():
         assert idgraph1 == idgraph2
 
     plt.xlabel("XLABEL_2")
-    idgraph3 = IdGraph(a)
+    idgraph3 = IdGraph.from_object(a)
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph3
 
     plt.xlabel("XLABEL_1")
-    idgraph4 = IdGraph(a)
+    idgraph4 = IdGraph.from_object(a)
 
     # Assert that the original id graph is restored when the original object state is restored if pickle binaries were the same
     if pick1 != pick2:
@@ -298,13 +298,13 @@ def test_idgraph_matplotlib():
     line = plt.gca().get_lines()[0]
     line_co = line.get_color()
     line.set_color("red")
-    idgraph5 = IdGraph(a)
+    idgraph5 = IdGraph.from_object(a)
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph5
 
     line.set_color(line_co)
-    idgraph6 = IdGraph(a)
+    idgraph6 = IdGraph.from_object(a)
 
     # Assert that the original id graph is restored when the original object state is restored if pickle binaries were the same
     if pick1 != pick2:
@@ -382,11 +382,11 @@ def test_idgraph_seaborn_displot():
     plot1 = sns.displot(data=df, x="flipper_length_mm", y="bill_length_mm", kind="hist")
     plot1.set(xlabel="flipper_length_mm")
 
-    idgraph1 = IdGraph(plot1)
-    idgraph2 = IdGraph(plot1)
+    idgraph1 = IdGraph.from_object(plot1)
+    idgraph2 = IdGraph.from_object(plot1)
 
     # Assert that the obj id is as expected
-    assert idgraph1._root.obj_id.obj_id == id(plot1)
+    assert idgraph1.root.obj_id.obj_id == id(plot1)
 
     pick1 = pickle.dumps(plot1)
     pick2 = pickle.dumps(plot1)
@@ -399,13 +399,13 @@ def test_idgraph_seaborn_displot():
         assert idgraph1 == idgraph2
 
     plot1.set(xlabel="NEW LABEL")
-    idgraph3 = IdGraph(plot1)
+    idgraph3 = IdGraph.from_object(plot1)
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph3
 
     plot1.set(xlabel="flipper_length_mm")
-    idgraph4 = IdGraph(plot1)
+    idgraph4 = IdGraph.from_object(plot1)
 
     # Assert that the original id graph is restored when the original object state is restored if pickle binaries were same
     if pick1 != pick2:
@@ -469,13 +469,13 @@ def test_idgraph_seaborn_scatterplot():
     plot1.set_xlabel("flipper_length_mm")
     plot1.set_facecolor("white")
 
-    idgraph1 = IdGraph(plot1)
+    idgraph1 = IdGraph.from_object(plot1)
     print("make idgraph 1")
-    idgraph2 = IdGraph(plot1)
+    idgraph2 = IdGraph.from_object(plot1)
     print("make idgraph 2")
 
     # Assert that the obj id is as expected
-    assert idgraph1._root.obj_id.obj_id == id(plot1)
+    assert idgraph1.root.obj_id.obj_id == id(plot1)
 
     pick1 = pickle.dumps(plot1)
     pick2 = pickle.dumps(plot1)
@@ -487,13 +487,13 @@ def test_idgraph_seaborn_scatterplot():
         assert idgraph1 == idgraph2
 
     plot1.set_xlabel("Flipper Length")
-    idgraph3 = IdGraph(plot1)
+    idgraph3 = IdGraph.from_object(plot1)
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph3
 
     plot1.set_xlabel("flipper_length_mm")
-    idgraph4 = IdGraph(plot1)
+    idgraph4 = IdGraph.from_object(plot1)
 
     # Assert that the original id graph is restored when the original object state is restored if pickle binaries were same
     if pick1 != pick2:
@@ -502,7 +502,7 @@ def test_idgraph_seaborn_scatterplot():
         assert idgraph1 == idgraph4
 
     plot1.set_facecolor("#eafff5")
-    idgraph5 = IdGraph(plot1)
+    idgraph5 = IdGraph.from_object(plot1)
 
     # Assert that the id graph changes when the object changes
     assert idgraph1 != idgraph5
@@ -566,8 +566,8 @@ def test_idgraph_primitive_nonoverlap():
     list1 = [a, b, c]
     list2 = [b, c, d]
 
-    idgraph1 = IdGraph(list1)
-    idgraph2 = IdGraph(list2)
+    idgraph1 = IdGraph.from_object(list1)
+    idgraph2 = IdGraph.from_object(list2)
 
     assert not idgraph1.is_overlap(idgraph2)
 
@@ -577,8 +577,8 @@ def test_idgraph_no_overlap():
     list1 = [a, b]
     list2 = [c, d]
 
-    idgraph1 = IdGraph(list1)
-    idgraph2 = IdGraph(list2)
+    idgraph1 = IdGraph.from_object(list1)
+    idgraph2 = IdGraph.from_object(list2)
 
     assert not idgraph1.is_overlap(idgraph2)
 
@@ -588,8 +588,8 @@ def test_idgraph_nested_overlap():
     list = [a, b, c]
     nested_list = [list, d]
 
-    idgraph1 = IdGraph(list)
-    idgraph2 = IdGraph(nested_list)
+    idgraph1 = IdGraph.from_object(list)
+    idgraph2 = IdGraph.from_object(nested_list)
 
     assert idgraph1.is_overlap(idgraph2)
 
@@ -599,9 +599,7 @@ def test_idgraph_generator():
     Generators are assumed to be modified on access (i.e., whenever a new ID graph is computed for it).
     """
     gen = (i for i in range(10))
-    idgraph1 = IdGraph(gen)
-    idgraph2 = IdGraph(gen)
-    print(idgraph1._id_list)
-    print(idgraph2._id_list)
+    idgraph1 = IdGraph.from_object(gen)
+    idgraph2 = IdGraph.from_object(gen)
     assert idgraph1 != idgraph2
     assert idgraph1.is_overlap(idgraph2)
