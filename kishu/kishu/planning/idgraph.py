@@ -6,13 +6,13 @@ except ImportError:
     import pickle as kishu_pickle
 
 import io
-from dataclasses import dataclass
-from types import FunctionType
-from typing import Any, Set
-
 import numpy
 import pandas
 import xxhash
+
+from dataclasses import dataclass
+from types import FunctionType
+from typing import Any, Set
 
 from kishu.storage.config import Config
 

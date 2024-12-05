@@ -184,7 +184,7 @@ class CheckpointRestorePlanner:
             )
         )
 
-        # modified_vars_structure and modified_vars_value are identical after PR 390. TODO: update jupyterlab_kishu.
+        # modified_vars_structure and modified_vars_value are identical after PR 396. TODO: update jupyterlab_kishu.
         return ChangedVariables(created_vars, modified_vars, modified_vars, deleted_vars)
 
     def generate_checkpoint_restore_plans(self, database_path: Path, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
