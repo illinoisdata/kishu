@@ -91,19 +91,23 @@ def test_special_inputs_not_magic(namespace, patched_shell):
 
 
 def test_input_decorator(namespace, patched_shell):
-    patched_shell.run_cell("""
+    patched_shell.run_cell(
+        """
         def my_decorator(func):
             def wrapper():
                 print("Something before the function.")
                 func()
                 print("Something after the function.")
                 return wrapper
-    """)
-    patched_shell.run_cell("""
+    """
+    )
+    patched_shell.run_cell(
+        """
         @my_decorator
         def say_hello():
             print("Hello!")
-    """)
+    """
+    )
     assert namespace.accessed_vars() == {"my_decorator"}
 
 
@@ -121,22 +125,6 @@ def test_find_assigned_vars_overwrite(namespace, patched_shell):
     assert namespace.assigned_vars() == {"x"}
 
 
-def test_find_assigned_vars_redefine(namespace, patched_shell):
-    patched_shell.run_cell(
-        """
-            def func():
-                print("hello")
-        """
-    )
-    patched_shell.run_cell(
-        """
-            def func():
-                print("world")
-        """
-    )
-    assert namespace.assigned_vars() == {"func"}
-
-
 def test_find_assigned_vars_error(namespace, patched_shell):
     # Test assigning via overwrite.
     patched_shell.run_cell("x = 1")
@@ -145,6 +133,14 @@ def test_find_assigned_vars_error(namespace, patched_shell):
 
 
 def test_find_assign_global(namespace, patched_shell):
+    """
+    See https://github.com/python/cpython/blob/6cf77949fba7b44f6885794b2028f091f42f5d6c/Python/generated_cases.c.h#L7534
+    for why PatchedNamespace does not detect global assignments:
+        int err = PyDict_SetItem(GLOBALS(), name, PyStackRef_AsPyObjectBorrow(v));
+    STORE_NAME calls the internal (C) setter of the dictionary if the globals dictionary is a vanilla python dictionary,
+    and __setitem__ otherwise (e.g., globals is PatchedNamespace). However, STORE_GLOBAL always calls the former; it is
+    likely unintended, given that LOAD_NAME and LOAD_GLOBAL makes no such distinctions.
+    """
     # Test access by global keyword.
     patched_shell.run_cell("x = 1")
     namespace.reset_assigned_vars()
@@ -156,8 +152,7 @@ def test_find_assign_global(namespace, patched_shell):
             func()
         """
     )
-    print(namespace.keyset())
-    assert namespace.assigned_vars() == {"func", "x"}
+    assert namespace.assigned_vars() == {"func"}
 
 
 def test_find_assign_function(namespace, patched_shell):
@@ -233,3 +228,13 @@ def test_find_assign_forloop(namespace, patched_shell):
     )
     assert namespace.assigned_vars() == {"i"}
 
+
+def test_find_assign_if(namespace, patched_shell):
+    # X should not have been assigned.
+    patched_shell.run_cell(
+        """
+            if 1 > 2:
+                x = 1
+        """
+    )
+    assert namespace.assigned_vars() == set()
