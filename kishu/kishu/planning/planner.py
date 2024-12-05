@@ -282,6 +282,7 @@ class CheckpointRestorePlanner:
     ) -> RestorePlan:
         # Get active VSes in target state.
         target_active_vses = self._ahg.get_active_variable_snapshots(target_commit_id)
+
         # Get active VSes in LCA state.
         current_commit_id = self._kishu_graph.head()
         lca_commit_id = self._kishu_graph.get_lowest_common_ancestor_id(target_commit_id, current_commit_id)
@@ -315,7 +316,6 @@ class CheckpointRestorePlanner:
             useful_vses.useful_active_vses,
             useful_vses.useful_stored_vses,
         ).compute_plan()
-
         # Sort the VSes to load and move by cell execution number.
         move_ce_to_vs_map: Dict[CellExecution, Set[VariableSnapshot]] = defaultdict(set)
         for vs in opt_result.vss_to_move:
