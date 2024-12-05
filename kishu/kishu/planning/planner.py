@@ -117,6 +117,10 @@ class CheckpointRestorePlanner:
             if var not in self._id_graph_map:
                 self._id_graph_map[var] = IdGraph.from_object(self._user_ns[var])
 
+        # Clear patched namespace trackers.
+        self._user_ns.reset_accessed_vars()
+        self._user_ns.reset_assigned_vars()
+
     def post_run_cell_update(
         self, commit_id: CommitId, code_block: Optional[str], runtime_s: Optional[float]
     ) -> ChangedVariables:
@@ -130,9 +134,7 @@ class CheckpointRestorePlanner:
 
         # Find accessed and assigned variables from monkey-patched namespace.
         accessed_vars = self._user_ns.accessed_vars().intersection(self._pre_run_cell_vars)
-        self._user_ns.reset_accessed_vars()
         assigned_vars = self._user_ns.assigned_vars().intersection(self._pre_run_cell_vars)
-        self._user_ns.reset_assigned_vars()
 
         # Find created and deleted variables
         created_vars = self._user_ns.keyset().difference(self._pre_run_cell_vars)
