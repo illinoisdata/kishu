@@ -142,15 +142,17 @@ class CheckpointRestorePlanner:
 
         # Find candidates for modified variables: a variable can only be modified if it was
         # linked with a variable that was accessed, modified, or deleted.
-        modified_vars_candidates: Set[str] = set()
-        unmodified_vses: List[VariableSnapshot] = []
+        touched_vars = accessed_vars.union(assigned_vars).union(deleted_vars)
+        modified_vses_candidates: List[VariableSnapshot] = []
+        definitely_unmodified_vses: List[VariableSnapshot] = []
         for vs in self._ahg.get_active_variable_snapshots(self._kishu_graph.head()):
-            if vs.name.intersection(accessed_vars.union(assigned_vars).union(deleted_vars)):
-                modified_vars_candidates.update(vs.name)
+            if vs.name.intersection(touched_vars):
+                modified_vses_candidates.append(vs)
             else:
-                unmodified_vses.append(vs)
+                definitely_unmodified_vses.append(vs)
 
         # Find modified variables.
+        modified_vars_candidates = set(chain.from_iterable(vs.name for vs in modified_vses_candidates))
         modified_vars = set()
         for k in filter(self._user_ns.__contains__, modified_vars_candidates):
             new_idgraph = IdGraph.from_object(self._user_ns[k])
@@ -176,7 +178,7 @@ class CheckpointRestorePlanner:
         # Pairs of linked variables from the previous iteration that were untouched.
         # The linked pairs created here are functionally equivalent to the ground truth in terms of union-find components.
         untouched_linked_var_pairs = []
-        for vs in unmodified_vses:
+        for vs in definitely_unmodified_vses:
             name_list = list(vs.name)
             untouched_linked_var_pairs += [(name_list[i], name_list[i + 1]) for i in range(len(name_list) - 1)]
 
@@ -185,6 +187,8 @@ class CheckpointRestorePlanner:
         for x, y in combinations(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)), 2):
             if self._id_graph_map[x].is_overlap(self._id_graph_map[y]):
                 new_linked_var_pairs.append((x, y))
+
+        linked_var_pairs = untouched_linked_var_pairs + new_linked_var_pairs
 
         # Update AHG.
         runtime_s = 0.0 if runtime_s is None else runtime_s
@@ -199,7 +203,7 @@ class CheckpointRestorePlanner:
                 runtime_s,
                 accessed_vars,
                 self._user_ns.keyset(),
-                untouched_linked_var_pairs + new_linked_var_pairs,
+                linked_var_pairs,
                 modified_vars,
                 deleted_vars,
             )
