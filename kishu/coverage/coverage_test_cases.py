@@ -1366,18 +1366,19 @@ LIB_COVERAGE_TEST_CASES: List[LibCoverageTestCase] = [
         ],
         var_modify_statements=["aut.MAXTICKS=2000"],
     ),
-    LibCoverageTestCase(
-        module_name="astropy",
-        class_name="astropy.coordinates.SkyCoord",
-        var_name="icrs",
-        import_statements=["import astropy.coordinates as coord", "import astropy.units as u"],
-        var_declare_statements=[
-            "icrs = coord.SkyCoord(ra=258.58356362 * u.deg, dec=14.55255619 * u.deg, radial_velocity=-16.1 * u.km / u.s, frame='icrs',)"  # noqa: E501
-        ],
-        var_modify_statements=[
-            "icrs = SkyCoord(ra=260.0 * u.deg, dec=icrs.dec, radial_velocity=icrs.radial_velocity, frame='icrs',)"
-        ],
-    ),
+    # Non-compatible library version
+    # LibCoverageTestCase(
+    #     module_name="astropy",
+    #     class_name="astropy.coordinates.SkyCoord",
+    #     var_name="icrs",
+    #     import_statements=["import astropy.coordinates as coord", "import astropy.units as u"],
+    #     var_declare_statements=[
+    #         "icrs = coord.SkyCoord(ra=258.58356362 * u.deg, dec=14.55255619 * u.deg, radial_velocity=-16.1 * u.km / u.s, frame='icrs',)"  # noqa: E501
+    #     ],
+    #     var_modify_statements=[
+    #         "icrs = SkyCoord(ra=260.0 * u.deg, dec=icrs.dec, radial_velocity=icrs.radial_velocity, frame='icrs',)"
+    #     ],
+    # ),
     LibCoverageTestCase(
         module_name="astropy",
         class_name="astropy.io.fits.HDUList",

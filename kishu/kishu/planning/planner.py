@@ -137,24 +137,19 @@ class CheckpointRestorePlanner:
         deleted_vars = self._pre_run_cell_vars.difference(self._user_ns.keyset())
 
         # Find modified variables.
-        modified_vars_structure = set()
-        modified_vars_value = set()
+        modified_vars = set()
         for k in filter(self._user_ns.__contains__, self._id_graph_map.keys()):
             new_idgraph = IdGraph.from_object(self._user_ns[k])
-
-            # Identify objects which have changed by value. For displaying in front end.
-            if not self._id_graph_map[k].value_equals(new_idgraph):
-                modified_vars_value.add(k)
 
             if not self._id_graph_map[k] == new_idgraph:
                 # Non-overwrite modification requires also accessing the variable.
                 if self._id_graph_map[k].is_root_id_and_type_equals(new_idgraph):
                     accessed_vars.add(k)
                 self._id_graph_map[k] = new_idgraph
-                modified_vars_structure.add(k)
+                modified_vars.add(k)
 
         # Pandas dataframe dirty bit hack for ID graphs: flip the writeable flag for all newly created dataframes to false.
-        if Config.get("IDGRAPH", "pandas_df_hack", True):
+        if Config.get("IDGRAPH", "pandas_df_speedup", True):
             for var in created_vars:
                 if isinstance(self._user_ns[var], pandas.DataFrame):
                     for _, col in self._user_ns[var].items():
@@ -184,12 +179,13 @@ class CheckpointRestorePlanner:
                 accessed_vars,
                 self._user_ns.keyset(),
                 linked_var_pairs,
-                modified_vars_structure,
+                modified_vars,
                 deleted_vars,
             )
         )
 
-        return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
+        # modified_vars_structure and modified_vars_value are identical after PR 390. TODO: update jupyterlab_kishu.
+        return ChangedVariables(created_vars, modified_vars, modified_vars, deleted_vars)
 
     def generate_checkpoint_restore_plans(self, database_path: Path, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
         if self._incremental_cr:
@@ -286,7 +282,6 @@ class CheckpointRestorePlanner:
     ) -> RestorePlan:
         # Get active VSes in target state.
         target_active_vses = self._ahg.get_active_variable_snapshots(target_commit_id)
-
         # Get active VSes in LCA state.
         current_commit_id = self._kishu_graph.head()
         lca_commit_id = self._kishu_graph.get_lowest_common_ancestor_id(target_commit_id, current_commit_id)

@@ -189,7 +189,7 @@ class TestPlanner:
         assert changed_vars == ChangedVariables(
             created_vars=set(),
             modified_vars_value=set(),
-            modified_vars_structure={"z"},
+            modified_vars_structure=set(),
             deleted_vars={"x"},
         )
 
