@@ -6,15 +6,17 @@ except ImportError:
     import pickle as kishu_pickle
 
 import io
+from dataclasses import dataclass
+from typing import Any, Set, Type
+
 import numpy
 import pandas
 import xxhash
 
-from dataclasses import dataclass
-from types import FunctionType
-from typing import Any, Set
-
 from kishu.storage.config import Config
+
+BINARRAY = b"array"
+NUMPY_CREATE_ARRAY = "_create_array"
 
 
 @dataclass(frozen=True)
@@ -28,11 +30,17 @@ class ClassInstance:
 
 
 KISHU_DEFAULT_ARRAYTYPES = {
-    ClassInstance("numpy", "ndarray"),
-    ClassInstance("torch", "Tensor"),
-    ClassInstance("scipy.sparse", "csr_matrix"),
-    ClassInstance("scipy.sparse", "csc_matrix"),
-    ClassInstance("scipy.sparse", "lil_matrix"),
+    ClassInstance("ndarray", "numpy"),
+    ClassInstance("Tensor", "torch"),
+    ClassInstance("csr_matrix", "scipy.sparse"),
+    ClassInstance("csc_matrix", "scipy.sparse"),
+    ClassInstance("lil_matrix", "scipy.sparse"),
+}
+
+
+KISHU_DEFAULT_SKIP_FUNCTIONS = {
+    "_create_array",  # Shared between all numpy arrays
+    "_reconstruct",  # Shared between all numpy arrays
 }
 
 
@@ -79,18 +87,14 @@ class TrackedPickler(kishu_pickle.Pickler):
             h = xxhash.xxh3_128()
 
             # xxhash's update works with arbitrary arrays, even object arrays
-            h.update(numpy.ascontiguousarray(obj.data))  # type: ignore
-            self.write(h.intdigest())
+            h.update(obj.data)  # type: ignore
+            self.write(BINARRAY + h.digest())
             self._memoize(obj, save_persistent_id)
 
-        elif isinstance(obj, type) or issubclass(type(obj), numpy.dtype):
-            # These types, when tracking memory addresses, result in (1) all arrays/dataframes in the session
+        elif issubclass(type(obj), numpy.dtype):
+            # numpy types, when tracking memory addresses, result in (1) all arrays/dataframes in the session
             # to be linked to each other and (2) all objects from the same library to be linked. Skip their addresses.
             self.write(kishu_pickle.dumps(obj))
-
-        elif isinstance(obj, FunctionType):
-            # Same as above.
-            self.write(kishu_pickle.dumps(obj.__code__))
 
         else:
             try:
@@ -103,23 +107,23 @@ class TrackedPickler(kishu_pickle.Pickler):
 @dataclass
 class IdGraph:
     root_id: int
-    root_type: Any
-    serialized_hash: int
+    root_type: Type
+    serialized_hash: bytes
     addresses: Set[int]
     definitely_changed: bool
 
     @staticmethod
     def from_object(obj: Any) -> IdGraph:
         f = io.BytesIO()
-        pickler = TrackedPickler(f, kishu_pickle.HIGHEST_PROTOCOL)
+        pickler = TrackedPickler(f, kishu_pickle.HIGHEST_PROTOCOL, recurse=True)
         pickler.dump(obj)
         h = xxhash.xxh3_128()
         h.update(f.getvalue())
         return IdGraph(
-            serialized_hash=h.intdigest(),
-            addresses=set(pickler.memo.keys()),
             root_id=id(obj),
             root_type=type(obj),
+            serialized_hash=h.digest(),
+            addresses=set(pickler.memo.keys()),
             definitely_changed=pickler.definitely_changed,
         )
 
@@ -135,5 +139,5 @@ class IdGraph:
 
     def __eq__(self, other: Any):
         if not isinstance(other, IdGraph):
-            return NotImplemented
+            raise NotImplementedError("Comparisons between ID Graphs and non-ID Graphs are not supported.")
         return not other.definitely_changed and self.serialized_hash == other.serialized_hash

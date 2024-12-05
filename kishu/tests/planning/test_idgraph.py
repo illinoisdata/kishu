@@ -16,12 +16,16 @@ def test_idgraph_simple_list_compare_by_value():
     """
     a = [1, 2]
     idgraph1 = IdGraph.from_object(a)
+    idgraph2 = IdGraph.from_object(a)
 
     # reference swap
     a = [1, 2]
-    idgraph2 = IdGraph.from_object(a)
+    idgraph3 = IdGraph.from_object(a)
 
     assert idgraph1 == idgraph2
+    assert idgraph1 == idgraph3
+    assert idgraph1.is_root_id_and_type_equals(idgraph2)
+    assert not idgraph1.is_root_id_and_type_equals(idgraph3)
 
 
 def test_idgraph_nested_list_changed_structure():
@@ -87,6 +91,19 @@ def test_idgraph_numpy():
 
     # Assert that the original id graph is restored when the original object state is restored
     assert idgraph1 == idgraph4
+
+
+def test_idgraph_numpy_nonoverlap():
+    """
+    Test if idgraph overlaps are accurately detected for numpy arrays.
+    """
+    a = np.array([6])
+    b = np.array([7, 8])
+
+    idgraph1 = IdGraph.from_object(a)
+    idgraph2 = IdGraph.from_object(b)
+
+    assert not idgraph1.is_overlap(idgraph2)
 
 
 @pytest.mark.skip(reason="Flaky")
@@ -373,4 +390,21 @@ def test_idgraph_generator():
     idgraph1 = IdGraph.from_object(gen)
     idgraph2 = IdGraph.from_object(gen)
     assert idgraph1 != idgraph2
+    assert idgraph1.is_overlap(idgraph2)
+
+
+def test_idgraph_functiontype():
+    """
+    Functiontypes overlap with their accessed globals.
+    """
+    globals_dict = {}
+    function_str = """
+def test():
+    global x
+    x = []
+"""
+    exec("x = 1", globals_dict)
+    exec(function_str, globals_dict)
+    idgraph1 = IdGraph.from_object(globals_dict["x"])
+    idgraph2 = IdGraph.from_object(globals_dict["test"])
     assert idgraph1.is_overlap(idgraph2)

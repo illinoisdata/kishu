@@ -200,6 +200,7 @@ class CheckpointRestorePlanner:
     ) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = self._ahg.get_active_variable_snapshots(commit_id)
+
         for varname in self._user_ns.keyset():
             """If manual commit made before init, pre-run cell update doesn't happen for new variables
             so we need to add them to self._id_graph_map"""

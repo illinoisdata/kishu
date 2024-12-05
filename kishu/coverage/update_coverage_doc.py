@@ -12,11 +12,11 @@ Supported Libraries
 
 This is the current list of libraries, their versions, and their classes supported by Kishu:
 
-- ✅ : supported: All changes to instances of this class are always captured.
+- ✅ supported: All changes to instances of this class are always captured.
 
-- ❓ : unstable: Kishu may report changes on non-changes to instances of this class, i.e., false positives.
+- ❓ unstable: Kishu may report changes on non-changes to instances of this class, i.e., false positives.
 
-- ❌ : failing: Some changes to an instance of this class may not be captured.
+- ❌ failing: Some changes to an instance of this class may not be captured.
 
 .. code-block:: console
 
