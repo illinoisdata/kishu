@@ -87,7 +87,7 @@ class TrackedPickler(kishu_pickle.Pickler):
             h = xxhash.xxh3_128()
 
             # xxhash's update works with arbitrary arrays, even object arrays
-            h.update(obj.data)  # type: ignore
+            h.update(numpy.ascontiguousarray(obj.data))  # type: ignore
             self.write(BINARRAY + h.digest())
             self._memoize(obj, save_persistent_id)
 

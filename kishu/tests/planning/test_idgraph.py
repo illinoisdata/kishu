@@ -403,7 +403,7 @@ def test():
     global x
     x = []
 """
-    exec("x = 1", globals_dict)
+    exec("x = set()", globals_dict)
     exec(function_str, globals_dict)
     idgraph1 = IdGraph.from_object(globals_dict["x"])
     idgraph2 = IdGraph.from_object(globals_dict["test"])
