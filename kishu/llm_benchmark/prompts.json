@@ -1,0 +1,7 @@
+[
+  {
+    "exp_name": "middle",
+    "data": ["/home/hanxif2/exp/kishu/llm_benchmark/spotify/top_podcasts.csv"],
+    "task": "My dataset is in /home/hanxif2/exp/kishu/llm_benchmark/spotify/top_podcasts.csv, it has header. It has the following fields:date,rank,region,chartRankMove,episodeUri,showUri,episodeName,description,show.name,show.description,show.publisher,duration_ms,explicit,is_externally_hosted,is_playable,language,languages,release_date,release_date_precision,show.copyrights,show.explicit,show.href,show.html_description,show.is_externally_hosted,show.languages,show.media_type,show.total_episodes,show.type,show.uri. I want to build a model to track how podcast rankings change over time to identify emerging trends."
+  }
+]
