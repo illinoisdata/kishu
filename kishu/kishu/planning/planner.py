@@ -205,6 +205,17 @@ class CheckpointRestorePlanner:
             )
         )
 
+        # for testing semantic error
+        print(f"modified_vars_value: {modified_vars}")
+        print(f"modified_vars_value_types: {[type(self._user_ns[var]) for var in modified_vars]}")
+        print(f"created_vars: {created_vars}")
+        print(f"created_vars_types: {[type(self._user_ns[var]) for var in created_vars]}")
+        print(f"deleted_vars:{deleted_vars}")
+        print(f"deleted_vars_types: {[type(self._user_ns[var]) for var in deleted_vars]}")
+
+        print(f"accessed_vars: {accessed_vars}")
+        print(f"accessed_vars_types: {[type(self._user_ns[var]) for var in accessed_vars]}")
+
         # modified_vars_structure and modified_vars_value are identical after PR 396. TODO: update jupyterlab_kishu.
         return ChangedVariables(created_vars, modified_vars, modified_vars, deleted_vars)
 
