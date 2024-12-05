@@ -427,7 +427,7 @@ class TestKishuCommand:
             # Get commit id of commit which we want to restore
             log_result = KishuCommand.log_all(notebook_path)
             assert len(log_result.commit_graph) == len(contents) + 1  # all cells + init cell + print variable cell
-            commit_id = log_result.commit_graph[cell_num_to_restore].commit_id
+            commit_id = log_result.commit_graph[cell_num_to_restore - 1].commit_id  # Want to checkout to cell before printing
 
             # Restore to that commit
             KishuCommand.checkout(notebook_path, commit_id)
@@ -466,12 +466,7 @@ class TestKishuCommand:
         [
             ("numpy.ipynb", 4, "iris_X_train"),
             ("simple.ipynb", 4, "b"),
-            pytest.param(
-                "test_unserializable_var.ipynb",
-                2,
-                "next(gen)",
-                marks=pytest.mark.skip(reason="TODO: import fix from zl20/vldb_2025 in future PR."),
-            ),
+            ("test_unserializable_var.ipynb", 2, "next(gen)"),
             pytest.param("QiskitDemo_NCSA_May2023.ipynb", 61, "qc", marks=pytest.mark.skip(reason="Flaky")),
         ],
     )

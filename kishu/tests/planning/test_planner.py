@@ -144,7 +144,7 @@ class TestPlanner:
         Test running a few cell updates.
         """
         # Namespace contains untracked cells 1 and 2.
-        user_ns = Namespace({"x": 1000, "y": 2000, "In": ["%%time\nx = 1000", "%%time\ny = 2000"]})
+        user_ns = Namespace({"x": 1, "y": 2, "In": ["%%time\nx = 1", "%%time\ny = 2"]})
 
         planner = CheckpointRestorePlanner.from_existing(user_ns, kishu_disk_ahg, kishu_graph, incremental_cr=False)
         planner_manager = PlannerManager(planner)
@@ -155,10 +155,7 @@ class TestPlanner:
         assert len(planner.get_ahg().get_all_cell_executions()) == 0
 
         # Run cell 3; x is incremented by 1.
-        # If x and y are integers between 0-255, they will be detected as linked as they are stored in
-        # fixed memory addresses.
-        # TODO in a later PR: hardcode these cases as exceptions in ID graph to not consider as linking.
-        planner_manager.run_cell("1:3", {"x": 2001}, "%%time\nx += 1")
+        planner_manager.run_cell("1:3", {"x": 2}, "%%time\nx += 1")
 
         # Assert correct contents of AHG is maintained after initializing the planner in a non-empty namespace.
         assert len(planner.get_ahg().get_all_variable_snapshots()) == 2
@@ -192,7 +189,7 @@ class TestPlanner:
         assert changed_vars == ChangedVariables(
             created_vars=set(),
             modified_vars_value=set(),
-            modified_vars_structure={"z"},
+            modified_vars_structure=set(),
             deleted_vars={"x"},
         )
 
@@ -264,7 +261,7 @@ class TestPlanner:
         planner_manager = PlannerManager(planner)
 
         # Run cell 1.
-        x = 1
+        x = []
         planner_manager.run_cell("1:1", {"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
         # Create and run checkpoint plan for cell 1.

@@ -1,377 +1,143 @@
 from __future__ import annotations
 
-import pickle
-from typing import Any, List, Optional
+try:
+    import dill as kishu_pickle
+except ImportError:
+    import pickle as kishu_pickle
 
+import io
+from dataclasses import dataclass
+from typing import Any, Set, Type
+
+import numpy
 import pandas
 import xxhash
 
+from kishu.storage.config import Config
 
-class GraphNode:
+BINARRAY = b"array"
+NUMPY_CREATE_ARRAY = "_create_array"
 
-    def __init__(self, obj_type=type(None), id_obj: Optional[int] = None):
-        self.id_obj = id_obj
-        self.children: List[Any] = []
-        self.obj_type = obj_type
 
-    def convert_to_list(self, check_id_obj=True):
-        ls = []
-        GraphNode._convert_idgraph_to_list(self, ls, set(), check_id_obj)
-        return ls
+@dataclass(frozen=True)
+class ClassInstance:
+    name: str
+    module: str
 
-    def id_set(self):
-        return set([i for i in self.convert_to_list() if isinstance(i, int)])
+    @staticmethod
+    def from_object(obj: Any) -> ClassInstance:
+        return ClassInstance(type(obj).__name__, type(obj).__module__)
 
-    def is_overlap(self, other: GraphNode) -> bool:
-        if self.id_set().intersection(other.id_set()):
-            return True
-        return False
 
-    def is_root_id_and_type_equals(self, other):
+KISHU_DEFAULT_ARRAYTYPES = {
+    ClassInstance("ndarray", "numpy"),
+    ClassInstance("Tensor", "torch"),
+    ClassInstance("csr_matrix", "scipy.sparse"),
+    ClassInstance("csc_matrix", "scipy.sparse"),
+    ClassInstance("lil_matrix", "scipy.sparse"),
+}
+
+
+KISHU_DEFAULT_SKIP_FUNCTIONS = {
+    "_create_array",  # Shared between all numpy arrays
+    "_reconstruct",  # Shared between all numpy arrays
+}
+
+
+class TrackedPickler(kishu_pickle.Pickler):
+    def __init__(self, *args, **kwargs):
+        kishu_pickle.Pickler.__init__(self, *args, **kwargs)
+        self.definitely_changed: bool = False
+
+    def _memoize(self, obj: Any, save_persistent_id: bool) -> None:
+        self.framer.commit_frame()
+
+        # Check for persistent id (defined by a subclass)
+        if save_persistent_id:
+            pid = self.persistent_id(obj)
+            if pid is not None:
+                self.save_pers(pid)
+                return
+
+        # Check the memo
+        x = self.memo.get(id(obj))
+        if x is not None:
+            self.write(self.get(x[0]))
+            return
+
+        self.memoize(obj)
+
+    def save(self, obj: Any, save_persistent_id=True) -> None:
+        if isinstance(obj, pandas.DataFrame) and Config.get("IDGRAPH", "pandas_df_speedup", True):
+            # Pandas dataframe dirty bit speedup. We can use the writeable flag as a dirty bit to check for updates
+            # (as any Pandas operation will flip the bit back to True).
+            # Notably, this may prevent the usage of certain slicing operations; however, they are rare compared
+            # to boolean indexing, hence this tradeoff is acceptable.
+            for _, col in obj.items():
+                if col.__array__().flags.writeable:
+                    self.definitely_changed = True
+                col.__array__().flags.writeable = False
+            self._memoize(obj, save_persistent_id)
+
+        elif ClassInstance.from_object(obj) in Config.get("IDGRAPH", "arraytype_speedup", KISHU_DEFAULT_ARRAYTYPES):
+            # Hash speedup for arraytypes. They are hashed instead of recursing into the array themselves.
+            # Like the pandas dataframe hack, this may incur correctness loss if a field inside the array is assigned
+            # to another variable (and causing an overlap); however, this is rare in notebooks and the speedup this brings
+            # is significant.
+            h = xxhash.xxh3_128()
+
+            # xxhash's update works with arbitrary arrays, even object arrays
+            h.update(numpy.ascontiguousarray(obj.data))  # type: ignore
+            self.write(BINARRAY + h.digest())
+            self._memoize(obj, save_persistent_id)
+
+        elif issubclass(type(obj), numpy.dtype):
+            # numpy types, when tracking memory addresses, result in (1) all arrays/dataframes in the session
+            # to be linked to each other and (2) all objects from the same library to be linked. Skip their addresses.
+            self.write(kishu_pickle.dumps(obj))
+
+        else:
+            try:
+                return kishu_pickle.Pickler.save(self, obj, save_persistent_id)
+            except (kishu_pickle.PickleError, ValueError, AttributeError, TypeError):
+                self.definitely_changed = True
+                self._memoize(obj, save_persistent_id)
+
+
+@dataclass
+class IdGraph:
+    root_id: int
+    root_type: Type
+    serialized_hash: bytes
+    addresses: Set[int]
+    definitely_changed: bool
+
+    @staticmethod
+    def from_object(obj: Any) -> IdGraph:
+        f = io.BytesIO()
+        pickler = TrackedPickler(f, kishu_pickle.HIGHEST_PROTOCOL, recurse=True)
+        pickler.dump(obj)
+        h = xxhash.xxh3_128()
+        h.update(f.getvalue())
+        return IdGraph(
+            root_id=id(obj),
+            root_type=type(obj),
+            serialized_hash=h.digest(),
+            addresses=set(pickler.memo.keys()),
+            definitely_changed=pickler.definitely_changed,
+        )
+
+    def is_overlap(self, other: IdGraph) -> bool:
+        return bool(self.addresses.intersection(other.addresses))
+
+    def is_root_id_and_type_equals(self, other: IdGraph):
         """
         Compare only the ID and type fields of root nodes of 2 ID graphs.
         Used for detecting non-overwrite modifications.
         """
-        if other is None:
-            return False
-        return self.id_obj == other.id_obj and self.obj_type == other.obj_type
-
-    def __eq__(self, other):
-        return GraphNode._compare_idgraph(self, other, check_id_obj=True)
-
-    @staticmethod
-    def _convert_idgraph_to_list(node: GraphNode, ret_list, visited: set, check_id_obj=True):
-        # pre oder
-
-        if node.id_obj and check_id_obj:
-            ret_list.append(node.id_obj)
-
-        ret_list.append(node.obj_type)
-
-        if id(node) in visited:
-            ret_list.append("CYCLIC_REFERENCE")
-            return
-
-        visited.add(id(node))
-
-        for child in node.children:
-            if isinstance(child, GraphNode):
-                GraphNode._convert_idgraph_to_list(child, ret_list, visited, check_id_obj)
-            else:
-                ret_list.append(child)
-
-    @staticmethod
-    def _compare_idgraph(idGraph1: GraphNode, idGraph2: GraphNode, check_id_obj=True) -> bool:
-        ls1 = idGraph1.convert_to_list(check_id_obj)
-        ls2 = idGraph2.convert_to_list(check_id_obj)
-
-        if len(ls1) != len(ls2):
-            # print("Diff lengths of idgraph")
-            return False
-
-        for i in range(len(ls1)):
-            if pandas.isnull(ls1[i]):
-                if pandas.isnull(ls2[i]):
-                    continue
-                # print("Diff: ", ls1[i], ls2[i])
-                return False
-            if ls1[i] != ls2[i]:
-                # print("Diff: ", ls1[i], ls2[i])
-                return False
-
-        return True
-
-
-def is_pickable(obj):
-    try:
-        pickle.dumps(obj)
-        return True
-    except (pickle.PicklingError, AttributeError, TypeError):
-        return False
-
-
-def value_equals(idGraph1: GraphNode, idGraph2: GraphNode):
-    """
-    Compare only the object values (not memory addresses) of 2 ID graphs.
-    Notably, this identifies two value-wise equal object stored in different memory locations
-    as equal.
-    Used by frontend to display variable diffs.
-    """
-    return GraphNode._compare_idgraph(idGraph1, idGraph2, check_id_obj=False)
-
-
-def get_object_state(obj, visited: dict, include_id=True) -> GraphNode:
-
-    if id(obj) in visited.keys():
-        return visited[id(obj)]
-
-    if isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
-        node = GraphNode(obj_type=type(obj))
-        node.children.append(obj)
-        node.children.append("/EOC")
-        return node
-
-    elif isinstance(obj, tuple):
-        node = GraphNode(obj_type=type(obj))
-        for item in obj:
-            child = get_object_state(item, visited, include_id)
-            node.children.append(child)
-
-        node.children.append("/EOC")
-        return node
-
-    elif isinstance(obj, list):
-        node = GraphNode(obj_type=type(obj))
-        visited[id(obj)] = node
-        if include_id:
-            node.id_obj = id(obj)
-
-        for item in obj:
-            child = get_object_state(item, visited, include_id)
-            node.children.append(child)
-
-        node.children.append("/EOC")
-        return node
-
-    elif isinstance(obj, set):
-        node = GraphNode(obj_type=type(obj), id_obj=id(obj))
-        visited[id(obj)] = node
-        if include_id:
-            node.id_obj = id(obj)
-        for item in obj:
-            child = get_object_state(item, visited, include_id)
-            node.children.append(child)
-
-        node.children.append("/EOC")
-        return node
-
-    elif isinstance(obj, dict):
-        node = GraphNode(obj_type=type(obj))
-        visited[id(obj)] = node
-        if include_id:
-            node.id_obj = id(obj)
-
-        for key, value in obj.items():
-            child = get_object_state(key, visited, include_id)
-            node.children.append(child)
-            child = get_object_state(value, visited, include_id)
-            node.children.append(child)
-
-        node.children.append("/EOC")
-        return node
-
-    elif isinstance(obj, (bytes, bytearray)):
-        node = GraphNode(obj_type=type(obj))
-        visited[id(obj)] = node
-        node.children.append(obj)
-        node.children.append("/EOC")
-        return node
-
-    elif isinstance(obj, type):
-        node = GraphNode(obj_type=type(obj))
-        visited[id(obj)] = node
-        node.children.append(str(obj))
-        node.children.append("/EOC")
-        return node
-
-    elif callable(obj):
-        node = GraphNode(obj_type=type(obj))
-        visited[id(obj)] = node
-        if include_id:
-            node.id_obj = id(obj)
-        # This will break if obj is not pickleable. Commenting out for now.
-        if is_pickable(obj):
-            node.children.append(pickle.dumps(obj))
-        node.children.append("/EOC")
-        return node
-
-    elif hasattr(obj, "__reduce_ex__"):
-        node = GraphNode(obj_type=type(obj))
-        visited[id(obj)] = node
-        if is_pickable(obj):
-            reduced = obj.__reduce_ex__(4)
-            if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
-                node.id_obj = id(obj)
-
-            if isinstance(reduced, str):
-                node.children.append(reduced)
-                return node
-
-            for item in reduced[1:]:
-                child = get_object_state(item, visited, False)
-                node.children.append(child)
-            node.children.append("/EOC")
-        return node
-
-    elif hasattr(obj, "__reduce__"):
-        node = GraphNode(obj_type=type(obj))
-        visited[id(obj)] = node
-        if is_pickable(obj):
-            reduced = obj.__reduce__()
-            node.id_obj = id(obj)
-
-            if isinstance(reduced, str):
-                node.children.append(reduced)
-                return node
-
-            for item in reduced[1:]:
-                child = get_object_state(item, visited, False)
-                node.children.append(child)
-
-            node.children.append("/EOC")
-        return node
-
-    elif hasattr(obj, "__getstate__"):
-        node = GraphNode(obj_type=type(obj))
-        visited[id(obj)] = node
-        node.id_obj = id(obj)
-
-        for attr_name, attr_value in obj.__getstate__().items():
-            node.children.append(attr_name)
-            child = get_object_state(attr_value, visited, False)
-            node.children.append(child)
-
-        node.children.append("/EOC")
-        return node
-
-    elif hasattr(obj, "__dict__"):
-        # visited.add(id(obj))
-        node = GraphNode(obj_type=type(obj))
-        visited[id(obj)] = node
-        node.id_obj = id(obj)
-
-        for attr_name, attr_value in obj.__dict__.items():
-            node.children.append(attr_name)
-            child = get_object_state(attr_value, visited)
-            node.children.append(child)
-
-        node.children.append("/EOC")
-        return node
-
-    else:
-        node = GraphNode(obj_type=type(obj))
-        visited[id(obj)] = node
-        if include_id:
-            node.id_obj = id(obj)
-        node.children.append(pickle.dumps(obj))
-        node.children.append("/EOC")
-        return node
-
-
-def build_object_hash(obj, visited: set, include_id=True, hashed=xxhash.xxh32()):
-    if id(obj) in visited:
-        hashed.update(str(type(obj)))
-        if include_id:
-            hashed.update(str(id(obj)))
-
-    elif isinstance(obj, (int, float, str, bool, type(None), type(NotImplemented), type(Ellipsis))):
-        hashed.update(str(type(obj)))
-        hashed.update(str(obj))
-        hashed.update("/EOC")
-
-    elif isinstance(obj, tuple):
-        hashed.update(str(type(obj)))
-        for item in obj:
-            build_object_hash(item, visited, include_id, hashed)
-
-        hashed.update("/EOC")
-
-    elif isinstance(obj, list):
-        hashed.update(str(type(obj)))
-        visited.add(id(obj))
-        if include_id:
-            hashed.update(str(id(obj)))
-
-        for item in obj:
-            build_object_hash(item, visited, include_id, hashed)
-
-        hashed.update("/EOC")
-
-    elif isinstance(obj, set):
-        hashed.update(str(type(obj)))
-        visited.add(id(obj))
-        if include_id:
-            hashed.update(str(id(obj)))
-
-        for item in obj:
-            build_object_hash(item, visited, include_id, hashed)
-
-        hashed.update("/EOC")
-
-    elif isinstance(obj, dict):
-        hashed.update(str(type(obj)))
-        visited.add(id(obj))
-        if include_id:
-            hashed.update(str(id(obj)))
-
-        for key, value in obj.items():
-            build_object_hash(key, visited, include_id, hashed)
-            build_object_hash(value, visited, include_id, hashed)
-
-        hashed.update("/EOC")
-
-    elif isinstance(obj, (bytes, bytearray)):
-        hashed.update(str(type(obj)))
-        hashed.update(obj)
-        hashed.update("/EOC")
-
-    elif isinstance(obj, type):
-        hashed.update(str(type(obj)))
-        hashed.update(str(obj))
-
-    elif callable(obj):
-        hashed.update(str(type(obj)))
-        if include_id:
-            visited.add(id(obj))
-            hashed.update(str(id(obj)))
-
-        hashed.update("/EOC")
-
-    elif hasattr(obj, "__reduce_ex__"):
-        visited.add(id(obj))
-        hashed.update(str(type(obj)))
-
-        if is_pickable(obj):
-            reduced = obj.__reduce_ex__(4)
-            if not isinstance(obj, pandas.core.indexes.range.RangeIndex):
-                hashed.update(str(id(obj)))
-
-            if isinstance(reduced, str):
-                hashed.update(reduced)
-                return
-
-            for item in reduced[1:]:
-                build_object_hash(item, visited, False, hashed)
-
-            hashed.update("/EOC")
-
-    elif hasattr(obj, "__reduce__"):
-        visited.add(id(obj))
-        hashed.update(str(type(obj)))
-        if is_pickable(obj):
-            reduced = obj.__reduce__()
-            hashed.update(str(id(obj)))
-
-            if isinstance(reduced, str):
-                hashed.udpate(reduced)
-                return
-
-            for item in reduced[1:]:
-                build_object_hash(item, visited, False, hashed)
-
-            hashed.update("/EOC")
-
-    else:
-        print("Comes here")
-        visited.add(id(obj))
-        hashed.update(str(type(obj)))
-        if include_id:
-            hashed.update(str(id(obj)))
-        hashed.update(pickle.dumps(obj))
-        hashed.update("/EOC")
-
-
-def get_object_hash(obj):
-    x = xxhash.xxh32()
-    build_object_hash(obj, set(), True, x)
-    return x
+        return self.root_id == other.root_id and self.root_type == other.root_type
+
+    def __eq__(self, other: Any):
+        if not isinstance(other, IdGraph):
+            raise NotImplementedError("Comparisons between ID Graphs and non-ID Graphs are not supported.")
+        return not other.definitely_changed and self.serialized_hash == other.serialized_hash

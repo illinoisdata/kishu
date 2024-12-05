@@ -7,16 +7,18 @@ from itertools import chain, combinations
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
+import pandas
 from IPython.core.inputtransformer2 import TransformerManager
 
 from kishu.exceptions import MissingHistoryError
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.ahg import AHG, AHGUpdateInfo
-from kishu.planning.idgraph import GraphNode, get_object_state, value_equals
+from kishu.planning.idgraph import IdGraph
 from kishu.planning.optimizer import IncrementalLoadOptimizer, Optimizer
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit_graph import CommitId, KishuCommitGraph
+from kishu.storage.config import Config
 from kishu.storage.disk_ahg import CellExecution, KishuDiskAHG, VariableName, VariableSnapshot
 
 
@@ -69,7 +71,7 @@ class CheckpointRestorePlanner:
         """
         self._ahg = ahg if ahg else AHG(kishu_disk_ahg)
         self._user_ns = user_ns
-        self._id_graph_map: Dict[str, GraphNode] = {}
+        self._id_graph_map: Dict[str, IdGraph] = {}
         self._pre_run_cell_vars: Set[str] = set()
 
         # C/R plan configs.
@@ -113,7 +115,7 @@ class CheckpointRestorePlanner:
         # Populate missing ID graph entries.
         for var in self._user_ns.keyset():
             if var not in self._id_graph_map:
-                self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
+                self._id_graph_map[var] = IdGraph.from_object(self._user_ns[var])
 
     def post_run_cell_update(
         self, commit_id: CommitId, code_block: Optional[str], runtime_s: Optional[float]
@@ -135,25 +137,27 @@ class CheckpointRestorePlanner:
         deleted_vars = self._pre_run_cell_vars.difference(self._user_ns.keyset())
 
         # Find modified variables.
-        modified_vars_structure = set()
-        modified_vars_value = set()
+        modified_vars = set()
         for k in filter(self._user_ns.__contains__, self._id_graph_map.keys()):
-            new_idgraph = get_object_state(self._user_ns[k], {})
-
-            # Identify objects which have changed by value. For displaying in front end.
-            if not value_equals(self._id_graph_map[k], new_idgraph):
-                modified_vars_value.add(k)
+            new_idgraph = IdGraph.from_object(self._user_ns[k])
 
             if not self._id_graph_map[k] == new_idgraph:
                 # Non-overwrite modification requires also accessing the variable.
                 if self._id_graph_map[k].is_root_id_and_type_equals(new_idgraph):
                     accessed_vars.add(k)
                 self._id_graph_map[k] = new_idgraph
-                modified_vars_structure.add(k)
+                modified_vars.add(k)
+
+        # Pandas dataframe dirty bit hack for ID graphs: flip the writeable flag for all newly created dataframes to false.
+        if Config.get("IDGRAPH", "pandas_df_speedup", True):
+            for var in created_vars:
+                if isinstance(self._user_ns[var], pandas.DataFrame):
+                    for _, col in self._user_ns[var].items():
+                        col.__array__().flags.writeable = False
 
         # Update ID graphs for newly created variables.
         for var in created_vars:
-            self._id_graph_map[var] = get_object_state(self._user_ns[var], {})
+            self._id_graph_map[var] = IdGraph.from_object(self._user_ns[var])
 
         # Find pairs of linked variables.
         linked_var_pairs = []
@@ -175,12 +179,13 @@ class CheckpointRestorePlanner:
                 accessed_vars,
                 self._user_ns.keyset(),
                 linked_var_pairs,
-                modified_vars_structure,
+                modified_vars,
                 deleted_vars,
             )
         )
 
-        return ChangedVariables(created_vars, modified_vars_value, modified_vars_structure, deleted_vars)
+        # modified_vars_structure and modified_vars_value are identical after PR 396. TODO: update jupyterlab_kishu.
+        return ChangedVariables(created_vars, modified_vars, modified_vars, deleted_vars)
 
     def generate_checkpoint_restore_plans(self, database_path: Path, commit_id: str) -> Tuple[CheckpointPlan, RestorePlan]:
         if self._incremental_cr:
@@ -195,11 +200,12 @@ class CheckpointRestorePlanner:
     ) -> Tuple[CheckpointPlan, RestorePlan]:
         # Retrieve active VSs from the graph. Active VSs are correspond to the latest instances/versions of each variable.
         active_vss = self._ahg.get_active_variable_snapshots(commit_id)
+
         for varname in self._user_ns.keyset():
             """If manual commit made before init, pre-run cell update doesn't happen for new variables
             so we need to add them to self._id_graph_map"""
             if varname not in self._id_graph_map:
-                self._id_graph_map[varname] = get_object_state(self._user_ns[varname], {})
+                self._id_graph_map[varname] = IdGraph.from_object(self._user_ns[varname])
 
         # If incremental storage is enabled, retrieve list of currently stored VSes and compute VSes to
         # NOT migrate as they are already stored.
@@ -368,7 +374,7 @@ class CheckpointRestorePlanner:
     def get_ahg(self) -> AHG:
         return self._ahg
 
-    def get_id_graph_map(self) -> Dict[str, GraphNode]:
+    def get_id_graph_map(self) -> Dict[str, IdGraph]:
         """
         For testing only.
         """
@@ -393,7 +399,7 @@ class CheckpointRestorePlanner:
 
         # Update ID graphs for differing active variables.
         for varname in self._get_differing_vars_post_checkout(new_active_vses):
-            self._id_graph_map[varname] = get_object_state(self._user_ns[varname], {})
+            self._id_graph_map[varname] = IdGraph.from_object(self._user_ns[varname])
 
         # Clear pre-run cell info.
         self._pre_run_cell_vars = set()

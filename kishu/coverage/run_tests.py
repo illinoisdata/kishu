@@ -6,14 +6,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from coverage.coverage_test_cases import LibCoverageTestCase
-from kishu.planning.idgraph import get_object_state
+from kishu.planning.idgraph import IdGraph
 
 
 class TestResult(str, enum.Enum):
     success = "success"
     fail = "fail"
     skip_nondeterministic = "skip_nondeterministic"
-    fail_nondeterministic = "fail_nondeterministic"
+    nondeterministic_false_positive = "nondeterministic_false_positive"
     bad_test_case = "bad_test_case"
     id_graph_error = "id_graph_error"
 
@@ -59,22 +59,22 @@ class LibCoverageTesting:
 
         # Generate 2 ID graphs for the original object.
         try:
-            idgraph_original = get_object_state(locals[test_case.var_name], {})
+            idgraph_original = IdGraph.from_object(locals[test_case.var_name])
         except Exception as e:
             return TestResult.id_graph_error, str(e)
 
         try:
-            idgraph_original_2 = get_object_state(locals[test_case.var_name], {})
+            idgraph_original_2 = IdGraph.from_object(locals[test_case.var_name])
         except Exception as e:
             return TestResult.id_graph_error, str(e)
 
         # If both ID graph generation and pickle dump are non-deterministic, skip test case.
-        # If only ID graph generation is non-deterministic, the test case is a failure.
+        # If only ID graph generation is non-deterministic, the test case is a false positive.
         if idgraph_original != idgraph_original_2:
             if var_before_pickle != var_before_pickle_2:
                 return TestResult.skip_nondeterministic, ""
             else:
-                return TestResult.fail_nondeterministic, ""
+                return TestResult.nondeterministic_false_positive, ""
 
         # If the ID graphs are equal but the pickle dumps are not, the test case is bad.
         if var_before_pickle != var_before_pickle_2:
@@ -86,7 +86,7 @@ class LibCoverageTesting:
 
         # Generate an ID graph for the modified object.
         try:
-            idgraph_modified = get_object_state(locals[test_case.var_name], {})
+            idgraph_modified = IdGraph.from_object(locals[test_case.var_name])
         except Exception as e:
             return TestResult.id_graph_error, str(e)
 
