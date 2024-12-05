@@ -83,7 +83,7 @@ class TrackedPickler(kishu_pickle.Pickler):
             self.write(h.intdigest())
             self._memoize(obj, save_persistent_id)
 
-        elif isinstance(obj, (type, tuple)) or issubclass(type(obj), numpy.dtype):
+        elif isinstance(obj, type) or issubclass(type(obj), numpy.dtype):
             # These types, when tracking memory addresses, result in (1) all arrays/dataframes in the session
             # to be linked to each other and (2) all objects from the same library to be linked. Skip their addresses.
             self.write(kishu_pickle.dumps(obj))
