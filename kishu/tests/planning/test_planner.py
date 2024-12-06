@@ -38,8 +38,9 @@ class PlannerManager:
     ) -> ChangedVariables:
         self.planner.pre_run_cell_update()
 
-        # Update namespace.
-        self.planner._user_ns.update(Namespace(ns_updates))
+        # Update namespace. KV-pairs are manually set as update() does not trigger __setitem__.
+        for k, v in ns_updates.items():
+            self.planner._user_ns[k] = v
 
         # Delete variables from namespace.
         for var_name in ns_deletions:
