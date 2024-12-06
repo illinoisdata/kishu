@@ -143,16 +143,16 @@ class CheckpointRestorePlanner:
         # Find candidates for modified variables: a variable can only be modified if it was
         # linked with a variable that was accessed, modified, or deleted.
         touched_vars = accessed_vars.union(assigned_vars).union(deleted_vars)
-        modified_vses_candidates: List[VariableSnapshot] = []
-        definitely_unmodified_vses: List[VariableSnapshot] = []
+        maybe_modified_vses: List[VariableSnapshot] = []
+        unmodified_vses: List[VariableSnapshot] = []
         for vs in self._ahg.get_active_variable_snapshots(self._kishu_graph.head()):
             if vs.name.intersection(touched_vars):
-                modified_vses_candidates.append(vs)
+                maybe_modified_vses.append(vs)
             else:
-                definitely_unmodified_vses.append(vs)
+                unmodified_vses.append(vs)
 
         # Find modified variables.
-        modified_vars_candidates = set(chain.from_iterable(vs.name for vs in modified_vses_candidates))
+        modified_vars_candidates = set(chain.from_iterable(vs.name for vs in maybe_modified_vses))
         modified_vars = set()
         for k in filter(self._user_ns.__contains__, modified_vars_candidates):
             new_idgraph = IdGraph.from_object(self._user_ns[k])
@@ -178,15 +178,15 @@ class CheckpointRestorePlanner:
         # Pairs of linked variables from the previous iteration that were untouched.
         # The linked pairs created here are functionally equivalent to the ground truth in terms of union-find components.
         untouched_linked_var_pairs = []
-        for vs in definitely_unmodified_vses:
+        for vs in unmodified_vses:
             name_list = list(vs.name)
             untouched_linked_var_pairs += [(name_list[i], name_list[i + 1]) for i in range(len(name_list) - 1)]
 
         # Intersect ID graphs of potentially changed variables and newly created variables to find new linked variable pairs.
         new_linked_var_pairs = []
-        for x, y in combinations(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)), 2):
-            if self._id_graph_map[x].is_overlap(self._id_graph_map[y]):
-                new_linked_var_pairs.append((x, y))
+        for var1, var2 in combinations(filter(self._user_ns.__contains__, modified_vars_candidates.union(created_vars)), 2):
+            if self._id_graph_map[var1].is_overlap(self._id_graph_map[var2]):
+                new_linked_var_pairs.append((var1, var2))
 
         linked_var_pairs = untouched_linked_var_pairs + new_linked_var_pairs
 

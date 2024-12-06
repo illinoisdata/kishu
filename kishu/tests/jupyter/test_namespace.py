@@ -98,7 +98,7 @@ def test_input_decorator(namespace, patched_shell):
                 print("Something before the function.")
                 func()
                 print("Something after the function.")
-                return wrapper
+            return wrapper
     """
     )
     patched_shell.run_cell(
@@ -109,6 +109,22 @@ def test_input_decorator(namespace, patched_shell):
     """
     )
     assert namespace.accessed_vars() == {"my_decorator"}
+
+
+def test_input_subclass(namespace, patched_shell):
+    patched_shell.run_cell(
+        """
+        class MyClass:
+            pass
+    """
+    )
+    patched_shell.run_cell(
+        """
+        class MySubClass(MyClass):
+            pass
+    """
+    )
+    assert namespace.accessed_vars() == {"MyClass"}
 
 
 def test_find_assigned_vars_augassign(namespace, patched_shell):
