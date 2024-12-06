@@ -139,6 +139,22 @@ def test_backward_compatibility():
     assert "OPTIMIZER" in Config.config
 
 
+def test_boolean_config():
+    print(Config.CONFIG_PATH)
+    # The config file should not exist before the first get call.
+    assert not os.path.isfile(Config.CONFIG_PATH)
+
+    # Check that boolean fields are correctly casted, i.e., the "False" written to the config file is correctly parsed.
+    assert "always_migrate" not in Config.config["OPTIMIZER"]
+    Config.set("OPTIMIZER", "always_migrate", False)
+    assert not Config.get("OPTIMIZER", "always_migrate", True)
+
+    # Non-bools throw an error when parsed.
+    Config.set("OPTIMIZER", "always_migrate", "ABC")
+    with pytest.raises(ValueError):
+        _ = Config.get("OPTIMIZER", "always_migrate", True)
+
+
 class TestPersistentConfig:
     @pytest.fixture
     def db_path_name(self, nb_simple_path):

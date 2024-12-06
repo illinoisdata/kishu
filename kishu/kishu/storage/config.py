@@ -12,6 +12,15 @@ from kishu.storage.path import KishuPath
 PERSISTENT_CONFIG_TABLE = "persistent_config"
 
 
+def str_to_bool(s: str) -> bool:
+    if s.lower() in {"true", "1", "yes"}:
+        return True
+    elif s.lower() in {"false", "0", "no"}:
+        return False
+    else:
+        raise ValueError(f"Cannot convert '{s}' to boolean.")
+
+
 class Config:
     CONFIG_PATH = KishuPath.config_path()
     config = configparser.ConfigParser()
@@ -83,6 +92,10 @@ class Config:
         # Lists can't be cast directly to the type of the default and need to be parsed.
         if isinstance(default, list) and config_entry in Config.config[config_category]:
             return ast.literal_eval(Config.config[config_category][config_entry])
+
+        # Direct casting of booleans (e.g., bool("False") == True) doesn't work; use a mapping.
+        if isinstance(default, bool) and config_entry in Config.config[config_category]:
+            return str_to_bool(Config.config[config_category][config_entry])
 
         return type(default)(Config.config[config_category].get(config_entry, default))
 
