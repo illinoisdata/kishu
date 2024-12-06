@@ -12,6 +12,7 @@ from typing import FrozenSet, List
 from kishu.jupyter.namespace import Namespace
 from kishu.planning.profiler import profile_variable_size
 from kishu.storage.commit_graph import CommitId
+from kishu.storage.config import Config
 
 AHG_VARIABLE_SNAPSHOT_TABLE = "ahg_variable_snapshot"
 AHG_CELL_EXECUTION_TABLE = "ahg_cell_execution"
@@ -59,7 +60,7 @@ class VariableSnapshot:
 
     @staticmethod
     def select_names_from_update(user_ns: Namespace, version: int, name: VariableName) -> VariableSnapshot:
-        size = profile_variable_size([user_ns[var] for var in name])
+        size = 1.0 if Config.get("OPTIMIZER", "always_migrate", True) or Config.get("OPTIMIZER", "always_recompute", True) else profile_variable_size([user_ns[var] for var in name])
         return VariableSnapshot(
             name=name,
             version=version,

@@ -99,9 +99,14 @@ class KishuCheckpoint:
             # Create a namespace containing only variables from the component
             ns_subset = user_ns.subset(set(vs.name))
 
-            data_dump = pickle.dumps(ns_subset.to_dict())
-            cur.execute(
-                f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?)",
-                (vs.versioned_name(), commit_id, memoryview(data_dump)),
-            )
-            con.commit()
+            try:
+                data_dump = pickle.dumps(ns_subset.to_dict())
+                cur.execute(
+                    f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?)",
+                    (vs.versioned_name(), commit_id, memoryview(data_dump)),
+                )
+                con.commit()
+            except (pickle.PickleError, ValueError, AttributeError, TypeError):
+                # We don't care if the dumping fails (due to serializability issues) as we reconstruct the VS on checkout.
+                pass
+                
