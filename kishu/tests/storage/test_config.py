@@ -126,7 +126,6 @@ def test_set_and_get_nonexistant_category():
 
 
 def test_backward_compatibility():
-    print(Config.CONFIG_PATH)
     # The config file should not exist before the first get call.
     assert not os.path.isfile(Config.CONFIG_PATH)
 
@@ -140,7 +139,6 @@ def test_backward_compatibility():
 
 
 def test_boolean_config():
-    print(Config.CONFIG_PATH)
     # The config file should not exist before the first get call.
     assert not os.path.isfile(Config.CONFIG_PATH)
 
@@ -148,6 +146,21 @@ def test_boolean_config():
     assert "always_migrate" not in Config.config["OPTIMIZER"]
     Config.set("OPTIMIZER", "always_migrate", False)
     assert not Config.get("OPTIMIZER", "always_migrate", True)
+
+    Config.set("OPTIMIZER", "always_migrate", 0)
+    assert not Config.get("OPTIMIZER", "always_migrate", True)
+
+    Config.set("OPTIMIZER", "always_migrate", "no")
+    assert not Config.get("OPTIMIZER", "always_migrate", True)
+
+    Config.set("OPTIMIZER", "always_migrate", True)
+    assert Config.get("OPTIMIZER", "always_migrate", False)
+
+    Config.set("OPTIMIZER", "always_migrate", 1)
+    assert Config.get("OPTIMIZER", "always_migrate", False)
+
+    Config.set("OPTIMIZER", "always_migrate", "yes")
+    assert Config.get("OPTIMIZER", "always_migrate", False)
 
     # Non-bools throw an error when parsed.
     Config.set("OPTIMIZER", "always_migrate", "ABC")

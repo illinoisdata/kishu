@@ -94,10 +94,11 @@ class Config:
             return ast.literal_eval(Config.config[config_category][config_entry])
 
         # Direct casting of booleans (e.g., bool("False") == True) doesn't work; use a mapping.
-        if isinstance(default, bool) and config_entry in Config.config[config_category]:
+        elif isinstance(default, bool) and config_entry in Config.config[config_category]:
             return str_to_bool(Config.config[config_category][config_entry])
 
-        return type(default)(Config.config[config_category].get(config_entry, default))
+        else:
+            return type(default)(Config.config[config_category].get(config_entry, default))
 
     @staticmethod
     def set(config_category: str, config_entry: str, config_value: Any) -> None:
