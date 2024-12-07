@@ -90,6 +90,7 @@ class NBGroupExecAgent(object):
     def non_kishu_e2e_execute_start_over(self, log_file_handler: TextIO):
         e2e_time = 0
         final_run_steps = 0
+        largest_var_num = 0
         for i in range(self.branch_num):
             # restart the runner
             real_nb_path = Path(
@@ -112,7 +113,8 @@ class NBGroupExecAgent(object):
                 log_file_handler.write(f"exec step {i}. Time: {duration}\n")
                 log_file_handler.flush()
                 e2e_time += duration
-        return e2e_time, final_run_steps
+            largest_var_num = max(largest_var_num, self.num_variables())
+        return e2e_time, final_run_steps,largest_var_num
 
     def non_kishu_e2e_execute_start_middle(self, data_collect_log: TextIO, log_file_handler: TextIO):
         e2e_time = 0
@@ -167,7 +169,6 @@ class NBGroupExecAgent(object):
 
             if run_into_error:
                 # restart runner and rerun all the contents
-                largest_var_num = max(largest_var_num,self.num_variables())
                 self.shell.cleanup()
                 tmp_nb_path = Path(create_tmp_ipynb_in_current_dir())
                 shutil.copy(real_nb_path, tmp_nb_path)
@@ -188,8 +189,8 @@ class NBGroupExecAgent(object):
                     log_file_handler.write(f"exec step {j}. Time: {duration}\n")
                     log_file_handler.flush()
                     e2e_time += duration
+            largest_var_num = max(largest_var_num, self.num_variables())
 
-        largest_var_num = max(largest_var_num, self.num_variables())
         return e2e_time, final_run_steps, largest_var_num
 
     def kishu_e2e_execute(self):
