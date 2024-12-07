@@ -1,6 +1,7 @@
 import pickle
 import sqlite3
 
+import numpy as np
 import pytest
 
 from kishu.jupyter.namespace import Namespace
@@ -105,3 +106,81 @@ class TestKishuCheckpoint:
         unpickled_data_list = [pickle.loads(i) for i in data_list]
         assert unpickled_data_list[0] == {"c": "strc"}
         assert unpickled_data_list[1] == {"b": "strb"}
+
+    def test_chunking(self, kishu_checkpoint):
+        kishu_checkpoint._max_blob_size = 1000000  # 1MB
+        test_str = b"A" * 1500000  # 1.5MB, expect 2 chunks
+        kishu_checkpoint.store_checkpoint("1", test_str)
+
+        # The checkpoint table should contain 2 entries.
+        con = sqlite3.connect(kishu_checkpoint.database_path)
+        cur = con.cursor()
+        cur.execute(f"SELECT count(*) FROM {CHECKPOINT_TABLE};")
+        assert cur.fetchone()[0] == 2
+
+        assert kishu_checkpoint.get_checkpoint("1") == test_str
+
+    def test_chunking_single(self, kishu_incremental_checkpoint):
+        kishu_incremental_checkpoint._max_blob_size = 1000000  # 1MB
+
+        vs_a = VariableSnapshot(frozenset({"a"}), 1)
+
+        test_str = "A" * 1500000  # 1.5MB, expect 2 chunks
+        kishu_incremental_checkpoint.store_variable_snapshots(
+            "1",
+            [vs_a],
+            Namespace({"a": test_str}),
+        )
+
+        # The incremental checkpoint table should contain 2 entries.
+        con = sqlite3.connect(kishu_incremental_checkpoint.database_path)
+        cur = con.cursor()
+        cur.execute(f"SELECT count(*) FROM {VARIABLE_SNAPSHOT_TABLE};")
+        assert cur.fetchone()[0] == 2
+
+        data_list = kishu_incremental_checkpoint.get_variable_snapshots([vs_a])
+
+        unpickled_data_list = [pickle.loads(i) for i in data_list]
+        assert unpickled_data_list[0] == {"a": test_str}
+
+    def test_chunking_multiple(self, kishu_incremental_checkpoint):
+        kishu_incremental_checkpoint._max_blob_size = 1000000  # 1MB
+
+        vs_a = VariableSnapshot(frozenset({"a"}), 1)
+        vs_b = VariableSnapshot(frozenset({"b"}), 1)
+
+        test_stra = "A" * 1500000  # 1.5MB, expect 2 chunks
+        test_strb = "B" * 2500000  # 2.5MB, expect 3 chunks
+        kishu_incremental_checkpoint.store_variable_snapshots(
+            "1",
+            [vs_a, vs_b],
+            Namespace({"a": test_stra, "b": test_strb}),
+        )
+
+        # The incremental checkpoint table should contain 5 entries (2 for A + 3 for B).
+        con = sqlite3.connect(kishu_incremental_checkpoint.database_path)
+        cur = con.cursor()
+        cur.execute(f"SELECT count(*) FROM {VARIABLE_SNAPSHOT_TABLE};")
+        assert cur.fetchone()[0] == 5
+
+        data_list = kishu_incremental_checkpoint.get_variable_snapshots([vs_a, vs_b])
+
+        # Returned data is sorted in the same order as the passed in versioned names.
+        unpickled_data_list = [pickle.loads(i) for i in data_list]
+        assert unpickled_data_list[0] == {"a": test_stra}
+        assert unpickled_data_list[1] == {"b": test_strb}
+
+    def test_chunking_large(self, kishu_incremental_checkpoint):
+        arr = np.random.rand(150000000)  # ~1.2GB
+
+        vs_a = VariableSnapshot(frozenset({"a"}), 1)
+        kishu_incremental_checkpoint.store_variable_snapshots(
+            "1",
+            [vs_a],
+            Namespace({"a": arr}),
+        )
+
+        data_list = kishu_incremental_checkpoint.get_variable_snapshots([vs_a])
+
+        unpickled_data_list = [pickle.loads(i) for i in data_list]
+        assert np.array_equal(unpickled_data_list[0]["a"], arr)
