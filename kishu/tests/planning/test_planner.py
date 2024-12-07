@@ -356,7 +356,7 @@ class TestPlanner:
 
         # The restore plan consists of moving X, loading Y, then rerunning cell 1
         # to modify x (to the version in cell 1) and recompute z.
-        # assert len(restore_plan.actions) == 3
+        assert len(restore_plan.actions) == 3
         assert len(restore_plan.actions[StepOrder.new_incremental_load(version_1)].variable_snapshots) == 1
         assert restore_plan.actions[StepOrder.new_move_variable(version_1)].vars_to_move.keyset() == {"x"}
         assert restore_plan.actions[StepOrder.new_rerun_cell(version_2)].cell_code == cell2_code
