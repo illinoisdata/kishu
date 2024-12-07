@@ -331,7 +331,7 @@ class KishuForJupyter:
         # For unit tests.
         if os.environ.get(KishuForJupyter.ENV_KISHU_TEST_MODE, False):
             self._test_mode = True
-            self._commit_id_mode = "counter"
+            # self._commit_id_mode = "counter"
 
     def __str__(self):
         return "KishuForJupyter(" f"id: {self._notebook_id.key()}, " f"path: {self._notebook_id.path()})"

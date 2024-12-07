@@ -32,7 +32,7 @@ class KishuExecAgent(object):
     def execute(self, code, step_id):
         output = traceback = None
         if code == "":
-            traceback = "No code111 to execute"
+            traceback = "No code to execute"
         else:
             start_time = time.time()
             with io.capture_output() as captured:
@@ -43,8 +43,10 @@ class KishuExecAgent(object):
                 output = captured.stdout
             # stream_output, data_output, traceback = self.notebook_session.run_code(code111)
             duration = time.time() - start_time
+            # self.step2commit_id[step_id] = KishuCommand.log(
+            #     NotebookId.parse_key_from_path(self.tmp_nb_path)).head.commit_id
             self.step2commit_id[step_id] = KishuCommand.log(
-                NotebookId.parse_key_from_path(self.tmp_nb_path)).head.commit_id
+                self.tmp_nb_path).head.commit_id
             # self.step2commit_id[step_id] = KishuBranch()
         return output, traceback, duration
 
@@ -78,7 +80,7 @@ class NBGroupExecAgent(object):
         elif self.mode == "non_kishu_start_middle":
             return self.non_kishu_e2e_execute_start_middle(data_collect_log, log_file_handler)
         elif self.mode == "kishu":
-            return self.kishu_e2e_execute()
+            return self.kishu_e2e_execute(data_collect_log, log_file_handler)
         elif self.mode == "test_semantic_error":
             # Although it's running non_kishu_start_middle again
             # But this time with kishu to analyze semantic errors
@@ -91,7 +93,7 @@ class NBGroupExecAgent(object):
         e2e_time = 0
         final_run_steps = 0
         largest_var_num = 0
-        for i in range(self.branch_num):
+        for i in range(66,self.branch_num):
             # restart the runner
             real_nb_path = Path(
                 "/home/hanxif2/exp/kishu/llm_benchmark/notebooks/" + self.group_name + "_" + str(i) + ".ipynb")
@@ -114,6 +116,11 @@ class NBGroupExecAgent(object):
                 log_file_handler.flush()
                 e2e_time += duration
             largest_var_num = max(largest_var_num, self.num_variables())
+            log_file_handler.write(f"largest_var_num: {largest_var_num}")
+            if largest_var_num == 83:
+                log_file_handler.write("debug here")
+                log_file_handler.write(str(self.shell.user_ns.keys()))
+                log_file_handler.write(f"branch:{i}")
         return e2e_time, final_run_steps,largest_var_num
 
     def non_kishu_e2e_execute_start_middle(self, data_collect_log: TextIO, log_file_handler: TextIO):
@@ -193,8 +200,53 @@ class NBGroupExecAgent(object):
 
         return e2e_time, final_run_steps, largest_var_num
 
-    def kishu_e2e_execute(self):
-        pass
+    def kishu_e2e_execute(self, data_collect_log: TextIO, log_file_handler: TextIO):
+        e2e_time = 0
+        max_num_vars = 0
+
+        # Regular expression to find numbers after "checkout to step"
+        pattern = r"checkout to step (\d+)"
+
+        # Extract all matches and convert them to a list of integers
+        start_from = [int(match) + 1 for match in re.findall(pattern, data_collect_log.read())]
+        start_from.insert(0, 0)
+
+        agent = KishuExecAgent()
+
+        for i in range(self.branch_num):
+            # restart the runner
+            real_nb_path = Path("/home/hanxif2/exp/kishu/llm_benchmark/notebooks/" + self.group_name + "_" + str(i) + ".ipynb")
+            # real_nb_path = Path(
+            #     "/Users/hanxi/Kishu-be/kishu/kishu/llm_benchmark/notebooks/" + self.group_name + "_" + str(i) + ".ipynb")
+            print("begin execution: " + self.group_name + "_" + str(i) + ".ipynb")
+            log_file_handler.write("begin execution: " + self.group_name + "_" + str(i) + ".ipynb\n")
+            log_file_handler.flush()
+            # Get the contents of the test notebook.
+            contents = JupyterRuntimeEnv.read_notebook_cell_source(real_nb_path)
+
+            for step in range(start_from[i], len(contents)):
+                log_file_handler.write("execute step " + str(step) + "\n")
+                log_file_handler.flush()
+                # get accessed variables
+                with io.capture_output() as captured:
+                    start_time = time.time()
+                    result = agent.execute(contents[step],step)
+                    e2e_time += (time.time() - start_time)
+
+            if i == 66:
+                log_file_handler.write("kishu debug here")
+                log_file_handler.write(str(agent.shell.user_ns.keys()))
+                break
+
+            # checkout and calculate variables
+            if i + 1 < self.branch_num:
+                start_time = time.time()
+                agent.checkout(start_from[i + 1] - 1)
+                e2e_time += (time.time() - start_time)
+
+
+        return e2e_time, max_num_vars
+        
 
     def test_semantic_error(self, data_collect_log: TextIO, log_file_handler: TextIO):
         num_all_error_branch = 0
