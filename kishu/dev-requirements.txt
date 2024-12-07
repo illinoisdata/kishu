@@ -19,7 +19,6 @@ seaborn
 textblob
 pandas
 pylatexenc
-qiskit
 
 # Testing framework/infra
 websocket-client
