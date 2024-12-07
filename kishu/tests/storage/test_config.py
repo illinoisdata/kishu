@@ -142,6 +142,11 @@ def test_boolean_config():
     # The config file should not exist before the first get call.
     assert not os.path.isfile(Config.CONFIG_PATH)
 
+    # Non-bools throw an error when parsed.
+    Config.set("OPTIMIZER", "always_migrate", "ABC")
+    with pytest.raises(ValueError):
+        _ = Config.get("OPTIMIZER", "always_migrate", True)
+
     # Check that boolean fields are correctly casted, i.e., the "False" written to the config file is correctly parsed.
     assert "always_migrate" not in Config.config["OPTIMIZER"]
     Config.set("OPTIMIZER", "always_migrate", False)
@@ -161,11 +166,6 @@ def test_boolean_config():
 
     Config.set("OPTIMIZER", "always_migrate", "yes")
     assert Config.get("OPTIMIZER", "always_migrate", False)
-
-    # Non-bools throw an error when parsed.
-    Config.set("OPTIMIZER", "always_migrate", "ABC")
-    with pytest.raises(ValueError):
-        _ = Config.get("OPTIMIZER", "always_migrate", True)
 
 
 class TestPersistentConfig:
