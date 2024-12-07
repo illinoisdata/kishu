@@ -130,6 +130,7 @@ class CheckpointRestorePlanner:
         @param runtime_s: runtime of cell execution.
         """
         # Use current timestamp as version for new VSes to be created during the update.
+        print("execute post run")
         version = time.monotonic_ns()
 
         # Find accessed and assigned variables from monkey-patched namespace.

@@ -3,7 +3,7 @@ import os
 import re
 import shutil
 from pathlib import Path
-
+import ast
 from typing import Generator, TextIO, Optional
 
 from kishu.commands import KishuCommand
@@ -225,6 +225,7 @@ class NBGroupExecAgent(object):
             contents = JupyterRuntimeEnv.read_notebook_cell_source(real_nb_path)
 
             for step in range(start_from[i], len(contents)):
+                print("execute step " + str(step) + "\n")
                 log_file_handler.write("execute step " + str(step) + "\n")
                 log_file_handler.flush()
                 # get accessed variables
@@ -321,7 +322,12 @@ class NBGroupExecAgent(object):
                             f"current code:\n {contents[step]}\n"
                         )
                         log_file_handler.flush()
-                modified_variables = self._get_modified_vars(captured.stdout)
+                modified_variables = self._get_modified_vars(captured.stdout,contents[step])
+                log_file_handler.write(
+                            f"modified vars: {modified_variables}\n")
+                log_file_handler.write(
+                    f"accessed vars: {accessed_variables}\n"
+                )
                 for var in modified_variables:
                     var2step[var] = step
                     var2code[var] = contents[step]
@@ -343,7 +349,7 @@ class NBGroupExecAgent(object):
                             log_file_handler.write(
                                 "Compile Error still not solved in step " + str(step) + "\n")
                             valid_branch = True
-                    modified_variables = self._get_modified_vars(captured.stdout)
+                    modified_variables = self._get_modified_vars(captured.stdout,contents[step])
                     for var in modified_variables:
                         var2step[var] = step
                 if not valid_branch:
@@ -355,6 +361,28 @@ class NBGroupExecAgent(object):
 
     def num_variables(self):
         return len(self.shell.user_ns)
+    
+    def _extract_variables_from_code(self,code):
+        # Parse the code into an AST (Abstract Syntax Tree)
+        tree = ast.parse(code)
+        
+        # Collect all variable names from Assign and AnnAssign nodes
+        variables = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):  # Handle simple assignments
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        variables.add(target.id)
+            elif isinstance(node, ast.AnnAssign):  # Handle annotated assignments
+                if isinstance(node.target, ast.Name):
+                    variables.add(node.target.id)
+            elif isinstance(node, ast.Tuple):  # Handle tuple unpacking
+                for elt in node.elts:
+                    if isinstance(elt, ast.Name):
+                        variables.add(elt.id)
+        
+        return variables
+
 
     def _get_accessed_vars(self, captured_output: str, cell_code: str):
         # Extract the sets using regular expressions
@@ -370,8 +398,13 @@ class NBGroupExecAgent(object):
 
         remove_set = set()
         # deal with falsely detected accessed variables
+        variables_in_code = self._extract_variables_from_code(cell_code)
+        print(f"captured_output: {captured_output}")
+        print(f"var in code:{variables_in_code}")
+        print(f"accessed var match:{accessed_vars_match}")
         for var in accessed_vars_match:
-            if var not in cell_code:
+            if var not in variables_in_code:
+                print("accessed {var} not in {variables_in_code}")
                 remove_set.add(var)
                 continue
             for line in cell_code.split("\n"):
@@ -407,7 +440,7 @@ class NBGroupExecAgent(object):
 
         return accessed_vars_match
 
-    def _get_modified_vars(self, captured_output: str):
+    def _get_modified_vars(self, captured_output: str, cell_code:str):
         exempt_types = ["module", "builtin_function_or_method", "type", "method", "method-wrapper"]
         # Extract the sets using regular expressions
         modified_vars_match = re.search(r"modified_vars_value:\s*({.*?})", captured_output)
@@ -449,7 +482,15 @@ class NBGroupExecAgent(object):
         else:
             created_vars_match = set()
 
-        return modified_vars_match.union(created_vars_match).union(deleted_vars_match)
+        candidate_set =  modified_vars_match.union(created_vars_match).union(deleted_vars_match)
+
+        variables_in_code = self._extract_variables_from_code(cell_code)
+        for var in candidate_set:
+            if var not in variables_in_code:
+                candidate_set.remove(var)
+
+        return candidate_set
+
 
 
 def jupyter_server() -> Generator[JupyterServerRunner, None, None]:

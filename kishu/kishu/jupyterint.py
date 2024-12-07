@@ -517,6 +517,7 @@ class KishuForJupyter:
         print('info.cell_id =', info.cell_id)
         print(dir(info))
         """
+        print("run pre run cell here!")
         self._start_time = time.time()
         self._cr_planner.pre_run_cell_update()
 
@@ -531,6 +532,7 @@ class KishuForJupyter:
         print('result.info = ', result.info)
         print('result.result = ', result.result)
         """
+        print("run post run cell here!")
         entry = CommitEntry(kind=CommitEntryKind.jupyter)
         entry.execution_count = result.execution_count
         short_raw_cell = result.info.raw_cell if len(result.info.raw_cell) <= 40 else f"{result.info.raw_cell[:40]}..."
