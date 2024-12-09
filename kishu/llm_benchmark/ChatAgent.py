@@ -68,7 +68,7 @@ class ChatAgent(object):
     def _initialize(self, task):
         prompt = (f"{task}\nIt will be an interactive data science process using notebook. "
                   f"Tell me the steps to do this (without code).\n "
-                  f"The steps should include some computation intensive ones such as Hyper-parameter tuning, model selection, neural network training, etc.\n "
+                  f"The steps should include some computation intensive ones such as Hyper-parameter tuning(no more than 3 groups with each group no more than 2 choices), model selection(no more than 2 models to choose from), neural network training(small model only), etc.\n "
                   f"the step should be listed as:\n"
                   f"There are XXX steps in total.\n"
                   f"1. XXX\n"

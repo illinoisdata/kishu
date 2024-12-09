@@ -3,7 +3,7 @@ import os
 import re
 import shutil
 from pathlib import Path
-
+import ast
 from typing import Generator, TextIO, Optional
 
 from kishu.commands import KishuCommand
@@ -43,8 +43,10 @@ class KishuExecAgent(object):
                 output = captured.stdout
             # stream_output, data_output, traceback = self.notebook_session.run_code(code111)
             duration = time.time() - start_time
+            # self.step2commit_id[step_id] = KishuCommand.log(
+            #     NotebookId.parse_key_from_path(self.tmp_nb_path)).head.commit_id
             self.step2commit_id[step_id] = KishuCommand.log(
-                NotebookId.parse_key_from_path(self.tmp_nb_path)).head.commit_id
+                self.tmp_nb_path).head.commit_id
             # self.step2commit_id[step_id] = KishuBranch()
         return output, traceback, duration
 
@@ -189,7 +191,7 @@ class NBGroupExecAgent(object):
                     log_file_handler.flush()
                     e2e_time += duration
 
-        largest_var_num = max(largest_var_num, self.num_variables())
+            largest_var_num = max(largest_var_num, self.num_variables())
         return e2e_time, final_run_steps, largest_var_num
 
     def kishu_e2e_execute(self):
@@ -215,6 +217,7 @@ class NBGroupExecAgent(object):
         tmp_nb_path = Path(create_tmp_ipynb_in_current_dir())
         shutil.copy(real_nb_path, tmp_nb_path)
         self._init_runner(tmp_nb_path, init_kishu=True)
+        nb_conflict_var_set = set()
 
         for i in range(self.branch_num):
             # restart the runner
@@ -230,12 +233,14 @@ class NBGroupExecAgent(object):
             valid_branch = True
 
             run_into_error = False
+            nb_confilict_vars = []
             for step in range(start_from[i], len(contents)):
                 log_file_handler.write("execute step " + str(step) + "\n")
                 log_file_handler.flush()
                 # get accessed variables
                 with io.capture_output() as captured:
                     result = self.shell.run_cell(contents[step])
+                print(f"captured:{captured}")
 
                 if not result.success:
                     print("Compile Error in step " + str(step))
@@ -256,6 +261,8 @@ class NBGroupExecAgent(object):
                         print(f"previously modified step: {var2step[var]}")
                         print(f"previously modified code:\n {var2code[var]}")
                         print(f"current code:\n {contents[step]}")
+                        nb_confilict_vars.append(var)
+                        nb_conflict_var_set.add(var)
                         log_file_handler.write(
                             f"Variable {var} modified in step {last_modified_step} but current branch is in step {step}\n")
                         log_file_handler.write(
@@ -268,7 +275,7 @@ class NBGroupExecAgent(object):
                             f"current code:\n {contents[step]}\n"
                         )
                         log_file_handler.flush()
-                modified_variables = self._get_modified_vars(captured.stdout)
+                modified_variables = self._get_modified_vars(captured.stdout,contents[step])
                 for var in modified_variables:
                     var2step[var] = step
                     var2code[var] = contents[step]
@@ -290,18 +297,38 @@ class NBGroupExecAgent(object):
                             log_file_handler.write(
                                 "Compile Error still not solved in step " + str(step) + "\n")
                             valid_branch = True
-                    modified_variables = self._get_modified_vars(captured.stdout)
+                    modified_variables = self._get_modified_vars(captured.stdout,contents[step])
                     for var in modified_variables:
                         var2step[var] = step
                 if not valid_branch:
                     num_compile_error_branch += 1
             if not valid_branch:
                 num_all_error_branch += 1
+                log_file_handler.write(f"nb {i} branch {step} conflict vars:{nb_confilict_vars}\n")
+
+        log_file_handler.write(f"nb {i} conflict vars:{nb_conflict_var_set}\n")
 
         return num_all_error_branch,num_compile_error_branch
 
     def num_variables(self):
         return len(self.shell.user_ns)
+    
+        
+    def _extract_variables_from_code(self,code):
+        # Parse the code into an AST (Abstract Syntax Tree)
+        tree = ast.parse(code)
+        
+        # Collect all variable names
+        defined_variables = set()  # Variables that are defined (assigned to)
+        used_variables = set()     # Variables that are used (referenced)
+
+        for node in ast.walk(tree):
+            # Handle variable usage
+            if isinstance(node, ast.Name):
+                if isinstance(node.ctx, ast.Load):  # Variable is being used
+                    used_variables.add(node.id)
+
+        return used_variables
 
     def _get_accessed_vars(self, captured_output: str, cell_code: str):
         # Extract the sets using regular expressions
@@ -316,9 +343,13 @@ class NBGroupExecAgent(object):
             accessed_vars_match = set()
 
         remove_set = set()
+        variables_in_code = self._extract_variables_from_code(cell_code)
         # deal with falsely detected accessed variables
         for var in accessed_vars_match:
-            if var not in cell_code:
+            # if var not in cell_code:
+            if var not in variables_in_code:
+                print(f"code is:{cell_code}")
+                print(f"accessed {var} not in {variables_in_code}")
                 remove_set.add(var)
                 continue
             for line in cell_code.split("\n"):
@@ -354,7 +385,7 @@ class NBGroupExecAgent(object):
 
         return accessed_vars_match
 
-    def _get_modified_vars(self, captured_output: str):
+    def _get_modified_vars(self, captured_output: str, cell_code:str):
         exempt_types = ["module", "builtin_function_or_method", "type", "method", "method-wrapper"]
         # Extract the sets using regular expressions
         modified_vars_match = re.search(r"modified_vars_value:\s*({.*?})", captured_output)
@@ -396,7 +427,16 @@ class NBGroupExecAgent(object):
         else:
             created_vars_match = set()
 
-        return modified_vars_match.union(created_vars_match).union(deleted_vars_match)
+        # return modified_vars_match.union(created_vars_match).union(deleted_vars_match)
+        candidate_set =  modified_vars_match.union(created_vars_match).union(deleted_vars_match)
+
+        remove_set = set()
+        variables_in_code = self._extract_variables_from_code(cell_code)
+        for var in candidate_set:
+            if var not in variables_in_code:
+                remove_set.add(var)
+
+        return candidate_set - remove_set
 
 
 def jupyter_server() -> Generator[JupyterServerRunner, None, None]:

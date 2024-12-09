@@ -10,6 +10,8 @@ from llm_benchmark.utils import check_file_exist, get_cell_code, append_cell, co
 
 os.environ[KishuForJupyter.ENV_KISHU_TEST_MODE] = "true"
 
+# tmpg6pp_uvs.ipynb
+
 nb_dir = "./notebooks/"  # dir for generated notebooks
 if not os.path.exists(nb_dir):
     os.makedirs(nb_dir)
@@ -29,7 +31,7 @@ with open('prompts.json', 'r') as file:
         if not check_file_exist(data):
             print("Alarm: data doesn't exist for ", config['exp_name'])
             continue
-        for i in range(0,10):
+        for i in range(10,15):
             exp_name = config['exp_name'] + "_" + str(i)
             kishu_e2e_time = 0
             kishu_longest_length = 0
@@ -40,13 +42,14 @@ with open('prompts.json', 'r') as file:
             with open(log_file_name, 'w') as log_file:
                 chat_agent = ChatAgent(task)
                 exec_agent = KishuExecAgent()
+                log_file.write(str(exec_agent.tmp_nb_path) + "\n")
 
                 path_num = 0
 
                 nb = nbformat.v4.new_notebook()
 
                 output = None  # execution output of the previous step
-                while path_num < 100:
+                while path_num < 3:
                     cell_code = get_cell_code(chat_agent.step(output))  # feed the output of last step
                     output, traceback, exec_time = exec_agent.execute(cell_code, chat_agent.next_step - 1)
                     print("execution output", output)
@@ -55,8 +58,9 @@ with open('prompts.json', 'r') as file:
                     rollback_prob = 0
 
                     # try to generate non-error result
-                    retry = 2
+                    retry = 1
                     while traceback is not "" and traceback is not None and retry > 0:
+                        print(traceback)
                         retry -= 1
                         cell_code = get_cell_code(chat_agent.debug(traceback))
                         output, traceback, exec_time = exec_agent.execute(cell_code, chat_agent.next_step - 1)
@@ -90,7 +94,7 @@ with open('prompts.json', 'r') as file:
                         kishu_longest_length = max(kishu_current_length, kishu_longest_length)
                         max_var_num = max(max_var_num, exec_agent.num_variables())
 
-                        if path_num >= 100:
+                        if path_num >= 3:
                             break
 
                         # checkout agents to target step
