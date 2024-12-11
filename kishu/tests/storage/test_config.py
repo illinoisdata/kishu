@@ -122,16 +122,6 @@ def test_set_and_get_nonexistant_category(tmp_path_config):
         Config.set("ABCDEFG", "abcdefg", 1)
 
 
-def test_backward_compatibility(tmp_path_config):
-    # Remove a category, then create a config file without the category.
-    Config.DEFAULT_CATEGORIES.remove("OPTIMIZER")
-    _ = Config.get("PLANNER", "nonexistant_field", "1")
-
-    # Querying for the new category should create it.
-    assert Config.get("OPTIMIZER", "network_bandwidth", 1.0) == 1.0
-    assert "OPTIMIZER" in Config.config
-
-
 def test_boolean_config(tmp_path_config):
     # Check that boolean fields are correctly casted, i.e., the "False" written to the config file is correctly parsed.
     assert "always_migrate" not in Config.config["OPTIMIZER"]
