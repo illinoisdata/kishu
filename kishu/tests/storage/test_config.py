@@ -144,28 +144,28 @@ def test_boolean_config():
 
     # Check that boolean fields are correctly casted, i.e., the "False" written to the config file is correctly parsed.
     assert "always_migrate" not in Config.config["OPTIMIZER"]
-    Config.set("OPTIMIZER", "test_field", False)
-    assert not Config.get("OPTIMIZER", "test_field", True)
+    Config.set("OPTIMIZER", "always_migrate", False)
+    assert not Config.get("OPTIMIZER", "always_migrate", True)
 
-    Config.set("OPTIMIZER", "test_field", 0)
-    assert not Config.get("OPTIMIZER", "test_field", True)
+    Config.set("OPTIMIZER", "always_migrate", 0)
+    assert not Config.get("OPTIMIZER", "always_migrate", True)
 
-    Config.set("OPTIMIZER", "test_field", "no")
-    assert not Config.get("OPTIMIZER", "test_field", True)
+    Config.set("OPTIMIZER", "always_migrate", "no")
+    assert not Config.get("OPTIMIZER", "always_migrate", True)
 
-    Config.set("OPTIMIZER", "test_field", True)
-    assert Config.get("OPTIMIZER", "test_field", False)
+    Config.set("OPTIMIZER", "always_migrate", True)
+    assert Config.get("OPTIMIZER", "always_migrate", False)
 
-    Config.set("OPTIMIZER", "test_field", 1)
-    assert Config.get("OPTIMIZER", "test_field", False)
+    Config.set("OPTIMIZER", "always_migrate", 1)
+    assert Config.get("OPTIMIZER", "always_migrate", False)
 
-    Config.set("OPTIMIZER", "test_field", "yes")
-    assert Config.get("OPTIMIZER", "test_field", False)
+    Config.set("OPTIMIZER", "always_migrate", "yes")
+    assert Config.get("OPTIMIZER", "always_migrate", False)
 
     # Non-bools throw an error when parsed.
-    Config.set("OPTIMIZER", "test_field", "ABC")
+    Config.set("OPTIMIZER", "always_migrate", "ABC")
     with pytest.raises(ValueError):
-        _ = Config.get("OPTIMIZER", "test_field", True)
+        _ = Config.get("OPTIMIZER", "always_migrate", True)
 
 
 class TestPersistentConfig:
