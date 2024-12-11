@@ -1,3 +1,4 @@
+import configparser
 import dataclasses
 import json
 import os
@@ -6,7 +7,6 @@ from pathlib import Path, PurePath
 from typing import Any, Callable, Generator, List, Optional, Tuple, Type
 from unittest.mock import patch
 
-import configparser
 import matplotlib.pyplot
 import numpy
 import pandas

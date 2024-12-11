@@ -5,12 +5,12 @@ try:
 except ImportError:
     import pickle as kishu_pickle
 
+import enum
 import io
 from dataclasses import dataclass
-from typing import Any, Set, Type
 from types import BuiltinFunctionType
+from typing import Any, Set, Type
 
-import enum
 import numpy
 import pandas
 import xxhash
@@ -69,12 +69,11 @@ class TrackedPickler(kishu_pickle.Pickler):
 
         self.memoize(obj)
 
-    def track_opcode(self, obj: Any, save_persistent_id=True) -> TrackOpcode:
+    def track_opcode(self, obj: Any) -> TrackOpcode:
         return TrackOpcode.DEFAULT
 
     def save(self, obj: Any, save_persistent_id=True) -> None:
-        opcode = self.track_opcode(obj, save_persistent_id)
-        print("my opcode:", opcode, obj)
+        opcode = self.track_opcode(obj)
         if opcode == TrackOpcode.IMMUTABLE:
             self.write(kishu_pickle.dumps(obj))
 
@@ -101,7 +100,7 @@ class ExperimentalTrackedPickler(TrackedPickler):
     def __init__(self, *args, **kwargs):
         TrackedPickler.__init__(self, *args, **kwargs)
 
-    def track_opcode(self, obj: Any, save_persistent_id=True) -> TrackOpcode:
+    def track_opcode(self, obj: Any) -> TrackOpcode:
         if isinstance(obj, pandas.DataFrame):
             # Pandas dataframe dirty bit speedup. We can use the writeable flag as a dirty bit to check for updates
             # (as any Pandas operation will flip the bit back to True).
@@ -118,7 +117,7 @@ class ExperimentalTrackedPickler(TrackedPickler):
             else:
                 return TrackOpcode.SKIP_WRITE
 
-        elif ClassInstance.from_object(obj) in Config.get("IDGRAPH", "arraytype_speedup", KISHU_DEFAULT_ARRAYTYPES):
+        elif ClassInstance.from_object(obj) in KISHU_DEFAULT_ARRAYTYPES:
             # Hash speedup for arraytypes. They are hashed instead of recursing into the array themselves.
             # Like the pandas dataframe hack, this may incur correctness loss if a field inside the array is assigned
             # to another variable (and causing an overlap); however, this is rare in notebooks and the speedup this brings
@@ -128,10 +127,12 @@ class ExperimentalTrackedPickler(TrackedPickler):
             # xxhash's update works with arbitrary arrays, even object arrays
             h.update(numpy.ascontiguousarray(obj.data))  # type: ignore
             self.write(BINARRAY + h.digest())
-            self._memoize(obj, save_persistent_id)
             return TrackOpcode.SKIP_WRITE
 
-        elif isinstance(obj, (str, bytes, type, BuiltinFunctionType)) or issubclass(type(obj), numpy.dtype):
+        elif isinstance(obj, (str, bytes, type, BuiltinFunctionType)):
+            return TrackOpcode.IMMUTABLE
+
+        elif issubclass(type(obj), numpy.dtype):
             return TrackOpcode.IMMUTABLE
 
         return TrackOpcode.DEFAULT
@@ -148,7 +149,10 @@ class IdGraph:
     @staticmethod
     def from_object(obj: Any) -> IdGraph:
         f = io.BytesIO()
-        pickler = ExperimentalTrackedPickler(f, kishu_pickle.HIGHEST_PROTOCOL, recurse=True)
+        if Config.get("IDGRAPH", "experimental_tracker", False):
+            pickler = ExperimentalTrackedPickler(f, kishu_pickle.HIGHEST_PROTOCOL, recurse=True)
+        else:
+            pickler = TrackedPickler(f, kishu_pickle.HIGHEST_PROTOCOL, recurse=True)
         pickler.dump(obj)
         h = xxhash.xxh3_128()
         h.update(f.getvalue())
