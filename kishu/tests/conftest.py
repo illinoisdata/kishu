@@ -111,6 +111,7 @@ def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
     Config.CONFIG_PATH = KishuPath.config_path()
     Config.config = configparser.ConfigParser()
     Config.last_read_time = -1
+    Config._create_config_file()
     yield Config
     Config.CONFIG_PATH = prev_config_path
     Config.config = prev_config
