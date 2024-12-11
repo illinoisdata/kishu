@@ -39,13 +39,13 @@ class PlannerManager:
     ) -> ChangedVariables:
         self.planner.pre_run_cell_update()
 
-        # Mock access variables.
-        for var in ns_accesses:
-            _ = self.planner._user_ns[var]
-
         # Update namespace. KV-pairs are manually set as update() does not trigger __setitem__.
         for k, v in ns_updates.items():
             self.planner._user_ns[k] = v
+
+        # Mock access variables.
+        for var in ns_accesses:
+            _ = self.planner._user_ns[var]
 
         # Delete variables from namespace.
         for var_name in ns_deletions:
@@ -236,7 +236,7 @@ class TestPlanner:
 
         # Run cell 1.
         x = 1
-        planner_manager.run_cell("1:1", {}, {"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
+        planner_manager.run_cell("1:1", {"x"}, {"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
         # Create and run checkpoint plan for cell 1.
         planner_manager.checkpoint_session(db_path_name, "1:1", [])
@@ -268,7 +268,7 @@ class TestPlanner:
 
         # Run cell 1.
         x = []
-        planner_manager.run_cell("1:1", {}, {"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
+        planner_manager.run_cell("1:1", {"x"}, {"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
         # Create and run checkpoint plan for cell 1.
         planner_manager.checkpoint_session(db_path_name, "1:1", [])
