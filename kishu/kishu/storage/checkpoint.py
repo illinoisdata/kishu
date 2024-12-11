@@ -15,7 +15,9 @@ from kishu.storage.disk_ahg import VariableSnapshot
 
 CHECKPOINT_TABLE = "checkpoint"
 VARIABLE_SNAPSHOT_TABLE = "variable_snapshot"
-SQLITE3_DEFAULT_MAX_BLOB_SIZE = 900000000  # Compile-time maximum is 1GB, however, inserting exactly 1GB will raise the error.
+SQLITE3_DEFAULT_MAX_BLOB_SIZE = (
+    500_000_000  # Compile-time maximum is 1GB, however, inserting exactly 1GB will raise the error.
+)
 
 
 class KishuCheckpoint:
@@ -64,13 +66,14 @@ class KishuCheckpoint:
         cur = con.cursor()
 
         # Break the blob into chunks and insert each chunk
-        for i in range(0, len(data), self._max_blob_size):
-            chunk = data[i : i + self._max_blob_size]
+        data_view = memoryview(data)
+        for i in range(0, len(data_view), self._max_blob_size):
+            chunk = data_view[i : i + self._max_blob_size]
             cur.execute(
                 f"""
             INSERT INTO {CHECKPOINT_TABLE} values (?, ?, ?)
             """,
-                (commit_id, i // self._max_blob_size, memoryview(chunk)),
+                (commit_id, i // self._max_blob_size, chunk),
             )
         con.commit()
 
@@ -92,13 +95,13 @@ class KishuCheckpoint:
         res: List = cur.fetchall()
 
         # Concatenate chunks
-        chunk_dict: Dict[str, bytes] = defaultdict(bytes)
+        chunk_dict: Dict[str, List[bytes]] = defaultdict(list)
         for versioned_name, data in res:
-            chunk_dict[versioned_name] += data
+            chunk_dict[versioned_name].append(data)
 
         if len(chunk_dict) != len(variable_snapshots):
             raise ValueError(f"length of results {len(chunk_dict)} not equal to queries {len(variable_snapshots)}:")
-        return [chunk_dict[vs.versioned_name()] for vs in variable_snapshots]
+        return [b"".join(chunk_dict[vs.versioned_name()]) for vs in variable_snapshots]
 
     def get_stored_versioned_names(self, commit_ids: List[str]) -> Set[str]:
         con = sqlite3.connect(self.database_path)
@@ -124,12 +127,13 @@ class KishuCheckpoint:
             data_dump = pickle.dumps(ns_subset.to_dict())
 
             # Break the blob into chunks and insert each chunk
-            for i in range(0, len(data_dump), self._max_blob_size):
-                chunk = data_dump[i : i + self._max_blob_size]
+            data_view = memoryview(data_dump)
+            for i in range(0, len(data_view), self._max_blob_size):
+                chunk = data_view[i : i + self._max_blob_size]
                 cur.execute(
                     f"""
                 INSERT INTO {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?, ?)
                 """,
-                    (vs.versioned_name(), commit_id, i // self._max_blob_size, memoryview(chunk)),
+                    (vs.versioned_name(), commit_id, i // self._max_blob_size, chunk),
                 )
             con.commit()

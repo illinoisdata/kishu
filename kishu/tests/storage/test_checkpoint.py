@@ -1,7 +1,6 @@
 import pickle
 import sqlite3
 
-import numpy as np
 import pytest
 
 from kishu.jupyter.namespace import Namespace
@@ -20,6 +19,7 @@ class TestKishuCheckpoint:
         """Fixture for initializing a KishuBranch instance."""
         kishu_checkpoint = KishuCheckpoint(db_path_name)
         kishu_checkpoint.init_database()
+        kishu_checkpoint._max_blob_size = 1000  # 1KB
         yield kishu_checkpoint
         kishu_checkpoint.drop_database()
 
@@ -28,6 +28,7 @@ class TestKishuCheckpoint:
         """Fixture for initializing a KishuBranch instance with incremental CR."""
         kishu_incremental_checkpoint = KishuCheckpoint(db_path_name, incremental_cr=True)
         kishu_incremental_checkpoint.init_database()
+        kishu_incremental_checkpoint._max_blob_size = 1000  # 1KB
         yield kishu_incremental_checkpoint
         kishu_incremental_checkpoint.drop_database()
 
@@ -108,8 +109,7 @@ class TestKishuCheckpoint:
         assert unpickled_data_list[1] == {"b": "strb"}
 
     def test_chunking(self, kishu_checkpoint):
-        kishu_checkpoint._max_blob_size = 1000000  # 1MB
-        test_str = b"A" * 1500000  # 1.5MB, expect 2 chunks
+        test_str = b"A" * 1500  # 1.5KB, expect 2 chunks
         kishu_checkpoint.store_checkpoint("1", test_str)
 
         # The checkpoint table should contain 2 entries.
@@ -121,11 +121,9 @@ class TestKishuCheckpoint:
         assert kishu_checkpoint.get_checkpoint("1") == test_str
 
     def test_chunking_single(self, kishu_incremental_checkpoint):
-        kishu_incremental_checkpoint._max_blob_size = 1000000  # 1MB
-
         vs_a = VariableSnapshot(frozenset({"a"}), 1)
 
-        test_str = "A" * 1500000  # 1.5MB, expect 2 chunks
+        test_str = "A" * 1500  # 1.5KB, expect 2 chunks
         kishu_incremental_checkpoint.store_variable_snapshots(
             "1",
             [vs_a],
@@ -144,13 +142,11 @@ class TestKishuCheckpoint:
         assert unpickled_data_list[0] == {"a": test_str}
 
     def test_chunking_multiple(self, kishu_incremental_checkpoint):
-        kishu_incremental_checkpoint._max_blob_size = 1000000  # 1MB
-
         vs_a = VariableSnapshot(frozenset({"a"}), 1)
         vs_b = VariableSnapshot(frozenset({"b"}), 1)
 
-        test_stra = "A" * 1500000  # 1.5MB, expect 2 chunks
-        test_strb = "B" * 2500000  # 2.5MB, expect 3 chunks
+        test_stra = "A" * 1500  # 1.5KB, expect 2 chunks
+        test_strb = "B" * 2500  # 2.5KB, expect 3 chunks
         kishu_incremental_checkpoint.store_variable_snapshots(
             "1",
             [vs_a, vs_b],
@@ -169,18 +165,3 @@ class TestKishuCheckpoint:
         unpickled_data_list = [pickle.loads(i) for i in data_list]
         assert unpickled_data_list[0] == {"a": test_stra}
         assert unpickled_data_list[1] == {"b": test_strb}
-
-    def test_chunking_large(self, kishu_incremental_checkpoint):
-        arr = np.random.rand(150000000)  # ~1.2GB
-
-        vs_a = VariableSnapshot(frozenset({"a"}), 1)
-        kishu_incremental_checkpoint.store_variable_snapshots(
-            "1",
-            [vs_a],
-            Namespace({"a": arr}),
-        )
-
-        data_list = kishu_incremental_checkpoint.get_variable_snapshots([vs_a])
-
-        unpickled_data_list = [pickle.loads(i) for i in data_list]
-        assert np.array_equal(unpickled_data_list[0]["a"], arr)

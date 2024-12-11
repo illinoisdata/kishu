@@ -114,10 +114,7 @@ class KishuDiskAHG:
             f"create table if not exists {AHG_CE_OUTPUT_TABLE} "
             "(cell_num int, versioned_name text, primary key (cell_num, versioned_name))"
         )
-        cur.execute(
-            f"create table if not exists {AHG_ACTIVE_VSES_TABLE} "
-            "(commit_id text, versioned_name text)"
-        )
+        cur.execute(f"create table if not exists {AHG_ACTIVE_VSES_TABLE} " "(commit_id text, versioned_name text)")
 
         con.commit()
 
