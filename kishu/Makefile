@@ -32,16 +32,16 @@ fmt:              ## Format code using black & isort.
 
 .PHONY: lint
 lint:             ## Run pep8, black, mypy linters.
-	$(ENV_PREFIX)flake8 --select=E9,F63,F7,F82 --show-source ${SOURCE_DIRS}
-	$(ENV_PREFIX)flake8 --max-complexity=100 --max-line-length=${MAX_LINE_LENGTH} --extend-ignore=W503,E203,E701 ${SOURCE_DIRS}
-	$(ENV_PREFIX)black -l ${MAX_LINE_LENGTH} --check ${SOURCE_DIRS}
-	$(ENV_PREFIX)mypy --ignore-missing-imports ${SOURCE_DIRS}
+	$(ENV_PREFIX)flake8 --select=E9,F63,F7,F82 --show-source ${SOURCE_DIRS} \
+		&& $(ENV_PREFIX)flake8 --max-complexity=100 --max-line-length=${MAX_LINE_LENGTH} --extend-ignore=W503,E203,E701 ${SOURCE_DIRS} \
+		&& $(ENV_PREFIX)black -l ${MAX_LINE_LENGTH} --check ${SOURCE_DIRS} \
+		&& $(ENV_PREFIX)mypy --ignore-missing-imports ${SOURCE_DIRS}
 
 .PHONY: test
 test: lint        ## Run tests and generate coverage report.
-	$(ENV_PREFIX)pytest -vv --cov-config .coveragerc --cov=kishu -l --tb=short --maxfail=1 tests
-	$(ENV_PREFIX)coverage xml
-	$(ENV_PREFIX)coverage html
+	$(ENV_PREFIX)pytest -vv --cov-config .coveragerc --cov=kishu -l --tb=short --maxfail=1 tests \
+		&& $(ENV_PREFIX)coverage xml \
+		&& $(ENV_PREFIX)coverage html
 
 .PHONY: clean
 clean:            ## Clean unused files.
