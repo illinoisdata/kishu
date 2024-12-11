@@ -8,7 +8,9 @@ except ImportError:
 import io
 from dataclasses import dataclass
 from typing import Any, Set, Type
+from types import BuiltinFunctionType
 
+import enum
 import numpy
 import pandas
 import xxhash
@@ -16,7 +18,6 @@ import xxhash
 from kishu.storage.config import Config
 
 BINARRAY = b"array"
-NUMPY_CREATE_ARRAY = "_create_array"
 
 
 @dataclass(frozen=True)
@@ -38,10 +39,11 @@ KISHU_DEFAULT_ARRAYTYPES = {
 }
 
 
-KISHU_DEFAULT_SKIP_FUNCTIONS = {
-    "_create_array",  # Shared between all numpy arrays
-    "_reconstruct",  # Shared between all numpy arrays
-}
+class TrackOpcode(str, enum.Enum):
+    IMMUTABLE = "immutable"
+    DEFINITELY_CHANGED = "definitely_changed"
+    SKIP_WRITE = "skip_write"
+    DEFAULT = "default"
 
 
 class TrackedPickler(kishu_pickle.Pickler):
@@ -67,17 +69,54 @@ class TrackedPickler(kishu_pickle.Pickler):
 
         self.memoize(obj)
 
+    def track_opcode(self, obj: Any, save_persistent_id=True) -> TrackOpcode:
+        return TrackOpcode.DEFAULT
+
     def save(self, obj: Any, save_persistent_id=True) -> None:
-        if isinstance(obj, pandas.DataFrame) and Config.get("IDGRAPH", "pandas_df_speedup", True):
+        opcode = self.track_opcode(obj, save_persistent_id)
+        print("my opcode:", opcode, obj)
+        if opcode == TrackOpcode.IMMUTABLE:
+            self.write(kishu_pickle.dumps(obj))
+
+        elif opcode == TrackOpcode.DEFINITELY_CHANGED:
+            self.definitely_changed = True
+            self._memoize(obj, save_persistent_id)
+
+        elif opcode == TrackOpcode.SKIP_WRITE:
+            self._memoize(obj, save_persistent_id)
+
+        elif opcode == TrackOpcode.DEFAULT:
+            try:
+                return kishu_pickle.Pickler.save(self, obj, save_persistent_id)
+            except (kishu_pickle.PickleError, ValueError, AttributeError, TypeError):
+                self.definitely_changed = True
+                self._memoize(obj, save_persistent_id)
+
+        else:
+            raise NotImplementedError("Unknown opcode")
+
+
+# Faster ID graph implementation that has potential accuracy losses. Use at your own discretion.
+class ExperimentalTrackedPickler(TrackedPickler):
+    def __init__(self, *args, **kwargs):
+        TrackedPickler.__init__(self, *args, **kwargs)
+
+    def track_opcode(self, obj: Any, save_persistent_id=True) -> TrackOpcode:
+        if isinstance(obj, pandas.DataFrame):
             # Pandas dataframe dirty bit speedup. We can use the writeable flag as a dirty bit to check for updates
             # (as any Pandas operation will flip the bit back to True).
             # Notably, this may prevent the usage of certain slicing operations; however, they are rare compared
             # to boolean indexing, hence this tradeoff is acceptable.
+            definitely_changed = False
             for _, col in obj.items():
                 if col.__array__().flags.writeable:
-                    self.definitely_changed = True
+                    definitely_changed = True
                 col.__array__().flags.writeable = False
-            self._memoize(obj, save_persistent_id)
+
+            if definitely_changed:
+                return TrackOpcode.DEFINITELY_CHANGED
+            else:
+                return TrackOpcode.SKIP_WRITE
 
         elif ClassInstance.from_object(obj) in Config.get("IDGRAPH", "arraytype_speedup", KISHU_DEFAULT_ARRAYTYPES):
             # Hash speedup for arraytypes. They are hashed instead of recursing into the array themselves.
@@ -90,18 +129,12 @@ class TrackedPickler(kishu_pickle.Pickler):
             h.update(numpy.ascontiguousarray(obj.data))  # type: ignore
             self.write(BINARRAY + h.digest())
             self._memoize(obj, save_persistent_id)
+            return TrackOpcode.SKIP_WRITE
 
-        elif issubclass(type(obj), numpy.dtype):
-            # numpy types, when tracking memory addresses, result in (1) all arrays/dataframes in the session
-            # to be linked to each other and (2) all objects from the same library to be linked. Skip their addresses.
-            self.write(kishu_pickle.dumps(obj))
+        elif isinstance(obj, (str, bytes, type, BuiltinFunctionType)) or issubclass(type(obj), numpy.dtype):
+            return TrackOpcode.IMMUTABLE
 
-        else:
-            try:
-                return kishu_pickle.Pickler.save(self, obj, save_persistent_id)
-            except (kishu_pickle.PickleError, ValueError, AttributeError, TypeError):
-                self.definitely_changed = True
-                self._memoize(obj, save_persistent_id)
+        return TrackOpcode.DEFAULT
 
 
 @dataclass
@@ -115,7 +148,7 @@ class IdGraph:
     @staticmethod
     def from_object(obj: Any) -> IdGraph:
         f = io.BytesIO()
-        pickler = TrackedPickler(f, kishu_pickle.HIGHEST_PROTOCOL, recurse=True)
+        pickler = ExperimentalTrackedPickler(f, kishu_pickle.HIGHEST_PROTOCOL, recurse=True)
         pickler.dump(obj)
         h = xxhash.xxh3_128()
         h.update(f.getvalue())
