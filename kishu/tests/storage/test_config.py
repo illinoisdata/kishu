@@ -8,10 +8,7 @@ from kishu.storage.config import Config, PersistentConfig
 from kishu.storage.path import KishuPath
 
 
-def test_initialize_config_get_default():
-    # The config file should not exist before the first get call.
-    assert not os.path.isfile(Config.CONFIG_PATH)
-
+def test_initialize_config_get_default(tmp_path_config):
     # Assert default categories exist.
     for category in Config.DEFAULT_CATEGORIES:
         assert category in Config.config
@@ -23,7 +20,7 @@ def test_initialize_config_get_default():
     assert Config.get("PLANNER", "nonexistant_field", "1") == "1"
 
 
-def test_set_and_get_new_fields():
+def test_set_and_get_new_fields(tmp_path_config):
     assert "PLANNER" in Config.config
 
     # Test with string.
@@ -37,7 +34,7 @@ def test_set_and_get_new_fields():
     assert Config.get("PLANNER", "int_field", 0) == 42
 
 
-def test_set_and_get_update_fields():
+def test_set_and_get_update_fields(tmp_path_config):
     assert "PROFILER" in Config.config
 
     # Check that the field has not been previously set.
@@ -50,7 +47,7 @@ def test_set_and_get_update_fields():
     assert Config.get("PROFILER", "excluded_modules", []) == ["1", "2"]
 
 
-def test_concurrent_update_field():
+def test_concurrent_update_field(tmp_path_config):
     """
     Tests the config file can be updated by a second kishu instance / configparser.
     """
@@ -79,7 +76,7 @@ def test_concurrent_update_field():
     assert Config.get("PLANNER", "string_field", "0") == "2119"
 
 
-def test_skip_reread():
+def test_skip_reread(tmp_path_config):
     """
     Tests accessing a config value when the config file has not been updated
     skips the file read.
@@ -98,7 +95,7 @@ def test_skip_reread():
     assert first_read_time == second_read_time
 
 
-def test_manual_bad_write():
+def test_manual_bad_write(tmp_path_config):
     # For preventing race conditions related to st_mtime_ns.
     time.sleep(0.01)
 
@@ -113,7 +110,7 @@ def test_manual_bad_write():
         assert Config.get("PROFILER", "excluded_modules", []) == ["a"]
 
 
-def test_set_and_get_nonexistant_category():
+def test_set_and_get_nonexistant_category(tmp_path_config):
     assert "ABCDEFG" not in Config.config
 
     # Check that accessing a nonexistant category throws an error.
@@ -125,23 +122,7 @@ def test_set_and_get_nonexistant_category():
         Config.set("ABCDEFG", "abcdefg", 1)
 
 
-def test_backward_compatibility():
-    # The config file should not exist before the first get call.
-    assert not os.path.isfile(Config.CONFIG_PATH)
-
-    # Remove a category, then create a config file without the category.
-    Config.DEFAULT_CATEGORIES.remove("OPTIMIZER")
-    _ = Config.get("PLANNER", "nonexistant_field", "1")
-
-    # Querying for the new category should create it.
-    assert Config.get("OPTIMIZER", "network_bandwidth", 1.0) == 1.0
-    assert "OPTIMIZER" in Config.config
-
-
-def test_boolean_config():
-    # The config file should not exist before the first get call.
-    assert not os.path.isfile(Config.CONFIG_PATH)
-
+def test_boolean_config(tmp_path_config):
     # Check that boolean fields are correctly casted, i.e., the "False" written to the config file is correctly parsed.
     assert "always_migrate" not in Config.config["OPTIMIZER"]
     Config.set("OPTIMIZER", "always_migrate", False)

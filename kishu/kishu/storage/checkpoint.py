@@ -3,8 +3,9 @@ Sqlite interface for storing checkpoints.
 """
 
 import sqlite3
+from collections import defaultdict
 from pathlib import Path
-from typing import List, Set
+from typing import Dict, List, Set
 
 import dill as pickle
 
@@ -14,23 +15,31 @@ from kishu.storage.disk_ahg import VariableSnapshot
 
 CHECKPOINT_TABLE = "checkpoint"
 VARIABLE_SNAPSHOT_TABLE = "variable_snapshot"
+SQLITE3_DEFAULT_MAX_BLOB_SIZE = (
+    500_000_000  # Compile-time maximum is 1GB, however, inserting exactly 1GB will raise the error.
+)
 
 
 class KishuCheckpoint:
     def __init__(self, database_path: Path, incremental_cr: bool = False):
         self.database_path = database_path
         self._incremental_cr = incremental_cr
+        self._max_blob_size = SQLITE3_DEFAULT_MAX_BLOB_SIZE
 
     def init_database(self):
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(f"create table if not exists {CHECKPOINT_TABLE} (commit_id text primary key, data blob)")
+        cur.execute(
+            f"create table if not exists {CHECKPOINT_TABLE} "
+            f"(commit_id text, chunk_id int, data blob, primary key (commit_id, chunk_id))"
+        )
 
         # Create incremental checkpointing related tables only if incremental store is enabled.
         if self._incremental_cr:
             cur.execute(
                 f"create table if not exists {VARIABLE_SNAPSHOT_TABLE} "
-                f"(versioned_name text, commit_id text, data blob, primary key (versioned_name, commit_id))"
+                f"(versioned_name text, commit_id text, chunk_id int, data blob, "
+                f"primary key (versioned_name, commit_id, chunk_id))"
             )
         con.commit()
 
@@ -44,18 +53,28 @@ class KishuCheckpoint:
     def get_checkpoint(self, commit_id: str) -> bytes:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(f"select data from {CHECKPOINT_TABLE} where commit_id = ?", (commit_id,))
-        res: tuple = cur.fetchone()
+        cur.execute(f"select data from {CHECKPOINT_TABLE} where commit_id = ? ORDER BY chunk_id", (commit_id,))
+        res: List = cur.fetchall()
         if not res:
             raise CommitIdNotExistError(commit_id)
-        result = res[0]
+
         con.commit()
-        return result
+        return b"".join([i[0] for i in res])
 
     def store_checkpoint(self, commit_id: str, data: bytes) -> None:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
-        cur.execute(f"insert into {CHECKPOINT_TABLE} values (?, ?)", (commit_id, memoryview(data)))
+
+        # Break the blob into chunks and insert each chunk
+        data_view = memoryview(data)
+        for i in range(0, len(data_view), self._max_blob_size):
+            chunk = data_view[i : i + self._max_blob_size]
+            cur.execute(
+                f"""
+            INSERT INTO {CHECKPOINT_TABLE} values (?, ?, ?)
+            """,
+                (commit_id, i // self._max_blob_size, chunk),
+            )
         con.commit()
 
     def get_variable_snapshots(self, variable_snapshots: Set[VariableSnapshot]) -> List[bytes]:
@@ -68,15 +87,21 @@ class KishuCheckpoint:
         cur = con.cursor()
         param_list = [vs.versioned_name() for vs in variable_snapshots]
         cur.execute(
-            f"select data from {VARIABLE_SNAPSHOT_TABLE} WHERE versioned_name IN (%s)" % ",".join("?" * len(param_list)),
+            f"select versioned_name, data from {VARIABLE_SNAPSHOT_TABLE} WHERE versioned_name IN (%s) ORDER BY chunk_id"
+            % ",".join("?" * len(param_list)),
             param_list,
         )
 
         res: List = cur.fetchall()
-        res_list = [i[0] for i in res]
-        if len(res_list) != len(variable_snapshots):
-            raise ValueError(f"length of results {len(res_list)} not equal to queries {len(variable_snapshots)}:")
-        return res_list
+
+        # Concatenate chunks
+        chunk_dict: Dict[str, List[bytes]] = defaultdict(list)
+        for versioned_name, data in res:
+            chunk_dict[versioned_name].append(data)
+
+        if len(chunk_dict) != len(variable_snapshots):
+            raise ValueError(f"length of results {len(chunk_dict)} not equal to queries {len(variable_snapshots)}:")
+        return [b"".join(chunk_dict[vs.versioned_name()]) for vs in variable_snapshots]
 
     def get_stored_versioned_names(self, commit_ids: List[str]) -> Set[str]:
         con = sqlite3.connect(self.database_path)
@@ -100,8 +125,15 @@ class KishuCheckpoint:
             ns_subset = user_ns.subset(set(vs.name))
 
             data_dump = pickle.dumps(ns_subset.to_dict())
-            cur.execute(
-                f"insert into {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?)",
-                (vs.versioned_name(), commit_id, memoryview(data_dump)),
-            )
+
+            # Break the blob into chunks and insert each chunk
+            data_view = memoryview(data_dump)
+            for i in range(0, len(data_view), self._max_blob_size):
+                chunk = data_view[i : i + self._max_blob_size]
+                cur.execute(
+                    f"""
+                INSERT INTO {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?, ?)
+                """,
+                    (vs.versioned_name(), commit_id, i // self._max_blob_size, chunk),
+                )
             con.commit()

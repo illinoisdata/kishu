@@ -6,6 +6,7 @@ from pathlib import Path, PurePath
 from typing import Any, Callable, Generator, List, Optional, Tuple, Type
 from unittest.mock import patch
 
+import configparser
 import matplotlib.pyplot
 import numpy
 import pandas
@@ -105,9 +106,16 @@ def nb_simple_path(tmp_nb_path: Callable[[str], Path]) -> Path:
 @pytest.fixture(autouse=True)
 def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
     prev_config_path = Config.CONFIG_PATH
+    prev_config = Config.config
+    prev_last_read_time = Config.last_read_time
     Config.CONFIG_PATH = KishuPath.config_path()
+    Config.config = configparser.ConfigParser()
+    Config.last_read_time = -1
+    Config._create_config_file()
     yield Config
     Config.CONFIG_PATH = prev_config_path
+    Config.config = prev_config
+    Config.last_read_time = prev_last_read_time
 
 
 @pytest.fixture()

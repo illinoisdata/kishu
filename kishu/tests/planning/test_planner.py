@@ -31,6 +31,7 @@ class PlannerManager:
     def run_cell(
         self,
         commit_id: CommitId,
+        ns_accesses: Set[str],
         ns_updates: Dict[str, Any],
         cell_code: str,
         ns_deletions: Set[str] = set(),
@@ -41,6 +42,10 @@ class PlannerManager:
         # Update namespace. KV-pairs are manually set as update() does not trigger __setitem__.
         for k, v in ns_updates.items():
             self.planner._user_ns[k] = v
+
+        # Mock access variables.
+        for var in ns_accesses:
+            _ = self.planner._user_ns[var]
 
         # Delete variables from namespace.
         for var_name in ns_deletions:
@@ -113,8 +118,8 @@ class TestPlanner:
         planner_manager = PlannerManager(planner)
 
         # Run 2 cells.
-        planner_manager.run_cell("1:1", {"x": 1}, "x = 1")
-        planner_manager.run_cell("1:2", {"y": 2}, "y = x + 1")
+        planner_manager.run_cell("1:1", {}, {"x": 1}, "x = 1")
+        planner_manager.run_cell("1:2", {"x"}, {"y": 2}, "y = x + 1")
 
         # Assert correct contents of AHG.
         assert len(planner.get_ahg().get_all_variable_snapshots()) == 2
@@ -156,7 +161,7 @@ class TestPlanner:
         assert len(planner.get_ahg().get_all_cell_executions()) == 0
 
         # Run cell 3; x is incremented by 1.
-        planner_manager.run_cell("1:3", {"x": 2}, "%%time\nx += 1")
+        planner_manager.run_cell("1:3", {"x"}, {"x": 2}, "%%time\nx += 1")
 
         # Assert correct contents of AHG is maintained after initializing the planner in a non-empty namespace.
         assert len(planner.get_ahg().get_all_variable_snapshots()) == 2
@@ -171,21 +176,21 @@ class TestPlanner:
         planner_manager = PlannerManager(planner)
 
         # Run cell 1.
-        changed_vars = planner_manager.run_cell("1:1", {"x": 1}, "x = 1")
+        changed_vars = planner_manager.run_cell("1:1", {}, {"x": 1}, "x = 1")
 
         assert changed_vars == ChangedVariables(
             created_vars={"x"}, modified_vars_value=set(), modified_vars_structure=set(), deleted_vars=set()
         )
 
         # Run cell 2.
-        changed_vars = planner_manager.run_cell("1:2", {"z": [1, 2], "y": 2, "x": 5}, "z = [1, 2]\ny = x + 1\nx = 5")
+        changed_vars = planner_manager.run_cell("1:2", {"x"}, {"z": [1, 2], "y": 2, "x": 5}, "z = [1, 2]\ny = x + 1\nx = 5")
 
         assert changed_vars == ChangedVariables(
             created_vars={"y", "z"}, modified_vars_value={"x"}, modified_vars_structure={"x"}, deleted_vars=set()
         )
 
         # Run cell 3
-        changed_vars = planner_manager.run_cell("1:3", {"z": [1, 2]}, "z = [1, 2]\ndel x", ns_deletions={"x"})
+        changed_vars = planner_manager.run_cell("1:3", {}, {"z": [1, 2]}, "z = [1, 2]\ndel x", ns_deletions={"x"})
 
         assert changed_vars == ChangedVariables(
             created_vars=set(),
@@ -204,13 +209,13 @@ class TestPlanner:
         planner_manager = PlannerManager(planner)
 
         # Run cell 1.
-        planner_manager.run_cell("1:1", {"x": 1}, "x = 1")
+        planner_manager.run_cell("1:1", {}, {"x": 1}, "x = 1")
 
         # Create and run checkpoint plan for cell 1.
         planner_manager.checkpoint_session(db_path_name, "1:1", [])
 
         # Run cell 2.
-        planner_manager.run_cell("1:2", {"y": 2}, "y = x + 1")
+        planner_manager.run_cell("1:2", {"x"}, {"y": 2}, "y = x + 1")
 
         # Create and run checkpoint plan for cell 2.
         checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
@@ -231,13 +236,13 @@ class TestPlanner:
 
         # Run cell 1.
         x = 1
-        planner_manager.run_cell("1:1", {"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
+        planner_manager.run_cell("1:1", {"x"}, {"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
         # Create and run checkpoint plan for cell 1.
         planner_manager.checkpoint_session(db_path_name, "1:1", [])
 
         # Run cell 2.
-        planner_manager.run_cell("1:2", {}, "print(x)")
+        planner_manager.run_cell("1:2", {"x"}, {}, "print(x)")
 
         # Create and run checkpoint plan for cell 2.
         checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
@@ -263,13 +268,13 @@ class TestPlanner:
 
         # Run cell 1.
         x = []
-        planner_manager.run_cell("1:1", {"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
+        planner_manager.run_cell("1:1", {"x"}, {"x": x, "y": [x], "z": [x]}, "x = 1\ny = [x]\nz = [x]")
 
         # Create and run checkpoint plan for cell 1.
         planner_manager.checkpoint_session(db_path_name, "1:1", [])
 
         # Run cell 2.
-        planner_manager.run_cell("1:2", {}, "del z", {"z"})
+        planner_manager.run_cell("1:2", {}, {}, "del z", {"z"})
 
         # Create and run checkpoint plan for cell 2.
         checkpoint_plan_cell2, _ = planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
@@ -289,13 +294,13 @@ class TestPlanner:
         planner_manager = PlannerManager(planner)
 
         # Run cell 1.
-        planner_manager.run_cell("1:1", {"x": 1, "y": 2}, "x = 1\ny = 2")
+        planner_manager.run_cell("1:1", {}, {"x": 1, "y": 2}, "x = 1\ny = 2")
 
         # Create and run checkpoint plan for cell 1.
         planner_manager.checkpoint_session(db_path_name, "1:1", [])
 
         # Run cell 2. This modifies y and creates z.
-        planner_manager.run_cell("1:2", {"y": 3, "z": 4}, "y += 1\nz = 4")
+        planner_manager.run_cell("1:2", {"y"}, {"y": 3, "z": 4}, "y += 1\nz = 4")
 
         # Create and run checkpoint plan for cell 2.
         planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
@@ -319,14 +324,14 @@ class TestPlanner:
         planner_manager = PlannerManager(planner)
 
         # Run cell 1.
-        planner_manager.run_cell("1:1", {"x": 1, "y": 2}, "x = 1\ny = 2")
+        planner_manager.run_cell("1:1", {}, {"x": 1, "y": 2}, "x = 1\ny = 2")
 
         # Create and run checkpoint plan for cell 1.
         planner_manager.checkpoint_session(db_path_name, "1:1", [])
 
         # Run cell 2.
         cell2_code = "y += 1\nz = 4\n"
-        planner_manager.run_cell("1:2", {"y": 3, "z": 4}, cell2_code)
+        planner_manager.run_cell("1:2", {"y"}, {"y": 3, "z": 4}, cell2_code)
 
         # Create and run checkpoint plan for cell 2.
         planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
@@ -366,11 +371,11 @@ class TestPlanner:
         planner_manager = PlannerManager(planner)
 
         # Run cell 1.
-        planner_manager.run_cell("1:1", {"x": 1, "y": 2}, "x = 1\ny = 2")
+        planner_manager.run_cell("1:1", {}, {"x": 1, "y": 2}, "x = 1\ny = 2")
 
         # Run cell 2.
         cell2_code = "y += 1\nz = 4"
-        planner_manager.run_cell("1:2", {"y": 3, "z": 4}, cell2_code)
+        planner_manager.run_cell("1:2", {"y"}, {"y": 3, "z": 4}, cell2_code)
 
         target_active_vses = planner.get_ahg().get_active_variable_snapshots("1:1")
 
