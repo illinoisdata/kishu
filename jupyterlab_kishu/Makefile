@@ -1,6 +1,7 @@
 .ONESHELL:
 ENV_PREFIX=$(shell python -c "if __import__('pathlib').Path('.venv/bin/pip').exists(): print('.venv/bin/')")
 USING_POETRY=$(shell grep "tool.poetry" pyproject.toml && echo "yes")
+SOURCE_DIRS=jupyterlab_kishu/handlers.py
 
 .PHONY: help
 help:             ## Show the help.
@@ -27,22 +28,22 @@ install:          ## Install the project in dev mode.
 
 .PHONY: fmt
 fmt:              ## Format code using black & isort.
-	$(ENV_PREFIX)isort jupyterlab_kishu/
-	$(ENV_PREFIX)black -l 127 jupyterlab_kishu/
+	$(ENV_PREFIX)isort ${SOURCE_DIRS}
+	$(ENV_PREFIX)black -l 127 ${SOURCE_DIRS}
 	$(ENV_PREFIX)black -l 127 ui-tests/
 
 .PHONY: lint
 lint:             ## Run pep8, black, mypy linters.
-	$(ENV_PREFIX)flake8 --extend-ignore=E203 --max-line-length 127 jupyterlab_kishu/
-	$(ENV_PREFIX)black -l 127 --check jupyterlab_kishu/
-	$(ENV_PREFIX)black -l 127 --check ui-tests/
-	$(ENV_PREFIX)mypy --ignore-missing-imports jupyterlab_kishu/
+	$(ENV_PREFIX)flake8 --extend-ignore=E203 --max-line-length 127 ${SOURCE_DIRS} \
+		&& $(ENV_PREFIX)black -l 127 --check ${SOURCE_DIRS} \
+		&& $(ENV_PREFIX)black -l 127 --check ui-tests/ \
+		&& $(ENV_PREFIX)mypy --ignore-missing-imports ${SOURCE_DIRS}
 
 .PHONY: test
 test: lint        ## Run tests and generate coverage report.
-	$(ENV_PREFIX)pytest -v --cov-config .coveragerc --cov=jupyterlab_kishu -l --tb=short --maxfail=1 tests/
-	$(ENV_PREFIX)coverage xml
-	$(ENV_PREFIX)coverage html
+	$(ENV_PREFIX)pytest -v --cov-config .coveragerc --cov=jupyterlab_kishu -l --tb=short --maxfail=1 tests/ \
+		&& $(ENV_PREFIX)coverage xml \
+		&& $(ENV_PREFIX)coverage html
 
 .PHONY: clean
 clean:            ## Clean unused files.
