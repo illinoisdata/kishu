@@ -28,14 +28,16 @@ class KishuCheckpoint:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(
-            f"create table if not exists {CHECKPOINT_TABLE} (commit_id text, chunk_id int, data blob, primary key (commit_id, chunk_id))"
+            f"create table if not exists {CHECKPOINT_TABLE} "
+            f"(commit_id text, chunk_id int, data blob, primary key (commit_id, chunk_id))"
         )
 
         # Create incremental checkpointing related tables only if incremental store is enabled.
         if self._incremental_cr:
             cur.execute(
                 f"create table if not exists {VARIABLE_SNAPSHOT_TABLE} "
-                f"(versioned_name text, commit_id text, chunk_id int, data blob, primary key (versioned_name, commit_id, chunk_id))"
+                f"(versioned_name text, commit_id text, chunk_id int, data blob, "
+                f"primary key (versioned_name, commit_id, chunk_id))"
             )
         con.commit()
 

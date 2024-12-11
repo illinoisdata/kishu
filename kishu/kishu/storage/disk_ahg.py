@@ -99,18 +99,25 @@ class KishuDiskAHG:
         con = sqlite3.connect(self.database_path)
         cur = con.cursor()
         cur.execute(
-            f"create table if not exists {AHG_VARIABLE_SNAPSHOT_TABLE} (versioned_name text primary key, deleted bool, size float)"
+            f"create table if not exists {AHG_VARIABLE_SNAPSHOT_TABLE} "
+            "(versioned_name text primary key, deleted bool, size float)"
         )
         cur.execute(
-            f"create table if not exists {AHG_CELL_EXECUTION_TABLE} (cell_num int primary key, cell text, cell_runtime_s float)"
+            f"create table if not exists {AHG_CELL_EXECUTION_TABLE} "
+            "(cell_num int primary key, cell text, cell_runtime_s float)"
         )
         cur.execute(
-            f"create table if not exists {AHG_CE_INPUT_TABLE} (cell_num int, versioned_name text, primary key (cell_num, versioned_name))"
+            f"create table if not exists {AHG_CE_INPUT_TABLE} "
+            "(cell_num int, versioned_name text, primary key (cell_num, versioned_name))"
         )
         cur.execute(
-            f"create table if not exists {AHG_CE_OUTPUT_TABLE} (cell_num int, versioned_name text, primary key (cell_num, versioned_name))"
+            f"create table if not exists {AHG_CE_OUTPUT_TABLE} "
+            "(cell_num int, versioned_name text, primary key (cell_num, versioned_name))"
         )
-        cur.execute(f"create table if not exists {AHG_ACTIVE_VSES_TABLE} (commit_id text, versioned_name text)")
+        cur.execute(
+            f"create table if not exists {AHG_ACTIVE_VSES_TABLE} "
+            "(commit_id text, versioned_name text)"
+        )
 
         con.commit()
 
