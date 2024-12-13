@@ -165,7 +165,7 @@ class CheckpointRestorePlanner:
                 modified_vars.add(k)
 
         # Pandas dataframe dirty bit hack for ID graphs: flip the writeable flag for all newly created dataframes to false.
-        if Config.get("IDGRAPH", "pandas_df_speedup", True):
+        if Config.get("IDGRAPH", "experimental_tracker", False):
             for var in created_vars:
                 if isinstance(self._user_ns[var], pandas.DataFrame):
                     for _, col in self._user_ns[var].items():

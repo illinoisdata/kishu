@@ -1,4 +1,5 @@
 import pickle
+from typing import Generator
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,6 +8,15 @@ import pytest
 import seaborn as sns
 
 from kishu.planning.idgraph import IdGraph
+from kishu.storage.config import Config
+
+
+@pytest.fixture()
+def enable_experimental_tracker(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_value = Config.get("IDGRAPH", "experimental_tracker", True)
+    Config.set("IDGRAPH", "experimental_tracker", True)
+    yield Config
+    Config.set("IDGRAPH", "experimental_tracker", prev_value)
 
 
 def test_idgraph_simple_list_compare_by_value():
@@ -94,6 +104,19 @@ def test_idgraph_numpy():
 
 
 def test_idgraph_numpy_nonoverlap():
+    """
+    Test if idgraph overlaps are accurately detected for numpy arrays.
+    """
+    a = np.array([6])
+    b = np.array([7, 8])
+
+    idgraph1 = IdGraph.from_object(a)
+    idgraph2 = IdGraph.from_object(b)
+
+    assert idgraph1.is_overlap(idgraph2)
+
+
+def test_idgraph_numpy_nonoverlap_experimental(enable_experimental_tracker):
     """
     Test if idgraph overlaps are accurately detected for numpy arrays.
     """
