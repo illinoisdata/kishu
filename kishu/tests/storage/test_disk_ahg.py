@@ -1,7 +1,10 @@
 import sqlite3
+from typing import Generator
 
 import pytest
 
+from kishu.jupyter.namespace import Namespace
+from kishu.storage.config import Config
 from kishu.storage.disk_ahg import (
     AHG_ACTIVE_VSES_TABLE,
     AHG_CE_INPUT_TABLE,
@@ -14,6 +17,33 @@ from kishu.storage.disk_ahg import (
     VariableSnapshot,
 )
 from kishu.storage.path import KishuPath
+
+
+@pytest.fixture()
+def disable_always_migrate_recompute(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_value_migrate = Config.get("OPTIMIZER", "always_migrate", False)
+    prev_value_recompute = Config.get("OPTIMIZER", "always_migrate", False)
+    Config.set("OPTIMIZER", "always_migrate", False)
+    Config.set("OPTIMIZER", "always_recompute", False)
+    yield Config
+    Config.set("OPTIMIZER", "always_migrate", prev_value_migrate)
+    Config.set("OPTIMIZER", "always_recompute", prev_value_recompute)
+
+
+@pytest.fixture()
+def enable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_value = Config.get("OPTIMIZER", "always_migrate", False)
+    Config.set("OPTIMIZER", "always_migrate", True)
+    yield Config
+    Config.set("OPTIMIZER", "always_migrate", prev_value)
+
+
+@pytest.fixture()
+def enable_always_recompute(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_value = Config.get("OPTIMIZER", "always_recompute", False)
+    Config.set("OPTIMIZER", "always_recompute", True)
+    yield Config
+    Config.set("OPTIMIZER", "always_recompute", prev_value)
 
 
 class TestDiskAHG:
@@ -108,3 +138,18 @@ class TestDiskAHG:
 
         # Active VSes.
         assert set(kishu_disk_ahg.get_active_vses("1:3")) == {vs2, vs3}
+
+    def test_with_profiling(self, disable_always_migrate_recompute):
+        user_ns = Namespace({"x": "A" * 100})
+        vs_no_disabled = VariableSnapshot.select_names_from_update(user_ns, 1, frozenset("x"))
+        assert vs_no_disabled.size > 1.0
+
+    def test_disable_profiling_always_migrate(self, enable_always_migrate):
+        user_ns = Namespace({"x": "A" * 100})
+        vs_disabled = VariableSnapshot.select_names_from_update(user_ns, 1, frozenset("x"))
+        assert vs_disabled.size == 1.0
+
+    def test_disable_profiling_always_recompute(self, enable_always_recompute):
+        user_ns = Namespace({"x": "A" * 100})
+        vs_disabled = VariableSnapshot.select_names_from_update(user_ns, 1, frozenset("x"))
+        assert vs_disabled.size == 1.0
