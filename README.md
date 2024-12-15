@@ -53,12 +53,18 @@ After installing `jupyterlab_kishu`, "Kishu" tab will appear on Jupyter's menu b
 
 `kishu/tests/notebooks` contains simple data science notebooks to try Kishu on.
 
+## Coverage
+
+Kishu is compatible with 
+
 ## Learn More
 
 Kishu's efficiency is enabled by its low-overhead session state monitoring, deduplicated variable storage, and optimized recomputation-assisted checkout. Our papers on Kishu can be found here; don't forget to star our repository and cite our papers if you like our work!
 
+- [Kishu: Time-Traveling for Computational Notebooks](https://arxiv.org/abs/2406.13856)
 - [ElasticNotebook: Enabling Live Migration for Computational Notebooks](https://arxiv.org/abs/2309.11083)
 - [Transactional Python for Durable Machine Learning: Vision, Challenges, and Feasibility](https://dl.acm.org/doi/abs/10.1145/3595360.3595855)
+- [Demonstration of ElasticNotebook: Migrating Live Computational Notebook States](https://dl.acm.org/doi/abs/10.1145/3626246.3654752)
 
 ## Development
 
