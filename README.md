@@ -59,11 +59,15 @@ Kishu's per-notebook checkpoint files are stored under the `~/.kishu/` directory
 
 ## Configuring Kishu
 
-Kishu can be configured through editing the `~/.kishu/config.ini` file. A full list of configurable options can be found [here](https://github.com/illinoisdata/kishu/blob/main/docs/src/supported_libraries.rst).
+Kishu can be configured through editing the `~/.kishu/config.ini` file. A full list of configurable options can be found [here](https://github.com/illinoisdata/kishu/blob/main/docs/src/usage.rst).
 
 ## Coverage
 
 The list of libraries that Kishi is compatible with can be found [here](https://github.com/illinoisdata/kishu/blob/main/docs/src/supported_libraries.rst).
+
+## Limitations
+
+There are certain objects and cases for which Kishu may fail to correctly checkpoint. You can learn more about them [here](https://github.com/illinoisdata/kishu/blob/main/docs/src/unsupported_cases.rst). 
 
 ## Learn More
 
@@ -74,9 +78,6 @@ Kishu's efficiency is enabled by its low-overhead session state monitoring, dedu
 - [Transactional Python for Durable Machine Learning: Vision, Challenges, and Feasibility](https://dl.acm.org/doi/abs/10.1145/3595360.3595855)
 - [Demonstration of ElasticNotebook: Migrating Live Computational Notebook States](https://dl.acm.org/doi/abs/10.1145/3626246.3654752)
 
-## Development
-
-The following commands install Kishu in the editable mode. We recommend working in a virtual environment (e.g., `python3 -m venv .venv && source .venv/bin/activate`).
 
 ```bash
 (cd kishu && make install)
