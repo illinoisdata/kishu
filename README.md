@@ -53,9 +53,17 @@ After installing `jupyterlab_kishu`, "Kishu" tab will appear on Jupyter's menu b
 
 `kishu/tests/notebooks` contains simple data science notebooks to try Kishu on.
 
+## Migrating Checkpoints
+
+Kishu's per-notebook checkpoint files are stored under the `~/.kishu/` directory. For example, Kishu will store the checkpoint files for notebook with name `Untitled` under `~/.kishu/Untitled`. These checkpoints can be copied, along with the notebook, to a new machine where Kishu is installed for elastic migration.
+
+## Configuring Kishu
+
+Kishu can be configured through editing the `~/.kishu/config.ini` file. A full list of configurable options can be found [here](https://github.com/illinoisdata/kishu/blob/main/docs/src/supported_libraries.rst).
+
 ## Coverage
 
-Kishu is compatible with 
+The list of libraries that Kishi is compatible with can be found [here](https://github.com/illinoisdata/kishu/blob/main/docs/src/supported_libraries.rst).
 
 ## Learn More
 
