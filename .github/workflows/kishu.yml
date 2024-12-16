@@ -6,12 +6,15 @@ name: kishu
 on:
   push:
     branches: [ main ]
+
   pull_request:
     branches: [ main ]
+    types: [opened, synchronize, reopened, closed]
 
 jobs:
   build:
     name: build
+    if: github.event.action != 'closed' # Skip the build job if PR is closed
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -21,31 +24,53 @@ jobs:
         python-version: ["3.8"]
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0 # Ensure the full history is fetched for rebasing
+
     - name: Extract branch name
       shell: bash
       run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
       id: extract_branch
+
+    - name: Rebase onto main
+      run: |
+        git fetch origin main
+        git rebase origin/main
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install dependencies
       run: |
         cd kishu
         python -m pip install --upgrade pip
         make install
         python -c "import kishu, kishu.cli, kishu.commands"
+
     - name: Lint Kishu
       run: |
         cd kishu
         make lint
+
     - name: Test Kishu
       run: |
         cd kishu
         make test
+
     - name: Upload coverage reports to Codecov
       if:  ${{ matrix.python-version == '3.8' && steps.extract_branch.outputs.branch == 'main' }}
       uses: codecov/codecov-action@v3
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  cancel:
+    name: Cancel Workflow
+    if: github.event.action == 'closed' # Run only if the PR is closed
+    runs-on: ubuntu-latest
+    steps:
+    - name: Log cancellation
+      run: echo "Pull request closed. Cancelling workflow."

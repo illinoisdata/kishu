@@ -3,12 +3,15 @@ name: jupyterlab_kishu
 on:
   push:
     branches: [ main ]
+
   pull_request:
     branches: [ main ]
+    types: [opened, synchronize, reopened, closed]
 
 jobs:
   build:
     name: build
+    if: github.event.action != 'closed' # Skip the build job if PR is closed
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -17,31 +20,53 @@ jobs:
         python-version: ["3.8"]
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0 # Ensure the full history is fetched for rebasing
+
     - name: Extract branch name
       shell: bash
       run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
       id: extract_branch
+
+    - name: Rebase onto main
+      run: |
+        git fetch origin main
+        git rebase origin/main
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install core Kishu (kishu)
       run: |
         cd kishu
         python -m pip install --upgrade pip
         make install
         python -c "import kishu, kishu.cli, kishu.commands"
+
     - name: Install jupyterlab_kishu
       run: |
         cd jupyterlab_kishu
         make install
         python -c "import jupyterlab_kishu, jupyterlab_kishu.handlers"
+
     - name: Lint jupyterlab_kishu
       run: |
         cd jupyterlab_kishu
         make lint
+
     - name: Test jupyterlab_kishu
       run: |
         cd jupyterlab_kishu
         jlpm test
+
+  cancel:
+    name: Cancel Workflow
+    if: github.event.action == 'closed' # Run only if the PR is closed
+    runs-on: ubuntu-latest
+    steps:
+    - name: Log cancellation
+      run: echo "Pull request closed. Cancelling workflow."
