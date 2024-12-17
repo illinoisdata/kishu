@@ -19,33 +19,6 @@ from kishu.storage.disk_ahg import (
 from kishu.storage.path import KishuPath
 
 
-@pytest.fixture()
-def disable_always_migrate_recompute(tmp_kishu_path) -> Generator[type, None, None]:
-    prev_value_migrate = Config.get("OPTIMIZER", "always_migrate", False)
-    prev_value_recompute = Config.get("OPTIMIZER", "always_migrate", False)
-    Config.set("OPTIMIZER", "always_migrate", False)
-    Config.set("OPTIMIZER", "always_recompute", False)
-    yield Config
-    Config.set("OPTIMIZER", "always_migrate", prev_value_migrate)
-    Config.set("OPTIMIZER", "always_recompute", prev_value_recompute)
-
-
-@pytest.fixture()
-def enable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
-    prev_value = Config.get("OPTIMIZER", "always_migrate", False)
-    Config.set("OPTIMIZER", "always_migrate", True)
-    yield Config
-    Config.set("OPTIMIZER", "always_migrate", prev_value)
-
-
-@pytest.fixture()
-def enable_always_recompute(tmp_kishu_path) -> Generator[type, None, None]:
-    prev_value = Config.get("OPTIMIZER", "always_recompute", False)
-    Config.set("OPTIMIZER", "always_recompute", True)
-    yield Config
-    Config.set("OPTIMIZER", "always_recompute", prev_value)
-
-
 class TestDiskAHG:
     @pytest.fixture
     def db_path_name(self, nb_simple_path):
@@ -138,6 +111,32 @@ class TestDiskAHG:
 
         # Active VSes.
         assert set(kishu_disk_ahg.get_active_vses("1:3")) == {vs2, vs3}
+
+
+class TestProfiling:
+    @pytest.fixture()
+    def disable_always_migrate_recompute(self, tmp_kishu_path) -> Generator[type, None, None]:
+        prev_value_migrate = Config.get("OPTIMIZER", "always_migrate", False)
+        prev_value_recompute = Config.get("OPTIMIZER", "always_migrate", False)
+        Config.set("OPTIMIZER", "always_migrate", False)
+        Config.set("OPTIMIZER", "always_recompute", False)
+        yield Config
+        Config.set("OPTIMIZER", "always_migrate", prev_value_migrate)
+        Config.set("OPTIMIZER", "always_recompute", prev_value_recompute)
+
+    @pytest.fixture()
+    def enable_always_migrate(self, tmp_kishu_path) -> Generator[type, None, None]:
+        prev_value = Config.get("OPTIMIZER", "always_migrate", False)
+        Config.set("OPTIMIZER", "always_migrate", True)
+        yield Config
+        Config.set("OPTIMIZER", "always_migrate", prev_value)
+
+    @pytest.fixture()
+    def enable_always_recompute(self, tmp_kishu_path) -> Generator[type, None, None]:
+        prev_value = Config.get("OPTIMIZER", "always_recompute", False)
+        Config.set("OPTIMIZER", "always_recompute", True)
+        yield Config
+        Config.set("OPTIMIZER", "always_recompute", prev_value)
 
     def test_with_profiling(self, disable_always_migrate_recompute):
         user_ns = Namespace({"x": "A" * 100})
