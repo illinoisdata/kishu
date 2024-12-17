@@ -176,6 +176,12 @@ class CommitSummary:
     runtime_s: Optional[float]
     branches: List[str]
     tags: List[str]
+    kind: str
+
+
+@dataclass
+class CommitFilter:
+    kinds: Optional[List[str]] = None
 
 
 @dataclass_json
@@ -378,7 +384,7 @@ class KishuCommand:
         )
 
     @staticmethod
-    def log(notebook_path: Path, commit_id: Optional[str] = None) -> LogResult:
+    def log(notebook_path: Path, commit_id: Optional[str] = None, commit_filter: CommitFilter = CommitFilter()) -> LogResult:
         NotebookPath.verify_valid_and_initialized(notebook_path)
         database_path = KishuPath.database_path(notebook_path)
         kishu_branch = KishuBranch(database_path)
@@ -392,19 +398,21 @@ class KishuCommand:
         commit_id = KishuForJupyter.disambiguate_commit(notebook_path, commit_id)
         store = KishuCommitGraph.new_var_graph(database_path)
         graph = store.list_history(commit_id)
+        commit_graph = KishuCommand._decorate_graph(notebook_path, graph)
         return LogResult(
-            commit_graph=KishuCommand._decorate_graph(notebook_path, graph),
+            commit_graph=KishuCommand._filter_commits(commit_graph, commit_filter),
             head=kishu_branch.get_head(),
         )
 
     @staticmethod
-    def log_all(notebook_path: Path) -> LogAllResult:
+    def log_all(notebook_path: Path, commit_filter: CommitFilter = CommitFilter()) -> LogAllResult:
         NotebookPath.verify_valid_and_initialized(notebook_path)
         database_path = KishuPath.database_path(notebook_path)
         store = KishuCommitGraph.new_var_graph(database_path)
         graph = store.list_all_history()
+        commit_graph = KishuCommand._decorate_graph(notebook_path, graph)
         return LogAllResult(
-            commit_graph=KishuCommand._decorate_graph(notebook_path, graph),
+            commit_graph=KishuCommand._filter_commits(commit_graph, commit_filter),
             head=KishuBranch(database_path).get_head(),
         )
 
@@ -832,6 +840,7 @@ class KishuCommand:
                     runtime_s=commit_entry.runtime_s,
                     branches=branch_names,
                     tags=tag_names,
+                    kind=commit_entry.kind,
                 )
             )
         return summaries
@@ -897,6 +906,12 @@ class KishuCommand:
             variables=variables,
             cells=cells,
         )
+
+    @staticmethod
+    def _filter_commits(commits: List[CommitSummary], commit_filter: CommitFilter) -> List[CommitSummary]:
+        if commit_filter.kinds is not None:
+            commits = [commit for commit in commits if commit.kind in commit_filter.kinds]
+        return commits
 
     @staticmethod
     def _branch_commit(

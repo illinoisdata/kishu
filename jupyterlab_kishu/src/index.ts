@@ -85,6 +85,10 @@ interface CommitResult {
   reattachment: InstrumentResult;
 }
 
+function notifyWarning(message: string) {
+  Notification.warning(message, { autoClose: 3000 });
+}
+
 function notifyError(message: string) {
   Notification.error(message, { autoClose: 3000 });
 }
@@ -203,23 +207,13 @@ function installCommands(
       // List all commits.
       const log_all_result = await requestAPI<LogAllResult>('log_all', {
         method: 'POST',
-        body: JSON.stringify({notebook_path: notebook_path}),
+        body: JSON.stringify({notebook_path: notebook_path, kinds: ["manual"]}),
       });
 
       // Ask for the target commit ID.
       let maybe_commit_id = undefined;
       if (!log_all_result || log_all_result.commit_graph.length == 0) {
-        // Failed to list, asking in text dialog directly.
-        maybe_commit_id = (
-          await InputDialog.getText({
-            placeholder: '<commit_id>',
-            title: trans.__('Checkout to...'),
-            okLabel: trans.__('Checkout')
-          })
-        ).value ?? undefined;
-        if (!maybe_commit_id) {
-          notifyError(trans.__(`Kishu checkout requires commit ID.`));
-        }
+        notifyWarning(trans.__(`No Kishu commit found.`));
       } else {
         // Find the index to current commit.
         let current_idx = log_all_result.commit_graph.findIndex(
@@ -312,10 +306,10 @@ function installCommands(
         })
       ).value ?? undefined;
       if (message == undefined) {
-        notifyError(trans.__(`Kishu commit requires a commit message.`));
+        return;  // Commit canceled
       }
       if (!message) {
-        return;
+        notifyError(trans.__(`Kishu commit requires a commit message.`));
       }
 
       // Make checkout request
