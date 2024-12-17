@@ -165,3 +165,19 @@ class TestKishuCheckpoint:
         unpickled_data_list = [pickle.loads(i) for i in data_list]
         assert unpickled_data_list[0] == {"a": test_stra}
         assert unpickled_data_list[1] == {"b": test_strb}
+
+    def test_skip_unserializable(self, kishu_incremental_checkpoint):
+        vs_gen = VariableSnapshot(frozenset({"gen"}), 1)
+        vs_string = VariableSnapshot(frozenset({"str"}), 1)
+
+        gen = (i for i in range(10))
+        string = "A" * 100
+        kishu_incremental_checkpoint.store_variable_snapshots(
+            "1",
+            [vs_gen, vs_string],
+            Namespace({"gen": gen, "str": string}),
+        )
+
+        # Only vs_string would be returned (as vs_gen was skipped due to not being serializable).
+        nameset = kishu_incremental_checkpoint.get_stored_versioned_names(["1"])
+        assert nameset == {vs_string.versioned_name()}
