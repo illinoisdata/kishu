@@ -60,11 +60,11 @@ class VariableSnapshot:
 
     @staticmethod
     def select_names_from_update(user_ns: Namespace, version: int, name: VariableName) -> VariableSnapshot:
-        always_recompute  = Config.get("OPTIMIZER", "always_recompute", False)
-        always_migrate  = Config.get("OPTIMIZER", "always_migrate", False)
+        always_recompute = Config.get("OPTIMIZER", "always_recompute", False)
+        always_migrate = Config.get("OPTIMIZER", "always_migrate", False)
         size = 1.0
         if (not always_recompute) and (not always_migrate):
-          size = profile_variable_size([user_ns[var] for var in name])
+            size = profile_variable_size([user_ns[var] for var in name])
         return VariableSnapshot(
             name=name,
             version=version,
