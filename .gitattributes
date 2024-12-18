@@ -1,0 +1,34 @@
+# https://github.com/gitattributes/gitattributes/blob/master/Markdown.gitattributes
+# Apply override to all files in the directory
+*.md linguist-detectable
+
+# https://github.com/gitattributes/gitattributes/blob/master/Python.gitattributes
+# Basic .gitattributes for a python repo.
+
+# Source files
+# ============
+*.pxd    text diff=python text eol=lf
+*.py     text diff=python text eol=lf
+*.py3    text diff=python text eol=lf
+*.pyw    text diff=python text eol=lf
+*.pyx    text diff=python text eol=lf
+*.pyz    text diff=python text eol=lf
+*.pyi    text diff=python text eol=lf
+
+# Binary files
+# ============
+*.db     binary
+*.p      binary
+*.pkl    binary
+*.pickle binary
+*.pyc    binary export-ignore
+*.pyo    binary export-ignore
+*.pyd    binary
+
+# Jupyter notebook
+*.ipynb  text eol=lf
+
+# Note: .db, .p, and .pkl files are associated
+# with the python modules ``pickle``, ``dbm.*``,
+# ``shelve``, ``marshal``, ``anydbm``, & ``bsddb``
+# (among others).
