@@ -24,11 +24,12 @@ TODO: add a screenshot here
 ## Using Kishu
 
 **Adding Kishu to your notebook:** Kishu can be added to any notebook through `Accel K` + `Accel I`.
-**Committing a session state:** Kishu can store your current session state with `Accel K` + `Accel C`.
-**Undoing a cell execution:** `Accel K` + `Accel V` rolls back the session state to that before executing the latest cell.
-**Checkout:** You can return to any session state that has been committed in the past with `Accel K` + `Accel Z`.
 
-**Cell execution tracking:** After adding Kishu to a notebook, it will begin tracking user cell executions and commit the session state to its database after each cell execution. Users can see their execution history with the following command:
+**Committing a session state:** Kishu can store your current session state with `Accel K` + `Accel C`.
+
+**Undoing a cell execution:** `Accel K` + `Accel V` rolls back the session state to that before executing the latest cell.
+
+**Checkout:** You can return to any session state that has been committed in the past with `Accel K` + `Accel Z`.
 
 ## Trying Kishu
 
