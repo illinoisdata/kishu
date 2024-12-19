@@ -4,13 +4,17 @@ Kishu can be configured through editing the `~/.kishu/config.ini` file with the 
 
 .. code-block:: console
 
-  [CATEGORY1]
-  option1=value1
-  option2=value2
+  [PLANNER]
+  incremental_store=True
   ...
 
-  [CATEGORY2]
-  option3=va
+  [OPTIMIZER]
+  always_migrate=True
+  network_bandwidth=100000000
+  ...
+
+  [IDGRAPH]
+  experimental_tracker=True
   ...
 
 The current list of available options are as follows:
