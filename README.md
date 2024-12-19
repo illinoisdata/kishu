@@ -7,43 +7,52 @@
 [![GitHub stars](https://img.shields.io/github/stars/illinoisdata/ElasticNotebook)](htps://github.com/illinoisdata/kishu)
 --->
 
-# Kishu 
+# Kishu - Versioned and Undoable Notebook System
 
-Kishu is a system for intelligent versioning of notebook session states on Jupyter-based platforms (e.g. JupyterLab, Jupyter Hub). It allows users to easily manage complex user-defined variables in sessions such as machine learning models, plots, and dataframes through a Git-like commit and checkout interface.
+Kishu is a system for intelligent versioning of notebook session states on Jupyter-based platforms (e.g. JupyterLab, Jupyter Hub). Kishu efficiently creates checkpoints of both the variable and code states of a notebook session, allowing users to both undo cell executions and manage branching states containing objects such as machine learning models, plots, and dataframes through a Git-like commit and checkout interface.
 
-TODO: description of what it does
+## Using Kishu
 
-## Getting Started
-
-Installing the package from [PyPI](https://pypi.org/project/kishu/):
+Kishu can be installed from [PyPI](https://pypi.org/project/kishu/):
 
 ```bash
 pip install kishu kishuboard jupyterlab_kishu
 ```
 
-TODO: add a screenshot here
+Once installed, you are ready to use Kishu in your notebook workflows for undoing cell executions and managing branching notebook states.
 
-## Using Kishu
+### Initializing Kishu
+**Initialize Kishu to your notebook**: To start protecting your notebook session, Kishu can be initialized and attached through the `Kishu > Initialize/Re-attach` option in the Jupyter command palette or using shortcuts `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`.
 
-**Initialize Kishu to your notebook**: To start protecting your notebook session, Kishu can be initialized and attached through `Kishu > Initialize/Re-attach` or using shortcuts `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`.
+<img width="552" alt="flow1_2" src="https://github.com/user-attachments/assets/8569502d-f29e-4960-a292-db16ce8ff165" />
 
-**Committing a session state:** Kishu can store your current session state with `Accel K` + `Accel C`.
+### Undoable Notebook Workflow
+**Automatic Tracking**: Once initialized, Kishu will start automatically saving the variable state after each cell execution.
+**Undoing a cell execution:** `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z` rolls back your variable state to that before your latest cell execution, for example, to 'un-drop' a dataframe column dropped by the below cell:
 
-**Undoing a cell execution:** `Accel K` + `Accel V` rolls back the session state to that before executing the latest cell.
+```
+df = df.drop(['col1'])
+```
 
-**Checkout:** You can return to any session state that has been committed in the past with `Accel K` + `Accel Z`.
+Undoing cell executions **only affects the variable state** (right). The code state (i.e., the cells you write, left) is untouched.
 
-## Trying Kishu
+<img width="552" alt="flow1_2" src="https://github.com/user-attachments/assets/81d8a920-0938-47a0-af56-0841a7cca646"/>
 
-`kishu/tests/notebooks` contains simple data science notebooks to try Kishu on.
+### Branching Notebook Workflow
 
-## Migrating Checkpoints
+Kishu can also be used to manage branching code and variable states; it supports making **checkpoints** of the notebook and variable state at any point during a notebook session, which can be returned to later via a **checkout**.
 
-Kishu's per-notebook checkpoint files are stored under the `~/.kishu/` directory. For example, Kishu will store the checkpoint files for notebook with name `Untitled` under `~/.kishu/Untitled`. These checkpoints can be copied, along with the notebook, to a new machine where Kishu is installed for elastic migration.
+**Committing to make a checkpoint:** Kishu can store the current state of your notebook, including both the variable state and your code state, with `Ctrl+K then Ctrl+C` / `⌘+K then ⌘+C`.
+
+<img width="552" alt="flow1_2" src="https://github.com/user-attachments/assets/81c6c98d-ba10-4c23-9bf4-da167e37bf0e"/>
+
+**Checkout to a checkpoint:** You can return to any session state that has been committed in the past with `Ctrl+K then Ctrl+V` / `⌘+K then ⌘+V`, which will bring up a menu for you to select the appropriate checkpoint. Checking out will replace both the current variable and code state with that of the selected checkpoint. Checking out will also **overwrite your current variable and code state**; commit to make a checkpoint before checking out if you wish to keep your current notebook state.
+
+<img width="552" alt="flow1_5 (1)" src="https://github.com/user-attachments/assets/b765e2c4-11f7-4e73-aeaa-7fa7d990cd98" />
 
 ## Configuring Kishu
 
-Kishu can be configured through editing the `~/.kishu/config.ini` file. A full list of configurable options can be found [here](https://github.com/illinoisdata/kishu/blob/main/docs/src/usage.rst).
+Kishu can be configured through editing the `~/.kishu/config.ini` file. A full list of configurable options can be found [here](docs/src/usage.rst).
 
 ## Supported Libraries
 
@@ -204,6 +213,10 @@ This is the current list of libraries, their versions, and their classes support
     ❓ matplotlib==3.7.5, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
 ```
 
+## Migrating Checkpoints
+
+Kishu's per-notebook checkpoint files are stored under the `~/.kishu/` directory. For example, Kishu will store the checkpoint files for notebook with name `Untitled` under `~/.kishu/Untitled`. These checkpoints can be copied, along with the notebook, to a new machine where Kishu (and other libraries identical to the source environment) is installed for elastic migration.
+
 ## Limitations
 Kishu may fail to correctly checkpoint notebook sessions containing the following items:
 
@@ -216,7 +229,7 @@ Kishu relies on the assumption that any object, when pickled then unpickled, is 
       return ""
 ```
 
-As a potential workaround, you can add object classes with incorrect reductions to a [blocklist](https://github.com/illinoisdata/kishu/blob/main/docs/src/usage.rst) in Kishu's config to inform it to never try to store (and always recompute) objects belonging to these classes.
+As a potential workaround, you can add object classes with incorrect reductions to a [blocklist](docs/src/usage.rst) in Kishu's config to inform it to never try to store (and always recompute) objects belonging to these classes.
 
 ### Non-Deterministic and Unpicklable Objects
 Kishu relies on cell replay to reconstruct unpicklable objects (e.g., generators). However, if the unpicklable object itself is created through non-deterministic means, Kishu will fail to exactly recreate it on undo/checkout, for example (assuming the seed for `random` was not set):
