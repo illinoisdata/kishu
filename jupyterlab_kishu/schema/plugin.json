@@ -3,22 +3,22 @@
     {
       "command": "kishu:init",
       "keys": ["Accel K", "Accel I"],
-      "selector": ".jp-Notebook"
+      "selector": "body"
     },
     {
       "command": "kishu:commit",
       "keys": ["Accel K", "Accel C"],
-      "selector": ".jp-Notebook"
+      "selector": "body"
     },
     {
       "command": "kishu:checkout",
       "keys": ["Accel K", "Accel V"],
-      "selector": ".jp-Notebook"
+      "selector": "body"
     },
     {
       "command": "kishu:undo",
       "keys": ["Accel K", "Accel Z"],
-      "selector": ".jp-Notebook"
+      "selector": "body"
     }
   ],
   "title": "Kishu",
