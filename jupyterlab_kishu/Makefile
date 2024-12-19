@@ -26,6 +26,10 @@ install:          ## Install the project in dev mode.
 	$(ENV_PREFIX)jupyter labextension develop . --overwrite
 	$(ENV_PREFIX)jlpm build
 
+.PHONY: rebuild
+rebuild:          ## Rebuild on existing installation
+	$(ENV_PREFIX)jlpm build
+
 .PHONY: fmt
 fmt:              ## Format code using black & isort.
 	$(ENV_PREFIX)isort ${SOURCE_DIRS}
@@ -41,9 +45,7 @@ lint:             ## Run pep8, black, mypy linters.
 
 .PHONY: test
 test: lint        ## Run tests and generate coverage report.
-	$(ENV_PREFIX)pytest -v --cov-config .coveragerc --cov=jupyterlab_kishu -l --tb=short --maxfail=1 tests/ \
-		&& $(ENV_PREFIX)coverage xml \
-		&& $(ENV_PREFIX)coverage html
+	$(ENV_PREFIX)jlpm test
 
 .PHONY: clean
 clean:            ## Clean unused files.

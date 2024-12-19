@@ -1,5 +1,26 @@
 {
-  "jupyter.lab.shortcuts": [],
+  "jupyter.lab.shortcuts": [
+    {
+      "command": "kishu:init",
+      "keys": ["Accel K", "Accel I"],
+      "selector": ".jp-Notebook"
+    },
+    {
+      "command": "kishu:commit",
+      "keys": ["Accel K", "Accel C"],
+      "selector": ".jp-Notebook"
+    },
+    {
+      "command": "kishu:checkout",
+      "keys": ["Accel K", "Accel V"],
+      "selector": ".jp-Notebook"
+    },
+    {
+      "command": "kishu:undo",
+      "keys": ["Accel K", "Accel Z"],
+      "selector": ".jp-Notebook"
+    }
+  ],
   "title": "Kishu",
   "description": "Kishu JupyterLab Extension (jupyterlab_kishu) settings.",
   "type": "object",
@@ -20,19 +41,19 @@
         "items": [
           {
             "type": "command",
-            "command": "kishu:commit",
+            "command": "kishu:init",
             "args": {"label": "short"},
             "rank": 1
           },
           {
             "type": "command",
-            "command": "kishu:checkout",
+            "command": "kishu:commit",
             "args": {"label": "short"},
             "rank": 2
           },
           {
             "type": "command",
-            "command": "kishu:init",
+            "command": "kishu:checkout",
             "args": {"label": "short"},
             "rank": 3
           },

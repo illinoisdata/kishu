@@ -7,7 +7,7 @@ from pathlib import Path
 import tornado
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
-from kishu.commands import KishuCommand, into_json
+from kishu.commands import CommitFilter, KishuCommand, into_json
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 
 
@@ -60,7 +60,8 @@ class LogAllHandler(APIHandler):
     @tornado.web.authenticated
     def post(self):
         input_data = self.get_json_body()
-        log_all_result = KishuCommand.log_all(Path(input_data["notebook_path"]))
+        commit_filter = CommitFilter(kinds=input_data.get("kinds", None))
+        log_all_result = KishuCommand.log_all(Path(input_data["notebook_path"]), commit_filter=commit_filter)
         self.finish(into_json(log_all_result))
 
 

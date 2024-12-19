@@ -124,7 +124,11 @@ class KishuCheckpoint:
             # Create a namespace containing only variables from the component
             ns_subset = user_ns.subset(set(vs.name))
 
-            data_dump = pickle.dumps(ns_subset.to_dict())
+            try:
+                data_dump = pickle.dumps(ns_subset.to_dict())
+            except (pickle.PickleError, ValueError, AttributeError, TypeError):
+                # If the VS fails to pickle, skip it as it would be reconstructed on (incremental) checkout.
+                continue
 
             # Break the blob into chunks and insert each chunk
             data_view = memoryview(data_dump)
@@ -132,8 +136,8 @@ class KishuCheckpoint:
                 chunk = data_view[i : i + self._max_blob_size]
                 cur.execute(
                     f"""
-                INSERT INTO {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?, ?)
-                """,
+                    INSERT INTO {VARIABLE_SNAPSHOT_TABLE} values (?, ?, ?, ?)
+                    """,
                     (vs.versioned_name(), commit_id, i // self._max_blob_size, chunk),
                 )
             con.commit()

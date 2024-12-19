@@ -4,6 +4,7 @@ from typing import List
 import pytest
 
 from kishu.commands import (
+    CommitFilter,
     CommitSummary,
     DeleteTagResult,
     EditCommitItem,
@@ -52,6 +53,7 @@ class TestKishuCommand:
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
+            kind="jupyter",
         )
         assert log_result.commit_graph[1] == CommitSummary(
             commit_id="0:0:2",
@@ -62,6 +64,7 @@ class TestKishuCommand:
             runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=[],
+            kind="jupyter",
         )
         assert log_result.commit_graph[2] == CommitSummary(
             commit_id="0:0:3",
@@ -72,6 +75,7 @@ class TestKishuCommand:
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
             branches=[log_result.commit_graph[2].branches[0]],  # 1 auto branch
             tags=[],
+            kind="jupyter",
         )
 
         log_result = KishuCommand.log(basic_notebook_path, basic_execution_ids[0])
@@ -85,6 +89,33 @@ class TestKishuCommand:
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
+            kind="jupyter",
+        )
+
+    def test_log_filter(self, basic_notebook_path, basic_execution_ids):
+        assert (
+            len(
+                KishuCommand.log(
+                    basic_notebook_path, basic_execution_ids[-1], commit_filter=CommitFilter(kinds=["jupyter"])
+                ).commit_graph
+            )
+            == 3
+        )
+        assert (
+            len(
+                KishuCommand.log(
+                    basic_notebook_path, basic_execution_ids[-1], commit_filter=CommitFilter(kinds=["manual"])
+                ).commit_graph
+            )
+            == 0
+        )
+        assert (
+            len(
+                KishuCommand.log(
+                    basic_notebook_path, basic_execution_ids[-1], commit_filter=CommitFilter(kinds=["jupyter", "manual"])
+                ).commit_graph
+            )
+            == 3
         )
 
     def test_log_all(self, basic_notebook_path, basic_execution_ids):
@@ -99,6 +130,7 @@ class TestKishuCommand:
             runtime_s=log_all_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
+            kind="jupyter",
         )
         assert log_all_result.commit_graph[1] == CommitSummary(
             commit_id="0:0:2",
@@ -109,6 +141,7 @@ class TestKishuCommand:
             runtime_s=log_all_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=[],
+            kind="jupyter",
         )
         assert log_all_result.commit_graph[2] == CommitSummary(
             commit_id="0:0:3",
@@ -119,6 +152,7 @@ class TestKishuCommand:
             runtime_s=log_all_result.commit_graph[2].runtime_s,  # Not tested
             branches=[log_all_result.commit_graph[2].branches[0]],  # 1 auto branch
             tags=[],
+            kind="jupyter",
         )
 
     def test_status(self, basic_notebook_path, basic_execution_ids):
@@ -173,6 +207,7 @@ class TestKishuCommand:
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
+            kind="jupyter",
         )
         assert log_result.commit_graph[1] == CommitSummary(
             commit_id="0:0:2",
@@ -183,6 +218,7 @@ class TestKishuCommand:
             runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=["historical"],
             tags=[],
+            kind="jupyter",
         )
         assert log_result.commit_graph[2] == CommitSummary(
             commit_id="0:0:3",
@@ -193,6 +229,7 @@ class TestKishuCommand:
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
             branches=[log_result.commit_graph[2].branches[0], "at_head"],  # 1 auto branch
             tags=[],
+            kind="jupyter",
         )
 
     def test_delete_basic(self, basic_notebook_path, basic_execution_ids):
@@ -275,6 +312,7 @@ class TestKishuCommand:
             runtime_s=log_result.commit_graph[0].runtime_s,  # Not tested
             branches=[],
             tags=[],
+            kind="jupyter",
         )
         assert log_result.commit_graph[1] == CommitSummary(
             commit_id=basic_execution_ids[1],
@@ -285,6 +323,7 @@ class TestKishuCommand:
             runtime_s=log_result.commit_graph[1].runtime_s,  # Not tested
             branches=[],
             tags=["historical"],
+            kind="jupyter",
         )
         assert log_result.commit_graph[2] == CommitSummary(
             commit_id=basic_execution_ids[2],
@@ -295,6 +334,7 @@ class TestKishuCommand:
             runtime_s=log_result.commit_graph[2].runtime_s,  # Not tested
             branches=[log_result.commit_graph[2].branches[0]],  # 1 auto branch
             tags=["at_head"],
+            kind="jupyter",
         )
 
     def test_create_tag_specific(self, basic_notebook_path, basic_execution_ids):
