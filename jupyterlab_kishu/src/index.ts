@@ -387,7 +387,7 @@ function installCommands(
         } else {
           notify_manager.update({
             id: notify_id,
-            message: trans.__(`Undo execution succeeded!\n"${undo_result.message}"`),
+            message: trans.__(`Undo execution succeeded!`),
             type: 'success',
             autoClose: 3000,
           });
