@@ -25,7 +25,7 @@ TODO: add a screenshot here
 
 ## Using Kishu
 
-**Adding Kishu to your notebook:** Kishu can be added to any notebook through `Accel K` + `Accel I`.
+**Initialize Kishu to your notebook**: To start protecting your notebook session, Kishu can be initialized and attached through `Kishu > Initialize/Re-attach` or using shortcuts `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`.
 
 **Committing a session state:** Kishu can store your current session state with `Accel K` + `Accel C`.
 
