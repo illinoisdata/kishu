@@ -1,53 +1,40 @@
-Usage
-=====
-
-.. _installation:
-
-Installation
-------------
-
-To use Kishu, first install it using pip:
+Configuring Kishu
+========================
+Kishu can be configured through editing the `~/.kishu/config.ini` file with the below format:
 
 .. code-block:: console
 
-   $ pip install kishu
+  [PLANNER]
+  incremental_store=True
+  ...
 
-To use Kishu directly on JupyterLab or Jupyter Notebook 7+, install the notebook extension.
+  [OPTIMIZER]
+  always_migrate=True
+  network_bandwidth=100000000
+  ...
 
-.. code-block:: console
+  [IDGRAPH]
+  experimental_tracker=True
+  ...
 
-   $ pip install jupyterlab_kishu
-
-Getting Started
----------------
-
-
-**Adding Kishu to your notebook**: Kishu can be added to any notebook through running the following command (:py:func:`kishu.cli.init`):
-
-.. code-block:: console
-
-   $ kishu init NOTEBOOK_PATH
-
-**Cell execution tracking**: After adding Kishu to a notebook, it will begin tracking user cell executions and commit the session state to its database after each cell execution. Users can see their execution history with the following command:
+The current list of available options are as follows:
 
 .. code-block:: console
 
-   $ kishu log NOTEBOOK_PATH
+  [PLANNER]
+  incremental_store={True,False}  # Whether to enable incremental checkpointing. If enabled, Kishu only stores the changed data between subsequent checkpoints.
 
-**Checking out**: The following command is used to restore to/checkout a previous session state. The commit IDs of states can be found via the above `kishu log` command.
+  [OPTIMIZER]
+  always_migrate={True,False}  # Whether Kishu should always incrementally store all changed data for each checkpoint. Mutually exclusive with always_recompute.
+  always_recompute={True,False}  # Whether Kishu should always recompute data (via replaying cells) for checking out (and store nothing). Mutually exclusive with always_migrate.
+  network_bandwidth=(0,inf)  # Network bandwidth for Kishu to compute the optimal data to store for each checkpoint if the always_migrate and always_recompute flags are not enabled.
+  ...
 
-.. code-block:: console
+  [IDGRAPH]
+  experimental_tracker={True,False}  # Whether to use the experimental tracker, which is faster for specific large objects (dataframes, arrays) but may incur minor loss of profiling correctness.
 
-   $ kishu checkout NOTEBOOK_PATH ( COMMIT_ID | BRANCH_NAME )
-
-**Manual commit**: In addition to automatically commiting session states, users can perform a manual commit with the following command:
-
-.. code-block:: console
-
-   $ kishu commit NOTEBOOK_PATH [-m MESSAGE]
-
-**Help?**: Try `--help` to list all commands or a manual for each command.
-
-.. code-block:: console
-
-   $ kishu [COMMAND] --help
+  [PROFILER]
+  excluded_modules=[module1,module2,...]  # List of modules for Kishu to treat as unpickable.
+  excluded_classes=[class1,class2,...]  # List of classes for Kishu to treat as unpickable.
+  auto_add_unpicklable_object={True,False}  # Whether to automatically add unpicklable objects encountered during profiling to excluded_modules and excluded_classes.
+  ...
