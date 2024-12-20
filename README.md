@@ -31,7 +31,7 @@ Once installed, you are ready to use Kishu in your notebook workflows for undoin
 **Undoing a cell execution:** `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z` rolls back your variable state to that before your latest cell execution, for example, to 'un-drop' a dataframe column dropped by the below cell:
 
 ```
-df = df.drop(['col1'])
+df = df.drop(['col1'], axis=1)
 ```
 
 Undoing cell executions **only affects the variable state** (right). The code state (i.e., the cells you write, left) is untouched.
