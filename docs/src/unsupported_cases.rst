@@ -11,7 +11,7 @@ Kishu relies on the assumption that any object, when pickled then unpickled, is 
 
 .. code-block:: python
 
-  def \_\_reduce\_\_(self):
+  def __reduce__(self):
       return ""
 
 
