@@ -301,7 +301,7 @@ Kishu may fail to correctly checkpoint notebook sessions containing the followin
 Kishu relies on the assumption that any object, when pickled then unpickled, is identical to the original object, and does not automatically detect cases where this assumption is violated (i.e., silent pickling errors). This is typically caused by errors in the object class' [__reduce__](https://docs.python.org/3/library/pickle.html) function which acts as its pickling instructions; for example, an object with the below reduction (incorrectly) returns an empty (byte)string when pickled.
 
 ```python
-  def \_\_reduce\_\_(self):
+  def __reduce__(self):
       return ""
 ```
 
