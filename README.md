@@ -9,6 +9,8 @@
 
 # Kishu: Versioned and Undoable Notebook System
 
+<img width="350" src="images/kishu.png"/>
+
 Kishu is a system for intelligent versioning of notebook session states on Jupyter-based platforms (e.g. JupyterLab, Jupyter Hub). Kishu efficiently creates checkpoints of both the variable and code states of a notebook session, allowing users to both undo cell executions and manage branching states containing objects such as machine learning models, plots, and dataframes through a Git-like commit and checkout interface.
 
 ## Using Kishu
@@ -26,8 +28,7 @@ Once installed, you are ready to use Kishu in your notebook workflows for undoin
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="473" alt="init_dropdown" src="https://github.com/user-attachments/assets/12a8beb7-2414-48e8-ad8d-c092308d444c" />
-<img width="348" alt="init_palette" src="https://github.com/user-attachments/assets/a53d55d7-a187-40d4-926f-49cea20360d4" />
+<img width="350" src="images/init_dropdown.png"/><img width="350" src="images/init_command.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -35,7 +36,7 @@ You will see the below notification if Kishu is initialized successfully:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="313" alt="init_success" src="https://github.com/user-attachments/assets/654c7cdc-07a6-4741-aa1b-49f8f9272418" />
+<img width="400" src="images/init_success.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -45,8 +46,7 @@ You will see the below notification if Kishu is initialized successfully:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="468" alt="undo_dropdown" src="https://github.com/user-attachments/assets/87f4b76d-dba6-45ba-852f-b5f441f312ff" />
-<img width="288" alt="undo_palette" src="https://github.com/user-attachments/assets/51c7b71e-9fdf-4f50-b659-e7ca10982dd8" />
+<img width="350" src="images/undo_dropdown.png"/><img width="350" src="images/undo_command.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -54,7 +54,7 @@ If successful, you will see the following notification, and your variable state 
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="314" alt="undo_success" src="https://github.com/user-attachments/assets/90669b80-7baa-40e8-910b-c205df0e4ebc" />
+<img width="400" src="images/undo_success.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -62,7 +62,7 @@ If successful, you will see the following notification, and your variable state 
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="600" alt="flow1_2" src="https://github.com/user-attachments/assets/869ee070-9d94-4163-a317-332ac85f4a30"/>
+<img width="600" src="images/workflow_undo.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -74,8 +74,7 @@ Kishu can also be used to manage branching code and variable states; it supports
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="466" alt="commit_dropdown" src="https://github.com/user-attachments/assets/87c40f88-1c0e-4624-b41e-0102c4e52a12" />
-<img width="288" alt="commit_palette" src="https://github.com/user-attachments/assets/6a7cc869-2189-4ce2-bb7e-e0f11e12d867" />
+<img width="350" src="images/commit_dropdown.png"/><img width="350" src="images/commit_command.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -83,7 +82,7 @@ You will be then prompted to enter a **commit message**. Use something memorable
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="297" alt="commit_message" src="https://github.com/user-attachments/assets/cac8b890-8455-4690-9b10-df24b7afc726" />
+<img width="300" src="images/commit_message.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -91,7 +90,7 @@ You will see the below message if the commit is successful:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="314" alt="commit_success" src="https://github.com/user-attachments/assets/cd996fd8-a350-4954-91f8-cd423d4b25d4" />
+<img width="400" src="images/commit_success.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -99,8 +98,7 @@ You will see the below message if the commit is successful:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="288" alt="checkout_dropdown" src="https://github.com/user-attachments/assets/0377cea1-0171-416c-8f55-d6fc1af721ad" />
-<img width="469" alt="checkout_palette" src="https://github.com/user-attachments/assets/cfa6616a-1a6c-444d-b141-6297c6c48ba5" />
+<img width="350" src="images/checkout_dropdown.png"/><img width="350" src="images/checkout_command.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -108,7 +106,7 @@ This will bring up a menu for you to select the appropriate checkpoint:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="716" alt="Screenshot 2024-12-19 at 14 33 47" src="https://github.com/user-attachments/assets/3cc1c604-f222-462a-afab-e9b2efe01222" />
+<img width="300" src="images/checkout_select.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -116,7 +114,7 @@ You will see the below message if the checkout is successful:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="314" alt="Screenshot 2024-12-19 at 14 35 30" src="https://github.com/user-attachments/assets/dee886c9-1e13-469d-8563-966cea8da7be" />
+<img width="400" src="images/checkout_success.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -124,7 +122,7 @@ Checking out will replace both the current variable and code state with that of 
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="600" alt="checkout_workflow" src="https://github.com/user-attachments/assets/a6e0796c-fe88-43ac-82df-6db645652b15"/>
+<img width="600" src="images/workflow_branch.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
