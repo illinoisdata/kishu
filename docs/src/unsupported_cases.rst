@@ -17,7 +17,7 @@ Kishu relies on the assumption that any object, when pickled then unpickled, is 
 
 As a potential workaround, you can add object classes with incorrect reductions to a `blocklist`_ in Kishu's config to inform it to never try to store (and always recompute) objects belonging to these classes.
 
-.. _blocklist: https://github.com/illinoisdata/kishu/blob/main/docs/src/usage.rst
+.. _blocklist: docs/src/usage.rst
 
 Non-Deterministic and Unpicklable Objects
 -----
