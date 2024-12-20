@@ -9,7 +9,7 @@
 
 # Kishu: Versioned and Undoable Notebook System
 
-<img width="350" src="images/kishu.png"/>
+<img width="350" src="docs/images/kishu.png"/>
 
 Kishu is a system for intelligent versioning of notebook session states on Jupyter-based platforms (e.g. JupyterLab, Jupyter Hub). Kishu efficiently creates checkpoints of both the variable and code states of a notebook session, allowing users to both undo cell executions and manage branching states containing objects such as machine learning models, plots, and dataframes through a Git-like commit and checkout interface.
 
@@ -28,7 +28,7 @@ Once installed, you are ready to use Kishu in your notebook workflows for undoin
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="350" src="images/init_dropdown.png"/><img width="350" src="images/init_command.png"/>
+<img width="350" src="docs/images/init_dropdown.png"/><img width="350" src="docs/images/init_command.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -36,7 +36,7 @@ You will see the below notification if Kishu is initialized successfully:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="400" src="images/init_success.png"/>
+<img width="400" src="docs/images/init_success.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -46,7 +46,7 @@ You will see the below notification if Kishu is initialized successfully:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="350" src="images/undo_dropdown.png"/><img width="350" src="images/undo_command.png"/>
+<img width="350" src="docs/images/undo_dropdown.png"/><img width="350" src="docs/images/undo_command.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -54,7 +54,7 @@ If successful, you will see the following notification, and your variable state 
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="400" src="images/undo_success.png"/>
+<img width="400" src="docs/images/undo_success.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -62,7 +62,7 @@ If successful, you will see the following notification, and your variable state 
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="600" src="images/workflow_undo.png"/>
+<img width="600" src="docs/images/workflow_undo.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -74,7 +74,7 @@ Kishu can also be used to manage branching code and variable states; it supports
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="350" src="images/commit_dropdown.png"/><img width="350" src="images/commit_command.png"/>
+<img width="350" src="docs/images/commit_dropdown.png"/><img width="350" src="docs/images/commit_command.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -82,7 +82,7 @@ You will be then prompted to enter a **commit message**. Use something memorable
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="300" src="images/commit_message.png"/>
+<img width="300" src="docs/images/commit_message.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -90,7 +90,7 @@ You will see the below message if the commit is successful:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="400" src="images/commit_success.png"/>
+<img width="400" src="docs/images/commit_success.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -98,7 +98,7 @@ You will see the below message if the commit is successful:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="350" src="images/checkout_dropdown.png"/><img width="350" src="images/checkout_command.png"/>
+<img width="350" src="docs/images/checkout_dropdown.png"/><img width="350" src="docs/images/checkout_command.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -106,7 +106,7 @@ This will bring up a menu for you to select the appropriate checkpoint:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="300" src="images/checkout_select.png"/>
+<img width="300" src="docs/images/checkout_select.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -114,7 +114,7 @@ You will see the below message if the checkout is successful:
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="400" src="images/checkout_success.png"/>
+<img width="400" src="docs/images/checkout_success.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
@@ -122,7 +122,7 @@ Checking out will replace both the current variable and code state with that of 
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
-<img width="600" src="images/workflow_branch.png"/>
+<img width="600" src="docs/images/workflow_branch.png"/>
 
 <br> <!-- HTML tag to force a line break if you want more space -->
 
