@@ -9,7 +9,7 @@ Kishu relies on the assumption that any object, when pickled then unpickled, is 
 
 .. _reduce: https://docs.python.org/3/library/pickle.html
 
-.. code-block:: console
+.. code-block:: python
 
   def \_\_reduce\_\_(self):
       return ""
@@ -23,6 +23,6 @@ Non-Deterministic and Unpicklable Objects
 -----
 Kishu relies on cell replay to reconstruct unpicklable objects (e.g., generators). However, if the unpicklable object itself is created through non-deterministic means, Kishu will fail to exactly recreate it on undo/checkout, for example (assuming the seed for `random` was not set):
 
-.. code-block:: console
+.. code-block:: python
 
   nondet_gen = (i for i in range(random.randint(5, 10)))
