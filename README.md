@@ -18,7 +18,7 @@ Kishu is a system for intelligent versioning of notebook session states on Jupyt
 Kishu can be installed from [PyPI](https://pypi.org/project/kishu/):
 
 ```bash
-pip install kishu jupyterlab_kishu jupyterlab
+pip install kishu jupyterlab_kishu
 ```
 
 Once installed, you are ready to use Kishu in your notebook workflows for undoing cell executions and managing branching notebook states.
