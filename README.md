@@ -16,7 +16,7 @@ Kishu is a system for intelligent versioning of notebook session states on Jupyt
 Kishu can be installed from [PyPI](https://pypi.org/project/kishu/):
 
 ```bash
-pip install kishu kishuboard jupyterlab_kishu
+pip install kishu jupyterlab_kishu
 ```
 
 Once installed, you are ready to use Kishu in your notebook workflows for undoing cell executions and managing branching notebook states.
@@ -30,7 +30,7 @@ Once installed, you are ready to use Kishu in your notebook workflows for undoin
 **Automatic Tracking**: Once initialized, Kishu will start automatically saving the variable state after each cell execution.
 **Undoing a cell execution:** `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z` rolls back your variable state to that before your latest cell execution, for example, to 'un-drop' a dataframe column dropped by the below cell:
 
-```
+```python
 df = df.drop(['col1'], axis=1)
 ```
 
@@ -224,7 +224,7 @@ Kishu may fail to correctly checkpoint notebook sessions containing the followin
 
 Kishu relies on the assumption that any object, when pickled then unpickled, is identical to the original object, and does not automatically detect cases where this assumption is violated (i.e., silent pickling errors). This is typically caused by errors in the object class' [__reduce__](https://docs.python.org/3/library/pickle.html) function which acts as its pickling instructions; for example, an object with the below reduction (incorrectly) returns an empty (byte)string when pickled.
 
-```
+```python
   def \_\_reduce\_\_(self):
       return ""
 ```
@@ -234,7 +234,7 @@ As a potential workaround, you can add object classes with incorrect reductions 
 ### Non-Deterministic and Unpicklable Objects
 Kishu relies on cell replay to reconstruct unpicklable objects (e.g., generators). However, if the unpicklable object itself is created through non-deterministic means, Kishu will fail to exactly recreate it on undo/checkout, for example (assuming the seed for `random` was not set):
 
-```
+```python
   nondet_gen = (i for i in range(random.randint(5, 10)))
 ```
 
