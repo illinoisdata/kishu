@@ -23,6 +23,8 @@ pip install kishu jupyterlab_kishu
 
 Once installed, you are ready to use Kishu in your notebook workflows for undoing cell executions and managing branching notebook states.
 
+Note: installing `jupyterlab_kishu` will also install `jupyterlab` into your environment.
+
 ### Initializing Kishu
 **Initialize Kishu to your notebook**: To start protecting your notebook session, Kishu can be initialized and attached through the `Kishu > Initialize/Re-attach` option under the `Kishu` tab (left) or in the Jupyter command palette (right). Alternatively, you can use the shortcut `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`.
 
