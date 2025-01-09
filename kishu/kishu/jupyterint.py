@@ -420,6 +420,9 @@ class KishuForJupyter:
         """
         Restores a variable state from commit_id.
         """
+        # Save notebook on checkout to avoid diverged notebook views between Jupyter Frontend and file system.
+        self.save_notebook()
+
         # By default, checkout at commit ID in detach mode.
         branch_name: Optional[str] = None
         commit_id = branch_or_commit_id
@@ -593,6 +596,10 @@ class KishuForJupyter:
         return possible_commit_ids[0]
 
     def commit(self, message: Optional[str] = None) -> BareReprStr:
+        # Save notebook on manual commit.
+        self.save_notebook()
+
+        # Make commit entry.
         entry = CommitEntry(kind=CommitEntryKind.manual)
         entry.execution_count = self._ip.execution_count
         entry.message = message if message is not None else f"Manual commit after {entry.execution_count} executions."
