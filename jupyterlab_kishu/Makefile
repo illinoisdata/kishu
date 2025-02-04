@@ -66,3 +66,9 @@ clean:            ## Clean unused files.
 	@rm -rf htmlcov
 	@rm -rf .tox/
 	@rm -rf docs/_build
+
+.PHONY: release
+release:          ## Build and upload to PyPI.
+	$(ENV_PREFIX)jlpm build
+	$(ENV_PREFIX)python -m build
+	$(ENV_PREFIX)twine upload dist/*
