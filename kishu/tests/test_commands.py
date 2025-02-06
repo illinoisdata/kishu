@@ -1013,4 +1013,30 @@ class TestKishuCommand:
             # Undo when current node is root.
             undoResult = KishuCommand.undo(notebook_path)
             assert undoResult.status == "ok"
-            assert undoResult.message == "No more commits to undo/checkout from root."
+            assert undoResult.message == "No more commits to undo"
+
+    def test_undo_skip_manual(self, jupyter_server, tmp_nb_path):
+        notebook_path = tmp_nb_path("simple.ipynb")
+        contents = JupyterRuntimeEnv.read_notebook_cell_source(notebook_path)
+        with jupyter_server.start_session(notebook_path) as notebook_session:
+            # Run the kishu init cell.
+            notebook_session.run_code(KISHU_INIT_STR, silent=True)
+
+            # This runs two cells and make manual commits each time.
+            for idx, content in enumerate(contents[0:2]):
+                notebook_session.run_code(content)
+                manual_commit = KishuCommand.commit(notebook_path, f"Manual after cell {idx}")
+                assert manual_commit.status == "ok"
+
+            commits = KishuCommand.log_all(notebook_path).commit_graph
+
+            # Undo and assert the head id after undo is correct.
+            undoResult = KishuCommand.undo(notebook_path)
+            assert undoResult.status == "ok"
+            head = KishuBranch(KishuPath.database_path(notebook_path)).get_head()
+            assert head.commit_id == commits[0].commit_id
+
+            # Undo when current node is root.
+            undoResult = KishuCommand.undo(notebook_path)
+            assert undoResult.status == "ok"
+            assert undoResult.message == "No more commits to undo"

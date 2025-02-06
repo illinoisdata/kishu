@@ -596,6 +596,9 @@ class KishuForJupyter:
         return possible_commit_ids[0]
 
     def commit(self, message: Optional[str] = None) -> BareReprStr:
+        if self._commit_id_mode == "counter":
+            self._last_execution_count += 1
+
         # Save notebook on manual commit.
         self.save_notebook()
 
