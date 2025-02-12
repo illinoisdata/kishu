@@ -1,5 +1,5 @@
 __app_name__ = "kishu"
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 # This allows `%load_ext kishu` in Jupyter.
 # Then, `%lsmagic` includes kishu functions.
