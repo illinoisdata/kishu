@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  publish:
+    name: Publish Packages
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+
+    strategy:
+      matrix:
+        # Modules here must implement `make release` in their directory.
+        module: [kishu, jupyterlab_kishu, kishuboard]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Check for Label
+        id: check_label
+        run: |
+          LABELS="${{ toJson(github.event.pull_request.labels.*.name) }}"
+          if echo "$LABELS" | grep -qE "release-${{ matrix.module }}"; then
+            echo "Matching ${{ matrix.module }}-v label found"
+            echo "::set-output name=publish::true"
+          else
+            echo "No matching label, skipping publish"
+            echo "::set-output name=publish::false"
+          fi
+
+      - name: Set up Python
+        if: steps.check_label.outputs.publish == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Install Dependencies
+        if: steps.check_label.outputs.publish == 'true'
+        run: pip install build twine
+
+      - name: Build and Publish to PyPI
+        if: steps.check_label.outputs.publish == 'true'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          cd ${{ matrix.module }}
+          make release
