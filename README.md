@@ -26,6 +26,7 @@ Once installed, you are ready to use Kishu in your notebook workflows for undoin
 ### Initializing Kishu
 **Initialize Kishu to your notebook**: To start protecting your notebook session, Kishu can be initialized and attached through the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`.
 
+<div align="center">
 <table>
   <tr>
     <th text-align: center;">`Kishu` Tab</th>
@@ -40,15 +41,19 @@ Once installed, you are ready to use Kishu in your notebook workflows for undoin
     </td>
   </tr>
 </table>
+</div>
 
 You will see the below notification if Kishu is initialized successfully:
 
+<div align="center">
 <img width="350" src="docs/images/init_success.png"/>
+</div>
 
 ### Undoable Notebook Workflow
 **Automatic Tracking**: Once initialized, Kishu will start automatically saving the variable state after each cell execution.
 **Undoing a cell execution:** To undo your latest cell execution, you can use the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z`.
 
+<div align="center">
 <table>
   <tr>
     <th text-align: center;">`Kishu` Tab</th>
@@ -63,14 +68,19 @@ You will see the below notification if Kishu is initialized successfully:
     </td>
   </tr>
 </table>
+</div>
 
 If successful, you will see the following notification, and your variable state will be rolled back to that before your latest cell execution. 
 
-<img width="350" src="docs/images/undo_success.png"/>
+<div align="center">
+  <img width="350" src="docs/images/undo_success.png"/>
+</div>
 
 **Only affects variable state:** Undoing cell executions **only affects the variable state** (right). The code state (i.e., the cells you write, left) is untouched. This can be useful, for example, to 'un-drop' a dataframe column dropped by a cell while keeping the cell code itself intact:
 
+<div align="center">
 <img width="800" src="docs/images/workflow_undo.png"/>
+</div>
 
 ### Branching Notebook Workflow
 
@@ -78,6 +88,7 @@ Kishu can also be used to manage branching code and variable states; it supports
 
 **Committing to make a checkpoint:** Kishu can store the current state of your notebook, including both the variable state and your code state, with the `Kishu > Commit` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+C` / `⌘+K then ⌘+C`.  
 
+<div align="center">
 <table>
   <tr>
     <th text-align: center;">`Kishu` Tab</th>
@@ -92,17 +103,23 @@ Kishu can also be used to manage branching code and variable states; it supports
     </td>
   </tr>
 </table>
+</div>
 
 You will be then prompted to enter a **commit message**. Use something memorable so you can easily return to this commit later:
 
+<div align="center">
 <img width="350" src="docs/images/commit_message.png"/>
+</div>
 
 You will see the below message if the commit is successful:
 
+<div align="center">
 <img width="350" src="docs/images/commit_success.png"/>
+</div>
 
 **Checkout to a checkpoint:** You can return to any session state that has been committed in the past with the `Kishu > Checkout` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+V` / `⌘+K then ⌘+V`.  
 
+<div align="center">
 <table>
   <tr>
     <th text-align: center;">`Kishu` Tab</th>
@@ -117,18 +134,25 @@ You will see the below message if the commit is successful:
     </td>
   </tr>
 </table>
+</div>
 
 This will bring up a menu for you to select the appropriate checkpoint:
 
+<div align="center">
 <img width="350" src="docs/images/checkout_select.png"/>
+</div>
 
 You will see the below message if the checkout is successful:
 
+<div align="center">
 <img width="350" src="docs/images/checkout_success.png"/>
+</div>
 
 Checking out will replace both the current variable and code state with that of the selected checkpoint (see below). It will also **overwrite your current variable and code state**; commit to make a checkpoint before checking out if you wish to keep your current notebook state.
 
+<div align="center">
 <img width="800" src="docs/images/workflow_branch.png"/>
+</div>
 
 ## Configuring Kishu
 
