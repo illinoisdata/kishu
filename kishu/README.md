@@ -43,10 +43,6 @@ Running PyTest with benchmarks.
 pytest --run-benchmark
 ```
 
-# Deployment
+## Versioning
 
-The following command will upload this project to pypi (https://pypi.org/project/kishu/).
-
-```
-bash upload2pypi.sh
-```
+See (Semantic Versioning)[https://semver.org] for a guideline on incrementing the version number in `pyproject.toml` and `kishu/__init__.py`.

@@ -94,3 +94,11 @@ More information are provided within the [ui-tests](./ui-tests/README.md) README
 ### Packaging the extension
 
 See [RELEASE](RELEASE.md)
+
+## Versioning
+
+See (Semantic Versioning)[https://semver.org] for a guideline on incrementing the version number:
+
+```bash
+hatch version <new-version>
+```
