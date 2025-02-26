@@ -324,3 +324,7 @@ Kishu's efficiency is enabled by its low-overhead session state monitoring, dedu
 - [ElasticNotebook: Enabling Live Migration for Computational Notebooks](https://arxiv.org/abs/2309.11083)
 - [Transactional Python for Durable Machine Learning: Vision, Challenges, and Feasibility](https://dl.acm.org/doi/abs/10.1145/3595360.3595855)
 - [Demonstration of ElasticNotebook: Migrating Live Computational Notebook States](https://dl.acm.org/doi/abs/10.1145/3626246.3654752)
+
+## Contributing
+
+To get started with developing Kishu, see [CONTRIBUTING.md](CONTRIBUTING.md).
