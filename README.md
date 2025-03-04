@@ -76,10 +76,10 @@ If successful, you will see the following notification, and your variable state 
   <img width="350" src="docs/images/undo_success.png"/>
 </div>
 
-**Only affects variable state:** Undoing cell executions **only affects the variable state** (right). The code state (i.e., the cells you write, left) is untouched. This can be useful, for example, to 'un-drop' a dataframe column dropped by a cell while keeping the cell code itself intact:
+**Only affects variable state:** Undoing cell executions **only affects the variable state**. The code state (i.e., the cells you write) is untouched. This can be useful, for example, to 'un-drop' a dataframe column dropped by a cell while keeping the cell code itself intact:
 
 <div align="center">
-<img width="800" src="docs/images/workflow_undo.png"/>
+<img width="800" src="docs/images/workflow_undo_clip.gif"/>
 </div>
 
 ### Branching Notebook Workflow
@@ -151,7 +151,7 @@ You will see the below message if the checkout is successful:
 Checking out will replace both the current variable and code state with that of the selected checkpoint (see below). It will also **overwrite your current variable and code state**; commit to make a checkpoint before checking out if you wish to keep your current notebook state.
 
 <div align="center">
-<img width="800" src="docs/images/workflow_branch.png"/>
+<img width="800" src="docs/images/workflow_branch_clip.gif"/>
 </div>
 
 ## Configuring Kishu
