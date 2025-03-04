@@ -46,7 +46,7 @@ Once installed, you are ready to use Kishu in your notebook workflows for undoin
 You will see the below notification if Kishu is initialized successfully:
 
 <div align="center">
-<img width="350" src="docs/images/init_success.png"/>
+  <img width="350" src="docs/images/init_success.png"/>
 </div>
 
 ### Undoable Notebook Workflow
