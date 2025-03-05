@@ -29,7 +29,7 @@ Once installed, you are ready to use Kishu in your notebook workflows for undoin
 <div align="center">
 <table>
   <tr>
-    <th text-align: center;">`Kishu` Tab</th>
+    <th text-align: center;"><code>Kishu</code> Tab</th>
     <th text-align: center;">Jupyter Command Palette</th>
   </tr>
   <tr>
@@ -56,7 +56,7 @@ You will see the below notification if Kishu is initialized successfully:
 <div align="center">
 <table>
   <tr>
-    <th text-align: center;">`Kishu` Tab</th>
+    <th text-align: center;"><code>Kishu</code> Tab</th>
     <th text-align: center;">Jupyter Command Palette</th>
   </tr>
   <tr>
@@ -91,7 +91,7 @@ Kishu can also be used to manage branching code and variable states; it supports
 <div align="center">
 <table>
   <tr>
-    <th text-align: center;">`Kishu` Tab</th>
+    <th text-align: center;"><code>Kishu</code> Tab</th>
     <th text-align: center;">Jupyter Command Palette</th>
   </tr>
   <tr>
@@ -122,7 +122,7 @@ You will see the below message if the commit is successful:
 <div align="center">
 <table>
   <tr>
-    <th text-align: center;">`Kishu` Tab</th>
+    <th text-align: center;"><code>Kishu</code> Tab</th>
     <th text-align: center;">Jupyter Command Palette</th>
   </tr>
   <tr>
