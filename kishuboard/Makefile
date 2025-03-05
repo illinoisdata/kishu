@@ -45,3 +45,10 @@ lint:             ## Run pep8, black, mypy linters.
 	$(ENV_PREFIX)flake8 --extend-ignore=E203 --max-line-length 127 kishuboard/
 	$(ENV_PREFIX)black -l 127 --check kishuboard/
 	$(ENV_PREFIX)mypy --ignore-missing-imports kishuboard/
+
+.PHONY: release
+release:          ## Build and upload to PyPI.
+	npm install
+	npm run build
+	$(ENV_PREFIX)python -m build
+	$(ENV_PREFIX)twine upload dist/*

@@ -24,7 +24,7 @@ from kishu.jupyterint import JupyterCommandResult, JupyterConnection, KishuForJu
 from kishu.logging import logger
 from kishu.notebook_id import NotebookId
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
-from kishu.storage.commit import CommitEntry, FormattedCell, KishuCommit
+from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
 from kishu.storage.path import KishuPath, NotebookPath
 from kishu.storage.tag import KishuTag, TagRow
@@ -123,7 +123,7 @@ class _check_instrument_and_checkout_result(TypedDict):
 class CheckoutResult:
     status: str
     message: str
-    reattachment: InstrumentResult
+    reattachment: Optional[InstrumentResult]
 
     @staticmethod
     def wrap(result: _check_instrument_and_checkout_result) -> CheckoutResult:
@@ -139,7 +139,7 @@ class CheckoutResult:
 class UndoResult:
     status: str
     message: str
-    reattachment: InstrumentResult
+    reattachment: Optional[InstrumentResult]
 
     @staticmethod
     def wrap(result: _check_instrument_and_checkout_result) -> UndoResult:
@@ -155,7 +155,7 @@ class UndoResult:
 class CommitResult:
     status: str
     message: str
-    reattachment: InstrumentResult
+    reattachment: Optional[InstrumentResult]
 
     @staticmethod
     def wrap(result: JupyterCommandResult, instrument_result: InstrumentResult) -> CommitResult:
@@ -535,9 +535,21 @@ class KishuCommand:
                 ),
             )
 
-        head_info = KishuCommitGraph.new_var_graph(database_path).get_commit()
-        return UndoResult.wrap(
-            KishuCommand._check_instrument_and_checkout(notebook_path, kernel_id, head_info.parent_id, True)
+        # Search for the automatic commit before the latest automatic commit ("jupyter" kind).
+        store = KishuCommitGraph.new_var_graph(database_path)
+        commit_ids = [node.commit_id for node in store.list_history()]
+        commit_entries = KishuCommit(database_path).get_commits(commit_ids)
+        auto_commits = [
+            commit_entries[commit_id] for commit_id in commit_ids if commit_entries[commit_id].kind == CommitEntryKind.jupyter
+        ]
+        if len(auto_commits) >= 2:
+            return UndoResult.wrap(
+                KishuCommand._check_instrument_and_checkout(notebook_path, kernel_id, auto_commits[1].commit_id, True)
+            )
+        return UndoResult(
+            status="ok",
+            message="No more commits to undo",
+            reattachment=None,
         )
 
     @staticmethod
@@ -1043,7 +1055,7 @@ class KishuCommand:
             if dst_branch_or_commit_id == "":
                 return {
                     "status": "ok",
-                    "message": "No more commits to undo/checkout from root.",
+                    "message": "Checkout target commit not specified",
                     "reattachment": instrument_result,
                 }
             exec_result = JupyterConnection(kernel_id).execute_one_command(
