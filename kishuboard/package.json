@@ -1,6 +1,6 @@
 {
   "name": "kishuboard",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "proxy": "http://127.0.0.1:4999/",
   "dependencies": {
