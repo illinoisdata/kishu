@@ -57,6 +57,7 @@ You will see the below notification if Kishu is initialized successfully:
 **Automatic Tracking**: Once initialized, Kishu will start automatically saving the variable state after each cell execution.
 **Undoing a cell execution:** To undo your latest cell execution, you can use the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z`.
 
+<br>
 <div align="center">
 <table>
   <tr>
@@ -73,6 +74,7 @@ You will see the below notification if Kishu is initialized successfully:
   </tr>
 </table>
 </div>
+<br>
 
 If successful, you will see the following notification, and your variable state will be rolled back to that before your latest cell execution. 
 
