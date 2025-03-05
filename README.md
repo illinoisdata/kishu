@@ -54,7 +54,9 @@ You will see the below notification if Kishu is initialized successfully:
 <br>
 
 ### Undoable Notebook Workflow
-**Undoing a cell execution:** Once initialized, Kishu will start automatically saving the variable state after each cell execution. To undo your latest cell execution, you can use the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z`.
+Once initialized, Kishu will start automatically saving the variable state after each cell execution.
+
+**Undoing a cell execution:** To undo your latest cell execution, you can use the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z`.
 
 <br>
 <div align="center">
