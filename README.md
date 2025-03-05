@@ -13,7 +13,7 @@
 
 Kishu is a system for intelligent versioning of notebook session states on Jupyter-based platforms (e.g. JupyterLab, Jupyter Hub). Kishu efficiently creates checkpoints of both the variable and code states of a notebook session, allowing users to both undo cell executions and manage branching states containing objects such as machine learning models, plots, and dataframes through a Git-like commit and checkout interface.
 
-## Using Kishu
+## Getting Started
 
 Kishu can be installed from [PyPI](https://pypi.org/project/kishu/):
 
@@ -53,7 +53,11 @@ You will see the below notification if Kishu is initialized successfully:
 </div>
 <br>
 
-### Undoable Notebook Workflow
+## Using Kishu
+
+Kishu supports **undoing** cell executions and creating **branches** of session states.
+
+### Undoing Notebook Executions
 Once initialized, Kishu will start automatically saving the variable state after each cell execution.
 
 **Undoing a cell execution:** To undo your latest cell execution, you can use the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z`.
