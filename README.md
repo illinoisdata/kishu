@@ -346,10 +346,6 @@ This is the current list of libraries, their versions, and their classes support
     ❓ matplotlib==3.7.5, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
 ```
 
-## Migrating Checkpoints
-
-Kishu's per-notebook checkpoint files are stored under the `~/.kishu/` directory. For example, Kishu will store the checkpoint files for notebook with name `Untitled` under `~/.kishu/Untitled`. These checkpoints can be copied, along with the notebook, to a new machine where Kishu (and other libraries identical to the source environment) is installed for elastic migration.
-
 ## Limitations
 Kishu may fail to correctly checkpoint notebook sessions containing the following items:
 
