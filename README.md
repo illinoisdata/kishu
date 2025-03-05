@@ -132,6 +132,23 @@ Checking out will replace both the current variable and code state with that of 
 
 Kishu can be configured through editing the `~/.kishu/config.ini` file. A full list of configurable options can be found [here](docs/src/usage.rst).
 
+## Kishuboard
+Kishuboard is a graphical interface for visualizing Kishu commit history as a graph, similar to Git GUI tools like Sublime Merge. It enables one-click operations such as diff, search, checkout, and undo (rollback) to a specific commit. For a full list of supported features, see the [documentation](to be filled).
+
+To install Kishuboard, run:
+```bash
+pip install kishuboard
+```
+
+And then, launch it with:
+```bash
+kishuboard
+```
+
+When Kishu is attached to a new notebook, **refresh** the notebook list. To enter the GUI of a specific notebook, simply click on its entry in the list.
+
+<img width="400" src="docs/images/kishuboard_menu.png"/>
+
 ## Supported Libraries
 
 This is the current list of libraries, their versions, and their classes supported by Kishu:
