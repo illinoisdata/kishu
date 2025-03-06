@@ -369,13 +369,7 @@ class KishuCommand:
 
     @staticmethod
     def detach(notebook_path: Path) -> DetachResult:
-        try:
-            NotebookPath.verify_valid_and_initialized(notebook_path)
-        except KishuNotInitializedError as e:
-            return DetachResult(
-                status="error",
-                message=f"{type(e).__name__}: {str(e)}",
-            )
+        NotebookPath.verify_valid_and_initialized(notebook_path)
         try:
             kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
@@ -474,15 +468,7 @@ class KishuCommand:
         branch_or_commit_id: str,
         message: Optional[str] = None,
     ) -> EditCommitResult:
-        try:
-            NotebookPath.verify_valid_and_initialized(notebook_path)
-        except KishuNotInitializedError as e:
-            return EditCommitResult(
-                status="error",
-                message=f"{type(e).__name__}: {str(e)}",
-                edited=[],
-            )
-
+        NotebookPath.verify_valid_and_initialized(notebook_path)
         database_path = KishuPath.database_path(notebook_path)
 
         # Attempt to interpret as a branch name, otherwise it is a commit ID.
@@ -526,17 +512,7 @@ class KishuCommand:
         branch_or_commit_id: str,
         skip_notebook: bool = False,
     ) -> CheckoutResult:
-        try:
-            NotebookPath.verify_valid_and_initialized(notebook_path)
-        except KishuNotInitializedError as e:
-            return CheckoutResult(
-                status="error",
-                message=f"{type(e).__name__}: {str(e)}",
-                reattachment=InstrumentResult(
-                    status=InstrumentStatus.no_kernel,
-                    message=None,
-                ),
-            )
+        NotebookPath.verify_valid_and_initialized(notebook_path)
         try:
             kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
@@ -604,11 +580,7 @@ class KishuCommand:
         commit_id: Optional[str],
         do_commit: bool = False,
     ) -> BranchResult:
-        try:
-            NotebookPath.verify_valid_and_initialized(notebook_path)
-        except KishuNotInitializedError as e:
-            return BranchResult(status=f"{type(e).__name__}: {str(e)}")
-
+        NotebookPath.verify_valid_and_initialized(notebook_path)
         database_path = KishuPath.database_path(notebook_path)
         kishu_branch = KishuBranch(database_path)
         head = kishu_branch.get_head()
@@ -646,13 +618,7 @@ class KishuCommand:
         notebook_path: Path,
         branch_name: str,
     ) -> DeleteBranchResult:
-        try:
-            NotebookPath.verify_valid_and_initialized(notebook_path)
-        except KishuNotInitializedError as e:
-            return DeleteBranchResult(
-                status="error",
-                message=f"{type(e).__name__}: {str(e)}",
-            )
+        NotebookPath.verify_valid_and_initialized(notebook_path)
         database_path = KishuPath.database_path(notebook_path)
         try:
             KishuBranch(database_path).delete_branch(branch_name)
@@ -672,14 +638,7 @@ class KishuCommand:
         old_name: str,
         new_name: str,
     ) -> RenameBranchResult:
-        try:
-            NotebookPath.verify_valid_and_initialized(notebook_path)
-        except KishuNotInitializedError as e:
-            return RenameBranchResult(
-                status="error",
-                branch_name="",
-                message=f"{type(e).__name__}: {str(e)}",
-            )
+        NotebookPath.verify_valid_and_initialized(notebook_path)
         database_path = KishuPath.database_path(notebook_path)
         try:
             KishuBranch(database_path).rename_branch(old_name, new_name)
@@ -702,13 +661,7 @@ class KishuCommand:
         commit_id: Optional[str],
         message: str,
     ) -> TagResult:
-        try:
-            NotebookPath.verify_valid_and_initialized(notebook_path)
-        except KishuNotInitializedError as e:
-            return TagResult(
-                status="error",
-                message=f"{type(e).__name__}: {str(e)}",
-            )
+        NotebookPath.verify_valid_and_initialized(notebook_path)
         database_path = KishuPath.database_path(notebook_path)
 
         # Attempt to fill in omitted commit ID.
@@ -737,13 +690,7 @@ class KishuCommand:
         notebook_path: Path,
         tag_name: str,
     ) -> DeleteTagResult:
-        try:
-            NotebookPath.verify_valid_and_initialized(notebook_path)
-        except KishuNotInitializedError as e:
-            return DeleteTagResult(
-                status="error",
-                message=f"{type(e).__name__}: {str(e)}",
-            )
+        NotebookPath.verify_valid_and_initialized(notebook_path)
         database_path = KishuPath.database_path(notebook_path)
         try:
             KishuTag(database_path).delete_tag(tag_name)

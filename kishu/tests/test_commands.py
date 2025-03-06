@@ -766,14 +766,6 @@ class TestKishuCommand:
             assert commitResult.status == "error"
             assert "KishuNotInitializedError" in commitResult.message
 
-    def test_checkout_uninitialized(self, jupyter_server, tmp_nb_path):
-        notebook_path = tmp_nb_path("simple.ipynb")
-        with jupyter_server.start_session(notebook_path):
-            # Kishu init cell was not run before performing checkout; expect an error.
-            checkoutResult = KishuCommand.checkout(notebook_path, "uninitialized")
-            assert checkoutResult.status == "error"
-            assert "KishuNotInitializedError" in checkoutResult.message
-
     def test_edit_commit_by_commit_id(
         self,
         tmp_nb_path,
