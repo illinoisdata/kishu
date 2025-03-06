@@ -13,6 +13,7 @@ from kishu.diff import CodeDiffHunk, KishuDiff, VariableVersionCompare
 from kishu.exceptions import (
     BranchConflictError,
     BranchNotFoundError,
+    KishuNotInitializedError,
     MissingCommitEntryError,
     NoExecutedCellsError,
     NoFormattedCellsError,
@@ -427,7 +428,17 @@ class KishuCommand:
 
     @staticmethod
     def commit(notebook_path: Path, message: Optional[str] = None) -> CommitResult:
-        NotebookPath.verify_valid_and_initialized(notebook_path)
+        try:
+            NotebookPath.verify_valid_and_initialized(notebook_path)
+        except KishuNotInitializedError as e:
+            return CommitResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+                reattachment=InstrumentResult(
+                    status=InstrumentStatus.no_kernel,
+                    message=None,
+                ),
+            )
         try:
             kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
         except FileNotFoundError as e:
@@ -521,7 +532,17 @@ class KishuCommand:
     def undo(
         notebook_path: Path,
     ) -> UndoResult:
-        NotebookPath.verify_valid_and_initialized(notebook_path)
+        try:
+            NotebookPath.verify_valid_and_initialized(notebook_path)
+        except KishuNotInitializedError as e:
+            return UndoResult(
+                status="error",
+                message=f"{type(e).__name__}: {str(e)}",
+                reattachment=InstrumentResult(
+                    status=InstrumentStatus.no_kernel,
+                    message=None,
+                ),
+            )
         database_path = KishuPath.database_path(notebook_path)
         try:
             kernel_id = JupyterRuntimeEnv.kernel_id_from_notebook(notebook_path)
