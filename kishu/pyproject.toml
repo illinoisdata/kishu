@@ -24,11 +24,11 @@ keywords = [
     "python", "jupyter", "notebook", "server", "lab", 
     "cli", "web", "gui", "extension",
 ]
-license = {file = "LICENSE"}
 classifiers = [
     "Framework :: Jupyter",
     "Framework :: Jupyter :: JupyterLab",
     "Framework :: Jupyter :: JupyterLab :: 4",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
