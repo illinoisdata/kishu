@@ -8,6 +8,7 @@ kishu = ["py.typed"]
 [project]
 name = "jupyterlab_kishu"
 readme = "README.md"
+license = { text = "Apache-2.0" }
 requires-python = ">=3.8"
 classifiers = [
     "Framework :: Jupyter",
