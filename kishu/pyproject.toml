@@ -18,13 +18,13 @@ authors = [
 ]
 description = "Intelligent Python Checkpointing"
 readme = "README.md"
-license = { text = "Apache-2.0" }
 requires-python = ">=3.8"
 keywords = [
     "kishu", "elastic", "dart",
     "python", "jupyter", "notebook", "server", "lab", 
     "cli", "web", "gui", "extension",
 ]
+license = { text = "Apache-2.0" }
 classifiers = [
     "Framework :: Jupyter",
     "Framework :: Jupyter :: JupyterLab",
