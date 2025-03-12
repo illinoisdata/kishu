@@ -7,7 +7,12 @@ kishu = ["py.typed"]
 
 [tool.setuptools]
 # package-dir = { "" = "kishu" }
-packages = ["kishu"]
+packages = [
+    "kishu",
+    "kishu.jupyter",
+    "kishu.planning",
+    "kishu.storage",
+]
 
 [project]
 name = "kishu"
