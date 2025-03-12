@@ -5,6 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "kishuboard"
 readme = "README.md"
+license = { text = "Apache-2.0" }
 requires-python = ">=3.8"
 classifiers = [
     "Framework :: Jupyter",
