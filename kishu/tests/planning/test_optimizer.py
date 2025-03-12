@@ -124,9 +124,7 @@ class TestOptimizer:
         assert vss_to_migrate == set()
         assert set(ce.cell_num for ce in ces_to_recompute) == {2, 3}
 
-    def test_incremental_load_optimizer_moves(
-        self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store
-    ):
+    def test_incremental_load_optimizer_moves(self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store):
         # Problem setting: we want to restore to a state with VSes y and z, which are both present in the current namespace
         target_active_vss = test_ahg.get_active_variable_snapshots("1:3")  # y and z
         useful_active_vss = test_ahg.get_active_variable_snapshots("1:3")  # y and z
@@ -138,9 +136,7 @@ class TestOptimizer:
         assert opt_result.vss_to_load == set()
         assert opt_result.ces_to_rerun == set()
 
-    def test_incremental_load_optimizer_rerun(
-        self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store
-    ):
+    def test_incremental_load_optimizer_rerun(self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store):
         # Problem setting: we want to restore to a state with VSes y and z from a clean namespace and database.
         target_active_vss = test_ahg.get_active_variable_snapshots("1:3")  # y and z
         useful_active_vss = {}
@@ -152,9 +148,7 @@ class TestOptimizer:
         assert set(opt_result.vss_to_load) == set()
         assert set(ce.cell_num for ce in opt_result.ces_to_rerun) == {1, 2, 3}
 
-    def test_incremental_load_optimizer_mixed(
-        self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store
-    ):
+    def test_incremental_load_optimizer_mixed(self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store):
         # Problem setting: y can be moved while z is to be recomputed.
         vs_x = next(iter(test_ahg.get_active_variable_snapshots("1:1")))
         vs_y = next(
