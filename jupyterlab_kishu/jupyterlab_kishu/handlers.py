@@ -7,31 +7,43 @@ from pathlib import Path
 import tornado
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
-from kishu.commands import CommitFilter, KishuCommand, into_json
+from kishu.commands import CheckoutResult, CommitFilter, CommitResult, InitResult, KishuCommand, UndoResult, into_json
 from kishu.jupyter.runtime import JupyterRuntimeEnv
 
 
 def subp_kishu_init(notebook_path: str, cookies: dict, queue: multiprocessing.Queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
-        init_result = KishuCommand.init(Path(notebook_path))
+        try:
+            init_result = KishuCommand.init(Path(notebook_path))
+        except Exception as e:
+            init_result = InitResult(status="error", message=f"{type(e).__name__}: {str(e)}", notebook_id=None)
     queue.put(into_json(init_result))
 
 
 def subp_kishu_checkout(notebook_path: str, commit_id: str, cookies: dict, queue: multiprocessing.Queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
-        checkout_result = KishuCommand.checkout(Path(notebook_path), commit_id)
+        try:
+            checkout_result = KishuCommand.checkout(Path(notebook_path), commit_id)
+        except Exception as e:
+            checkout_result = CheckoutResult(status="error", message=f"{type(e).__name__}: {str(e)}", reattachment=None)
     queue.put(into_json(checkout_result))
 
 
 def subp_kishu_undo(notebook_path: str, cookies: dict, queue: multiprocessing.Queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
-        rollback_result = KishuCommand.undo(Path(notebook_path))
-    queue.put(into_json(rollback_result))
+        try:
+            rollback_result = KishuCommand.undo(Path(notebook_path))
+        except Exception as e:
+            rollback_result = UndoResult(status="error", message=f"{type(e).__name__}: {str(e)}", reattachment=None)
+        queue.put(into_json(rollback_result))
 
 
 def subp_kishu_commit(notebook_path: str, message: str, cookies: dict, queue: multiprocessing.Queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
-        commit_result = KishuCommand.commit(Path(notebook_path), message)
+        try:
+            commit_result = KishuCommand.commit(Path(notebook_path), message)
+        except Exception as e:
+            commit_result = CommitResult(status="error", message=f"{type(e).__name__}: {str(e)}", reattachment=None)
     queue.put(into_json(commit_result))
 
 
