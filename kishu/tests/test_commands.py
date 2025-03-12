@@ -592,6 +592,7 @@ class TestKishuCommand:
         self,
         tmp_nb_path,
         disable_incremental_store,
+        disable_always_migrate,
         jupyter_server,
     ):
         # Get the contents of the test notebook.
