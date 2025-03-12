@@ -13,7 +13,7 @@
 
 Kishu is a system for intelligent versioning of notebook session states on Jupyter-based platforms (e.g. JupyterLab, Jupyter Hub). Kishu efficiently creates checkpoints of both the variable and code states of a notebook session, allowing users to both undo cell executions and manage branching states containing objects such as machine learning models, plots, and dataframes through a Git-like commit and checkout interface.
 
-## Using Kishu
+## Getting Started
 
 Kishu can be installed from [PyPI](https://pypi.org/project/kishu/):
 
@@ -26,107 +26,164 @@ Once installed, you are ready to use Kishu in your notebook workflows for undoin
 Note: installing `jupyterlab_kishu` will also install `jupyterlab` into your environment.
 
 ### Initializing Kishu
-**Initialize Kishu to your notebook**: To start protecting your notebook session, Kishu can be initialized and attached through the `Kishu > Initialize/Re-attach` option under the `Kishu` tab (left) or in the Jupyter command palette (right). Alternatively, you can use the shortcut `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`.
+**Initialize Kishu to your notebook**: To start protecting your notebook session, Kishu can be initialized and attached through the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`.
 
-<br> <!-- HTML tag to force a line break if you want more space -->
-
-<img width="350" src="docs/images/init_dropdown.png"/><img width="350" src="docs/images/init_command.png"/>
-
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+<table>
+  <tr>
+    <th text-align: center;"><code>Kishu</code> Tab</th>
+    <th text-align: center;">Jupyter Command Palette</th>
+  </tr>
+  <tr>
+    <td style="background-color: grey; text-align: center;">
+      <img width="350" src="docs/images/init_dropdown.png"/>
+    </td>
+    <td style="background-color: grey; text-align: center;">
+      <img width="350" src="docs/images/init_command.png"/>
+    </td>
+  </tr>
+</table>
+</div>
+<br>
 
 You will see the below notification if Kishu is initialized successfully:
 
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+  <img width="350" src="docs/images/init_success.png"/>
+</div>
+<br>
 
-<img width="400" src="docs/images/init_success.png"/>
+## Using Kishu
 
-<br> <!-- HTML tag to force a line break if you want more space -->
+Kishu supports **undoing** cell executions and creating **branches** of session states.
 
-### Undoable Notebook Workflow
-**Automatic Tracking**: Once initialized, Kishu will start automatically saving the variable state after each cell execution.
-**Undoing a cell execution:** To undo your latest cell execution, you can use the `Kishu > Initialize/Re-attach` option under the `Kishu` tab (left) or in the Jupyter command palette (right). Alternatively, you can use the shortcut `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z`.
+### Undoing Notebook Executions
+Once initialized, Kishu will start automatically saving the variable state after each cell execution.
 
-<br> <!-- HTML tag to force a line break if you want more space -->
+**Undoing a cell execution:** To undo your latest cell execution, you can use the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z`.
 
-<img width="350" src="docs/images/undo_dropdown.png"/><img width="350" src="docs/images/undo_command.png"/>
-
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+<table>
+  <tr>
+    <th text-align: center;"><code>Kishu</code> Tab</th>
+    <th text-align: center;">Jupyter Command Palette</th>
+  </tr>
+  <tr>
+    <td style="background-color: grey; text-align: center;">
+      <img width="350" src="docs/images/undo_dropdown.png"/>
+    </td>
+    <td style="background-color: grey; text-align: center;">
+      <img width="350" src="docs/images/undo_command.png"/>
+    </td>
+  </tr>
+</table>
+</div>
+<br>
 
 If successful, you will see the following notification, and your variable state will be rolled back to that before your latest cell execution. 
 
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+  <img width="350" src="docs/images/undo_success.png"/>
+</div>
+<br>
 
-<img width="400" src="docs/images/undo_success.png"/>
+**Only affects variable state:** Undoing cell executions **only affects the variable state**. The code state (i.e., the cells you write) is untouched. This can be useful, for example, to 'un-drop' a dataframe column dropped by a cell while keeping the cell code itself intact:
 
-<br> <!-- HTML tag to force a line break if you want more space -->
-
-**Only affects variable state:** Undoing cell executions **only affects the variable state** (right). The code state (i.e., the cells you write, left) is untouched. This can be useful, for example, to 'un-drop' a dataframe column dropped by a cell while keeping the cell code itself intact:
-
-<br> <!-- HTML tag to force a line break if you want more space -->
-
-<img width="600" src="docs/images/workflow_undo.png"/>
-
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+<img width="800" src="docs/images/workflow_undo_clip.gif"/>
+</div>
+<br>
 
 ### Branching Notebook Workflow
 
 Kishu can also be used to manage branching code and variable states; it supports making **checkpoints** of the notebook and variable state at any point during a notebook session, which can be returned to later via a **checkout**.
 
-**Committing to make a checkpoint:** Kishu can store the current state of your notebook, including both the variable state and your code state, with the `Kishu > Commit` option under the `Kishu` tab (left) or in the Jupyter command palette (right). Alternatively, you can use the shortcut `Ctrl+K then Ctrl+C` / `⌘+K then ⌘+C`.  
+**Committing to make a checkpoint:** Kishu can store the current state of your notebook, including both the variable state and your code state, with the `Kishu > Commit` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+C` / `⌘+K then ⌘+C`.  
 
-<br> <!-- HTML tag to force a line break if you want more space -->
-
-<img width="350" src="docs/images/commit_dropdown.png"/><img width="350" src="docs/images/commit_command.png"/>
-
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+<table>
+  <tr>
+    <th text-align: center;"><code>Kishu</code> Tab</th>
+    <th text-align: center;">Jupyter Command Palette</th>
+  </tr>
+  <tr>
+    <td style="background-color: grey; text-align: center;">
+      <img width="350" src="docs/images/commit_dropdown.png"/>
+    </td>
+    <td style="background-color: grey; text-align: center;">
+      <img width="350" src="docs/images/commit_command.png"/>
+    </td>
+  </tr>
+</table>
+</div>
+<br>
 
 You will be then prompted to enter a **commit message**. Use something memorable so you can easily return to this commit later:
 
-<br> <!-- HTML tag to force a line break if you want more space -->
-
-<img width="300" src="docs/images/commit_message.png"/>
-
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+<img width="350" src="docs/images/commit_message.png"/>
+</div>
+<br>
 
 You will see the below message if the commit is successful:
 
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+<img width="350" src="docs/images/commit_success.png"/>
+</div>
+<br>
 
-<img width="400" src="docs/images/commit_success.png"/>
+**Checkout to a checkpoint:** You can return to any session state that has been committed in the past with the `Kishu > Checkout` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+V` / `⌘+K then ⌘+V`.  
 
-<br> <!-- HTML tag to force a line break if you want more space -->
-
-**Checkout to a checkpoint:** You can return to any session state that has been committed in the past with the `Kishu > Checkout` option under the `Kishu` tab (left) or in the Jupyter command palette (right). Alternatively, you can use the shortcut `Ctrl+K then Ctrl+V` / `⌘+K then ⌘+V`.  
-
-<br> <!-- HTML tag to force a line break if you want more space -->
-
-<img width="350" src="docs/images/checkout_dropdown.png"/><img width="350" src="docs/images/checkout_command.png"/>
-
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+<table>
+  <tr>
+    <th text-align: center;"><code>Kishu</code> Tab</th>
+    <th text-align: center;">Jupyter Command Palette</th>
+  </tr>
+  <tr>
+    <td style="background-color: grey; text-align: center;">
+      <img width="350" src="docs/images/checkout_dropdown.png"/>
+    </td>
+    <td style="background-color: grey; text-align: center;">
+      <img width="350" src="docs/images/checkout_command.png"/>
+    </td>
+  </tr>
+</table>
+</div>
+<br>
 
 This will bring up a menu for you to select the appropriate checkpoint:
 
-<br> <!-- HTML tag to force a line break if you want more space -->
-
-<img width="300" src="docs/images/checkout_select.png"/>
-
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+<img width="350" src="docs/images/checkout_select.png"/>
+</div>
+<br>
 
 You will see the below message if the checkout is successful:
 
-<br> <!-- HTML tag to force a line break if you want more space -->
-
-<img width="400" src="docs/images/checkout_success.png"/>
-
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+<img width="350" src="docs/images/checkout_success.png"/>
+</div>
+<br>
 
 Checking out will replace both the current variable and code state with that of the selected checkpoint (see below). It will also **overwrite your current variable and code state**; commit to make a checkpoint before checking out if you wish to keep your current notebook state.
 
-<br> <!-- HTML tag to force a line break if you want more space -->
-
-<img width="600" src="docs/images/workflow_branch.png"/>
-
-<br> <!-- HTML tag to force a line break if you want more space -->
+<br>
+<div align="center">
+<img width="800" src="docs/images/workflow_branch_clip.gif"/>
+</div>
+<br>
 
 ## Configuring Kishu
 
@@ -291,10 +348,6 @@ This is the current list of libraries, their versions, and their classes support
     ❓ matplotlib==3.7.5, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
 ```
 
-## Migrating Checkpoints
-
-Kishu's per-notebook checkpoint files are stored under the `~/.kishu/` directory. For example, Kishu will store the checkpoint files for notebook with name `Untitled` under `~/.kishu/Untitled`. These checkpoints can be copied, along with the notebook, to a new machine where Kishu (and other libraries identical to the source environment) is installed for elastic migration.
-
 ## Limitations
 Kishu may fail to correctly checkpoint notebook sessions containing the following items:
 
@@ -324,3 +377,7 @@ Kishu's efficiency is enabled by its low-overhead session state monitoring, dedu
 - [ElasticNotebook: Enabling Live Migration for Computational Notebooks](https://arxiv.org/abs/2309.11083)
 - [Transactional Python for Durable Machine Learning: Vision, Challenges, and Feasibility](https://dl.acm.org/doi/abs/10.1145/3595360.3595855)
 - [Demonstration of ElasticNotebook: Migrating Live Computational Notebook States](https://dl.acm.org/doi/abs/10.1145/3626246.3654752)
+
+## Contributing
+
+To get started with developing Kishu, see [CONTRIBUTING.md](CONTRIBUTING.md).
