@@ -488,6 +488,7 @@ class TestKishuCommand:
     def test_end_to_end_checkout(
         self,
         tmp_nb_path,
+        disable_incremental_store,
         jupyter_server,
         notebook_name: str,
         cell_num_to_restore: int,
@@ -581,6 +582,7 @@ class TestKishuCommand:
     def test_fe_commit_after_rollback_execution(
         self,
         tmp_nb_path,
+        disable_incremental_store,
         jupyter_server,
     ):
         # Get the contents of the test notebook.
