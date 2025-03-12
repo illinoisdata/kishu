@@ -16,7 +16,7 @@ def subp_kishu_init(notebook_path: str, cookies: dict, queue: multiprocessing.Qu
         try:
             init_result = KishuCommand.init(Path(notebook_path))
         except Exception as e:
-            init_result = f"{type(e).__name__}: {str(e)}"           
+            init_result = f"{type(e).__name__}: {str(e)}"
     queue.put(into_json(init_result))
 
 
@@ -25,7 +25,7 @@ def subp_kishu_checkout(notebook_path: str, commit_id: str, cookies: dict, queue
         try:
             checkout_result = KishuCommand.checkout(Path(notebook_path), commit_id)
         except Exception as e:
-            checkout_result = f"{type(e).__name__}: {str(e)}"   
+            checkout_result = f"{type(e).__name__}: {str(e)}"
     queue.put(into_json(checkout_result))
 
 
