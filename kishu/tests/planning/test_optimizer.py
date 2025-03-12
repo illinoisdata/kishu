@@ -16,6 +16,14 @@ def enable_slow_network_bandwidth(tmp_kishu_path) -> Generator[type, None, None]
     Config.set("OPTIMIZER", "network_bandwidth", REALLY_FAST_BANDWIDTH_10GBPS)
 
 
+@pytest.fixture()
+def disable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_value = Config.get("OPTIMIZER", "always_migrate", True)
+    Config.set("OPTIMIZER", "always_migrate", False)
+    yield Config
+    Config.set("OPTIMIZER", "always_migrate", prev_value)
+
+
 class TestOptimizer:
     @pytest.fixture
     def db_path_name(self, nb_simple_path):
@@ -75,7 +83,7 @@ class TestOptimizer:
         ahg = AHG(kishu_disk_ahg)
         return ahg
 
-    def test_optimizer(self, test_ahg, enable_slow_network_bandwidth):
+    def test_optimizer(self, test_ahg, disable_always_migrate, enable_slow_network_bandwidth):
         # Setup optimizer
         opt = Optimizer(test_ahg, test_ahg.get_active_variable_snapshots("1:3"))
 
@@ -84,7 +92,9 @@ class TestOptimizer:
         assert vss_to_migrate == set()
         assert set(ce.cell_num for ce in ces_to_recompute) == {1, 2, 3}
 
-    def test_optimizer_with_already_stored_variables(self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store):
+    def test_optimizer_with_already_stored_variables(
+        self, test_ahg, enable_slow_network_bandwidth, disable_always_migrate, enable_incremental_store
+    ):
         # Setup optimizer
         opt = Optimizer(
             test_ahg,
@@ -97,7 +107,9 @@ class TestOptimizer:
         assert vss_to_migrate == set()
         assert set(ce.cell_num for ce in ces_to_recompute) == {2, 3}
 
-    def test_incremental_load_optimizer_moves(self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store):
+    def test_incremental_load_optimizer_moves(
+        self, test_ahg, enable_slow_network_bandwidth, disable_always_migrate, enable_incremental_store
+    ):
         # Problem setting: we want to restore to a state with VSes y and z, which are both present in the current namespace
         target_active_vss = test_ahg.get_active_variable_snapshots("1:3")  # y and z
         useful_active_vss = test_ahg.get_active_variable_snapshots("1:3")  # y and z
@@ -109,7 +121,9 @@ class TestOptimizer:
         assert opt_result.vss_to_load == set()
         assert opt_result.ces_to_rerun == set()
 
-    def test_incremental_load_optimizer_rerun(self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store):
+    def test_incremental_load_optimizer_rerun(
+        self, test_ahg, enable_slow_network_bandwidth, disable_always_migrate, enable_incremental_store
+    ):
         # Problem setting: we want to restore to a state with VSes y and z from a clean namespace and database.
         target_active_vss = test_ahg.get_active_variable_snapshots("1:3")  # y and z
         useful_active_vss = {}
@@ -121,7 +135,9 @@ class TestOptimizer:
         assert set(opt_result.vss_to_load) == set()
         assert set(ce.cell_num for ce in opt_result.ces_to_rerun) == {1, 2, 3}
 
-    def test_incremental_load_optimizer_mixed(self, test_ahg, enable_slow_network_bandwidth, enable_incremental_store):
+    def test_incremental_load_optimizer_mixed(
+        self, test_ahg, enable_slow_network_bandwidth, disable_always_migrate, enable_incremental_store
+    ):
         # Problem setting: y can be moved while z is to be recomputed.
         vs_x = next(iter(test_ahg.get_active_variable_snapshots("1:1")))
         vs_y = next(
