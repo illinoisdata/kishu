@@ -120,9 +120,18 @@ def tmp_path_config(tmp_kishu_path) -> Generator[type, None, None]:
 
 @pytest.fixture()
 def enable_incremental_store(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_value = Config.get("PLANNER", "incremental_store", True)
     Config.set("PLANNER", "incremental_store", True)
     yield Config
+    Config.set("PLANNER", "incremental_store", prev_value)
+
+
+@pytest.fixture()
+def disable_incremental_store(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_value = Config.get("PLANNER", "incremental_store", True)
     Config.set("PLANNER", "incremental_store", False)
+    yield Config
+    Config.set("PLANNER", "incremental_store", prev_value)
 
 
 @pytest.fixture()

@@ -15,9 +15,10 @@ from kishu.storage.path import KishuPath
 
 @pytest.fixture()
 def enable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_value = Config.get("OPTIMIZER", "always_migrate", True)
     Config.set("OPTIMIZER", "always_migrate", True)
     yield Config
-    Config.set("OPTIMIZER", "always_migrate", False)
+    Config.set("OPTIMIZER", "always_migrate", prev_value)
 
 
 class PlannerManager:

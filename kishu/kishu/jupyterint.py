@@ -272,7 +272,7 @@ class KishuForJupyter:
             "enable_auto_commit_when_skip_notebook",
             False,
         )
-        self._incremental_cr = self._persistent_config.get("PLANNER", "incremental_store", False)
+        self._incremental_cr = self._persistent_config.get("PLANNER", "incremental_store", True)
 
         # Kishu info and storages.
         self._kishu_connection = KishuConnection(

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import Generator, List
 
 import pytest
 
@@ -23,6 +23,14 @@ from kishu.storage.commit_graph import ABSOLUTE_PAST, CommitNodeInfo, KishuCommi
 from kishu.storage.config import Config
 from kishu.storage.path import KishuPath
 from tests.helpers.nbexec import KISHU_INIT_STR
+
+
+@pytest.fixture()
+def disable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_value = Config.get("OPTIMIZER", "always_migrate", True)
+    Config.set("OPTIMIZER", "always_migrate", False)
+    yield Config
+    Config.set("OPTIMIZER", "always_migrate", prev_value)
 
 
 class TestKishuCommand:
@@ -488,6 +496,8 @@ class TestKishuCommand:
     def test_end_to_end_checkout(
         self,
         tmp_nb_path,
+        disable_incremental_store,
+        disable_always_migrate,
         jupyter_server,
         notebook_name: str,
         cell_num_to_restore: int,
@@ -581,6 +591,8 @@ class TestKishuCommand:
     def test_fe_commit_after_rollback_execution(
         self,
         tmp_nb_path,
+        disable_incremental_store,
+        disable_always_migrate,
         jupyter_server,
     ):
         # Get the contents of the test notebook.
