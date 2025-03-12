@@ -17,6 +17,14 @@ def enable_slow_network_bandwidth(tmp_kishu_path) -> Generator[type, None, None]
 
 
 @pytest.fixture()
+def enable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
+    prev_value = Config.get("OPTIMIZER", "always_migrate", True)
+    Config.set("OPTIMIZER", "always_migrate", True)
+    yield Config
+    Config.set("OPTIMIZER", "always_migrate", prev_value)
+
+
+@pytest.fixture()
 def disable_always_migrate(tmp_kishu_path) -> Generator[type, None, None]:
     prev_value = Config.get("OPTIMIZER", "always_migrate", True)
     Config.set("OPTIMIZER", "always_migrate", False)
@@ -91,6 +99,15 @@ class TestOptimizer:
         vss_to_migrate, ces_to_recompute = opt.compute_plan()
         assert vss_to_migrate == set()
         assert set(ce.cell_num for ce in ces_to_recompute) == {1, 2, 3}
+
+    def test_optimizer_always_migrate(self, test_ahg, enable_always_migrate, enable_slow_network_bandwidth):
+        # Setup optimizer
+        opt = Optimizer(test_ahg, test_ahg.get_active_variable_snapshots("1:3"))
+
+        # Both y and z are migrated due to the flag.
+        vss_to_migrate, ces_to_recompute = opt.compute_plan()
+        assert set(vs.name for vs in vss_to_migrate) == {frozenset({"y"}), frozenset({"z"})}
+        assert ces_to_recompute == set()
 
     def test_optimizer_with_already_stored_variables(
         self, test_ahg, enable_slow_network_bandwidth, disable_always_migrate, enable_incremental_store
