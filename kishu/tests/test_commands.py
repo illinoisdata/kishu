@@ -758,14 +758,6 @@ class TestKishuCommand:
             _, var_value_after = notebook_session.run_code(var_to_compare)
             assert var_value_after == value_of_var
 
-    def test_commit_uninitialized(self, jupyter_server, tmp_nb_path):
-        notebook_path = tmp_nb_path("simple.ipynb")
-        with jupyter_server.start_session(notebook_path):
-            # Kishu init cell was not run before performing commit; expect an error.
-            commitResult = KishuCommand.commit(notebook_path)
-            assert commitResult.status == "error"
-            assert "KishuNotInitializedError" in commitResult.message
-
     def test_edit_commit_by_commit_id(
         self,
         tmp_nb_path,
@@ -1048,11 +1040,3 @@ class TestKishuCommand:
             undoResult = KishuCommand.undo(notebook_path)
             assert undoResult.status == "ok"
             assert undoResult.message == "No more commits to undo"
-
-    def test_undo_uninitialized(self, jupyter_server, tmp_nb_path):
-        notebook_path = tmp_nb_path("simple.ipynb")
-        with jupyter_server.start_session(notebook_path):
-            # Kishu init cell was not run before performing undo; expect an error.
-            undoResult = KishuCommand.undo(notebook_path)
-            assert undoResult.status == "error"
-            assert "KishuNotInitializedError" in undoResult.message

@@ -13,25 +13,37 @@ from kishu.jupyter.runtime import JupyterRuntimeEnv
 
 def subp_kishu_init(notebook_path: str, cookies: dict, queue: multiprocessing.Queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
-        init_result = KishuCommand.init(Path(notebook_path))
+        try:
+            init_result = KishuCommand.init(Path(notebook_path))
+        except Exception as e:
+            init_result = f"{type(e).__name__}: {str(e)}"           
     queue.put(into_json(init_result))
 
 
 def subp_kishu_checkout(notebook_path: str, commit_id: str, cookies: dict, queue: multiprocessing.Queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
-        checkout_result = KishuCommand.checkout(Path(notebook_path), commit_id)
+        try:
+            checkout_result = KishuCommand.checkout(Path(notebook_path), commit_id)
+        except Exception as e:
+            checkout_result = f"{type(e).__name__}: {str(e)}"   
     queue.put(into_json(checkout_result))
 
 
 def subp_kishu_undo(notebook_path: str, cookies: dict, queue: multiprocessing.Queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
-        rollback_result = KishuCommand.undo(Path(notebook_path))
-    queue.put(into_json(rollback_result))
+        try:
+            rollback_result = KishuCommand.undo(Path(notebook_path))
+        except Exception as e:
+            rollback_result = f"{type(e).__name__}: {str(e)}"
+        queue.put(into_json(rollback_result))
 
 
 def subp_kishu_commit(notebook_path: str, message: str, cookies: dict, queue: multiprocessing.Queue):
     with JupyterRuntimeEnv.context(cookies=cookies):
-        commit_result = KishuCommand.commit(Path(notebook_path), message)
+        try:
+            commit_result = KishuCommand.commit(Path(notebook_path), message)
+        except Exception as e:
+            commit_result = f"{type(e).__name__}: {str(e)}"
     queue.put(into_json(commit_result))
 
 
