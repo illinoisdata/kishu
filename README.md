@@ -21,46 +21,36 @@ Kishu can be installed from [PyPI](https://pypi.org/project/kishu/):
 pip install kishu jupyterlab_kishu
 ```
 
-Once installed, you are ready to use Kishu in your notebook workflows for undoing cell executions and managing branching notebook states.
-
 Note: installing `jupyterlab_kishu` will also install `jupyterlab` into your environment.
-
-### Initializing Kishu
-**Initialize Kishu to your notebook**: To start protecting your notebook session, Kishu can be initialized and attached through the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`.
-
-<br>
-<div align="center">
-<table>
-  <tr>
-    <th text-align: center;"><code>Kishu</code> Tab</th>
-    <th text-align: center;">Jupyter Command Palette</th>
-  </tr>
-  <tr>
-    <td style="background-color: grey; text-align: center;">
-      <img width="350" src="docs/images/init_dropdown.png"/>
-    </td>
-    <td style="background-color: grey; text-align: center;">
-      <img width="350" src="docs/images/init_command.png"/>
-    </td>
-  </tr>
-</table>
-</div>
-<br>
-
-You will see the below notification if Kishu is initialized successfully:
-
-<br>
-<div align="center">
-  <img width="350" src="docs/images/init_success.png"/>
-</div>
-<br>
 
 ## Using Kishu
 
-Kishu supports **undoing** cell executions and creating **branches** of session states.
+Once Kishu has been installed, an additional `Kishu` tab should appear in JupyterLab's toolbar. This tab will allow access to Kishu's various functionalities:
 
-### Undoing Notebook Executions
-Once initialized, Kishu will start automatically saving the variable state after each cell execution.
+<br>
+<div align="center">
+<img width="800" src="docs/images/kishu_verify.png"/>
+</div>
+<br>
+
+### Step 1: Initializing Kishu on a Notebook
+To start protecting your notebook session, Kishu can be initialized and attached through the `Kishu > Initialize/Re-attach` option under the `Kishu` tab. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`:
+
+<br>
+<div align="center">
+<img width="800" src="docs/images/init_clip.gif"/>
+</div>
+<br>
+
+### Step 2: Run Cells as Normal
+
+Once initialized, you can proceed to execute cells in the session as normal. Kishu will automatically and transparently checkpoint your variable state (imported libraries, loaded dataframes, drawn plots, fitted models, etc.) after each cell execution.
+
+<br>
+<div align="center">
+<img width="800" src="docs/images/run_cells.gif"/>
+</div>
+<br>
 
 **Undoing a cell execution:** To undo your latest cell execution, you can use the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z`.
 
@@ -368,6 +358,24 @@ Kishu relies on cell replay to reconstruct unpicklable objects (e.g., generators
 ```python
   nondet_gen = (i for i in range(random.randint(5, 10)))
 ```
+
+## FAQ
+
+**Q1:** I am getting a `Kernel for the notebook not found` error when initializing Kishu on a new notebook file. What is going on?
+
+<br>
+<div align="center">
+<img width="800" src="docs/images/kernel_not_found.png"/>
+</div>
+<br>
+
+**A1:** This happens if there is no running kernel for the current notebook file. Click the `Kernel` icon to start a new notebook kernel, then proceed with initializing Kishu normally.
+
+<br>
+<div align="center">
+<img width="800" src="docs/images/debug_no_kernel.gif"/>
+</div>
+<br>
 
 ## Learn More
 
