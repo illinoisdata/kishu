@@ -278,7 +278,7 @@ Kishu relies on cell replay to reconstruct unpicklable objects (e.g., generators
 
 <br>
 <div align="center">
-<img width="800" src="docs/images/kernel_not_found.png"/>
+<img width="960" src="docs/images/kernel_not_found.png"/>
 </div>
 <br>
 
@@ -286,13 +286,9 @@ Kishu relies on cell replay to reconstruct unpicklable objects (e.g., generators
 
 <br>
 <div align="center">
-<img width="800" src="docs/images/debug_no_kernel.gif"/>
+<img width="960" src="docs/images/debug_no_kernel.gif"/>
 </div>
 <br>
-
-**Q2:** My kernel has died and I lost all my variables! Can I use `Kishu` to restore my variable state?
-
-**A2:** Yes, if you have made maunal commits beforehand. Select `Kishu > Initialize/Re-attach`, followed by  `Kishu > Checkout`.
 
 ## Learn More
 
