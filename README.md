@@ -9,7 +9,11 @@
 
 # Kishu: Versioned and Undoable Notebook System
 
-<img width="350" src="docs/images/kishu.png"/>
+<br>
+<div align="center">
+<img width="350" src="docs/images/kishu_with_background.png"/>
+</div>
+<br>
 
 Kishu is a system for intelligent versioning of notebook session states on Jupyter-based platforms (e.g. JupyterLab, Jupyter Hub). Kishu efficiently creates checkpoints of both the variable and code states of a notebook session, allowing users to both undo cell executions and manage branching states containing objects such as machine learning models, plots, and dataframes through a Git-like commit and checkout interface.
 
@@ -21,169 +25,72 @@ Kishu can be installed from [PyPI](https://pypi.org/project/kishu/):
 pip install kishu jupyterlab_kishu
 ```
 
-Once installed, you are ready to use Kishu in your notebook workflows for undoing cell executions and managing branching notebook states.
-
 Note: installing `jupyterlab_kishu` will also install `jupyterlab` into your environment.
-
-### Initializing Kishu
-**Initialize Kishu to your notebook**: To start protecting your notebook session, Kishu can be initialized and attached through the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`.
-
-<br>
-<div align="center">
-<table>
-  <tr>
-    <th text-align: center;"><code>Kishu</code> Tab</th>
-    <th text-align: center;">Jupyter Command Palette</th>
-  </tr>
-  <tr>
-    <td style="background-color: grey; text-align: center;">
-      <img width="350" src="docs/images/init_dropdown.png"/>
-    </td>
-    <td style="background-color: grey; text-align: center;">
-      <img width="350" src="docs/images/init_command.png"/>
-    </td>
-  </tr>
-</table>
-</div>
-<br>
-
-You will see the below notification if Kishu is initialized successfully:
-
-<br>
-<div align="center">
-  <img width="350" src="docs/images/init_success.png"/>
-</div>
-<br>
 
 ## Using Kishu
 
-Kishu supports **undoing** cell executions and creating **branches** of session states.
-
-### Undoing Notebook Executions
-Once initialized, Kishu will start automatically saving the variable state after each cell execution.
-
-**Undoing a cell execution:** To undo your latest cell execution, you can use the `Kishu > Initialize/Re-attach` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+Z` / `⌘+K then ⌘+Z`.
+Once Kishu has been installed, an additional `Kishu` tab should appear in JupyterLab's toolbar. This tab will allow access to Kishu's various functionalities:
 
 <br>
 <div align="center">
-<table>
-  <tr>
-    <th text-align: center;"><code>Kishu</code> Tab</th>
-    <th text-align: center;">Jupyter Command Palette</th>
-  </tr>
-  <tr>
-    <td style="background-color: grey; text-align: center;">
-      <img width="350" src="docs/images/undo_dropdown.png"/>
-    </td>
-    <td style="background-color: grey; text-align: center;">
-      <img width="350" src="docs/images/undo_command.png"/>
-    </td>
-  </tr>
-</table>
+<img width="960" src="docs/images/kishu_verify.png"/>
 </div>
 <br>
 
-If successful, you will see the following notification, and your variable state will be rolled back to that before your latest cell execution. 
+### Step 1: Initializing Kishu on a Notebook
+To start protecting your notebook session, Kishu can be initialized and attached through the `Kishu > Initialize/Re-attach` option under the `Kishu` tab. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`:
 
 <br>
 <div align="center">
-  <img width="350" src="docs/images/undo_success.png"/>
+<img width="960" src="docs/images/init_clip.gif"/>
 </div>
 <br>
 
-**Only affects variable state:** Undoing cell executions **only affects the variable state**. The code state (i.e., the cells you write) is untouched. This can be useful, for example, to 'un-drop' a dataframe column dropped by a cell while keeping the cell code itself intact:
+### Step 2: Run Cells as Normal
+
+Once initialized, you can proceed to execute cells in the session as normal. Kishu will automatically and transparently checkpoint your variable state (imported libraries, loaded dataframes, drawn plots, fitted models, etc.) after each cell execution.
 
 <br>
 <div align="center">
-<img width="800" src="docs/images/workflow_undo_clip.gif"/>
+<img width="960" src="docs/images/run_cells.gif"/>
 </div>
 <br>
 
-### Branching Notebook Workflow
+## Undoing cell executions
+
+To undo your latest cell execution, you can use the `Kishu > Undo Execution` option under the `Kishu` tab:
+
+<br>
+<div align="center">
+<img width="960" src="docs/images/undo_clip.gif"/>
+</div>
+<br>
+
+Undoing cell executions **only affects the variable state**. The code state (i.e., the cells you write) is untouched. This can be useful, for example, to 'un-drop' a dataframe column dropped by a cell while keeping the cell code itself intact.
+
+## Checkpointing and Checking out Notebook States
 
 Kishu can also be used to manage branching code and variable states; it supports making **checkpoints** of the notebook and variable state at any point during a notebook session, which can be returned to later via a **checkout**.
 
-**Committing to make a checkpoint:** Kishu can store the current state of your notebook, including both the variable state and your code state, with the `Kishu > Commit` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+C` / `⌘+K then ⌘+C`.  
+### Step 1: Committing to make a checkpoint
+Kishu can store the current state of your notebook, including both the variable state and your code state, with the `Kishu > Commit` option under the `Kishu` tab. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+C` / `⌘+K then ⌘+C`. You will be prompted to enter a **commit message**:
 
 <br>
 <div align="center">
-<table>
-  <tr>
-    <th text-align: center;"><code>Kishu</code> Tab</th>
-    <th text-align: center;">Jupyter Command Palette</th>
-  </tr>
-  <tr>
-    <td style="background-color: grey; text-align: center;">
-      <img width="350" src="docs/images/commit_dropdown.png"/>
-    </td>
-    <td style="background-color: grey; text-align: center;">
-      <img width="350" src="docs/images/commit_command.png"/>
-    </td>
-  </tr>
-</table>
+<img width="960" src="docs/images/checkpoint_clip.gif"/>
 </div>
 <br>
 
-You will be then prompted to enter a **commit message**. Use something memorable so you can easily return to this commit later:
+### Step 2: Checkout to a checkpoint
+You can return to a commit with the `Kishu > Checkout` option under the `Kishu` tab. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+V` / `⌘+K then ⌘+V`. This will bring up a menu for you to select the appropriate commit:
 
 <br>
 <div align="center">
-<img width="350" src="docs/images/commit_message.png"/>
+<img width="960" src="docs/images/checkout_clip.gif"/>
 </div>
 <br>
 
-You will see the below message if the commit is successful:
-
-<br>
-<div align="center">
-<img width="350" src="docs/images/commit_success.png"/>
-</div>
-<br>
-
-**Checkout to a checkpoint:** You can return to any session state that has been committed in the past with the `Kishu > Checkout` option under the `Kishu` tab or in the Jupyter command palette. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+V` / `⌘+K then ⌘+V`.  
-
-<br>
-<div align="center">
-<table>
-  <tr>
-    <th text-align: center;"><code>Kishu</code> Tab</th>
-    <th text-align: center;">Jupyter Command Palette</th>
-  </tr>
-  <tr>
-    <td style="background-color: grey; text-align: center;">
-      <img width="350" src="docs/images/checkout_dropdown.png"/>
-    </td>
-    <td style="background-color: grey; text-align: center;">
-      <img width="350" src="docs/images/checkout_command.png"/>
-    </td>
-  </tr>
-</table>
-</div>
-<br>
-
-This will bring up a menu for you to select the appropriate checkpoint:
-
-<br>
-<div align="center">
-<img width="350" src="docs/images/checkout_select.png"/>
-</div>
-<br>
-
-You will see the below message if the checkout is successful:
-
-<br>
-<div align="center">
-<img width="350" src="docs/images/checkout_success.png"/>
-</div>
-<br>
-
-Checking out will replace both the current variable and code state with that of the selected checkpoint (see below). It will also **overwrite your current variable and code state**; commit to make a checkpoint before checking out if you wish to keep your current notebook state.
-
-<br>
-<div align="center">
-<img width="800" src="docs/images/workflow_branch_clip.gif"/>
-</div>
-<br>
+Checking out will replace both the current variable and code state with that of the selected checkpoint. It will also **overwrite your current variable and code state**; commit to make a (second) checkpoint before checking out if you wish to keep your current notebook state.
 
 ## Configuring Kishu
 
@@ -368,6 +275,24 @@ Kishu relies on cell replay to reconstruct unpicklable objects (e.g., generators
 ```python
   nondet_gen = (i for i in range(random.randint(5, 10)))
 ```
+
+## FAQ
+
+**Q1:** I am getting a `Kernel for the notebook not found` error when initializing Kishu on a new notebook file. What is going on?
+
+<br>
+<div align="center">
+<img width="960" src="docs/images/kernel_not_found.png"/>
+</div>
+<br>
+
+**A1:** This happens if there is no running kernel for the current notebook file. Click the `Kernel` icon to start a new notebook kernel, then proceed with initializing Kishu normally.
+
+<br>
+<div align="center">
+<img width="960" src="docs/images/debug_no_kernel.gif"/>
+</div>
+<br>
 
 ## Learn More
 
