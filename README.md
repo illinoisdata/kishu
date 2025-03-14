@@ -52,14 +52,6 @@ Once initialized, you can proceed to execute cells in the session as normal. Kis
 </div>
 <br>
 
-**Note:** Kishu stores your data in a `kishudb` file with the same name as your notebook file. **Don't delete it!**
-
-<br>
-<div align="center">
-<img width="960" src="docs/images/kishudb.png"/>
-</div>
-<br>
-
 ## Undoing cell executions
 
 To undo your latest cell execution, you can use the `Kishu > Undo Execution` option under the `Kishu` tab:
