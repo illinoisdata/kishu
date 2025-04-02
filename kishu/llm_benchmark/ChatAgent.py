@@ -20,12 +20,17 @@ class ChatAgent(object):
         if last_step_exec_output is None:
             if self.next_user_prompt == None:
                 prompt = (f"Please generate the code cell for step {self.next_step + 1}. "
+                          f"be careful about error: contains infinity or a value too large for dtype('float32')"
+                          f"you should never use plt, sns or other method to draw anything, because we don't have graph system on the computer\n"
                           f"Note: please only generate notebook cell code, no bash or other things.")
             else:
                 prompt = self.next_user_prompt
-        else:
+        elif len(last_step_exec_output) < 7000:
             prompt = (f"The output for this code cell is: \n{last_step_exec_output}.\n Please generate the code for next "
                       f"step {self.next_step + 1}")
+        else:
+            prompt = (f"Please generate the code for next "
+            f"step {self.next_step + 1}")
         content = self._generate_gpt_response(prompt)
         self.step2message_idx[self.next_step] = len(self.messages) - 1
         self.next_step += 1
@@ -45,7 +50,10 @@ class ChatAgent(object):
 
     def cal_target_checkout_step(self):
         # calculate the target step to check out
-        return random.randint(min(self.next_step - 2, 5), self.next_step - 2)
+        if self.next_step == 1:
+            return 0
+        else:
+            return random.randint(min(self.next_step - 2, 5), self.next_step - 2)
 
     def checkout(self, target_step):
         # checkout the current step
@@ -70,6 +78,7 @@ class ChatAgent(object):
                   f"Tell me the steps to do this (without code).\n "
                   f"The steps should include some computation intensive ones such as Hyper-parameter tuning(no more than 3 groups with each group no more than 2 choices), model selection(no more than 2 models to choose from), neural network training(small model only), etc.\n "
                   f"the step should be listed as:\n"
+                  f"you should never use plt, sns or other method to draw anything, because we don't have graph system on the computer\n"
                   f"There are XXX steps in total.\n"
                   f"1. XXX\n"
                   f"2. XXX")

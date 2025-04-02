@@ -31,7 +31,7 @@ with open('prompts.json', 'r') as file:
         if not check_file_exist(data):
             print("Alarm: data doesn't exist for ", config['exp_name'])
             continue
-        for i in range(10,15):
+        for i in range(20,23):
             exp_name = config['exp_name'] + "_" + str(i)
             kishu_e2e_time = 0
             kishu_longest_length = 0
@@ -51,6 +51,7 @@ with open('prompts.json', 'r') as file:
                 output = None  # execution output of the previous step
                 while path_num < 3:
                     cell_code = get_cell_code(chat_agent.step(output))  # feed the output of last step
+                    print(f"executing:{cell_code}")
                     output, traceback, exec_time = exec_agent.execute(cell_code, chat_agent.next_step - 1)
                     print("execution output", output)
                     if traceback is not "" and traceback != None:
@@ -63,6 +64,7 @@ with open('prompts.json', 'r') as file:
                         print(traceback)
                         retry -= 1
                         cell_code = get_cell_code(chat_agent.debug(traceback))
+                        print(f"executing:{cell_code}")
                         output, traceback, exec_time = exec_agent.execute(cell_code, chat_agent.next_step - 1)
 
                     # if still has error,
@@ -92,6 +94,9 @@ with open('prompts.json', 'r') as file:
 
                         path_num += 1
                         kishu_longest_length = max(kishu_current_length, kishu_longest_length)
+                        if max_var_num > exec_agent.num_variables():
+                            print(max_var_num)
+                            print(exec_agent.shell.user_ns.keys())
                         max_var_num = max(max_var_num, exec_agent.num_variables())
 
                         if path_num >= 3:

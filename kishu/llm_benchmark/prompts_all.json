@@ -14,5 +14,10 @@
     "exp_name": "middle_1",
     "data": ["/home/hanxif2/exp/kishu/llm_benchmark/spotify/top_podcasts.csv"],
     "task": "My dataset is in /home/hanxif2/exp/kishu/llm_benchmark/spotify/top_podcasts.csv, it has header. It has the following fields:date,rank,region,chartRankMove,episodeUri,showUri,episodeName,description,show.name,show.description,show.publisher,duration_ms,explicit,is_externally_hosted,is_playable,language,languages,release_date,release_date_precision,show.copyrights,show.explicit,show.href,show.html_description,show.is_externally_hosted,show.languages,show.media_type,show.total_episodes,show.type,show.uri. I want build a model to track how podcast rankings change over time to identify emerging trends."
+  },
+  {
+    "exp_name":"middle_nasdaq",
+    "data": ["/home/hanxif2/exp1/kishu/kishu/llm_benchmark/nasdaq/nasdaq.csv"],
+    "task": "My dataset is in /home/hanxif2/exp1/kishu/kishu/llm_benchmark/nasdaq/nasdaq.csv. It has header. It consists of daily stock data from 1962 to 2024. The dataset includes columns such as stock symbol, date, open price, high price, low price, close price, adjusted close price, volume, and market capitalization. you can print the column types and information by yourself. you need to build a model to predict future stock price movements based on historical data, focusing on price trends, volume, and market cap."
   }
 ]
