@@ -4,7 +4,6 @@ from kishu.jupyterint import KishuForJupyter
 from llm_benchmark.ExecAgent import NBGroupExecAgent
 
 data_collect_log_dir = "/home/hanxif2/exp1/kishu/kishu/llm_benchmark/"
-# data_collect_log_dir = "/Users/hanxi/Kishu-be/kishu/kishu/llm_benchmark"
 group_prefix = "middle"
 
 os.environ[KishuForJupyter.ENV_KISHU_TEST_MODE] = "true"
@@ -44,8 +43,7 @@ os.environ[KishuForJupyter.ENV_KISHU_TEST_MODE] = "true"
 e2e_times = []
 final_run_steps_list = []
 num_variables = []
-# for i in range(0,10):
-for i in [15]: # 15, 17,18
+for i in [15]:
     agent = NBGroupExecAgent(f"{group_prefix}_{i}", "non_kishu_start_middle", 3)
     log_file_name = f"{group_prefix}_{i}_non_kishu_start_middle_log.txt"
     data_collect_log = os.path.join(data_collect_log_dir, f"{group_prefix}_{i}_log.txt")
@@ -71,14 +69,14 @@ with open(global_log_file_name, "a") as global_log_file:
     global_log_file.write("Kishu start middle group Max variable number: " + str(sum(num_variables) / len(num_variables)) + "\n")
 
 
-# for i in [15]:
-#     agent = NBGroupExecAgent(f"{group_prefix}_{i}", "test_semantic_error", 3)
-#     log_file_name = f"{group_prefix}_{i}_test_semantic_error_log.txt"
-#     data_collect_log = os.path.join(data_collect_log_dir, f"{group_prefix}_{i}_log.txt")
-#     with open(log_file_name, 'w') as log_file, open(data_collect_log, 'r') as data_collect_log:
-#         num_semantic_error_branch = agent.e2e_execute(log_file, data_collect_log)
-#         log_file.write(f"final num semantic error branch: {num_semantic_error_branch}\n")
-#         log_file.flush()
+for i in [15]:
+    agent = NBGroupExecAgent(f"{group_prefix}_{i}", "test_semantic_error", 3)
+    log_file_name = f"{group_prefix}_{i}_test_semantic_error_log.txt"
+    data_collect_log = os.path.join(data_collect_log_dir, f"{group_prefix}_{i}_log.txt")
+    with open(log_file_name, 'w') as log_file, open(data_collect_log, 'r') as data_collect_log:
+        num_semantic_error_branch = agent.e2e_execute(log_file, data_collect_log)
+        log_file.write(f"final num semantic error branch: {num_semantic_error_branch}\n")
+        log_file.flush()
 
 
 
