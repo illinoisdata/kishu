@@ -301,6 +301,7 @@ Kishu's efficiency is enabled by its low-overhead session state monitoring, dedu
 - [Kishu: Time-Traveling for Computational Notebooks](https://arxiv.org/abs/2406.13856)
 - [Enhancing Computational Notebooks with Code+Data Space Versioning](https://arxiv.org/abs/2504.01367)
 - [ElasticNotebook: Enabling Live Migration for Computational Notebooks](https://dl.acm.org/doi/abs/10.14778/3626292.3626296)
+- [Large-scale Evaluation of Notebook Checkpointing with AI Agents](https://arxiv.org/abs/2504.01377)
 - [Transactional Python for Durable Machine Learning: Vision, Challenges, and Feasibility](https://dl.acm.org/doi/abs/10.1145/3595360.3595855)
 - [Demonstration of ElasticNotebook: Migrating Live Computational Notebook States](https://dl.acm.org/doi/abs/10.1145/3626246.3654752)
 
