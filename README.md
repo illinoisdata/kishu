@@ -101,7 +101,7 @@ Kishu can be configured through editing the `~/.kishu/config.ini` file. A full l
 This is the current list of libraries, their versions, and their classes supported by Kishu:
 ```
 - ✅ : supported: All changes to instances of this class are always captured.
-- ❓ : unstable: Kishu may report changes on non-changes to instances of this class, i.e., false positives.
+- 🟨 : too conservative: Kishu may report changes on non-changes to instances of this class, i.e., false positives.
 - ❌ : failing: Some changes to an instance of this class may not be captured.
 
     ✅ arrow==1.3.0, arrow.arrow.Arrow
@@ -238,21 +238,21 @@ This is the current list of libraries, their versions, and their classes support
     ✅ transformers==4.38.2, transformers
     ✅ typing==3.7.4.3, typing
     ✅ wordcloud==1.9.3, wordcloud.WordCloud
-    ❓ matplotlib==3.7.5, matplotlib.Axes
-    ❓ matplotlib==3.7.5, matplotlib.Axes
-    ❓ seaborn==0.13.0, seaborn
-    ❓ torch==2.4.1, torch.optim
-    ❓ polars==0.14.29, polars.LazyFrame
-    ❓ matplotlib==3.7.5, matplotlib.colors.BoundaryNorm
-    ❓ matplotlib==3.7.5, matplotlib.lines.Line2D
-    ❓ matplotlib==3.7.5, matplotlib.patches.Ellipse
-    ❓ matplotlib==3.7.5, matplotlib.patches.Arrow
-    ❓ matplotlib==3.7.5, matplotlib.image.AxesImage
-    ❓ matplotlib==3.7.5, matplotlib.image.FigureImage
-    ❓ matplotlib==3.7.5, matplotlib.offsetbox.AnchoredOffsetbox
-    ❓ astropy==5.2.2, astropy.visualization.mpl_normalize.ImageNormalize
-    ❓ astropy==5.2.2, astropy.wcs.Celprm
-    ❓ matplotlib==3.7.5, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
+    🟨 matplotlib==3.7.5, matplotlib.Axes
+    🟨 matplotlib==3.7.5, matplotlib.Axes
+    🟨 seaborn==0.13.0, seaborn
+    🟨 torch==2.4.1, torch.optim
+    🟨 polars==0.14.29, polars.LazyFrame
+    🟨 matplotlib==3.7.5, matplotlib.colors.BoundaryNorm
+    🟨 matplotlib==3.7.5, matplotlib.lines.Line2D
+    🟨 matplotlib==3.7.5, matplotlib.patches.Ellipse
+    🟨 matplotlib==3.7.5, matplotlib.patches.Arrow
+    🟨 matplotlib==3.7.5, matplotlib.image.AxesImage
+    🟨 matplotlib==3.7.5, matplotlib.image.FigureImage
+    🟨 matplotlib==3.7.5, matplotlib.offsetbox.AnchoredOffsetbox
+    🟨 astropy==5.2.2, astropy.visualization.mpl_normalize.ImageNormalize
+    🟨 astropy==5.2.2, astropy.wcs.Celprm
+    🟨 matplotlib==3.7.5, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
 ```
 
 ## Limitations
@@ -299,9 +299,70 @@ Kishu relies on cell replay to reconstruct unpicklable objects (e.g., generators
 Kishu's efficiency is enabled by its low-overhead session state monitoring, deduplicated variable storage, and optimized recomputation-assisted checkout. Our papers on Kishu can be found here; don't forget to star our repository and cite our papers if you like our work!
 
 - [Kishu: Time-Traveling for Computational Notebooks](https://arxiv.org/abs/2406.13856)
-- [ElasticNotebook: Enabling Live Migration for Computational Notebooks](https://arxiv.org/abs/2309.11083)
+- [Enhancing Computational Notebooks with Code+Data Space Versioning](https://arxiv.org/abs/2504.01367)
+- [ElasticNotebook: Enabling Live Migration for Computational Notebooks](https://dl.acm.org/doi/abs/10.14778/3626292.3626296)
+- [Large-scale Evaluation of Notebook Checkpointing with AI Agents](https://arxiv.org/abs/2504.01377)
 - [Transactional Python for Durable Machine Learning: Vision, Challenges, and Feasibility](https://dl.acm.org/doi/abs/10.1145/3595360.3595855)
 - [Demonstration of ElasticNotebook: Migrating Live Computational Notebook States](https://dl.acm.org/doi/abs/10.1145/3626246.3654752)
+
+```
+@article{li2024kishu,
+  title={Kishu: Time-Traveling for Computational Notebooks},
+  author={Li, Zhaoheng and Chockchowwat, Supawit and Sahu, Ribhav and Sheth, Areet and Park, Yongjoo},
+  journal={Proceedings of the VLDB Endowment},
+  volume={18},
+  number={4},
+  pages={970 - 985},
+  year={2024},
+  doi={10.14778/3717755.3717759},
+  publisher={VLDB Endowment},
+}
+
+@inproceedings{fang2025enhancing,
+  title={Enhancing Computational Notebooks with Code+Data Space Versioning},
+  author={Fang, Hanxi and Chockchowwat, Supawit and Sundaram, Hari and Park, Yongjoo},
+  booktitle={CHI Conference on Human Factors in Computing Systems (Chi '25)},
+  year={2025},
+  doi={doi.org/10.1145/3706598.3714141}
+}
+
+@article{li2023elasticnotebook,
+  title={ElasticNotebook: Enabling Live Migration for Computational Notebooks},
+  author={Li, Zhaoheng and Gor, Pranav and Prabhu, Rahul and Yu, Hui and Mao, Yuzhou and Park, Yongjoo},
+  journal={Proceedings of the VLDB Endowment},
+  volume={17},
+  number={2},
+  pages={119--133},
+  year={2023},
+  doi={10.14778/3626292.3626296},
+  publisher={VLDB Endowment}
+}
+
+@inproceedings{fang2025large,
+  title={Large-scale Evaluation of Notebook Checkpointing with AI Agents},
+  author={Fang, Hanxi and Chockchowwat, Supawit and Sundaram, Hari and Park, Yongjoo},
+  booktitle={Late-breaking work in CHI Conference on Human Factors in Computing Systems (Chi '25)},
+  year={2025}
+}
+
+@inproceedings{chockchowwat2023transactional,
+  title={Transactional python for durable machine learning: Vision, challenges, and feasibility},
+  author={Chockchowwat, Supawit and Li, Zhaoheng and Park, Yongjoo},
+  booktitle={Proceedings of the Seventh Workshop on Data Management for End-to-End Machine Learning},
+  pages={1--5},
+  year={2023},
+  doi={10.1145/3595360.3595855}
+}
+
+@inproceedings{li2024demonstration,
+  title={Demonstration of ElasticNotebook: Migrating Live Computational Notebook States},
+  author={Li, Zhaoheng and Chockchowwat, Supawit and Fang, Hanxi and Sahu, Ribhav and Thakurdesai, Sumay and Pridaphatrakun, Kantanat and Park, Yongjoo},
+  booktitle={Companion of the 2024 International Conference on Management of Data},
+  pages={540--543},
+  year={2024},
+  doi={10.1145/3626246.3654752}
+}
+```
 
 ## Contributing
 
