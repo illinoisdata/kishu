@@ -101,7 +101,7 @@ Kishu can be configured through editing the `~/.kishu/config.ini` file. A full l
 This is the current list of libraries, their versions, and their classes supported by Kishu:
 ```
 - ✅ : supported: All changes to instances of this class are always captured.
-- ❓ : unstable: Kishu may report changes on non-changes to instances of this class, i.e., false positives.
+- 🟨 : too conservative: Kishu may report changes on non-changes to instances of this class, i.e., false positives.
 - ❌ : failing: Some changes to an instance of this class may not be captured.
 
     ✅ arrow==1.3.0, arrow.arrow.Arrow
@@ -238,21 +238,21 @@ This is the current list of libraries, their versions, and their classes support
     ✅ transformers==4.38.2, transformers
     ✅ typing==3.7.4.3, typing
     ✅ wordcloud==1.9.3, wordcloud.WordCloud
-    ❓ matplotlib==3.7.5, matplotlib.Axes
-    ❓ matplotlib==3.7.5, matplotlib.Axes
-    ❓ seaborn==0.13.0, seaborn
-    ❓ torch==2.4.1, torch.optim
-    ❓ polars==0.14.29, polars.LazyFrame
-    ❓ matplotlib==3.7.5, matplotlib.colors.BoundaryNorm
-    ❓ matplotlib==3.7.5, matplotlib.lines.Line2D
-    ❓ matplotlib==3.7.5, matplotlib.patches.Ellipse
-    ❓ matplotlib==3.7.5, matplotlib.patches.Arrow
-    ❓ matplotlib==3.7.5, matplotlib.image.AxesImage
-    ❓ matplotlib==3.7.5, matplotlib.image.FigureImage
-    ❓ matplotlib==3.7.5, matplotlib.offsetbox.AnchoredOffsetbox
-    ❓ astropy==5.2.2, astropy.visualization.mpl_normalize.ImageNormalize
-    ❓ astropy==5.2.2, astropy.wcs.Celprm
-    ❓ matplotlib==3.7.5, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
+    🟨 matplotlib==3.7.5, matplotlib.Axes
+    🟨 matplotlib==3.7.5, matplotlib.Axes
+    🟨 seaborn==0.13.0, seaborn
+    🟨 torch==2.4.1, torch.optim
+    🟨 polars==0.14.29, polars.LazyFrame
+    🟨 matplotlib==3.7.5, matplotlib.colors.BoundaryNorm
+    🟨 matplotlib==3.7.5, matplotlib.lines.Line2D
+    🟨 matplotlib==3.7.5, matplotlib.patches.Ellipse
+    🟨 matplotlib==3.7.5, matplotlib.patches.Arrow
+    🟨 matplotlib==3.7.5, matplotlib.image.AxesImage
+    🟨 matplotlib==3.7.5, matplotlib.image.FigureImage
+    🟨 matplotlib==3.7.5, matplotlib.offsetbox.AnchoredOffsetbox
+    🟨 astropy==5.2.2, astropy.visualization.mpl_normalize.ImageNormalize
+    🟨 astropy==5.2.2, astropy.wcs.Celprm
+    🟨 matplotlib==3.7.5, 'mpl_toolkits.mplot3d.art3d.Line3DCollection
 ```
 
 ## Limitations
