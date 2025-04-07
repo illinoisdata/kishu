@@ -337,7 +337,7 @@ Kishu's efficiency is enabled by its low-overhead session state monitoring, dedu
   publisher={VLDB Endowment}
 }
 
-@article{fang2025large,
+@inproceedings{fang2025large,
   title={Large-scale Evaluation of Notebook Checkpointing with AI Agents},
   author={Fang, Hanxi and Chockchowwat, Supawit and Sundaram, Hari and Park, Yongjoo},
   booktitle={Late-breaking work in CHI Conference on Human Factors in Computing Systems (Chi '25)},
