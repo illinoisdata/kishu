@@ -96,6 +96,24 @@ Checking out will replace both the current variable and code state with that of 
 
 Kishu can be configured through editing the `~/.kishu/config.ini` file. A full list of configurable options can be found [here](docs/src/usage.rst).
 
+## Kishuboard: Interactive GUI for Kishu
+Optionally, you can install Kishuboard. Kishuboard is a graphical extension for Kishu. With the interactive GUI provided by KishuBoard, you can browse, compare and search commits, checkout code/kernel variables to previous commits; branch out etc in a straightforward way. For a full list of supported features and dev instructions for Kishuboard can be found [here](kishuboard/README.md).
+
+To install Kishuboard, run:
+```bash
+pip install kishuboard
+```
+
+And then, launch it with:
+```bash
+kishuboard
+```
+Now you should be able to visit it at ``localhost://4999``.
+
+When Kishu is attached to a new notebook, **refresh** the notebook list. To enter the GUI of a specific notebook, simply click on its entry in the list.
+
+<img width="400" src="docs/images/kishuboard_menu.png"/>
+
 ## Supported Libraries
 
 This is the current list of libraries, their versions, and their classes supported by Kishu:
