@@ -8,7 +8,7 @@ from kishu.planning.plan import CheckpointPlan, RerunCellRestoreAction, RestoreP
 from kishu.planning.planner import ChangedVariables, CheckpointRestorePlanner
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit_graph import CommitId, KishuCommitGraph
-from kishu.storage.config import Config
+from kishu.storage.config import Config, PersistentConfig
 from kishu.storage.disk_ahg import KishuDiskAHG
 from kishu.storage.path import KishuPath
 
@@ -76,10 +76,6 @@ class TestPlanner:
         return KishuPath.database_path(nb_simple_path)
 
     @pytest.fixture
-    def graph_name(self):
-        return "test_graph"
-
-    @pytest.fixture
     def kishu_disk_ahg(self, db_path_name):
         """Fixture for initializing a KishuBranch instance."""
         kishu_disk_ahg = KishuDiskAHG(db_path_name)
@@ -88,9 +84,9 @@ class TestPlanner:
         kishu_disk_ahg.drop_database()
 
     @pytest.fixture
-    def kishu_graph(self, db_path_name, graph_name):
+    def kishu_graph(self, db_path_name):
         """Fixture for initializing a KishuBranch instance."""
-        kishu_graph = KishuCommitGraph(db_path_name, graph_name)
+        kishu_graph = KishuCommitGraph.new_var_graph(db_path_name)
         kishu_graph.init_database()
         yield kishu_graph
         kishu_graph.drop_database()
@@ -110,6 +106,14 @@ class TestPlanner:
         kishu_incremental_checkpoint.init_database()
         yield kishu_incremental_checkpoint
         kishu_incremental_checkpoint.drop_database()
+
+    @pytest.fixture
+    def persistent_config(self, db_path_name):
+        """Fixture for initializing a KishuBranch instance."""
+        persistent_config = PersistentConfig(db_path_name)
+        persistent_config.init_database()
+        yield persistent_config
+        persistent_config.drop_database()
 
     def test_checkpoint_restore_planner(self, nb_simple_path, enable_always_migrate, kishu_disk_ahg, kishu_graph):
         """
@@ -382,3 +386,58 @@ class TestPlanner:
 
         # Y needs to be updated when checking out from 1:2 to 1:1.
         assert planner_manager.planner._get_differing_vars_post_checkout(target_active_vses) == {"y"}
+
+    def test_make_restore_plan_no_incremental_cr(self, db_path_name, persistent_config, disable_incremental_store):
+        dummy_plan = RestorePlan()
+        dummy_plan.add_rerun_cell_restore_action(1, "code")
+        restore_plan = CheckpointRestorePlanner.make_restore_plan(db_path_name, "not_used", dummy_plan)
+
+        # The dummy plan is returned as is.
+        assert len(restore_plan.actions) == 1
+
+    def test_make_restore_plan_incremental_cr(
+        self, db_path_name, persistent_config, enable_always_migrate, kishu_disk_ahg, kishu_graph, kishu_incremental_checkpoint
+    ):
+        """
+        Test incremental restore with dynamically generated restore plan.
+        """
+        planner = CheckpointRestorePlanner(kishu_disk_ahg, kishu_graph, Namespace({}), incremental_cr=True)
+        planner_manager = PlannerManager(planner)
+
+        # Run cell 1.
+        planner_manager.run_cell("1:1", {}, {"x": 1, "y": 2}, "x = 1\ny = 2")
+
+        # Create and run checkpoint plan for cell 1.
+        planner_manager.checkpoint_session(db_path_name, "1:1", [])
+
+        # Run cell 2.
+        cell2_code = "y += 1\nz = 4\n"
+        planner_manager.run_cell("1:2", {"y"}, {"y": 3, "z": 4}, cell2_code)
+
+        # Create and run checkpoint plan for cell 2.
+        planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
+
+        """
+            Generate the incremental restore plan for checking out from 1:2 to a hypothetical new branch with same active
+            VSes as 1:2:
+                 +- 1:2
+            1:1 -+
+                 +- target_state
+        """
+        # Generate the incremental restore plan for checking out from 1:2 to the new branch.
+        dummy_plan = RestorePlan()
+        # dummy_plan.add_rerun_cell_restore_action(1, "code")
+        restore_plan = CheckpointRestorePlanner.make_restore_plan(
+            db_path_name,
+            "1:2",
+            dummy_plan,
+        )
+
+        # Load all 3 of x, y, and z from 2 commits
+        assert len(restore_plan.actions) == 2
+
+        version_1 = min([ce.cell_num for ce in planner.get_ahg().get_all_cell_executions()])  # Get timestamp from stored CE
+        version_2 = max([ce.cell_num for ce in planner.get_ahg().get_all_cell_executions()])
+
+        assert len(restore_plan.actions[StepOrder.new_incremental_load(version_1)].variable_snapshots) == 1  # x
+        assert len(restore_plan.actions[StepOrder.new_incremental_load(version_2)].variable_snapshots) == 2  # y, z

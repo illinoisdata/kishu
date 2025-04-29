@@ -18,7 +18,7 @@ from kishu.planning.optimizer import IncrementalLoadOptimizer, Optimizer
 from kishu.planning.plan import CheckpointPlan, IncrementalCheckpointPlan, RestorePlan
 from kishu.storage.checkpoint import KishuCheckpoint
 from kishu.storage.commit_graph import CommitId, KishuCommitGraph
-from kishu.storage.config import Config
+from kishu.storage.config import Config, PersistentConfig
 from kishu.storage.disk_ahg import CellExecution, KishuDiskAHG, VariableName, VariableSnapshot
 
 
@@ -104,6 +104,26 @@ class CheckpointRestorePlanner:
         return CheckpointRestorePlanner(
             kishu_disk_ahg, kishu_graph, user_ns, AHG.from_db(kishu_disk_ahg, transformed_untracked_cells), incremental_cr
         )
+
+    @staticmethod
+    def make_restore_plan(
+        database_path: Path, commit_id: str, default_plan: Optional[RestorePlan] = None
+    ) -> Optional[RestorePlan]:
+        # HACK: Bandaid fix for Kishuboard with incremental C/R; piece together variables from AHG information.
+        if PersistentConfig(database_path).get("PLANNER", "incremental_store", True):
+            ahg = KishuDiskAHG(database_path)
+            kishu_graph = KishuCommitGraph.new_var_graph(database_path)
+            planner = CheckpointRestorePlanner(ahg, kishu_graph)
+            active_vss = planner._ahg.get_active_variable_snapshots(commit_id)
+            ancestor_commit_ids = kishu_graph.list_ancestor_commit_ids(commit_id)
+            return planner._generate_incremental_restore_plan(
+                database_path,
+                active_vss,
+                set(),
+                ancestor_commit_ids,
+            )
+        else:
+            return default_plan
 
     def pre_run_cell_update(self) -> None:
         """
