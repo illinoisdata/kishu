@@ -23,6 +23,7 @@ from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import JupyterCommandResult, JupyterConnection, KishuForJupyter, KishuSession
 from kishu.logging import logger
 from kishu.notebook_id import NotebookId
+from kishu.planning.planner import CheckpointRestorePlanner
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
@@ -870,7 +871,11 @@ class KishuCommand:
     ) -> FESelectedCommit:
         # Restores variables.
         commit_ns = Namespace()
-        restore_plan = commit_entry.restore_plan
+
+        restore_plan = CheckpointRestorePlanner.make_restore_plan(
+            KishuPath.database_path(notebook_path), commit_entry.commit_id, commit_entry.restore_plan
+        )
+
         if restore_plan is not None:
             database_path = KishuPath.database_path(notebook_path)
             commit_ns = restore_plan.run(database_path, commit_id)
