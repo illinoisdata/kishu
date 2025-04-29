@@ -23,13 +23,10 @@ from kishu.jupyter.runtime import JupyterRuntimeEnv
 from kishu.jupyterint import JupyterCommandResult, JupyterConnection, KishuForJupyter, KishuSession
 from kishu.logging import logger
 from kishu.notebook_id import NotebookId
-from kishu.planning.plan import RestorePlan
 from kishu.planning.planner import CheckpointRestorePlanner
 from kishu.storage.branch import BranchRow, HeadBranch, KishuBranch
 from kishu.storage.commit import CommitEntry, CommitEntryKind, FormattedCell, KishuCommit
 from kishu.storage.commit_graph import CommitNodeInfo, KishuCommitGraph
-from kishu.storage.config import PersistentConfig
-from kishu.storage.disk_ahg import KishuDiskAHG
 from kishu.storage.path import KishuPath, NotebookPath
 from kishu.storage.tag import KishuTag, TagRow
 from kishu.storage.variable_version import VariableVersion
@@ -874,24 +871,7 @@ class KishuCommand:
     ) -> FESelectedCommit:
         # Restores variables.
         commit_ns = Namespace()
-
-        restore_plan: Optional[RestorePlan] = None
-
-        # Bandaid fix for incremental C/R with frontend; piece together variables from AHG information
-        # TODO: refactor in next update
-        if PersistentConfig(KishuPath.database_path(notebook_path)).get("PLANNER", "incremental_store", True):
-            temp_ahg = KishuDiskAHG(KishuPath.database_path(notebook_path))
-            temp_graph = KishuCommitGraph.new_var_graph(KishuPath.database_path(notebook_path))
-            temp_planner = CheckpointRestorePlanner(temp_ahg, temp_graph)
-            restore_plan = temp_planner._generate_incremental_restore_plan(
-                KishuPath.database_path(notebook_path),
-                temp_planner._ahg.get_active_variable_snapshots(commit_entry.commit_id),
-                set(),
-                temp_graph.list_ancestor_commit_ids(commit_entry.commit_id),
-            )
-        else:
-            restore_plan = commit_entry.restore_plan
-
+        restore_plan = CheckpointRestorePlanner.make_plan(notebook_path, commit_entry.commit_id, commit_entry.restore_plan)
         if restore_plan is not None:
             database_path = KishuPath.database_path(notebook_path)
             commit_ns = restore_plan.run(database_path, commit_id)
