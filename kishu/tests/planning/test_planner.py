@@ -399,7 +399,7 @@ class TestPlanner:
         self, db_path_name, persistent_config, enable_always_migrate, kishu_disk_ahg, kishu_graph, kishu_incremental_checkpoint
     ):
         """
-        Test incremental restore with dynamically generated restore plan.
+        Test make restore plan with incremental CR.
         """
         planner = CheckpointRestorePlanner(kishu_disk_ahg, kishu_graph, Namespace({}), incremental_cr=True)
         planner_manager = PlannerManager(planner)
@@ -417,16 +417,9 @@ class TestPlanner:
         # Create and run checkpoint plan for cell 2.
         planner_manager.checkpoint_session(db_path_name, "1:2", ["1:1"])
 
-        """
-            Generate the incremental restore plan for checking out from 1:2 to a hypothetical new branch with same active
-            VSes as 1:2:
-                 +- 1:2
-            1:1 -+
-                 +- target_state
-        """
         # Generate the incremental restore plan for checking out from 1:2 to the new branch.
         dummy_plan = RestorePlan()
-        # dummy_plan.add_rerun_cell_restore_action(1, "code")
+        dummy_plan.add_rerun_cell_restore_action(1, "code")
         restore_plan = CheckpointRestorePlanner.make_restore_plan(
             db_path_name,
             "1:2",
