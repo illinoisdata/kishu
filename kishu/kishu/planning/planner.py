@@ -315,86 +315,15 @@ class CheckpointRestorePlanner:
         lca_active_vses = self._ahg.get_active_variable_snapshots(lca_commit_id)
 
         # Get parent commit IDs.
-        return self._generate_incremental_restore_plan(
+        return CheckpointRestorePlanner._generate_incremental_restore_plan(
             database_path,
+            self._ahg,
+            self._kishu_graph,
+            self._user_ns,
             target_active_vses,
             lca_active_vses,
             self._kishu_graph.list_ancestor_commit_ids(target_commit_id),
         )
-
-    def _generate_incremental_restore_plan(
-        self,
-        database_path: Path,
-        target_active_vses: Set[VariableSnapshot],
-        lca_active_vses: Set[VariableSnapshot],
-        target_parent_commit_ids: List[str],
-    ) -> RestorePlan:
-        """
-        Dynamically generates an incremental restore plan. To be called at checkout time if incremental CR is enabled.
-        """
-        # Find currently active VSes and stored VSes that can help restoration.
-        useful_vses = self._find_useful_vses(lca_active_vses, database_path, target_parent_commit_ids)
-
-        # Compute the incremental load plan.
-        opt_result = IncrementalLoadOptimizer(
-            self._ahg,
-            target_active_vses,
-            useful_vses.useful_active_vses,
-            useful_vses.useful_stored_vses,
-        ).compute_plan()
-        # Sort the VSes to load and move by cell execution number.
-        move_ce_to_vs_map: Dict[CellExecution, Set[VariableSnapshot]] = defaultdict(set)
-        for vs in opt_result.vss_to_move:
-            move_ce_to_vs_map[self._ahg.get_vs_input_ce(vs)].add(vs)
-
-        load_ce_to_vs_map: Dict[CellExecution, Set[VariableSnapshot]] = defaultdict(set)
-        for vs in opt_result.vss_to_load:
-            load_ce_to_vs_map[self._ahg.get_vs_input_ce(vs)].add(vs)
-
-        # Compute the incremental restore plan.
-        restore_plan = RestorePlan()
-
-        for ce in self._ahg.get_all_cell_executions():
-            # Add a rerun cell restore action if the cell needs to be rerun.
-            if ce in opt_result.ces_to_rerun:
-                restore_plan.add_rerun_cell_restore_action(ce.cell_num, ce.cell)
-
-            # Add a move variable action if variables need to be moved.
-            if len(move_ce_to_vs_map[ce]) > 0:
-                restore_plan.add_move_variable_restore_action(
-                    ce.cell_num,
-                    self._user_ns.subset(set(chain.from_iterable([vs.name for vs in move_ce_to_vs_map[ce]]))),
-                )
-
-            # Add a incremental load restore action if there are variables from the cell that needs to be loaded.
-            if len(load_ce_to_vs_map[ce]) > 0:
-                # All loaded VSes from the same cell execution share the same fallback execution; it
-                # suffices to pick any one of them.
-                fallback_recomputations = [
-                    (req_ce.cell_num, req_ce.cell)
-                    for req_ce in opt_result.fallback_recomputation[next(iter(load_ce_to_vs_map[ce]))]
-                ]
-
-                restore_plan.add_incremental_load_restore_action(ce.cell_num, load_ce_to_vs_map[ce], fallback_recomputations)
-
-        return restore_plan
-
-    def _find_useful_vses(
-        self, lca_active_vses: Set[VariableSnapshot], database_path: Path, target_parent_commit_ids: List[str]
-    ) -> UsefulVses:
-        # If an active VS in the current session exists as an active VS in the session of the LCA,
-        # the active vs can contribute toward restoration.
-        current_vses = self._ahg.get_active_variable_snapshots(self._kishu_graph.head())
-        useful_active_vses = lca_active_vses.intersection(current_vses)
-
-        # Get the stored VSes potentially useful for session restoration. However, if a variable is
-        # currently both in the session and stored, we will never use the stored version. Discard them.
-        stored_vses = self._ahg.get_vs_by_versioned_names(
-            frozenset(KishuCheckpoint(database_path).get_stored_versioned_names(target_parent_commit_ids))
-        )
-        useful_stored_vses = stored_vses.difference(useful_active_vses)
-
-        return UsefulVses(useful_active_vses, useful_stored_vses)
 
     def get_ahg(self) -> AHG:
         return self._ahg
@@ -436,3 +365,87 @@ class CheckpointRestorePlanner:
         pre_checkout_active_vss = self._ahg.get_active_variable_snapshots(self._kishu_graph.head())
         vss_diff = new_active_vses.difference(pre_checkout_active_vss)
         return {name for var_snapshot in vss_diff for name in var_snapshot.name}
+
+    @staticmethod
+    def _generate_incremental_restore_plan(
+        database_path: Path,
+        ahg: AHG,
+        kishu_graph: KishuCommitGraph,
+        user_ns: Namespace,
+        target_active_vses: Set[VariableSnapshot],
+        lca_active_vses: Set[VariableSnapshot],
+        target_parent_commit_ids: List[str],
+    ) -> RestorePlan:
+        """
+        Dynamically generates an incremental restore plan. To be called at checkout time if incremental CR is enabled.
+        """
+        # Find currently active VSes and stored VSes that can help restoration.
+        useful_vses = CheckpointRestorePlanner._find_useful_vses(
+            lca_active_vses, database_path, ahg, kishu_graph, target_parent_commit_ids
+        )
+
+        # Compute the incremental load plan.
+        opt_result = IncrementalLoadOptimizer(
+            ahg,
+            target_active_vses,
+            useful_vses.useful_active_vses,
+            useful_vses.useful_stored_vses,
+        ).compute_plan()
+        # Sort the VSes to load and move by cell execution number.
+        move_ce_to_vs_map: Dict[CellExecution, Set[VariableSnapshot]] = defaultdict(set)
+        for vs in opt_result.vss_to_move:
+            move_ce_to_vs_map[ahg.get_vs_input_ce(vs)].add(vs)
+
+        load_ce_to_vs_map: Dict[CellExecution, Set[VariableSnapshot]] = defaultdict(set)
+        for vs in opt_result.vss_to_load:
+            load_ce_to_vs_map[ahg.get_vs_input_ce(vs)].add(vs)
+
+        # Compute the incremental restore plan.
+        restore_plan = RestorePlan()
+
+        for ce in ahg.get_all_cell_executions():
+            # Add a rerun cell restore action if the cell needs to be rerun.
+            if ce in opt_result.ces_to_rerun:
+                restore_plan.add_rerun_cell_restore_action(ce.cell_num, ce.cell)
+
+            # Add a move variable action if variables need to be moved.
+            if len(move_ce_to_vs_map[ce]) > 0:
+                restore_plan.add_move_variable_restore_action(
+                    ce.cell_num,
+                    user_ns.subset(set(chain.from_iterable([vs.name for vs in move_ce_to_vs_map[ce]]))),
+                )
+
+            # Add a incremental load restore action if there are variables from the cell that needs to be loaded.
+            if len(load_ce_to_vs_map[ce]) > 0:
+                # All loaded VSes from the same cell execution share the same fallback execution; it
+                # suffices to pick any one of them.
+                fallback_recomputations = [
+                    (req_ce.cell_num, req_ce.cell)
+                    for req_ce in opt_result.fallback_recomputation[next(iter(load_ce_to_vs_map[ce]))]
+                ]
+
+                restore_plan.add_incremental_load_restore_action(ce.cell_num, load_ce_to_vs_map[ce], fallback_recomputations)
+
+        return restore_plan
+
+    @staticmethod
+    def _find_useful_vses(
+        lca_active_vses: Set[VariableSnapshot],
+        database_path: Path,
+        ahg: AHG,
+        kishu_graph: KishuCommitGraph,
+        target_parent_commit_ids: List[str],
+    ) -> UsefulVses:
+        # If an active VS in the current session exists as an active VS in the session of the LCA,
+        # the active vs can contribute toward restoration.
+        current_vses = ahg.get_active_variable_snapshots(kishu_graph.head())
+        useful_active_vses = lca_active_vses.intersection(current_vses)
+
+        # Get the stored VSes potentially useful for session restoration. However, if a variable is
+        # currently both in the session and stored, we will never use the stored version. Discard them.
+        stored_vses = ahg.get_vs_by_versioned_names(
+            frozenset(KishuCheckpoint(database_path).get_stored_versioned_names(target_parent_commit_ids))
+        )
+        useful_stored_vses = stored_vses.difference(useful_active_vses)
+
+        return UsefulVses(useful_active_vses, useful_stored_vses)
