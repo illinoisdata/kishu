@@ -1,3 +1,7 @@
+<div align="center">
+<img width="600" src="docs/images/new_kishu_logo.png"/>
+
+# Checkpointable and Undoable Notebook System
 [![build status](https://github.com/illinoisdata/kishu/actions/workflows/kishu.yml/badge.svg)](htps://github.com/illinoisdata/kishu)
 [![codecov](https://codecov.io/gh/illinoisdata/kishu/graph/badge.svg?token=14WRVYQBZO)](https://codecov.io/gh/illinoisdata/kishu)
 [![Python version](https://img.shields.io/pypi/pyversions/kishu)](https://pypi.org/project/kishu/)
@@ -6,36 +10,34 @@
 [![commits last month](https://img.shields.io/github/commit-activity/m/illinoisdata/ElasticNotebook)](htps://github.com/illinoisdata/kishu)
 [![GitHub stars](https://img.shields.io/github/stars/illinoisdata/ElasticNotebook)](htps://github.com/illinoisdata/kishu)
 --->
+</div>
 
-# Kishu: Versioned and Undoable Notebook System
+Kishu is a system for versioning notebook session states in IPython-based notebooks (e.g. JupyterLab, Jupyter Hub). It efficiently and transparently checkpoints both variable and code states of notebook sessions, enabling users to undo cell executions and manage branching states containing objects such as ML models, plots, and dataframes via Git-like commits and checkouts.
 
-<br>
 <div align="center">
-<img width="350" src="docs/images/kishu_with_background.png"/>
+<img width="960" src="docs/images/kishu_frontpage.png"/>
 </div>
 <br>
 
-Kishu is a system for intelligent versioning of notebook session states on Jupyter-based platforms (e.g. JupyterLab, Jupyter Hub). Kishu efficiently creates checkpoints of both the variable and code states of a notebook session, allowing users to both undo cell executions and manage branching states containing objects such as machine learning models, plots, and dataframes through a Git-like commit and checkout interface.
-
 ## Getting Started
 
-Kishu can be installed from [PyPI](https://pypi.org/project/kishu/):
+Install Kishu directly from [PyPI](https://pypi.org/project/kishu/):
 
 ```bash
-pip install kishu jupyterlab_kishu
+pip install jupyterlab_kishu
 ```
 
-Note: installing `jupyterlab_kishu` will also install `jupyterlab` into your environment.
-
-## Using Kishu
-
-Once Kishu has been installed, an additional `Kishu` tab should appear in JupyterLab's toolbar. This tab will allow access to Kishu's various functionalities:
+Installing `jupyterlab_kishu` will also install `jupyterlab` into your environment. You will see an additional `Kishu` tab in the JupyterLab toolbar upon (re-)starting your JupyterLab instance if installation succeeds:
 
 <br>
 <div align="center">
 <img width="960" src="docs/images/kishu_verify.png"/>
 </div>
 <br>
+
+## Using Kishu
+
+Here is a [video tutorial](https://youtu.be/LXg-q0yMCiw) for Kishu summarizing all the steps.
 
 ### Step 1: Initializing Kishu on a Notebook
 To start protecting your notebook session, Kishu can be initialized and attached through the `Kishu > Initialize/Re-attach` option under the `Kishu` tab. Alternatively, you can use the shortcut `Ctrl+K then Ctrl+I` / `⌘+K then ⌘+I`:
