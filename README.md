@@ -21,13 +21,13 @@ Kishu is a system for versioning notebook session states in IPython-based notebo
 
 ## Getting Started
 
-Install Kishu directly from [PyPI](https://pypi.org/project/kishu/):
+Install [Kishu](https://pypi.org/project/kishu/) and its [JupyterLab extension](https://pypi.org/project/jupyterlab-kishu/) directly from PyPi:
 
 ```bash
-pip install jupyterlab_kishu
+pip install jupyterlab_kishu kishu
 ```
 
-Installing `jupyterlab_kishu` will also install `jupyterlab` into your environment. You will see an additional `Kishu` tab in the JupyterLab toolbar upon (re-)starting your JupyterLab instance if installation succeeds:
+Kishu's installation will also install `jupyterlab` into your environment. You will see an additional `Kishu` tab in the JupyterLab toolbar upon (re-)starting your JupyterLab instance if installation succeeds:
 
 <br>
 <div align="center">
