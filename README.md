@@ -27,7 +27,7 @@ Install [Kishu](https://pypi.org/project/kishu/) and its [JupyterLab extension](
 pip install jupyterlab_kishu kishu
 ```
 
-Kishu's installation will also install `jupyterlab` into your environment. You will see an additional `Kishu` tab in the JupyterLab toolbar upon (re-)starting your JupyterLab instance if installation succeeds:
+Installing Kishu will also install `jupyterlab` into your environment. You will see an additional `Kishu` tab in the JupyterLab toolbar upon (re-)starting your JupyterLab instance if installation succeeds:
 
 <br>
 <div align="center">
