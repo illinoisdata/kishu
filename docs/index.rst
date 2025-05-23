@@ -23,4 +23,10 @@ This website is intended as a tutorial for using and configuring Kishu, as well 
    src/supported_libraries
    src/unsupported_cases
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Development
+
+   src/api
+
 .. _GitHub: https://github.com/illinoisdata/kishu
