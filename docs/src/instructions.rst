@@ -1,6 +1,6 @@
 Instructions
 ========================
-Here is a video tutorial <https://youtu.be/LXg-q0yMCiw>_ for Kishu summarizing all the steps.
+Here is a `video tutorial <https://youtu.be/LXg-q0yMCiw>`_ for Kishu summarizing all the steps.
 
 Step 1: Initializing Kishu on a Notebook
 -----
@@ -30,7 +30,7 @@ To undo your latest cell execution, you can use the Kishu > Undo Execution optio
 Undoing cell executions only affects the variable state. The code state (i.e., the cells you write) is untouched. This can be useful, for example, to 'un-drop' a dataframe column dropped by a cell while keeping the cell code itself intact.
 
 Checkpointing and Checking out Notebook States
-===========================
+-----
 
 Kishu can also be used to manage branching code and variable states; it supports making checkpoints of the notebook and variable state at any point during a notebook session, which can be returned to later via a checkout.
 
