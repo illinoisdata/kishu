@@ -26,6 +26,7 @@ classifiers = [
 ]
 dependencies = [
     "jupyterlab",
+    "jupyter-ui-poll<=1.0.0",
     "jupyter_server",
     "tornado",
     "kishu",
